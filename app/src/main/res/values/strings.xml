@@ -165,4 +165,7 @@
     <string name="service_exchange_notification_title">Сервис обмена</string>
     <string name="service_exchange_notification_text">Обмен с внешним сервером</string>
     <string name="service_exchange_last_sync">Последняя синхронизация: %s</string>
+    <string name="hide_password">скрыть пароль</string>
+    <string name="show_password">показать пароль</string>
+    <string name="retry">Повторить</string>
 </resources>
