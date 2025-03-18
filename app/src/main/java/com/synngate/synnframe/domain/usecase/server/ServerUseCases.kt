@@ -6,6 +6,7 @@ import com.synngate.synnframe.domain.entity.Log
 import com.synngate.synnframe.domain.entity.Server
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
+import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
@@ -15,7 +16,7 @@ import timber.log.Timber
  */
 class ServerUseCases(
     private val serverRepository: ServerRepository,
-    private val logRepository: LogRepository
+    private val loggingService: LoggingService
 ) : BaseUseCase {
 
     // Базовые операции
@@ -36,12 +37,12 @@ class ServerUseCases(
 
             // Добавление сервера
             val id = serverRepository.addServer(server)
-            logRepository.logInfo("Добавлен сервер: ${server.name} (${server.host}:${server.port})")
+            loggingService.logInfo("Добавлен сервер: ${server.name} (${server.host}:${server.port})")
 
             Result.success(id)
         } catch (e: Exception) {
             Timber.e(e, "Exception during server addition")
-            logRepository.logError("Ошибка при добавлении сервера: ${e.message}")
+            loggingService.logError("Ошибка при добавлении сервера: ${e.message}")
             Result.failure(e)
         }
     }
@@ -53,12 +54,12 @@ class ServerUseCases(
 
             // Обновление сервера
             serverRepository.updateServer(server)
-            logRepository.logInfo("Обновлен сервер: ${server.name} (${server.host}:${server.port})")
+            loggingService.logInfo("Обновлен сервер: ${server.name} (${server.host}:${server.port})")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during server update")
-            logRepository.logError("Ошибка при обновлении сервера: ${e.message}")
+            loggingService.logError("Ошибка при обновлении сервера: ${e.message}")
             Result.failure(e)
         }
     }
@@ -71,12 +72,12 @@ class ServerUseCases(
             }
 
             serverRepository.deleteServer(id)
-            logRepository.logInfo("Удален сервер: ${server.name} (${server.host}:${server.port})")
+            loggingService.logInfo("Удален сервер: ${server.name} (${server.host}:${server.port})")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during server deletion")
-            logRepository.logError("Ошибка при удалении сервера: ${e.message}")
+            loggingService.logError("Ошибка при удалении сервера: ${e.message}")
             Result.failure(e)
         }
     }
@@ -96,23 +97,23 @@ class ServerUseCases(
             appSettingsDataStore.setActiveServer(id, server.name)
 
             // Логируем изменение
-            logRepository.logInfo("Установлен активный сервер: ${server.name} (${server.host}:${server.port})")
+            loggingService.logInfo("Установлен активный сервер: ${server.name} (${server.host}:${server.port})")
 
             Result.success(Unit)
         } catch (e: Exception) {
-            logRepository.logError("Ошибка при установке активного сервера: ${e.message}")
+            loggingService.logError("Ошибка при установке активного сервера: ${e.message}")
             Result.failure(e)
         }
     }
     suspend fun clearActiveServer(): Result<Unit> {
         return try {
             serverRepository.clearActiveServer()
-            logRepository.logInfo("Сброшен активный сервер")
+            loggingService.logInfo("Сброшен активный сервер")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during clearing active server")
-            logRepository.logError("Ошибка при сбросе активного сервера: ${e.message}")
+            loggingService.logError("Ошибка при сбросе активного сервера: ${e.message}")
             Result.failure(e)
         }
     }
@@ -122,15 +123,15 @@ class ServerUseCases(
             val result = serverRepository.testConnection(server)
 
             if (result.isSuccess) {
-                logRepository.logInfo("Успешное подключение к серверу: ${server.name} (${server.host}:${server.port})")
+                loggingService.logInfo("Успешное подключение к серверу: ${server.name} (${server.host}:${server.port})")
             } else {
-                logRepository.logWarning("Ошибка подключения к серверу: ${server.name} (${server.host}:${server.port}), причина: ${result.exceptionOrNull()?.message}")
+                loggingService.logWarning("Ошибка подключения к серверу: ${server.name} (${server.host}:${server.port}), причина: ${result.exceptionOrNull()?.message}")
             }
 
             result
         } catch (e: Exception) {
             Timber.e(e, "Exception during server connection test")
-            logRepository.logError("Исключение при тестировании подключения: ${e.message}")
+            loggingService.logError("Исключение при тестировании подключения: ${e.message}")
             Result.failure(e)
         }
     }

@@ -28,21 +28,29 @@ import com.synngate.synnframe.data.repository.ServerRepositoryImpl
 import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
 import com.synngate.synnframe.data.repository.TaskRepositoryImpl
 import com.synngate.synnframe.data.repository.UserRepositoryImpl
+import com.synngate.synnframe.data.service.ClipboardServiceImpl
+import com.synngate.synnframe.data.service.LoggingServiceImpl
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
 import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.domain.repository.TaskRepository
 import com.synngate.synnframe.domain.repository.UserRepository
+import com.synngate.synnframe.domain.service.ClipboardService
+import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
+import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModelImpl
+import com.synngate.synnframe.presentation.ui.logs.LogListViewModelImpl
 import com.synngate.synnframe.presentation.ui.product.ProductListViewModelImpl
+import com.synngate.synnframe.presentation.ui.products.ProductDetailViewModelImpl
 import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModelImpl
 import com.synngate.synnframe.presentation.ui.server.ServerListViewModelImpl
+import com.synngate.synnframe.presentation.ui.settings.SettingsViewModelImpl
 import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModelImpl
 import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModelImpl
 import io.ktor.client.HttpClient
@@ -155,7 +163,7 @@ class AppContainer(private val applicationContext: Context) {
     // Репозитории
     private val serverRepository: ServerRepository by lazy {
         Timber.d("Creating ServerRepository")
-        ServerRepositoryImpl(serverDao, apiService, appSettingsDataStore, logRepository)
+        ServerRepositoryImpl(serverDao, apiService)
     }
 
     private val userRepository: UserRepository by lazy {
@@ -175,32 +183,48 @@ class AppContainer(private val applicationContext: Context) {
 
     private val settingsRepository: SettingsRepository by lazy {
         Timber.d("Creating SettingsRepository")
-        SettingsRepositoryImpl(appSettingsDataStore, appUpdateApi, logRepository, applicationContext)
+        SettingsRepositoryImpl(
+            appSettingsDataStore,
+            appUpdateApi,
+            logRepository,
+            applicationContext
+        )
+    }
+
+    // Создаем экземпляр LoggingService
+    private val loggingService: LoggingService by lazy {
+        Timber.d("Creating LoggingService")
+        LoggingServiceImpl(logRepository)
+    }
+
+    private val clipboardService: ClipboardService by lazy {
+        Timber.d("Creating ClipboardService")
+        ClipboardServiceImpl(applicationContext)
     }
 
     // Use Cases - создаем lazy для повторного использования
     private val serverUseCases by lazy {
-        ServerUseCases(serverRepository, logRepository)
+        ServerUseCases(serverRepository, loggingService)
     }
 
     private val userUseCases by lazy {
-        UserUseCases(userRepository, logRepository)
+        UserUseCases(userRepository, loggingService)
     }
 
     private val taskUseCases by lazy {
-        TaskUseCases(taskRepository, logRepository)
+        TaskUseCases(taskRepository, loggingService)
     }
 
     private val productUseCases by lazy {
-        ProductUseCases(productRepository, logRepository)
+        ProductUseCases(productRepository, loggingService)
     }
 
     private val logUseCases by lazy {
-        LogUseCases(logRepository)
+        LogUseCases(logRepository, loggingService)
     }
 
     private val settingsUseCases by lazy {
-        SettingsUseCases(settingsRepository, logRepository)
+        SettingsUseCases(settingsRepository, loggingService)
     }
 
     /**
@@ -349,6 +373,7 @@ class AppContainer(private val applicationContext: Context) {
             val viewModel = ProductDetailViewModelImpl(
                 productId = productId,
                 productUseCases = appContainer.productUseCases,
+                loggingService = appContainer.loggingService,
                 ioDispatcher = Dispatchers.IO
             )
             addClearable(viewModel)
@@ -365,22 +390,26 @@ class AppContainer(private val applicationContext: Context) {
 
         override fun createLogListViewModel(): LogListViewModel {
             Timber.d("Creating LogListViewModel")
-            // Пока используем заглушку ViewModelStore для LogListViewModel
-            // В дальнейшем нужно будет реализовать LogListViewModelImpl
-            val viewStore = ViewModelStore()
-            return viewStore.getOrCreate("LogListViewModel") {
-                object : LogListViewModel {}
-            }
+            val viewModel = LogListViewModelImpl(
+                logUseCases = appContainer.logUseCases,
+                loggingService = appContainer.loggingService,
+                ioDispatcher = Dispatchers.IO
+            )
+            addClearable(viewModel)
+            return viewModel
         }
 
         override fun createLogDetailViewModel(logId: Int): LogDetailViewModel {
             Timber.d("Creating LogDetailViewModel for logId=$logId")
-            // Пока используем заглушку ViewModelStore для LogDetailViewModel
-            // В дальнейшем нужно будет реализовать LogDetailViewModelImpl
-            val viewStore = ViewModelStore()
-            return viewStore.getOrCreate("LogDetailViewModel:$logId") {
-                object : LogDetailViewModel {}
-            }
+            val viewModel = LogDetailViewModelImpl(
+                logId,
+                appContainer.logUseCases,
+                appContainer.loggingService,
+                appContainer.clipboardService,
+                Dispatchers.IO
+            )
+            addClearable(viewModel)
+            return viewModel
         }
     }
 
@@ -393,12 +422,14 @@ class AppContainer(private val applicationContext: Context) {
 
         override fun createSettingsViewModel(): SettingsViewModel {
             Timber.d("Creating SettingsViewModel")
-            // Пока используем заглушку ViewModelStore для SettingsViewModel
-            // В дальнейшем нужно будет реализовать SettingsViewModelImpl
-            val viewStore = ViewModelStore()
-            return viewStore.getOrCreate("SettingsViewModel") {
-                object : SettingsViewModel {}
-            }
+            val viewModel = SettingsViewModelImpl(
+                appContainer.settingsUseCases,
+                appContainer.serverUseCases,
+                appContainer.loggingService,
+                Dispatchers.IO
+            )
+            addClearable(viewModel)
+            return viewModel
         }
     }
 }

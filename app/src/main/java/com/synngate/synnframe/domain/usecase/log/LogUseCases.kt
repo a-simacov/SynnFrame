@@ -5,6 +5,7 @@ package com.synngate.synnframe.domain.usecase.log
 import com.synngate.synnframe.domain.entity.Log
 import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.domain.repository.LogRepository
+import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
@@ -14,7 +15,8 @@ import java.time.LocalDateTime
  * Use Case класс для операций с логами
  */
 class LogUseCases(
-    private val logRepository: LogRepository
+    private val logRepository: LogRepository,
+    private val loggingService: LoggingService
 ) : BaseUseCase {
 
     // Базовые операции
@@ -76,37 +78,6 @@ class LogUseCases(
         }
     }
 
-    // Новые методы в LogUseCases для обработки логирования
-    suspend fun logInfo(message: String): Long {
-        Timber.i(message)
-        val log = Log(
-            message = message,
-            type = LogType.INFO,
-            createdAt = LocalDateTime.now()
-        )
-        return logRepository.addLog(log)
-    }
-
-    suspend fun logWarning(message: String): Long {
-        Timber.w(message)
-        val log = Log(
-            message = message,
-            type = LogType.WARNING,
-            createdAt = LocalDateTime.now()
-        )
-        return logRepository.addLog(log)
-    }
-
-    suspend fun logError(message: String): Long {
-        Timber.e(message)
-        val log = Log(
-            message = message,
-            type = LogType.ERROR,
-            createdAt = LocalDateTime.now()
-        )
-        return logRepository.addLog(log)
-    }
-
     suspend fun log(type: LogType, message: String): Long {
         return when (type) {
             LogType.INFO -> logInfo(message)
@@ -114,4 +85,17 @@ class LogUseCases(
             LogType.ERROR -> logError(message)
         }
     }
+
+    suspend fun logInfo(message: String): Long {
+        return loggingService.logInfo(message)
+    }
+
+    suspend fun logWarning(message: String): Long {
+        return loggingService.logWarning(message)
+    }
+
+    suspend fun logError(message: String): Long {
+        return loggingService.logError(message)
+    }
+
 }

@@ -5,6 +5,7 @@ package com.synngate.synnframe.domain.usecase.product
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
+import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
@@ -14,7 +15,7 @@ import timber.log.Timber
  */
 class ProductUseCases(
     private val productRepository: ProductRepository,
-    private val logRepository: LogRepository
+    private val loggingService: LoggingService
 ) : BaseUseCase {
 
     // Базовые операции
@@ -40,15 +41,15 @@ class ProductUseCases(
 
             if (result.isSuccess) {
                 val count = result.getOrDefault(0)
-                logRepository.logInfo("Синхронизировано товаров: $count")
+                loggingService.logInfo("Синхронизировано товаров: $count")
             } else {
-                logRepository.logWarning("Ошибка синхронизации товаров: ${result.exceptionOrNull()?.message}")
+                loggingService.logWarning("Ошибка синхронизации товаров: ${result.exceptionOrNull()?.message}")
             }
 
             result
         } catch (e: Exception) {
             Timber.e(e, "Exception during products synchronization")
-            logRepository.logError("Исключение при синхронизации товаров: ${e.message}")
+            loggingService.logError("Исключение при синхронизации товаров: ${e.message}")
             Result.failure(e)
         }
     }

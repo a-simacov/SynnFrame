@@ -4,6 +4,7 @@ package com.synngate.synnframe.domain.usecase.settings
 
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.SettingsRepository
+import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -14,7 +15,7 @@ import timber.log.Timber
  */
 class SettingsUseCases(
     private val settingsRepository: SettingsRepository,
-    private val logRepository: LogRepository
+    private val loggingService: LoggingService
 ) : BaseUseCase {
 
     // Геттеры для настроек
@@ -29,12 +30,12 @@ class SettingsUseCases(
     suspend fun setShowServersOnStartup(show: Boolean): Result<Unit> {
         return try {
             settingsRepository.setShowServersOnStartup(show)
-            logRepository.logInfo("Настройка 'Показывать при запуске' установлена: $show")
+            loggingService.logInfo("Настройка 'Показывать при запуске' установлена: $show")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting ShowServersOnStartup")
-            logRepository.logError("Ошибка при изменении настройки: ${e.message}")
+            loggingService.logError("Ошибка при изменении настройки: ${e.message}")
             Result.failure(e)
         }
     }
@@ -42,12 +43,12 @@ class SettingsUseCases(
     suspend fun setPeriodicUpload(enabled: Boolean, intervalSeconds: Int? = null): Result<Unit> {
         return try {
             settingsRepository.setPeriodicUpload(enabled, intervalSeconds)
-            logRepository.logInfo("Настройка 'Периодическая выгрузка' установлена: $enabled, интервал: $intervalSeconds")
+            loggingService.logInfo("Настройка 'Периодическая выгрузка' установлена: $enabled, интервал: $intervalSeconds")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting PeriodicUpload")
-            logRepository.logError("Ошибка при изменении настройки: ${e.message}")
+            loggingService.logError("Ошибка при изменении настройки: ${e.message}")
             Result.failure(e)
         }
     }
@@ -55,12 +56,12 @@ class SettingsUseCases(
     suspend fun setThemeMode(mode: ThemeMode): Result<Unit> {
         return try {
             settingsRepository.setThemeMode(mode)
-            logRepository.logInfo("Настройка 'Тема оформления' установлена: $mode")
+            loggingService.logInfo("Настройка 'Тема оформления' установлена: $mode")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting ThemeMode")
-            logRepository.logError("Ошибка при изменении настройки: ${e.message}")
+            loggingService.logError("Ошибка при изменении настройки: ${e.message}")
             Result.failure(e)
         }
     }
@@ -68,12 +69,12 @@ class SettingsUseCases(
     suspend fun setLanguageCode(code: String): Result<Unit> {
         return try {
             settingsRepository.setLanguageCode(code)
-            logRepository.logInfo("Настройка 'Язык интерфейса' установлена: $code")
+            loggingService.logInfo("Настройка 'Язык интерфейса' установлена: $code")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting LanguageCode")
-            logRepository.logError("Ошибка при изменении настройки: ${e.message}")
+            loggingService.logError("Ошибка при изменении настройки: ${e.message}")
             Result.failure(e)
         }
     }
@@ -81,12 +82,12 @@ class SettingsUseCases(
     suspend fun setNavigationButtonHeight(height: Float): Result<Unit> {
         return try {
             settingsRepository.setNavigationButtonHeight(height)
-            logRepository.logInfo("Настройка 'Высота кнопки навигации' установлена: $height")
+            loggingService.logInfo("Настройка 'Высота кнопки навигации' установлена: $height")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting NavigationButtonHeight")
-            logRepository.logError("Ошибка при изменении настройки: ${e.message}")
+            loggingService.logError("Ошибка при изменении настройки: ${e.message}")
             Result.failure(e)
         }
     }
@@ -97,15 +98,15 @@ class SettingsUseCases(
 
             if (result.isSuccess) {
                 val (version, releaseDate) = result.getOrNull()!!
-                logRepository.logInfo("Проверка обновлений: доступна версия $version")
+                loggingService.logInfo("Проверка обновлений: доступна версия $version")
             } else {
-                logRepository.logWarning("Ошибка проверки обновлений: ${result.exceptionOrNull()?.message}")
+                loggingService.logWarning("Ошибка проверки обновлений: ${result.exceptionOrNull()?.message}")
             }
 
             result
         } catch (e: Exception) {
             Timber.e(e, "Exception during checking for updates")
-            logRepository.logError("Исключение при проверке обновлений: ${e.message}")
+            loggingService.logError("Исключение при проверке обновлений: ${e.message}")
             Result.failure(e)
         }
     }
@@ -116,15 +117,15 @@ class SettingsUseCases(
 
             if (result.isSuccess) {
                 val filePath = result.getOrNull()!!
-                logRepository.logInfo("Обновление загружено: $version, путь: $filePath")
+                loggingService.logInfo("Обновление загружено: $version, путь: $filePath")
             } else {
-                logRepository.logWarning("Ошибка загрузки обновления: ${result.exceptionOrNull()?.message}")
+                loggingService.logWarning("Ошибка загрузки обновления: ${result.exceptionOrNull()?.message}")
             }
 
             result
         } catch (e: Exception) {
             Timber.e(e, "Exception during downloading update")
-            logRepository.logError("Исключение при загрузке обновления: ${e.message}")
+            loggingService.logError("Исключение при загрузке обновления: ${e.message}")
             Result.failure(e)
         }
     }
@@ -134,15 +135,15 @@ class SettingsUseCases(
             val result = settingsRepository.installUpdate(filePath)
 
             if (result.isSuccess) {
-                logRepository.logInfo("Обновление подготовлено к установке: $filePath")
+                loggingService.logInfo("Обновление подготовлено к установке: $filePath")
             } else {
-                logRepository.logWarning("Ошибка подготовки обновления: ${result.exceptionOrNull()?.message}")
+                loggingService.logWarning("Ошибка подготовки обновления: ${result.exceptionOrNull()?.message}")
             }
 
             result
         } catch (e: Exception) {
             Timber.e(e, "Exception during installing update")
-            logRepository.logError("Исключение при установке обновления: ${e.message}")
+            loggingService.logError("Исключение при установке обновления: ${e.message}")
             Result.failure(e)
         }
     }

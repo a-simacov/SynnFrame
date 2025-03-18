@@ -5,6 +5,7 @@ package com.synngate.synnframe.domain.usecase.user
 import com.synngate.synnframe.domain.entity.User
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.UserRepository
+import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
@@ -14,7 +15,7 @@ import timber.log.Timber
  */
 class UserUseCases(
     private val userRepository: UserRepository,
-    private val logRepository: LogRepository
+    private val loggingService: LoggingService
 ) : BaseUseCase {
 
     // Базовые операции
@@ -38,7 +39,7 @@ class UserUseCases(
             if (localUser != null) {
                 // Пользователь найден, устанавливаем как текущего
                 userRepository.setCurrentUser(localUser.id)
-                logRepository.logInfo("Вход выполнен для пользователя: ${localUser.name}")
+                loggingService.logInfo("Вход выполнен для пользователя: ${localUser.name}")
                 return Result.success(localUser)
             }
 
@@ -47,15 +48,15 @@ class UserUseCases(
 
             if (result.isSuccess) {
                 val user = result.getOrNull()!!
-                logRepository.logInfo("Успешная аутентификация пользователя: ${user.name}")
+                loggingService.logInfo("Успешная аутентификация пользователя: ${user.name}")
                 return Result.success(user)
             } else {
-                logRepository.logWarning("Ошибка аутентификации: ${result.exceptionOrNull()?.message}")
+                loggingService.logWarning("Ошибка аутентификации: ${result.exceptionOrNull()?.message}")
                 return result
             }
         } catch (e: Exception) {
             Timber.e(e, "Exception during user login")
-            logRepository.logError("Исключение при входе пользователя: ${e.message}")
+            loggingService.logError("Исключение при входе пользователя: ${e.message}")
             Result.failure(e)
         }
     }
@@ -63,12 +64,12 @@ class UserUseCases(
     suspend fun logoutUser(): Result<Unit> {
         return try {
             userRepository.clearCurrentUser()
-            logRepository.logInfo("Выход пользователя выполнен")
+            loggingService.logInfo("Выход пользователя выполнен")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during user logout")
-            logRepository.logError("Исключение при выходе пользователя: ${e.message}")
+            loggingService.logError("Исключение при выходе пользователя: ${e.message}")
             Result.failure(e)
         }
     }
