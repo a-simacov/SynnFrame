@@ -1,3 +1,168 @@
 <resources>
+    <!-- App Name -->
     <string name="app_name">SynnFrame</string>
+
+    <!-- Common -->
+    <string name="ok">OK</string>
+    <string name="cancel">Отмена</string>
+    <string name="save">Сохранить</string>
+    <string name="back">Назад</string>
+    <string name="continue_button">Продолжить</string>
+    <string name="yes">Да</string>
+    <string name="no">Нет</string>
+    <string name="close">Закрыть</string>
+    <string name="confirm">Подтвердить</string>
+    <string name="delete">Удалить</string>
+    <string name="error">Ошибка</string>
+    <string name="warning">Предупреждение</string>
+    <string name="loading">Загрузка…</string>
+    <string name="search">Поиск</string>
+    <string name="filter">Фильтр</string>
+    <string name="clear">Очистить</string>
+    <string name="apply">Применить</string>
+    <string name="add">Добавить</string>
+    <string name="edit">Изменить</string>
+    <string name="completed">Завершено</string>
+    <string name="name">Имя</string>
+    <string name="exit_app_confirmation">Вы уверены, что хотите выйти из приложения?</string>
+
+    <!-- Splash Screen -->
+    <string name="splash_initializing">Инициализация приложения…</string>
+    <string name="splash_version">Версия %s</string>
+
+    <!-- Server Screens -->
+    <string name="servers_title">Внешние серверы</string>
+    <string name="servers_empty">Список внешних серверов пустой</string>
+    <string name="server_detail_title">Внешний сервер</string>
+    <string name="server_name">Имя сервера</string>
+    <string name="server_host">Хост</string>
+    <string name="server_port">Порт</string>
+    <string name="server_login">Логин</string>
+    <string name="server_password">Пароль</string>
+    <string name="server_api_endpoint">Точка подключения к API</string>
+    <string name="server_test_connection">Проверить подключение</string>
+    <string name="server_status">Статус: ожидание подключения</string>
+    <string name="server_active">Активный: %s</string>
+    <string name="server_active_yes">Да</string>
+    <string name="server_active_no">Нет</string>
+    <string name="server_delete_confirm">Вы уверены, что хотите удалить этот сервер?</string>
+    <string name="server_show_on_startup">Показывать при запуске приложения</string>
+    <string name="server_test_successful">Подключение успешно</string>
+    <string name="server_test_failed">Ошибка подключения: %s</string>
+    <string name="server_fields_required">Все поля обязательны для заполнения</string>
+
+    <!-- Login Screen -->
+    <string name="login_title">Аутентификация</string>
+    <string name="login_password">Пароль</string>
+    <string name="login_button">Войти</string>
+    <string name="login_exit">Выйти</string>
+    <string name="login_failed">Ошибка аутентификации: %s</string>
+    <string name="login_success">Аутентификация успешна</string>
+
+    <!-- Main Menu -->
+    <string name="main_menu_title">Главное меню</string>
+    <string name="main_menu_tasks">Задания (%d)</string>
+    <string name="main_menu_products">Товары (%d)</string>
+    <string name="main_menu_logs">Логи</string>
+    <string name="main_menu_settings">Настройки</string>
+    <string name="main_menu_change_user">Смена пользователя</string>
+    <string name="main_menu_close">Закрыть приложение</string>
+
+    <!-- Tasks Screens -->
+    <string name="tasks_title">Задания</string>
+    <string name="tasks_empty">Задания не найдены</string>
+    <string name="task_detail_title">Задание</string>
+    <string name="task_search_hint">Поиск по имени или штрихкоду</string>
+    <string name="task_status_to_do">К выполнению</string>
+    <string name="task_status_in_progress">Выполняется</string>
+    <string name="task_status_completed">Выполнено</string>
+    <string name="task_status_all">Все</string>
+    <string name="task_date_filter">Фильтр по дате</string>
+    <string name="task_date_from">Дата-с</string>
+    <string name="task_date_to">Дата-по</string>
+    <string name="task_type">Тип</string>
+    <string name="task_type_receipt">Приёмка</string>
+    <string name="task_type_pick">Отбор</string>
+    <string name="task_product_search">Введите штрихкод или нажмите 0 для списка товаров</string>
+    <string name="task_scan_fact">Сканировать факт</string>
+    <string name="task_start">Начать выполнение</string>
+    <string name="task_complete">Завершить</string>
+    <string name="task_upload">Выгрузить</string>
+    <string name="task_product_column">Товар</string>
+    <string name="task_plan_column">Количество план</string>
+    <string name="task_fact_column">Количество факт</string>
+    <string name="task_scan_product_not_found">Товар не найден по штрихкоду %s</string>
+    <string name="task_scan_product_not_in_plan">Найденный товар \"%s\" не входит в план задания</string>
+    <string name="task_scan_close">Закрыть сканер</string>
+    <string name="task_scan_current_quantity">Текущее: %.3f</string>
+    <string name="task_scan_add_quantity">Добавить:</string>
+    <string name="task_scan_total_quantity">Итого: %.3f</string>
+    <string name="task_scan_modify">Изменить</string>
+    <string name="task_confirm_complete">Вы уверены, что хотите завершить задание?</string>
+    <string name="task_uploaded">Задание успешно выгружено</string>
+    <string name="task_upload_failed">Ошибка выгрузки задания: %s</string>
+
+    <!-- Products Screens -->
+    <string name="products_title">Товары</string>
+    <string name="products_empty">Товары не найдены</string>
+    <string name="product_detail_title">Товар</string>
+    <string name="product_search_hint">Поиск товаров</string>
+    <string name="product_name">Наименование</string>
+    <string name="product_article">Артикул</string>
+    <string name="product_accounting_model">Модель учета</string>
+    <string name="product_accounting_model_batch">По партиям</string>
+    <string name="product_accounting_model_quantity">По количеству</string>
+    <string name="product_main_unit">Основная единица измерения</string>
+    <string name="product_units">Единицы измерения</string>
+    <string name="product_barcode">Штрихкод</string>
+    <string name="product_barcodes">Штрихкоды</string>
+
+    <!-- Logs Screens -->
+    <string name="logs_title">Логи</string>
+    <string name="logs_empty">Логи не найдены</string>
+    <string name="log_detail_title">Данные лога</string>
+    <string name="log_search_hint">Поиск логов</string>
+    <string name="log_type_info">Info</string>
+    <string name="log_type_warning">Warning</string>
+    <string name="log_type_error">Error</string>
+    <string name="log_type_all">Все</string>
+    <string name="log_date_filter">Фильтр по дате</string>
+    <string name="log_date_from">Дата-с</string>
+    <string name="log_date_to">Дата-по</string>
+    <string name="log_copy_to_clipboard">Скопировать в буфер обмена</string>
+    <string name="log_copied">Лог скопирован в буфер обмена</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Настройки приложения</string>
+    <string name="settings_active_server">Активный внешний сервер</string>
+    <string name="settings_server_list">Список серверов</string>
+    <string name="settings_show_on_startup">Показывать при запуске приложения</string>
+    <string name="settings_periodic_upload">Выполнять периодическую выгрузку выполненных заданий</string>
+    <string name="settings_upload_interval">Периодичность выгрузки (секунды)</string>
+    <string name="settings_web_server">Локальный веб-сервер</string>
+    <string name="settings_start_web_server">Запустить веб-сервер</string>
+    <string name="settings_stop_web_server">Остановить веб-сервер</string>
+    <string name="settings_web_server_status">Статус веб-сервера: %s</string>
+    <string name="settings_web_server_running">Запущен</string>
+    <string name="settings_web_server_stopped">Остановлен</string>
+    <string name="settings_theme">Тема оформления</string>
+    <string name="settings_theme_system">Система</string>
+    <string name="settings_theme_light">Светлая</string>
+    <string name="settings_theme_dark">Темная</string>
+    <string name="settings_language">Язык интерфейса</string>
+    <string name="settings_language_english">Английский</string>
+    <string name="settings_language_russian">Русский</string>
+    <string name="settings_button_height">Высота кнопки навигации</string>
+    <string name="settings_check_for_updates">Проверить обновления</string>
+    <string name="settings_update_available">Доступна новая версия %s. Хотите обновить?</string>
+    <string name="settings_no_updates">У вас установлена последняя версия</string>
+    <string name="settings_update_error">Ошибка проверки обновлений: %s</string>
+
+    <!-- Services -->
+    <string name="service_web_server_notification_title">Локальный веб-сервер</string>
+    <string name="service_web_server_notification_text">Локальный веб-сервер запущен</string>
+    <string name="service_web_server_request">Запрос: %s</string>
+    <string name="service_exchange_notification_title">Сервис обмена</string>
+    <string name="service_exchange_notification_text">Обмен с внешним сервером</string>
+    <string name="service_exchange_last_sync">Последняя синхронизация: %s</string>
 </resources>
