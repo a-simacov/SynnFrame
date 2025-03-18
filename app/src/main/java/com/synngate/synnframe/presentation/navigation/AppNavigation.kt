@@ -1,20 +1,30 @@
 package com.synngate.synnframe.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.synngate.synnframe.presentation.di.AppContainer
+import com.synngate.synnframe.presentation.di.NavHostContainer
+import com.synngate.synnframe.presentation.di.ServerListGraphContainer
+import com.synngate.synnframe.presentation.ui.server.ServerDetailScreen
 import com.synngate.synnframe.presentation.ui.server.ServerListScreen
 import timber.log.Timber
 
 /**
- * Основной навигационный граф приложения
+ * Основной навигационный граф приложения с интеграцией DI
  */
 @Composable
 fun AppNavigation(
@@ -29,19 +39,69 @@ fun AppNavigation(
 
     Timber.d("Current navigation route: $currentRoute")
 
+    // Создаем контейнер для NavHost
+    val navHostContainer = remember { (appContainer as AppContainer).createNavHostContainer() }
+
+    // Отслеживаем жизненный цикл навигационного хоста для очистки ресурсов
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_DESTROY) {
+                Timber.d("NavHost destroyed, clearing NavHostContainer")
+                navHostContainer.clear()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     // Основная навигация приложения
     NavHost(
         navController = navController,
         startDestination = startDestination
     ) {
         // Экран списка серверов
-        composable(Screen.ServerList.route) {
+        composable(Screen.ServerList.route) { entry ->
+            // Получаем контейнер для подграфа серверов
+            val serverListGraphContainer = rememberServerListGraphContainer(navHostContainer, entry)
+
             ServerListScreen(
-                appContainer = appContainer,
+                viewModel = serverListGraphContainer.createServerListViewModel(),
+                navigateToServerDetail = { serverId ->
+                    navController.navigate(Screen.ServerDetail.createRoute(serverId))
+                },
                 navigateToLogin = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.ServerList.route) { inclusive = false }
                     }
+                }
+            )
+        }
+
+        // Экран деталей сервера
+        composable(
+            route = Screen.ServerDetail.route,
+            arguments = listOf(
+                navArgument("serverId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { entry ->
+            // Получаем контейнер для подграфа серверов
+            val serverListGraphContainer = rememberServerListGraphContainer(navHostContainer, entry)
+
+            // Получаем serverId из аргументов
+            val serverIdArg = entry.arguments?.getString("serverId")
+            val serverId = serverIdArg?.toIntOrNull()
+
+            ServerDetailScreen(
+                viewModel = serverListGraphContainer.createServerDetailViewModel(serverId),
+                navigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
@@ -86,26 +146,64 @@ fun AppNavigation(
 }
 
 /**
+ * Получение контейнера для подграфа серверов с отслеживанием жизненного цикла
+ */
+@Composable
+private fun rememberServerListGraphContainer(
+    navHostContainer: NavHostContainer,
+    entry: NavBackStackEntry
+): ServerListGraphContainer {
+    // Создаем контейнер для подграфа
+    val container = remember(navHostContainer) {
+        navHostContainer.createServerListGraphContainer()
+    }
+
+    // Отслеживаем жизненный цикл для очистки ресурсов
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, entry) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_DESTROY) {
+                if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                    Timber.d("ServerList graph destroyed, clearing container")
+                    container.clear()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    return container
+}
+
+/**
  * Класс, представляющий экраны в навигационном графе
  */
 sealed class Screen(val route: String) {
     object ServerList : Screen("server_list")
     object ServerDetail : Screen("server_detail/{serverId}") {
-        fun createRoute(serverId: Int? = null) = serverId?.let { "server_detail/$it" } ?: "server_detail/new"
+        fun createRoute(serverId: Int? = null) =
+            serverId?.let { "server_detail/$it" } ?: "server_detail/new"
     }
+
     object Login : Screen("login")
     object MainMenu : Screen("main_menu")
     object TaskList : Screen("task_list")
     object TaskDetail : Screen("task_detail/{taskId}") {
         fun createRoute(taskId: String) = "task_detail/$taskId"
     }
+
     object ProductList : Screen("product_list")
     object ProductDetail : Screen("product_detail/{productId}") {
         fun createRoute(productId: String) = "product_detail/$productId"
     }
+
     object LogList : Screen("log_list")
     object LogDetail : Screen("log_detail/{logId}") {
         fun createRoute(logId: Int) = "log_detail/$logId"
     }
+
     object Settings : Screen("settings")
 }
