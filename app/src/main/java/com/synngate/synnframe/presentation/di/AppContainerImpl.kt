@@ -34,6 +34,12 @@ import com.synngate.synnframe.domain.repository.ServerRepository
 import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.domain.repository.TaskRepository
 import com.synngate.synnframe.domain.repository.UserRepository
+import com.synngate.synnframe.domain.usecase.log.LogUseCases
+import com.synngate.synnframe.domain.usecase.product.ProductUseCases
+import com.synngate.synnframe.domain.usecase.server.ServerUseCases
+import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
+import com.synngate.synnframe.domain.usecase.task.TaskUseCases
+import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -168,6 +174,74 @@ class AppContainer(private val applicationContext: Context) {
         Timber.d("Creating SettingsRepository")
         SettingsRepositoryImpl(appSettingsDataStore, appUpdateApi, logRepository, applicationContext)
     }
+
+    // Use Cases
+    fun createTaskUseCases(): TaskUseCases {
+        return TaskUseCases(
+            taskRepository = createTaskRepository(),
+            logRepository = createLogRepository()
+        )
+    }
+
+    fun createProductUseCases(): ProductUseCases {
+        return ProductUseCases(
+            productRepository = createProductRepository(),
+            logRepository = createLogRepository()
+        )
+    }
+
+    fun createServerUseCases(): ServerUseCases {
+        return ServerUseCases(
+            serverRepository = createServerRepository(),
+            logRepository = createLogRepository()
+        )
+    }
+
+    fun createUserUseCases(): UserUseCases {
+        return UserUseCases(
+            userRepository = createUserRepository(),
+            logRepository = createLogRepository()
+        )
+    }
+
+    fun createLogUseCases(): LogUseCases {
+        return LogUseCases(
+            logRepository = createLogRepository()
+        )
+    }
+
+    fun createSettingsUseCases(): SettingsUseCases {
+        return SettingsUseCases(
+            settingsRepository = createSettingsRepository(),
+            logRepository = createLogRepository()
+        )
+    }
+
+    // Вспомогательные методы для создания репозиториев
+    private fun createTaskRepository(): TaskRepository {
+        return TaskRepositoryImpl(taskDao, taskApi, logRepository)
+    }
+
+    private fun createProductRepository(): ProductRepository {
+        return ProductRepositoryImpl(productDao, productApi, logRepository)
+    }
+
+    private fun createServerRepository(): ServerRepository {
+        return ServerRepositoryImpl(serverDao, apiService, appSettingsDataStore, logRepository)
+    }
+
+    private fun createUserRepository(): UserRepository {
+        return UserRepositoryImpl(userDao, authApi, appSettingsDataStore, logRepository)
+    }
+
+    private fun createLogRepository(): LogRepository {
+        return logRepository
+    }
+
+    private fun createSettingsRepository(): SettingsRepository {
+        return SettingsRepositoryImpl(appSettingsDataStore, appUpdateApi, logRepository, applicationContext)
+    }
+
 
     /**
      * Создание контейнера для навигационного хоста

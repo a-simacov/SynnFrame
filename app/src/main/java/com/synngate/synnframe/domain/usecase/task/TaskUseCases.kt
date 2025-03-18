@@ -1,0 +1,221 @@
+// Файл: com.synngate.synnframe.domain.usecase.task.TaskUseCases.kt
+
+package com.synngate.synnframe.domain.usecase.task
+
+import com.synngate.synnframe.domain.entity.Task
+import com.synngate.synnframe.domain.entity.TaskFactLine
+import com.synngate.synnframe.domain.entity.TaskStatus
+import com.synngate.synnframe.domain.entity.TaskType
+import com.synngate.synnframe.domain.repository.LogRepository
+import com.synngate.synnframe.domain.repository.TaskRepository
+import com.synngate.synnframe.domain.usecase.BaseUseCase
+import kotlinx.coroutines.flow.Flow
+import timber.log.Timber
+import java.time.LocalDateTime
+
+/**
+ * Use Case класс для операций с заданиями
+ */
+class TaskUseCases(
+    private val taskRepository: TaskRepository,
+    private val logRepository: LogRepository
+) : BaseUseCase {
+
+    // Базовые операции CRUD, делегируемые репозиторию
+    fun getTasks(): Flow<List<Task>> =
+        taskRepository.getTasks()
+
+    fun getFilteredTasks(
+        nameFilter: String? = null,
+        statusFilter: List<TaskStatus>? = null,
+        typeFilter: TaskType? = null,
+        dateFromFilter: LocalDateTime? = null,
+        dateToFilter: LocalDateTime? = null,
+        executorIdFilter: String? = null
+    ): Flow<List<Task>> {
+        return taskRepository.getFilteredTasks(
+            nameFilter, statusFilter, typeFilter,
+            dateFromFilter, dateToFilter, executorIdFilter
+        )
+    }
+
+    suspend fun getTaskById(id: String): Task? =
+        taskRepository.getTaskById(id)
+
+    suspend fun getTaskByBarcode(barcode: String): Task? =
+        taskRepository.getTaskByBarcode(barcode)
+
+    fun getTasksCountForCurrentUser(): Flow<Int> =
+        taskRepository.getTasksCountForCurrentUser()
+
+    // Операции с бизнес-логикой
+    suspend fun startTask(id: String, executorId: String): Result<Task> {
+        try {
+            // Получаем задание
+            val task = taskRepository.getTaskById(id) ?:
+            return Result.failure(IllegalArgumentException("Task not found"))
+
+            // Проверка бизнес-правила: задание должно быть в статусе "К выполнению"
+            if (task.status != TaskStatus.TO_DO) {
+                logRepository.logWarning("Невозможно начать выполнение задания '${task.name}', текущий статус: ${task.status}")
+                return Result.failure(IllegalStateException("Task is not in TO_DO status"))
+            }
+
+            // Проверка бизнес-правила: если у задания есть исполнитель, то это должен быть текущий пользователь
+            if (task.executorId != null && task.executorId != executorId) {
+                logRepository.logWarning("Задание '${task.name}' назначено другому исполнителю: ${task.executorId}")
+                return Result.failure(IllegalStateException("Task is assigned to another executor"))
+            }
+
+            // Обновляем задание
+            val now = LocalDateTime.now()
+            val updatedTask = task.copy(
+                status = TaskStatus.IN_PROGRESS,
+                startedAt = now,
+                executorId = executorId
+            )
+
+            // Сохраняем обновленное задание
+            taskRepository.updateTask(updatedTask)
+            logRepository.logInfo("Начато выполнение задания: ${task.name}")
+
+            // Возвращаем обновленное задание
+            return Result.success(taskRepository.getTaskById(id)!!)
+        } catch (e: Exception) {
+            Timber.e(e, "Exception during starting task")
+            logRepository.logError("Исключение при запуске задания: ${e.message}")
+            return Result.failure(e)
+        }
+    }
+
+    suspend fun completeTask(id: String): Result<Task> {
+        try {
+            // Получаем задание
+            val task = taskRepository.getTaskById(id) ?:
+            return Result.failure(IllegalArgumentException("Task not found"))
+
+            // Проверка бизнес-правила: задание должно быть в статусе "Выполняется"
+            if (task.status != TaskStatus.IN_PROGRESS) {
+                logRepository.logWarning("Невозможно завершить задание '${task.name}', текущий статус: ${task.status}")
+                return Result.failure(IllegalStateException("Task is not in IN_PROGRESS status"))
+            }
+
+            // Обновляем задание
+            val now = LocalDateTime.now()
+            val updatedTask = task.copy(
+                status = TaskStatus.COMPLETED,
+                completedAt = now
+            )
+
+            // Сохраняем обновленное задание
+            taskRepository.updateTask(updatedTask)
+            logRepository.logInfo("Завершено выполнение задания: ${task.name}")
+
+            // Пытаемся выгрузить задание на сервер
+            try {
+                uploadTask(id)
+            } catch (e: Exception) {
+                // Игнорируем ошибки выгрузки, так как задание можно будет выгрузить позже
+                Timber.e(e, "Exception during task upload after completion")
+                logRepository.logWarning("Ошибка выгрузки задания после завершения: ${e.message}")
+            }
+
+            // Возвращаем обновленное задание
+            return Result.success(taskRepository.getTaskById(id)!!)
+        } catch (e: Exception) {
+            Timber.e(e, "Exception during completing task")
+            logRepository.logError("Исключение при завершении задания: ${e.message}")
+            return Result.failure(e)
+        }
+    }
+
+    suspend fun updateTaskFactLine(factLine: TaskFactLine) {
+        try {
+            // Проверяем существование задания
+            val task = taskRepository.getTaskById(factLine.taskId) ?:
+            throw IllegalArgumentException("Task not found: ${factLine.taskId}")
+
+            // Проверяем, что задание в статусе "Выполняется"
+            if (task.status != TaskStatus.IN_PROGRESS) {
+                logRepository.logWarning("Невозможно обновить строку факта: задание не в статусе выполнения")
+                throw IllegalStateException("Cannot update fact line: task is not in progress")
+            }
+
+            // Передаем обновление в репозиторий
+            taskRepository.updateTaskFactLine(factLine)
+            logRepository.logInfo("Обновлена строка факта для задания ${factLine.taskId}, товар ${factLine.productId}, количество ${factLine.quantity}")
+        } catch (e: Exception) {
+            Timber.e(e, "Error updating task fact line")
+            logRepository.logError("Ошибка при обновлении строки факта: ${e.message}")
+            throw e
+        }
+    }
+
+    suspend fun uploadTask(id: String): Result<Boolean> {
+        return try {
+            // Получаем задание
+            val task = taskRepository.getTaskById(id) ?:
+            return Result.failure(IllegalArgumentException("Task not found"))
+
+            // Проверяем, что задание завершено
+            if (task.status != TaskStatus.COMPLETED) {
+                logRepository.logWarning("Невозможно выгрузить незавершенное задание: ${task.name}")
+                return Result.failure(IllegalStateException("Cannot upload incomplete task"))
+            }
+
+            // Вызываем выгрузку в репозитории
+            val result = taskRepository.uploadTaskToServer(id)
+
+            // Логируем результат
+            if (result.isSuccess) {
+                logRepository.logInfo("Задание успешно выгружено: ${task.name}")
+            } else {
+                logRepository.logWarning("Ошибка выгрузки задания: ${result.exceptionOrNull()?.message}")
+            }
+
+            result
+        } catch (e: Exception) {
+            Timber.e(e, "Exception during task upload")
+            logRepository.logError("Исключение при выгрузке задания: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadCompletedTasks(): Result<Int> {
+        return try {
+            val result = taskRepository.uploadCompletedTasksToServer()
+
+            if (result.isSuccess) {
+                val count = result.getOrDefault(0)
+                logRepository.logInfo("Выгружено заданий: $count")
+            } else {
+                logRepository.logWarning("Ошибка выгрузки заданий: ${result.exceptionOrNull()?.message}")
+            }
+
+            result
+        } catch (e: Exception) {
+            Timber.e(e, "Exception during completed tasks upload")
+            logRepository.logError("Исключение при выгрузке заданий: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun syncTasks(): Result<Int> {
+        return try {
+            val result = taskRepository.syncTasksWithServer()
+
+            if (result.isSuccess) {
+                val count = result.getOrDefault(0)
+                logRepository.logInfo("Синхронизировано заданий: $count")
+            } else {
+                logRepository.logWarning("Ошибка синхронизации заданий: ${result.exceptionOrNull()?.message}")
+            }
+
+            result
+        } catch (e: Exception) {
+            Timber.e(e, "Exception during tasks synchronization")
+            logRepository.logError("Исключение при синхронизации заданий: ${e.message}")
+            Result.failure(e)
+        }
+    }
+}
