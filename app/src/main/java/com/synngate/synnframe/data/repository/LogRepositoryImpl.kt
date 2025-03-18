@@ -8,7 +8,6 @@ import com.synngate.synnframe.domain.repository.LogRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDateTime
-import timber.log.Timber
 
 /**
  * Имплементация репозитория логов
@@ -92,49 +91,8 @@ class LogRepositoryImpl(
         return logDao.insertLog(entity)
     }
 
-    override suspend fun logInfo(message: String): Long {
-        Timber.i(message)
-        val log = Log(
-            message = message,
-            type = LogType.INFO,
-            createdAt = LocalDateTime.now()
-        )
-        return addLog(log)
-    }
-
-    override suspend fun logWarning(message: String): Long {
-        Timber.w(message)
-        val log = Log(
-            message = message,
-            type = LogType.WARNING,
-            createdAt = LocalDateTime.now()
-        )
-        return addLog(log)
-    }
-
-    override suspend fun logError(message: String): Long {
-        Timber.e(message)
-        val log = Log(
-            message = message,
-            type = LogType.ERROR,
-            createdAt = LocalDateTime.now()
-        )
-        return addLog(log)
-    }
-
-    override suspend fun log(type: LogType, message: String): Long {
-        return when (type) {
-            LogType.INFO -> logInfo(message)
-            LogType.WARNING -> logWarning(message)
-            LogType.ERROR -> logError(message)
-        }
-    }
-
     override suspend fun deleteLog(id: Int) {
-        val log = logDao.getLogById(id)
-        if (log != null) {
-            logDao.deleteLog(log)
-        }
+        logDao.deleteLogById(id)
     }
 
     override suspend fun deleteAllLogs() {

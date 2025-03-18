@@ -5,35 +5,400 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.synngate.synnframe.data.datastore.AppSettingsDataStore
+import com.synngate.synnframe.data.local.dao.LogDao
+import com.synngate.synnframe.data.local.dao.ProductDao
+import com.synngate.synnframe.data.local.dao.ServerDao
+import com.synngate.synnframe.data.local.dao.TaskDao
+import com.synngate.synnframe.data.local.dao.UserDao
+import com.synngate.synnframe.data.local.database.AppDatabase
+import com.synngate.synnframe.data.remote.api.AppUpdateApi
+import com.synngate.synnframe.data.remote.api.AppUpdateApiImpl
+import com.synngate.synnframe.data.remote.api.AuthApi
+import com.synngate.synnframe.data.remote.api.AuthApiImpl
+import com.synngate.synnframe.data.remote.api.ProductApi
+import com.synngate.synnframe.data.remote.api.ProductApiImpl
+import com.synngate.synnframe.data.remote.api.TaskApi
+import com.synngate.synnframe.data.remote.api.TaskApiImpl
+import com.synngate.synnframe.data.remote.service.ApiService
+import com.synngate.synnframe.data.remote.service.ApiServiceImpl
+import com.synngate.synnframe.data.remote.service.ServerProvider
+import com.synngate.synnframe.data.repository.LogRepositoryImpl
+import com.synngate.synnframe.data.repository.ProductRepositoryImpl
+import com.synngate.synnframe.data.repository.ServerRepositoryImpl
+import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
+import com.synngate.synnframe.data.repository.TaskRepositoryImpl
+import com.synngate.synnframe.data.repository.UserRepositoryImpl
+import com.synngate.synnframe.domain.repository.LogRepository
+import com.synngate.synnframe.domain.repository.ProductRepository
+import com.synngate.synnframe.domain.repository.ServerRepository
+import com.synngate.synnframe.domain.repository.SettingsRepository
+import com.synngate.synnframe.domain.repository.TaskRepository
+import com.synngate.synnframe.domain.repository.UserRepository
+import com.synngate.synnframe.domain.usecase.log.LogUseCases
+import com.synngate.synnframe.domain.usecase.product.ProductUseCases
+import com.synngate.synnframe.domain.usecase.server.ServerUseCases
+import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
+import com.synngate.synnframe.domain.usecase.task.TaskUseCases
+import com.synngate.synnframe.domain.usecase.user.UserUseCases
+import com.synngate.synnframe.presentation.ui.product.ProductListViewModelImpl
+import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModelImpl
+import com.synngate.synnframe.presentation.ui.server.ServerListViewModelImpl
+import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModelImpl
+import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModelImpl
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.Json
 import timber.log.Timber
 
 /**
- * Интерфейс для контейнера зависимостей приложения
+ * Реализация контейнера зависимостей для всего приложения.
+ * Содержит зависимости, которые живут на протяжении всего жизненного цикла приложения.
  */
-//interface AppContainer {
-//    // Здесь будут объявлены все зависимости, которые доступны на уровне приложения
-//    val appSettingsDataStore: AppSettingsDataStore
-//}
+class AppContainer(private val applicationContext: Context) {
 
-///**
-// * Реализация контейнера зависимостей для всего приложения.
-// * Используется для ручного DI согласно требованиям.
-// */
-//class AppContainerImpl(private val applicationContext: Context) : AppContainer {
-//
-//    // Единый экземпляр DataStore для настроек приложения
-//    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-//
-//    // DataStore для хранения настроек приложения
-//    override val appSettingsDataStore by lazy {
-//        Timber.d("Creating AppSettingsDataStore")
-//        AppSettingsDataStore(applicationContext.dataStore)
-//    }
-//
-//    // Остальные зависимости будут добавлены по мере разработки
-//    // - База данных Room
-//    // - Репозитории
-//    // - UseCase
-//    // - API клиенты
-//    // - Сервисы
-//}
+    // Единый экземпляр DataStore для настроек приложения
+    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
+    // DataStore для хранения настроек приложения
+    val appSettingsDataStore by lazy {
+        Timber.d("Creating AppSettingsDataStore")
+        AppSettingsDataStore(applicationContext.dataStore)
+    }
+
+    // База данных Room
+    private val database by lazy {
+        Timber.d("Creating AppDatabase")
+        AppDatabase.getInstance(applicationContext)
+    }
+
+    // DAO объекты
+    private val serverDao: ServerDao by lazy { database.serverDao() }
+    private val userDao: UserDao by lazy { database.userDao() }
+    private val logDao: LogDao by lazy { database.logDao() }
+    private val productDao: ProductDao by lazy { database.productDao() }
+    private val taskDao: TaskDao by lazy { database.taskDao() }
+
+    // Репозиторий логов (создаем раньше других, так как он нужен для логирования)
+    private val logRepository: LogRepository by lazy {
+        Timber.d("Creating LogRepository")
+        LogRepositoryImpl(logDao)
+    }
+
+    // HTTP клиент
+    private val httpClient by lazy {
+        Timber.d("Creating HttpClient")
+        HttpClient(Android) {
+            install(ContentNegotiation) {
+                json(Json {
+                    prettyPrint = true
+                    isLenient = true
+                    ignoreUnknownKeys = true
+                })
+            }
+            install(Logging) {
+                logger = object : Logger {
+                    override fun log(message: String) {
+                        Timber.tag("HttpClient").d(message)
+                    }
+                }
+                level = LogLevel.BODY
+            }
+            defaultRequest {
+                // Общие настройки для всех запросов
+            }
+        }
+    }
+
+    // Провайдер данных о сервере для API
+    private val serverProvider by lazy {
+        Timber.d("Creating ServerProvider")
+        object : ServerProvider {
+            override suspend fun getActiveServer() = serverRepository.getActiveServer().first()
+            override suspend fun getCurrentUserId() = userRepository.getCurrentUser().first()?.id
+        }
+    }
+
+    // API сервисы
+    private val apiService: ApiService by lazy {
+        Timber.d("Creating ApiService")
+        ApiServiceImpl(httpClient, serverProvider)
+    }
+
+    private val authApi: AuthApi by lazy {
+        Timber.d("Creating AuthApi")
+        AuthApiImpl(apiService)
+    }
+
+    private val productApi: ProductApi by lazy {
+        Timber.d("Creating ProductApi")
+        ProductApiImpl(httpClient, serverProvider)
+    }
+
+    private val taskApi: TaskApi by lazy {
+        Timber.d("Creating TaskApi")
+        TaskApiImpl(httpClient, serverProvider, apiService)
+    }
+
+    private val appUpdateApi: AppUpdateApi by lazy {
+        Timber.d("Creating AppUpdateApi")
+        AppUpdateApiImpl(httpClient, serverProvider)
+    }
+
+    // Репозитории
+    private val serverRepository: ServerRepository by lazy {
+        Timber.d("Creating ServerRepository")
+        ServerRepositoryImpl(serverDao, apiService, appSettingsDataStore, logRepository)
+    }
+
+    private val userRepository: UserRepository by lazy {
+        Timber.d("Creating UserRepository")
+        UserRepositoryImpl(userDao, authApi, appSettingsDataStore, logRepository)
+    }
+
+    private val productRepository: ProductRepository by lazy {
+        Timber.d("Creating ProductRepository")
+        ProductRepositoryImpl(productDao, productApi, logRepository)
+    }
+
+    private val taskRepository: TaskRepository by lazy {
+        Timber.d("Creating TaskRepository")
+        TaskRepositoryImpl(taskDao, taskApi, logRepository)
+    }
+
+    private val settingsRepository: SettingsRepository by lazy {
+        Timber.d("Creating SettingsRepository")
+        SettingsRepositoryImpl(appSettingsDataStore, appUpdateApi, logRepository, applicationContext)
+    }
+
+    // Use Cases - создаем lazy для повторного использования
+    private val serverUseCases by lazy {
+        ServerUseCases(serverRepository, logRepository)
+    }
+
+    private val userUseCases by lazy {
+        UserUseCases(userRepository, logRepository)
+    }
+
+    private val taskUseCases by lazy {
+        TaskUseCases(taskRepository, logRepository)
+    }
+
+    private val productUseCases by lazy {
+        ProductUseCases(productRepository, logRepository)
+    }
+
+    private val logUseCases by lazy {
+        LogUseCases(logRepository)
+    }
+
+    private val settingsUseCases by lazy {
+        SettingsUseCases(settingsRepository, logRepository)
+    }
+
+    /**
+     * Создание контейнера для навигационного хоста
+     */
+    fun createNavHostContainer(): NavHostContainer {
+        Timber.d("Creating NavHostContainer")
+        return NavHostContainerImpl(this)
+    }
+
+    /**
+     * Внутренний класс-контейнер для навигационного хоста
+     */
+    inner class NavHostContainerImpl(
+        private val appContainer: AppContainer
+    ) : NavHostContainer {
+
+        override val clearables: MutableList<Clearable> = mutableListOf()
+
+        override fun createServerListGraphContainer(): ServerListGraphContainer {
+            val container = ServerListGraphContainerImpl(appContainer)
+            addClearable(container)
+            return container
+        }
+
+        override fun createTasksGraphContainer(): TasksGraphContainer {
+            val container = TasksGraphContainerImpl(appContainer)
+            addClearable(container)
+            return container
+        }
+
+        override fun createProductsGraphContainer(): ProductsGraphContainer {
+            val container = ProductsGraphContainerImpl(appContainer)
+            addClearable(container)
+            return container
+        }
+
+        override fun createLogsGraphContainer(): LogsGraphContainer {
+            val container = LogsGraphContainerImpl(appContainer)
+            addClearable(container)
+            return container
+        }
+
+        override fun createSettingsScreenContainer(): SettingsScreenContainer {
+            val container = SettingsScreenContainerImpl(appContainer)
+            addClearable(container)
+            return container
+        }
+    }
+
+    /**
+     * Базовый класс для контейнеров подграфов
+     */
+    abstract inner class BaseGraphContainer : GraphContainer {
+        override val clearables: MutableList<Clearable> = mutableListOf()
+    }
+
+    /**
+     * Контейнер для подграфа серверов
+     */
+    inner class ServerListGraphContainerImpl(
+        private val appContainer: AppContainer
+    ) : BaseGraphContainer(), ServerListGraphContainer {
+
+        override fun createServerListViewModel(): ServerListViewModel {
+            Timber.d("Creating ServerListViewModel")
+            // Используем новый класс ServerListViewModelImpl с UseCases вместо репозиториев
+            val viewModel = ServerListViewModelImpl(
+                serverUseCases = appContainer.serverUseCases,
+                settingsUseCases = appContainer.settingsUseCases,
+                ioDispatcher = Dispatchers.IO
+            )
+            addClearable(viewModel)
+            return viewModel
+        }
+
+        override fun createServerDetailViewModel(serverId: Int?): ServerDetailViewModel {
+            Timber.d("Creating ServerDetailViewModel for serverId=$serverId")
+            // Используем новый класс ServerDetailViewModelImpl с UseCases вместо репозиториев
+            val viewModel = ServerDetailViewModelImpl(
+                serverId = serverId,
+                serverUseCases = appContainer.serverUseCases,
+                ioDispatcher = Dispatchers.IO
+            )
+            addClearable(viewModel)
+            return viewModel
+        }
+    }
+
+    /**
+     * Контейнер для подграфа заданий
+     */
+    inner class TasksGraphContainerImpl(
+        private val appContainer: AppContainer
+    ) : BaseGraphContainer(), TasksGraphContainer {
+
+        override fun createTaskListViewModel(): TaskListViewModel {
+            Timber.d("Creating TaskListViewModel")
+            // Используем новый класс TaskListViewModelImpl с UseCases вместо репозиториев
+            val viewModel = TaskListViewModelImpl(
+                taskUseCases = appContainer.taskUseCases,
+                userUseCases = appContainer.userUseCases,
+                ioDispatcher = Dispatchers.IO
+            )
+            addClearable(viewModel)
+            return viewModel
+        }
+
+        override fun createTaskDetailViewModel(taskId: String): TaskDetailViewModel {
+            Timber.d("Creating TaskDetailViewModel for taskId=$taskId")
+            // Используем новый класс TaskDetailViewModelImpl с UseCases вместо репозиториев
+            val viewModel = TaskDetailViewModelImpl(
+                taskId = taskId,
+                taskUseCases = appContainer.taskUseCases,
+                productUseCases = appContainer.productUseCases,
+                userUseCases = appContainer.userUseCases,
+                ioDispatcher = Dispatchers.IO
+            )
+            addClearable(viewModel)
+            return viewModel
+        }
+    }
+
+    /**
+     * Контейнер для подграфа товаров
+     */
+    inner class ProductsGraphContainerImpl(
+        private val appContainer: AppContainer
+    ) : BaseGraphContainer(), ProductsGraphContainer {
+
+        override fun createProductListViewModel(): ProductListViewModel {
+            Timber.d("Creating ProductListViewModel")
+            // Используем новый класс ProductListViewModelImpl с UseCases вместо репозиториев
+            val viewModel = ProductListViewModelImpl(
+                productUseCases = appContainer.productUseCases,
+                ioDispatcher = Dispatchers.IO
+            )
+            addClearable(viewModel)
+            return viewModel
+        }
+
+        override fun createProductDetailViewModel(productId: String): ProductDetailViewModel {
+            Timber.d("Creating ProductDetailViewModel for productId=$productId")
+            // Вместо внутреннего класса используем реальную реализацию ViewModel
+            // Здесь нужно реализовать ProductDetailViewModelImpl, мы её пока не создавали
+            val viewModel = ProductDetailViewModelImpl(
+                productId = productId,
+                productUseCases = appContainer.productUseCases,
+                ioDispatcher = Dispatchers.IO
+            )
+            addClearable(viewModel)
+            return viewModel
+        }
+    }
+
+    /**
+     * Контейнер для подграфа логов
+     */
+    inner class LogsGraphContainerImpl(
+        private val appContainer: AppContainer
+    ) : BaseGraphContainer(), LogsGraphContainer {
+
+        override fun createLogListViewModel(): LogListViewModel {
+            Timber.d("Creating LogListViewModel")
+            // Пока используем заглушку ViewModelStore для LogListViewModel
+            // В дальнейшем нужно будет реализовать LogListViewModelImpl
+            val viewStore = ViewModelStore()
+            return viewStore.getOrCreate("LogListViewModel") {
+                object : LogListViewModel {}
+            }
+        }
+
+        override fun createLogDetailViewModel(logId: Int): LogDetailViewModel {
+            Timber.d("Creating LogDetailViewModel for logId=$logId")
+            // Пока используем заглушку ViewModelStore для LogDetailViewModel
+            // В дальнейшем нужно будет реализовать LogDetailViewModelImpl
+            val viewStore = ViewModelStore()
+            return viewStore.getOrCreate("LogDetailViewModel:$logId") {
+                object : LogDetailViewModel {}
+            }
+        }
+    }
+
+    /**
+     * Контейнер для экрана настроек
+     */
+    inner class SettingsScreenContainerImpl(
+        private val appContainer: AppContainer
+    ) : BaseGraphContainer(), SettingsScreenContainer {
+
+        override fun createSettingsViewModel(): SettingsViewModel {
+            Timber.d("Creating SettingsViewModel")
+            // Пока используем заглушку ViewModelStore для SettingsViewModel
+            // В дальнейшем нужно будет реализовать SettingsViewModelImpl
+            val viewStore = ViewModelStore()
+            return viewStore.getOrCreate("SettingsViewModel") {
+                object : SettingsViewModel {}
+            }
+        }
+    }
+}

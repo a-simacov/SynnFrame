@@ -2,6 +2,7 @@
 
 package com.synngate.synnframe.domain.usecase.server
 
+import com.synngate.synnframe.domain.entity.Log
 import com.synngate.synnframe.domain.entity.Server
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
@@ -80,6 +81,7 @@ class ServerUseCases(
         }
     }
 
+    // В ServerUseCases
     suspend fun setActiveServer(id: Int): Result<Unit> {
         return try {
             val server = serverRepository.getServerById(id)
@@ -87,17 +89,21 @@ class ServerUseCases(
                 return Result.failure(IllegalArgumentException("Server not found: $id"))
             }
 
+            // Обновляем статус в БД
             serverRepository.setActiveServer(id)
+
+            // Обновляем информацию в DataStore (это должно быть перемещено в отдельный сервис)
+            appSettingsDataStore.setActiveServer(id, server.name)
+
+            // Логируем изменение
             logRepository.logInfo("Установлен активный сервер: ${server.name} (${server.host}:${server.port})")
 
             Result.success(Unit)
         } catch (e: Exception) {
-            Timber.e(e, "Exception during setting active server")
             logRepository.logError("Ошибка при установке активного сервера: ${e.message}")
             Result.failure(e)
         }
     }
-
     suspend fun clearActiveServer(): Result<Unit> {
         return try {
             serverRepository.clearActiveServer()

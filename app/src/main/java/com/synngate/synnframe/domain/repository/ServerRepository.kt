@@ -45,7 +45,9 @@ interface ServerRepository {
     /**
      * Очистка активного сервера
      */
-    suspend fun clearActiveServer()
+    //suspend fun clearActiveServer()
+
+    suspend fun clearActiveStatus()
 
     /**
      * Проверка соединения с сервером

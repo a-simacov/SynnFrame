@@ -41,7 +41,7 @@ class LogUseCases(
             val cutoffDate = LocalDateTime.now().minusDays(daysToKeep.toLong())
             val deletedCount = logRepository.deleteLogsOlderThan(cutoffDate)
 
-            logRepository.logInfo("Удалено логов старше $daysToKeep дней: $deletedCount")
+            logInfo("Удалено логов старше $daysToKeep дней: $deletedCount")
             Result.success(deletedCount)
         } catch (e: Exception) {
             Timber.e(e, "Exception during logs cleanup")
@@ -67,12 +67,51 @@ class LogUseCases(
     suspend fun deleteAllLogs(): Result<Unit> {
         return try {
             logRepository.deleteAllLogs()
-            logRepository.logInfo("Все логи удалены")
+            logInfo("Все логи удалены")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during all logs deletion")
             Result.failure(e)
+        }
+    }
+
+    // Новые методы в LogUseCases для обработки логирования
+    suspend fun logInfo(message: String): Long {
+        Timber.i(message)
+        val log = Log(
+            message = message,
+            type = LogType.INFO,
+            createdAt = LocalDateTime.now()
+        )
+        return logRepository.addLog(log)
+    }
+
+    suspend fun logWarning(message: String): Long {
+        Timber.w(message)
+        val log = Log(
+            message = message,
+            type = LogType.WARNING,
+            createdAt = LocalDateTime.now()
+        )
+        return logRepository.addLog(log)
+    }
+
+    suspend fun logError(message: String): Long {
+        Timber.e(message)
+        val log = Log(
+            message = message,
+            type = LogType.ERROR,
+            createdAt = LocalDateTime.now()
+        )
+        return logRepository.addLog(log)
+    }
+
+    suspend fun log(type: LogType, message: String): Long {
+        return when (type) {
+            LogType.INFO -> logInfo(message)
+            LogType.WARNING -> logWarning(message)
+            LogType.ERROR -> logError(message)
         }
     }
 }

@@ -35,26 +35,6 @@ interface LogRepository {
     suspend fun addLog(log: Log): Long
 
     /**
-     * Добавление информационного лога
-     */
-    suspend fun logInfo(message: String): Long
-
-    /**
-     * Добавление предупреждающего лога
-     */
-    suspend fun logWarning(message: String): Long
-
-    /**
-     * Добавление лога об ошибке
-     */
-    suspend fun logError(message: String): Long
-
-    /**
-     * Добавление лога с типом и сообщением
-     */
-    suspend fun log(type: LogType, message: String): Long
-
-    /**
      * Удаление лога
      */
     suspend fun deleteLog(id: Int)
