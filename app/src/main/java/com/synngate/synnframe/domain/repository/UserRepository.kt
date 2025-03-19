@@ -1,5 +1,7 @@
 package com.synngate.synnframe.domain.repository
 
+import com.synngate.synnframe.data.remote.api.ApiResult
+import com.synngate.synnframe.data.remote.dto.AuthResponseDto
 import com.synngate.synnframe.domain.entity.User
 import kotlinx.coroutines.flow.Flow
 
@@ -53,7 +55,7 @@ interface UserRepository {
     suspend fun clearCurrentUser()
 
     /**
-     * Аутентификация пользователя на сервере
+     * Аутентификация пользователя на сервере (без бизнес-логики)
      */
-    suspend fun authenticateUserOnServer(password: String, deviceInfo: Map<String, String>): Result<User>
+    suspend fun authenticateWithServer(password: String, deviceInfo: Map<String, String>): ApiResult<AuthResponseDto>
 }

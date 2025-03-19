@@ -9,6 +9,7 @@ import java.time.LocalDateTime
 
 /**
  * Интерфейс репозитория для работы с заданиями
+ * Определяет операции с данными, без бизнес-логики
  */
 interface TaskRepository {
     /**
@@ -69,32 +70,29 @@ interface TaskRepository {
     suspend fun setTaskStatus(id: String, status: TaskStatus)
 
     /**
-     * Начало выполнения задания
-     */
-    suspend fun startTask(id: String, executorId: String): Result<Task>
-
-    /**
-     * Завершение задания
-     */
-    suspend fun completeTask(id: String): Result<Task>
-
-    /**
      * Обновление строки факта задания
+     * Только операция с данными без бизнес-логики
      */
     suspend fun updateTaskFactLine(factLine: TaskFactLine)
 
     /**
+     * Проверка доступности задания на сервере
+     */
+    suspend fun checkTaskAvailability(id: String): Result<Boolean>
+
+    /**
      * Выгрузка задания на сервер
+     * Только операция с данными без бизнес-логики валидации
      */
     suspend fun uploadTaskToServer(id: String): Result<Boolean>
 
     /**
-     * Выгрузка всех завершенных заданий на сервер
+     * Получение всех завершенных, но не выгруженных заданий
      */
-    suspend fun uploadCompletedTasksToServer(): Result<Int>
+    suspend fun getCompletedNotUploadedTasks(): List<Task>
 
     /**
-     * Синхронизация заданий с сервером
+     * Получение списка заданий с сервера
      */
-    suspend fun syncTasksWithServer(): Result<Int>
+    suspend fun getTasksFromServer(): Result<List<Task>>
 }

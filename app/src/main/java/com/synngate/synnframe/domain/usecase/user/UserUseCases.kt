@@ -2,6 +2,7 @@
 
 package com.synngate.synnframe.domain.usecase.user
 
+import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.User
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.UserRepository
@@ -9,6 +10,7 @@ import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
+import java.io.IOException
 
 /**
  * Use Case класс для операций с пользователями
@@ -32,27 +34,129 @@ class UserUseCases(
         userRepository.getCurrentUser()
 
     // Операции с бизнес-логикой
+    suspend fun addUser(user: User): Result<User> {
+        return try {
+            userRepository.addUser(user)
+            loggingService.logInfo("Добавлен пользователь: ${user.name}")
+            Result.success(user)
+        } catch (e: Exception) {
+            Timber.e(e, "Error adding user")
+            loggingService.logError("Ошибка при добавлении пользователя: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateUser(user: User): Result<User> {
+        return try {
+            userRepository.updateUser(user)
+            loggingService.logInfo("Обновлен пользователь: ${user.name}")
+            Result.success(user)
+        } catch (e: Exception) {
+            Timber.e(e, "Error updating user")
+            loggingService.logError("Ошибка при обновлении пользователя: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteUser(id: String): Result<Unit> {
+        return try {
+            val user = userRepository.getUserById(id)
+            if (user == null) {
+                return Result.failure(IllegalArgumentException("Пользователь не найден"))
+            }
+
+            userRepository.deleteUser(id)
+            loggingService.logInfo("Удален пользователь: ${user.name}")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error deleting user")
+            loggingService.logError("Ошибка при удалении пользователя: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setCurrentUser(userId: String): Result<Unit> {
+        return try {
+            val user = userRepository.getUserById(userId)
+            if (user == null) {
+                return Result.failure(IllegalArgumentException("Пользователь не найден"))
+            }
+
+            userRepository.setCurrentUser(userId)
+            loggingService.logInfo("Установлен текущий пользователь: ${user.name}")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error setting current user")
+            loggingService.logError("Ошибка при установке текущего пользователя: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun clearCurrentUser(): Result<Unit> {
+        return try {
+            userRepository.clearCurrentUser()
+            loggingService.logInfo("Сброшен текущий пользователь")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error clearing current user")
+            loggingService.logError("Ошибка при сбросе текущего пользователя: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
     suspend fun loginUser(password: String, deviceInfo: Map<String, String>): Result<User> {
         return try {
             // Проверяем наличие пользователя в локальной БД
             val localUser = userRepository.getUserByPassword(password)
             if (localUser != null) {
                 // Пользователь найден, устанавливаем как текущего
-                userRepository.setCurrentUser(localUser.id)
+                val setCurrentUserResult = setCurrentUser(localUser.id)
+                if (setCurrentUserResult.isFailure) {
+                    return setCurrentUserResult.map { localUser }
+                }
+
                 loggingService.logInfo("Вход выполнен для пользователя: ${localUser.name}")
                 return Result.success(localUser)
             }
 
             // Пользователь не найден, пробуем аутентификацию на сервере
-            val result = userRepository.authenticateUserOnServer(password, deviceInfo)
+            val response = userRepository.authenticateWithServer(password, deviceInfo)
 
-            if (result.isSuccess) {
-                val user = result.getOrNull()!!
-                loggingService.logInfo("Успешная аутентификация пользователя: ${user.name}")
-                return Result.success(user)
-            } else {
-                loggingService.logWarning("Ошибка аутентификации: ${result.exceptionOrNull()?.message}")
-                return result
+            return when (response) {
+                is ApiResult.Success -> {
+                    val userDto = response.data
+                    if (userDto != null) {
+                        // Создаем объект пользователя
+                        val user = User(
+                            id = userDto.id,
+                            name = userDto.name,
+                            password = password, // Сохраняем введенный пароль
+                            userGroupId = userDto.userGroupId
+                        )
+
+                        // Сохраняем пользователя в базе данных
+                        val addUserResult = addUser(user)
+                        if (addUserResult.isFailure) {
+                            return addUserResult
+                        }
+
+                        // Устанавливаем его как текущего
+                        val setCurrentUserResult = setCurrentUser(user.id)
+                        if (setCurrentUserResult.isFailure) {
+                            return setCurrentUserResult.map { user }
+                        }
+
+                        loggingService.logInfo("Успешная аутентификация пользователя: ${user.name}")
+                        Result.success(user)
+                    } else {
+                        loggingService.logWarning("Пустой ответ при аутентификации")
+                        Result.failure(IOException("Пустой ответ при аутентификации"))
+                    }
+                }
+                is ApiResult.Error -> {
+                    loggingService.logWarning("Ошибка аутентификации: ${response.message}")
+                    Result.failure(IOException("Ошибка аутентификации: ${response.code} - ${response.message}"))
+                }
             }
         } catch (e: Exception) {
             Timber.e(e, "Exception during user login")
@@ -62,15 +166,6 @@ class UserUseCases(
     }
 
     suspend fun logoutUser(): Result<Unit> {
-        return try {
-            userRepository.clearCurrentUser()
-            loggingService.logInfo("Выход пользователя выполнен")
-
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Timber.e(e, "Exception during user logout")
-            loggingService.logError("Исключение при выходе пользователя: ${e.message}")
-            Result.failure(e)
-        }
+        return clearCurrentUser()
     }
 }

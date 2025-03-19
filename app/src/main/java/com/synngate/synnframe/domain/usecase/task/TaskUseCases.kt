@@ -1,21 +1,20 @@
-// Файл: com.synngate.synnframe.domain.usecase.task.TaskUseCases.kt
-
 package com.synngate.synnframe.domain.usecase.task
 
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskFactLine
 import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.entity.TaskType
-import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.TaskRepository
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
 import java.time.LocalDateTime
+import java.util.UUID
 
 /**
  * Use Case класс для операций с заданиями
+ * Содержит всю бизнес-логику, связанную с заданиями
  */
 class TaskUseCases(
     private val taskRepository: TaskRepository,
@@ -68,11 +67,26 @@ class TaskUseCases(
                 return Result.failure(IllegalStateException("Task is assigned to another executor"))
             }
 
+            // Если задание без исполнителя, проверяем на сервере, не взял ли его кто-то другой
+            if (task.executorId == null) {
+                try {
+                    val availabilityResult = taskRepository.checkTaskAvailability(id)
+                    if (availabilityResult.isFailure || availabilityResult.getOrNull() != true) {
+                        loggingService.logWarning("Задание '${task.name}' недоступно для выполнения")
+                        return Result.failure(IllegalStateException("Task is not available"))
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Exception during task availability check")
+                    loggingService.logError("Ошибка при проверке доступности задания: ${e.message}")
+                    // Если нет подключения к серверу, позволяем взять задание в работу
+                    loggingService.logWarning("Нет подключения к серверу, задание взято в работу без проверки")
+                }
+            }
+
             // Обновляем задание
-            val now = LocalDateTime.now()
             val updatedTask = task.copy(
                 status = TaskStatus.IN_PROGRESS,
-                startedAt = now,
+                startedAt = LocalDateTime.now(),
                 executorId = executorId
             )
 
@@ -102,10 +116,9 @@ class TaskUseCases(
             }
 
             // Обновляем задание
-            val now = LocalDateTime.now()
             val updatedTask = task.copy(
                 status = TaskStatus.COMPLETED,
-                completedAt = now
+                completedAt = LocalDateTime.now()
             )
 
             // Сохраняем обновленное задание
@@ -184,35 +197,66 @@ class TaskUseCases(
 
     suspend fun uploadCompletedTasks(): Result<Int> {
         return try {
-            val result = taskRepository.uploadCompletedTasksToServer()
+            // Получаем все завершенные, но не выгруженные задания
+            val completedTasks = taskRepository.getCompletedNotUploadedTasks()
 
-            if (result.isSuccess) {
-                val count = result.getOrDefault(0)
-                loggingService.logInfo("Выгружено заданий: $count")
-            } else {
-                loggingService.logWarning("Ошибка выгрузки заданий: ${result.exceptionOrNull()?.message}")
+            if (completedTasks.isEmpty()) {
+                loggingService.logInfo("Нет завершенных заданий для выгрузки")
+                return Result.success(0)
             }
 
-            result
+            var successCount = 0
+
+            // Выгружаем каждое задание
+            for (task in completedTasks) {
+                val result = uploadTask(task.id)
+                if (result.isSuccess) {
+                    successCount++
+                }
+            }
+
+            loggingService.logInfo("Выгружено заданий: $successCount из ${completedTasks.size}")
+            Result.success(successCount)
         } catch (e: Exception) {
             Timber.e(e, "Exception during completed tasks upload")
-            loggingService.logError("Исключение при выгрузке заданий: ${e.message}")
+            loggingService.logError("Исключение при выгрузке завершенных заданий: ${e.message}")
             Result.failure(e)
         }
     }
 
     suspend fun syncTasks(): Result<Int> {
         return try {
-            val result = taskRepository.syncTasksWithServer()
+            // Получаем задания с сервера
+            val serverTasksResult = taskRepository.getTasksFromServer()
 
-            if (result.isSuccess) {
-                val count = result.getOrDefault(0)
-                loggingService.logInfo("Синхронизировано заданий: $count")
-            } else {
-                loggingService.logWarning("Ошибка синхронизации заданий: ${result.exceptionOrNull()?.message}")
+            if (serverTasksResult.isFailure) {
+                return Result.failure(serverTasksResult.exceptionOrNull() ?: Exception("Unknown error"))
             }
 
-            result
+            val serverTasks = serverTasksResult.getOrNull() ?: emptyList()
+
+            // Добавляем новые задания и обновляем существующие
+            var addedCount = 0
+            var updatedCount = 0
+
+            for (task in serverTasks) {
+                val existingTask = taskRepository.getTaskById(task.id)
+
+                if (existingTask == null) {
+                    // Добавляем новое задание
+                    taskRepository.addTask(task)
+                    addedCount++
+                } else {
+                    // Обновляем существующее задание, если оно не в статусе выполняется или завершено
+                    if (existingTask.status == TaskStatus.TO_DO) {
+                        taskRepository.updateTask(task)
+                        updatedCount++
+                    }
+                }
+            }
+
+            loggingService.logInfo("Синхронизация заданий: добавлено $addedCount, обновлено $updatedCount")
+            Result.success(addedCount + updatedCount)
         } catch (e: Exception) {
             Timber.e(e, "Exception during tasks synchronization")
             loggingService.logError("Исключение при синхронизации заданий: ${e.message}")

@@ -168,7 +168,7 @@ class AppContainer(private val applicationContext: Context) {
 
     private val userRepository: UserRepository by lazy {
         Timber.d("Creating UserRepository")
-        UserRepositoryImpl(userDao, authApi, appSettingsDataStore, logRepository)
+        UserRepositoryImpl(userDao, authApi, appSettingsDataStore)
     }
 
     private val productRepository: ProductRepository by lazy {
@@ -178,7 +178,7 @@ class AppContainer(private val applicationContext: Context) {
 
     private val taskRepository: TaskRepository by lazy {
         Timber.d("Creating TaskRepository")
-        TaskRepositoryImpl(taskDao, taskApi, logRepository)
+        TaskRepositoryImpl(taskDao, taskApi)
     }
 
     private val settingsRepository: SettingsRepository by lazy {

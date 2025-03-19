@@ -2,9 +2,7 @@
 
 package com.synngate.synnframe.domain.usecase.server
 
-import com.synngate.synnframe.domain.entity.Log
 import com.synngate.synnframe.domain.entity.Server
-import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
@@ -105,6 +103,7 @@ class ServerUseCases(
             Result.failure(e)
         }
     }
+
     suspend fun clearActiveServer(): Result<Unit> {
         return try {
             serverRepository.clearActiveServer()
