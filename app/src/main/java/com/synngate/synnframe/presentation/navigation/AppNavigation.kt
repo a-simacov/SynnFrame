@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.navigation
 
+import android.app.Activity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -19,6 +20,7 @@ import androidx.navigation.navArgument
 import com.synngate.synnframe.presentation.di.AppContainer
 import com.synngate.synnframe.presentation.di.NavHostContainer
 import com.synngate.synnframe.presentation.di.ServerListGraphContainer
+import com.synngate.synnframe.presentation.ui.login.LoginScreen
 import com.synngate.synnframe.presentation.ui.server.ServerDetailScreen
 import com.synngate.synnframe.presentation.ui.server.ServerListScreen
 import timber.log.Timber
@@ -107,21 +109,45 @@ fun AppNavigation(
         }
 
         // Экран аутентификации
-        composable(Screen.Login.route) {
-            // Временный заполнитель для экрана логина
-            // LoginScreen(
-            //     appContainer = appContainer,
-            //     navigateToMainMenu = {
-            //         navController.navigate(Screen.MainMenu.route) {
-            //             popUpTo(Screen.Login.route) { inclusive = true }
-            //         }
-            //     },
-            //     navigateToServers = {
-            //         navController.navigate(Screen.ServerList.route) {
-            //             popUpTo(Screen.Login.route) { inclusive = true }
-            //         }
-            //     }
-            // )
+        composable(Screen.Login.route) { entry ->
+            // Получаем контейнер для экрана логина
+            val loginScreenContainer = remember {
+                navHostContainer.createLoginScreenContainer()
+            }
+
+            // Отслеживаем жизненный цикл для очистки ресурсов
+            //val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner, entry) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_DESTROY) {
+                        if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                            Timber.d("Login screen destroyed, clearing container")
+                            loginScreenContainer.clear()
+                        }
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            LoginScreen(
+                viewModel = loginScreenContainer.createLoginViewModel(),
+                navigateToMainMenu = {
+                    navController.navigate(Screen.MainMenu.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                },
+                navigateToServersList = {
+                    navController.navigate(Screen.ServerList.route) {
+                        popUpTo(Screen.Login.route) { inclusive = false }
+                    }
+                },
+                exitApp = {
+                    (context as? Activity)?.finish()
+                }
+            )
         }
 
         // Экран главного меню

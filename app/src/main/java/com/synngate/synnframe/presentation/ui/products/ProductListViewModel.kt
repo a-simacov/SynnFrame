@@ -2,18 +2,14 @@ package com.synngate.synnframe.presentation.ui.product
 
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
-import com.synngate.synnframe.presentation.di.ProductListViewModel
 import com.synngate.synnframe.presentation.ui.product.model.ProductListEvent
 import com.synngate.synnframe.presentation.ui.product.model.ProductListState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter

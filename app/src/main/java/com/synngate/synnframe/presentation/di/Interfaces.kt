@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.di
 
+import com.synngate.synnframe.presentation.ui.login.LoginViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogListViewModel
 import com.synngate.synnframe.presentation.ui.product.ProductListViewModel
@@ -73,6 +74,11 @@ interface NavHostContainer : ClearableContainer {
      * Создание контейнера для экрана настроек
      */
     fun createSettingsScreenContainer(): SettingsScreenContainer
+
+    /**
+     * Создание контейнера для экрана логина
+     */
+    fun createLoginScreenContainer(): LoginScreenContainer
 }
 
 /**
@@ -148,4 +154,14 @@ interface SettingsScreenContainer : GraphContainer {
      * Создание ViewModel для экрана настроек
      */
     fun createSettingsViewModel(): SettingsViewModel
+}
+
+/**
+ * Интерфейс для контейнера экрана логина
+ */
+interface LoginScreenContainer : GraphContainer {
+    /**
+     * Создание ViewModel для экрана логина
+     */
+    fun createLoginViewModel(): LoginViewModel
 }

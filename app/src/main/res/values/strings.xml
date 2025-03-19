@@ -71,6 +71,13 @@
     <string name="login_exit">Выйти</string>
     <string name="login_failed">Ошибка аутентификации: %s</string>
     <string name="login_success">Аутентификация успешна</string>
+    <string name="no_active_server">Активный сервер не настроен. Пожалуйста, настройте сервер для продолжения.</string>
+    <string name="navigate_to_servers">Настроить сервер</string>
+    <string name="password">Пароль</string>
+    <string name="login">Войти</string>
+    <string name="exit">Выйти</string>
+    <string name="exit_confirmation_title">Выход из приложения</string>
+    <string name="exit_confirmation_message">Вы действительно хотите выйти из приложения?</string>
 
     <!-- Main Menu -->
     <string name="main_menu_title">Главное меню</string>

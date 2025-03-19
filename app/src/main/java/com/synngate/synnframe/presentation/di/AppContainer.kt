@@ -29,6 +29,7 @@ import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
 import com.synngate.synnframe.data.repository.TaskRepositoryImpl
 import com.synngate.synnframe.data.repository.UserRepositoryImpl
 import com.synngate.synnframe.data.service.ClipboardServiceImpl
+import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
 import com.synngate.synnframe.data.service.LoggingServiceImpl
 import com.synngate.synnframe.data.service.ServerCoordinatorImpl
 import com.synngate.synnframe.domain.repository.LogRepository
@@ -38,6 +39,7 @@ import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.domain.repository.TaskRepository
 import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.ClipboardService
+import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
@@ -46,6 +48,7 @@ import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
+import com.synngate.synnframe.presentation.ui.login.LoginViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogListViewModel
 import com.synngate.synnframe.presentation.ui.product.ProductListViewModel
@@ -211,6 +214,12 @@ class AppContainer(private val applicationContext: Context) {
         )
     }
 
+    // Сервис информации об устройстве
+    private val deviceInfoService: DeviceInfoService by lazy {
+        Timber.d("Creating DeviceInfoService")
+        DeviceInfoServiceImpl(applicationContext)
+    }
+
     // Use Cases - создаем lazy для повторного использования
     private val serverUseCases by lazy {
         ServerUseCases(serverRepository, serverCoordinator, loggingService)
@@ -279,6 +288,12 @@ class AppContainer(private val applicationContext: Context) {
 
         override fun createSettingsScreenContainer(): SettingsScreenContainer {
             val container = SettingsScreenContainerImpl(appContainer)
+            addClearable(container)
+            return container
+        }
+
+        override fun createLoginScreenContainer(): LoginScreenContainer {
+            val container = LoginScreenContainerImpl(appContainer)
             addClearable(container)
             return container
         }
@@ -436,6 +451,26 @@ class AppContainer(private val applicationContext: Context) {
                 appContainer.serverUseCases,
                 appContainer.loggingService,
                 Dispatchers.IO
+            )
+            addClearable(viewModel)
+            return viewModel
+        }
+    }
+
+    /**
+     * Контейнер для экрана логина
+     */
+    inner class LoginScreenContainerImpl(
+        private val appContainer: AppContainer
+    ) : BaseGraphContainer(), LoginScreenContainer {
+
+        override fun createLoginViewModel(): LoginViewModel {
+            Timber.d("Creating LoginViewModel")
+            val viewModel = LoginViewModel(
+                userUseCases = appContainer.userUseCases,
+                serverUseCases = appContainer.serverUseCases,
+                deviceInfoService = appContainer.deviceInfoService,
+                ioDispatcher = Dispatchers.IO
             )
             addClearable(viewModel)
             return viewModel
