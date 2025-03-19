@@ -30,6 +30,7 @@ import com.synngate.synnframe.data.repository.TaskRepositoryImpl
 import com.synngate.synnframe.data.repository.UserRepositoryImpl
 import com.synngate.synnframe.data.service.ClipboardServiceImpl
 import com.synngate.synnframe.data.service.LoggingServiceImpl
+import com.synngate.synnframe.data.service.ServerCoordinatorImpl
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
@@ -38,6 +39,7 @@ import com.synngate.synnframe.domain.repository.TaskRepository
 import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.LoggingService
+import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
@@ -173,7 +175,7 @@ class AppContainer(private val applicationContext: Context) {
 
     private val productRepository: ProductRepository by lazy {
         Timber.d("Creating ProductRepository")
-        ProductRepositoryImpl(productDao, productApi, logRepository)
+        ProductRepositoryImpl(productDao, productApi)
     }
 
     private val taskRepository: TaskRepository by lazy {
@@ -185,9 +187,7 @@ class AppContainer(private val applicationContext: Context) {
         Timber.d("Creating SettingsRepository")
         SettingsRepositoryImpl(
             appSettingsDataStore,
-            appUpdateApi,
-            logRepository,
-            applicationContext
+            appUpdateApi
         )
     }
 
@@ -202,9 +202,18 @@ class AppContainer(private val applicationContext: Context) {
         ClipboardServiceImpl(applicationContext)
     }
 
+    private val serverCoordinator: ServerCoordinator by lazy {
+        Timber.d("Creating ServerCoordinator")
+        ServerCoordinatorImpl(
+            serverRepository,
+            appSettingsDataStore,
+            loggingService
+        )
+    }
+
     // Use Cases - создаем lazy для повторного использования
     private val serverUseCases by lazy {
-        ServerUseCases(serverRepository, loggingService)
+        ServerUseCases(serverRepository, serverCoordinator, loggingService)
     }
 
     private val userUseCases by lazy {
@@ -224,7 +233,7 @@ class AppContainer(private val applicationContext: Context) {
     }
 
     private val settingsUseCases by lazy {
-        SettingsUseCases(settingsRepository, loggingService)
+        SettingsUseCases(settingsRepository, loggingService, applicationContext)
     }
 
     /**

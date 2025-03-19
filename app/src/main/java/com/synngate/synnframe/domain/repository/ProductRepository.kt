@@ -1,11 +1,9 @@
 package com.synngate.synnframe.domain.repository
 
+import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.Product
 import kotlinx.coroutines.flow.Flow
 
-/**
- * Интерфейс репозитория для работы с товарами
- */
 interface ProductRepository {
     /**
      * Получение списка всех товаров
@@ -58,7 +56,7 @@ interface ProductRepository {
     suspend fun deleteAllProducts()
 
     /**
-     * Синхронизация товаров с сервером
+     * Получение списка товаров с удаленного сервера
      */
-    suspend fun syncProductsWithServer(): Result<Int>
+    suspend fun getProductsFromRemote(): ApiResult<List<Product>>
 }

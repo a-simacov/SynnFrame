@@ -61,19 +61,7 @@ class ServerRepositoryImpl(
         serverDao.clearActiveStatus()
     }
 
-    override suspend fun testConnection(server: Server): Result<Boolean> {
-        return try {
-            val response = apiService.testConnection(server)
-            when (response) {
-                is ApiResult.Success -> {
-                    Result.success(true)
-                }
-                is ApiResult.Error -> {
-                    Result.failure(IOException("Connection test failed with code: ${response.code}"))
-                }
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    override suspend fun testConnection(server: Server): ApiResult<Unit> {
+        return apiService.testConnection(server)
     }
 }

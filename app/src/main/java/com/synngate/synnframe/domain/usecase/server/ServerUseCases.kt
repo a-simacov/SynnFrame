@@ -5,6 +5,7 @@ package com.synngate.synnframe.domain.usecase.server
 import com.synngate.synnframe.domain.entity.Server
 import com.synngate.synnframe.domain.repository.ServerRepository
 import com.synngate.synnframe.domain.service.LoggingService
+import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
@@ -14,10 +15,10 @@ import timber.log.Timber
  */
 class ServerUseCases(
     private val serverRepository: ServerRepository,
+    private val serverCoordinator: ServerCoordinator,
     private val loggingService: LoggingService
 ) : BaseUseCase {
-
-    // Базовые операции
+    // Базовые операции без изменений
     fun getServers(): Flow<List<Server>> =
         serverRepository.getServers()
 
@@ -27,7 +28,7 @@ class ServerUseCases(
     fun getActiveServer(): Flow<Server?> =
         serverRepository.getActiveServer()
 
-    // Операции с бизнес-логикой
+    // Операции с бизнес-логикой, валидация остается здесь
     suspend fun addServer(server: Server): Result<Long> {
         return try {
             // Валидация сервера
@@ -80,62 +81,25 @@ class ServerUseCases(
         }
     }
 
-    // В ServerUseCases
-    suspend fun setActiveServer(id: Int): Result<Unit> {
-        return try {
-            val server = serverRepository.getServerById(id)
-            if (server == null) {
-                return Result.failure(IllegalArgumentException("Server not found: $id"))
-            }
+    // Делегируем операции координатору серверов
+    suspend fun setActiveServer(id: Int): Result<Unit> =
+        serverCoordinator.switchActiveServer(id)
 
-            // Обновляем статус в БД
-            serverRepository.setActiveServer(id)
-
-            // Обновляем информацию в DataStore (это должно быть перемещено в отдельный сервис)
-            appSettingsDataStore.setActiveServer(id, server.name)
-
-            // Логируем изменение
-            loggingService.logInfo("Установлен активный сервер: ${server.name} (${server.host}:${server.port})")
-
-            Result.success(Unit)
-        } catch (e: Exception) {
-            loggingService.logError("Ошибка при установке активного сервера: ${e.message}")
-            Result.failure(e)
-        }
-    }
-
-    suspend fun clearActiveServer(): Result<Unit> {
-        return try {
-            serverRepository.clearActiveServer()
-            loggingService.logInfo("Сброшен активный сервер")
-
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Timber.e(e, "Exception during clearing active server")
-            loggingService.logError("Ошибка при сбросе активного сервера: ${e.message}")
-            Result.failure(e)
-        }
-    }
+    suspend fun clearActiveServer(): Result<Unit> =
+        serverCoordinator.clearActiveServer()
 
     suspend fun testConnection(server: Server): Result<Boolean> {
-        return try {
-            val result = serverRepository.testConnection(server)
-
-            if (result.isSuccess) {
-                loggingService.logInfo("Успешное подключение к серверу: ${server.name} (${server.host}:${server.port})")
-            } else {
-                loggingService.logWarning("Ошибка подключения к серверу: ${server.name} (${server.host}:${server.port}), причина: ${result.exceptionOrNull()?.message}")
-            }
-
-            result
+        // Валидируем сервер перед тестированием
+        try {
+            validateServer(server)
         } catch (e: Exception) {
-            Timber.e(e, "Exception during server connection test")
-            loggingService.logError("Исключение при тестировании подключения: ${e.message}")
-            Result.failure(e)
+            return Result.failure(e)
         }
+
+        return serverCoordinator.testServerConnection(server)
     }
 
-    // Вспомогательные методы
+    // Вспомогательные методы валидации остаются без изменений
     private fun validateServer(server: Server) {
         if (server.name.isBlank()) {
             throw IllegalArgumentException("Server name cannot be empty")
