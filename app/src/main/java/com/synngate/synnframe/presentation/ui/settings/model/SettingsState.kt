@@ -1,13 +1,8 @@
-// Файл: com.synngate.synnframe.presentation.ui.settings.SettingsState.kt
-
 package com.synngate.synnframe.presentation.ui.settings.model
 
 import com.synngate.synnframe.domain.entity.Server
 import com.synngate.synnframe.presentation.theme.ThemeMode
 
-/**
- * Состояние экрана настроек
- */
 data class SettingsState(
     // Активный сервер
     val activeServer: Server? = null,

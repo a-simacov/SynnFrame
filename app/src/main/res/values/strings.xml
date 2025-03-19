@@ -53,7 +53,6 @@
     <string name="server_active_yes">Да</string>
     <string name="server_active_no">Нет</string>
     <string name="server_delete_confirm">Вы уверены, что хотите удалить этот сервер?</string>
-    <string name="server_show_on_startup">Показывать при запуске приложения</string>
     <string name="server_test_successful">Подключение успешно</string>
     <string name="server_test_failed">Ошибка подключения: %s</string>
     <string name="server_fields_required">Все поля обязательны для заполнения</string>
@@ -71,8 +70,6 @@
     <string name="login_exit">Выйти</string>
     <string name="login_failed">Ошибка аутентификации: %s</string>
     <string name="login_success">Аутентификация успешна</string>
-    <string name="no_active_server">Активный сервер не настроен. Пожалуйста, настройте сервер для продолжения.</string>
-    <string name="navigate_to_servers">Настроить сервер</string>
     <string name="password">Пароль</string>
     <string name="login">Войти</string>
     <string name="exit">Выйти</string>
@@ -189,6 +186,52 @@
     <string name="settings_no_updates">У вас установлена последняя версия</string>
     <string name="settings_update_error">Ошибка проверки обновлений: %s</string>
 
+    <!-- Раздел активного сервера -->
+    <string name="active_server_settings">Активный внешний сервер</string>
+    <string name="navigate_to_servers">Перейти к списку серверов</string>
+    <string name="active_server_info">Активный сервер: %1$s</string>
+    <string name="server_host_port_info">%1$s:%2$d</string>
+    <string name="no_active_server">Нет активного сервера</string>
+    <string name="server_show_on_startup">Показывать экран серверов при запуске</string>
+    <string name="periodic_upload_enabled">Выполнять периодическую выгрузку</string>
+    <string name="upload_interval_seconds">Периодичность выгрузки (в секундах)</string>
+    <string name="interval_seconds">Интервал</string>
+    <string name="seconds">сек.</string>
+    <string name="interval_range_hint">Допустимые значения: от 30 до 3600 секунд</string>
+
+    <!-- Раздел локального веб-сервера -->
+    <string name="web_server_settings">Локальный веб-сервер</string>
+    <string name="web_server_running">Сервер запущен и работает</string>
+    <string name="web_server_stopped">Сервер остановлен</string>
+    <string name="start_web_server">Запустить веб-сервер</string>
+    <string name="stop_web_server">Остановить веб-сервер</string>
+
+    <!-- Раздел оформления интерфейса -->
+    <string name="interface_settings">Оформление интерфейса</string>
+    <string name="theme_selection">Выбор темы</string>
+    <string name="theme_system">Система</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Темная</string>
+    <string name="language_selection">Выбор языка</string>
+    <string name="language_russian">Русский</string>
+    <string name="language_english">English</string>
+    <string name="button_height_setting">Высота кнопки навигации</string>
+    <string name="button_height_value">%1$d dp</string>
+    <string name="button_height_range_hint">Минимум: 48 dp, максимум: 96 dp</string>
+
+    <!-- Раздел обновлений -->
+    <string name="update_settings">Обновление приложения</string>
+    <string name="current_version">Текущая версия: %1$s</string>
+    <string name="available_version">Доступна версия: %1$s</string>
+    <string name="release_date">Дата выпуска: %1$s</string>
+    <string name="check_for_updates">Проверить обновления</string>
+    <string name="install_update">Установить обновление</string>
+    <string name="checking_for_updates">Проверка обновлений...</string>
+    <string name="downloading_update">Загрузка обновления...</string>
+    <string name="installing_update">Установка обновления...</string>
+    <string name="update_available">Доступно обновление</string>
+    <string name="update_dialog_message">Доступно обновление до версии %1$s от %2$s. Хотите установить сейчас?</string>
+
     <!-- Services -->
     <string name="service_web_server_notification_title">Локальный веб-сервер</string>
     <string name="service_web_server_notification_text">Локальный веб-сервер запущен</string>
@@ -208,4 +251,5 @@
     <string name="server_add_title">Новый сервер</string>
     <string name="server_connection_settings">Настройки подключения сервера</string>
     <string name="server_credentials">Учетные данные</string>
+    <string name="interval_error">Ошибка в установке интервала</string>
 </resources>

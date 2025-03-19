@@ -32,6 +32,7 @@ import com.synngate.synnframe.data.service.ClipboardServiceImpl
 import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
 import com.synngate.synnframe.data.service.LoggingServiceImpl
 import com.synngate.synnframe.data.service.ServerCoordinatorImpl
+import com.synngate.synnframe.data.service.WebServerManagerStub
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
@@ -42,6 +43,9 @@ import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
+import com.synngate.synnframe.domain.service.UpdateInstaller
+import com.synngate.synnframe.domain.service.UpdateInstallerImpl
+import com.synngate.synnframe.domain.service.WebServerManager
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
@@ -219,6 +223,18 @@ class AppContainer(private val applicationContext: Context) {
     private val deviceInfoService: DeviceInfoService by lazy {
         Timber.d("Creating DeviceInfoService")
         DeviceInfoServiceImpl(applicationContext)
+    }
+
+    // Менеджер веб-сервера
+    private val webServerManager: WebServerManager by lazy {
+        Timber.d("Creating WebServerManager")
+        WebServerManagerStub(loggingService)
+    }
+
+    // Установщик обновлений
+    private val updateInstaller: UpdateInstaller by lazy {
+        Timber.d("Creating UpdateInstaller")
+        UpdateInstallerImpl(applicationContext, loggingService)
     }
 
     // Use Cases - создаем lazy для повторного использования
@@ -457,6 +473,8 @@ class AppContainer(private val applicationContext: Context) {
                 appContainer.settingsUseCases,
                 appContainer.serverUseCases,
                 appContainer.loggingService,
+                appContainer.webServerManager,
+                appContainer.updateInstaller,
                 Dispatchers.IO
             )
             addClearable(viewModel)

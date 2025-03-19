@@ -24,6 +24,7 @@ import com.synngate.synnframe.presentation.ui.login.LoginScreen
 import com.synngate.synnframe.presentation.ui.main.MainMenuScreen
 import com.synngate.synnframe.presentation.ui.server.ServerDetailScreen
 import com.synngate.synnframe.presentation.ui.server.ServerListScreen
+import com.synngate.synnframe.presentation.ui.settings.SettingsScreen
 import timber.log.Timber
 
 /**
@@ -205,6 +206,42 @@ fun AppNavigation(
                 },
                 exitApp = {
                     (context as? Activity)?.finish()
+                }
+            )
+        }
+
+        // Экран настроек
+        composable(Screen.Settings.route) { entry ->
+            // Получаем контейнер для экрана настроек
+            val settingsScreenContainer = remember {
+                navHostContainer.createSettingsScreenContainer()
+            }
+
+            // Отслеживаем жизненный цикл для очистки ресурсов
+            DisposableEffect(lifecycleOwner, entry) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_DESTROY) {
+                        if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                            Timber.d("Settings screen destroyed, clearing container")
+                            settingsScreenContainer.clear()
+                        }
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            SettingsScreen(
+                viewModel = settingsScreenContainer.createSettingsViewModel(),
+                navigateToServerList = {
+                    navController.navigate(Screen.ServerList.route) {
+                        popUpTo(Screen.Settings.route) { inclusive = false }
+                    }
+                },
+                navigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
