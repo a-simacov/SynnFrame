@@ -4,7 +4,6 @@ import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.entity.TaskType
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
-import com.synngate.synnframe.presentation.di.TaskListViewModel
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskListEvent
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskListState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
@@ -17,11 +16,11 @@ import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-class TaskListViewModelImpl(
+class TaskListViewModel(
     private val taskUseCases: TaskUseCases,
     private val userUseCases: UserUseCases,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-) : BaseViewModel<TaskListState, TaskListEvent>(TaskListState()), TaskListViewModel {
+) : BaseViewModel<TaskListState, TaskListEvent>(TaskListState()) {
 
     private var filterJob: Job? = null
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")

@@ -1,34 +1,28 @@
 package com.synngate.synnframe.presentation.ui.tasks
 
 import com.synngate.synnframe.domain.entity.Product
-import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskFactLine
 import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
-import com.synngate.synnframe.presentation.di.TaskDetailViewModel
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailEvent
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailState
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskLineItem
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.UUID
 
-class TaskDetailViewModelImpl(
+class TaskDetailViewModel(
     private val taskId: String,
     private val taskUseCases: TaskUseCases,
     private val productUseCases: ProductUseCases,
     private val userUseCases: UserUseCases,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-) : BaseViewModel<TaskDetailState, TaskDetailEvent>(TaskDetailState(taskId = taskId)),
-    TaskDetailViewModel {
+) : BaseViewModel<TaskDetailState, TaskDetailEvent>(TaskDetailState(taskId = taskId)) {
 
     init {
         loadTask()
@@ -213,10 +207,12 @@ class TaskDetailViewModelImpl(
                 quantity = 0f
             )
 
-        updateState { it.copy(
-            selectedFactLine = factLine,
-            isFactLineDialogVisible = true
-        ) }
+        updateState {
+            it.copy(
+                selectedFactLine = factLine,
+                isFactLineDialogVisible = true
+            )
+        }
 
         sendEvent(TaskDetailEvent.ShowFactLineDialog(factLine))
     }
@@ -225,13 +221,15 @@ class TaskDetailViewModelImpl(
      * Закрывает диалоги
      */
     fun closeDialog() {
-        updateState { it.copy(
-            isScanDialogVisible = false,
-            isFactLineDialogVisible = false,
-            isCompleteConfirmationVisible = false,
-            selectedFactLine = null,
-            additionalQuantity = ""
-        ) }
+        updateState {
+            it.copy(
+                isScanDialogVisible = false,
+                isFactLineDialogVisible = false,
+                isCompleteConfirmationVisible = false,
+                selectedFactLine = null,
+                additionalQuantity = ""
+            )
+        }
 
         sendEvent(TaskDetailEvent.CloseDialog)
     }
@@ -344,10 +342,12 @@ class TaskDetailViewModelImpl(
                 Timber.e(e, "Error completing task")
                 sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка: ${e.message}"))
             } finally {
-                updateState { it.copy(
-                    isProcessing = false,
-                    isCompleteConfirmationVisible = false
-                ) }
+                updateState {
+                    it.copy(
+                        isProcessing = false,
+                        isCompleteConfirmationVisible = false
+                    )
+                }
             }
         }
     }

@@ -46,15 +46,15 @@ import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
-import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModelImpl
-import com.synngate.synnframe.presentation.ui.logs.LogListViewModelImpl
-import com.synngate.synnframe.presentation.ui.product.ProductListViewModelImpl
-import com.synngate.synnframe.presentation.ui.products.ProductDetailViewModelImpl
+import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModel
+import com.synngate.synnframe.presentation.ui.logs.LogListViewModel
+import com.synngate.synnframe.presentation.ui.product.ProductListViewModel
+import com.synngate.synnframe.presentation.ui.products.ProductDetailViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerListViewModel
-import com.synngate.synnframe.presentation.ui.settings.SettingsViewModelImpl
-import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModelImpl
-import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModelImpl
+import com.synngate.synnframe.presentation.ui.settings.SettingsViewModel
+import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModel
+import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -333,7 +333,7 @@ class AppContainer(private val applicationContext: Context) {
         override fun createTaskListViewModel(): TaskListViewModel {
             Timber.d("Creating TaskListViewModel")
             // Используем новый класс TaskListViewModelImpl с UseCases вместо репозиториев
-            val viewModel = TaskListViewModelImpl(
+            val viewModel = TaskListViewModel(
                 taskUseCases = appContainer.taskUseCases,
                 userUseCases = appContainer.userUseCases,
                 ioDispatcher = Dispatchers.IO
@@ -345,7 +345,7 @@ class AppContainer(private val applicationContext: Context) {
         override fun createTaskDetailViewModel(taskId: String): TaskDetailViewModel {
             Timber.d("Creating TaskDetailViewModel for taskId=$taskId")
             // Используем новый класс TaskDetailViewModelImpl с UseCases вместо репозиториев
-            val viewModel = TaskDetailViewModelImpl(
+            val viewModel = TaskDetailViewModel(
                 taskId = taskId,
                 taskUseCases = appContainer.taskUseCases,
                 productUseCases = appContainer.productUseCases,
@@ -367,7 +367,7 @@ class AppContainer(private val applicationContext: Context) {
         override fun createProductListViewModel(): ProductListViewModel {
             Timber.d("Creating ProductListViewModel")
             // Используем новый класс ProductListViewModelImpl с UseCases вместо репозиториев
-            val viewModel = ProductListViewModelImpl(
+            val viewModel = ProductListViewModel(
                 productUseCases = appContainer.productUseCases,
                 ioDispatcher = Dispatchers.IO
             )
@@ -379,7 +379,7 @@ class AppContainer(private val applicationContext: Context) {
             Timber.d("Creating ProductDetailViewModel for productId=$productId")
             // Вместо внутреннего класса используем реальную реализацию ViewModel
             // Здесь нужно реализовать ProductDetailViewModelImpl, мы её пока не создавали
-            val viewModel = ProductDetailViewModelImpl(
+            val viewModel = ProductDetailViewModel(
                 productId = productId,
                 productUseCases = appContainer.productUseCases,
                 loggingService = appContainer.loggingService,
@@ -399,7 +399,7 @@ class AppContainer(private val applicationContext: Context) {
 
         override fun createLogListViewModel(): LogListViewModel {
             Timber.d("Creating LogListViewModel")
-            val viewModel = LogListViewModelImpl(
+            val viewModel = LogListViewModel(
                 logUseCases = appContainer.logUseCases,
                 loggingService = appContainer.loggingService,
                 ioDispatcher = Dispatchers.IO
@@ -410,7 +410,7 @@ class AppContainer(private val applicationContext: Context) {
 
         override fun createLogDetailViewModel(logId: Int): LogDetailViewModel {
             Timber.d("Creating LogDetailViewModel for logId=$logId")
-            val viewModel = LogDetailViewModelImpl(
+            val viewModel = LogDetailViewModel(
                 logId,
                 appContainer.logUseCases,
                 appContainer.loggingService,
@@ -431,7 +431,7 @@ class AppContainer(private val applicationContext: Context) {
 
         override fun createSettingsViewModel(): SettingsViewModel {
             Timber.d("Creating SettingsViewModel")
-            val viewModel = SettingsViewModelImpl(
+            val viewModel = SettingsViewModel(
                 appContainer.settingsUseCases,
                 appContainer.serverUseCases,
                 appContainer.loggingService,

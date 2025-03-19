@@ -8,7 +8,6 @@ import com.synngate.synnframe.domain.entity.ProductUnit
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.di.ClearableViewModel
-import com.synngate.synnframe.presentation.di.ProductDetailViewModel
 import com.synngate.synnframe.presentation.ui.products.model.ProductDetailState
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,12 +20,12 @@ import timber.log.Timber
 /**
  * ViewModel для экрана деталей товара
  */
-class ProductDetailViewModelImpl(
+class ProductDetailViewModel(
     private val productId: String,
     private val productUseCases: ProductUseCases,
     private val loggingService: LoggingService,
     private val ioDispatcher: CoroutineDispatcher
-) : ClearableViewModel(), ProductDetailViewModel {
+) : ClearableViewModel() {
 
     private val _state = MutableStateFlow(ProductDetailState())
     val state: StateFlow<ProductDetailState> = _state.asStateFlow()

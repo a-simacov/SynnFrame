@@ -18,13 +18,13 @@ import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-class ProductListViewModelImpl(
+class ProductListViewModel(
     private val productUseCases: ProductUseCases,
     private val isSelectionMode: Boolean = false,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<ProductListState, ProductListEvent>(
     ProductListState(isSelectionMode = isSelectionMode)
-), ProductListViewModel {
+) {
 
     private var searchJob: Job? = null
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")

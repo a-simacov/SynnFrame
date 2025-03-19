@@ -1,7 +1,14 @@
 package com.synngate.synnframe.presentation.di
 
+import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModel
+import com.synngate.synnframe.presentation.ui.logs.LogListViewModel
+import com.synngate.synnframe.presentation.ui.product.ProductListViewModel
+import com.synngate.synnframe.presentation.ui.products.ProductDetailViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerListViewModel
+import com.synngate.synnframe.presentation.ui.settings.SettingsViewModel
+import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModel
+import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModel
 
 /**
  * Интерфейс для очистки ресурсов контейнера зависимостей
@@ -142,12 +149,3 @@ interface SettingsScreenContainer : GraphContainer {
      */
     fun createSettingsViewModel(): SettingsViewModel
 }
-
-// Интерфейсы для ViewModels (заглушки, будут реализованы позже)
-interface TaskListViewModel
-interface TaskDetailViewModel
-interface ProductListViewModel
-interface ProductDetailViewModel
-interface LogListViewModel
-interface LogDetailViewModel
-interface SettingsViewModel

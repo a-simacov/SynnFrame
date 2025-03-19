@@ -2,13 +2,11 @@
 
 package com.synngate.synnframe.presentation.ui.logs
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
 import com.synngate.synnframe.presentation.di.ClearableViewModel
-import com.synngate.synnframe.presentation.di.LogListViewModel
 import com.synngate.synnframe.presentation.ui.logs.model.LogListState
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,11 +21,11 @@ import java.time.LocalDateTime
 /**
  * ViewModel для экрана списка логов
  */
-class LogListViewModelImpl(
+class LogListViewModel(
     private val logUseCases: LogUseCases,
     private val loggingService: LoggingService,
     private val ioDispatcher: CoroutineDispatcher
-) : ClearableViewModel(), LogListViewModel {
+) : ClearableViewModel() {
 
     private val _state = MutableStateFlow(LogListState())
     val state: StateFlow<LogListState> = _state.asStateFlow()

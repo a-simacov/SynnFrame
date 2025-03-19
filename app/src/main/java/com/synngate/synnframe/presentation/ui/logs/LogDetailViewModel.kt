@@ -2,13 +2,11 @@
 
 package com.synngate.synnframe.presentation.ui.logs
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
 import com.synngate.synnframe.presentation.di.ClearableViewModel
-import com.synngate.synnframe.presentation.di.LogDetailViewModel
 import com.synngate.synnframe.presentation.ui.logs.model.LogDetailState
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,13 +20,13 @@ import java.time.format.DateTimeFormatter
 /**
  * ViewModel для экрана деталей лога
  */
-class LogDetailViewModelImpl(
+class LogDetailViewModel(
     private val logId: Int,
     private val logUseCases: LogUseCases,
     private val loggingService: LoggingService,
     private val clipboardService: ClipboardService,
     private val ioDispatcher: CoroutineDispatcher
-) : ClearableViewModel(), LogDetailViewModel {
+) : ClearableViewModel() {
 
     private val _state = MutableStateFlow(LogDetailState())
     val state: StateFlow<LogDetailState> = _state.asStateFlow()
@@ -51,25 +49,31 @@ class LogDetailViewModelImpl(
                 val log = logUseCases.getLogById(logId)
 
                 if (log != null) {
-                    _state.update { it.copy(
-                        log = log,
-                        isLoading = false,
-                        error = null
-                    ) }
+                    _state.update {
+                        it.copy(
+                            log = log,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
                 } else {
-                    _state.update { it.copy(
-                        isLoading = false,
-                        error = "Лог с ID $logId не найден"
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Лог с ID $logId не найден"
+                        )
+                    }
 
                     loggingService.logWarning("Попытка просмотра несуществующего лога с ID $logId")
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error loading log with ID $logId")
-                _state.update { it.copy(
-                    isLoading = false,
-                    error = "Ошибка загрузки лога: ${e.message}"
-                ) }
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка загрузки лога: ${e.message}"
+                    )
+                }
 
                 viewModelScope.launch {
                     loggingService.logError("Ошибка загрузки лога с ID $logId: ${e.message}")
@@ -131,20 +135,24 @@ class LogDetailViewModelImpl(
      */
     fun deleteLog(onDeleted: () -> Unit) {
         viewModelScope.launch(ioDispatcher) {
-            _state.update { it.copy(
-                isDeletingLog = true,
-                showDeleteConfirmation = false,
-                error = null
-            ) }
+            _state.update {
+                it.copy(
+                    isDeletingLog = true,
+                    showDeleteConfirmation = false,
+                    error = null
+                )
+            }
 
             try {
                 val result = logUseCases.deleteLog(logId)
 
                 if (result.isSuccess) {
-                    _state.update { it.copy(
-                        isDeletingLog = false,
-                        error = null
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isDeletingLog = false,
+                            error = null
+                        )
+                    }
 
                     loggingService.logInfo("Лог с ID $logId успешно удален")
 
@@ -152,19 +160,23 @@ class LogDetailViewModelImpl(
                     onDeleted()
                 } else {
                     val exception = result.exceptionOrNull()
-                    _state.update { it.copy(
-                        isDeletingLog = false,
-                        error = "Ошибка удаления лога: ${exception?.message}"
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isDeletingLog = false,
+                            error = "Ошибка удаления лога: ${exception?.message}"
+                        )
+                    }
 
                     loggingService.logError("Ошибка удаления лога с ID $logId: ${exception?.message}")
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Exception during log deletion")
-                _state.update { it.copy(
-                    isDeletingLog = false,
-                    error = "Ошибка удаления лога: ${e.message}"
-                ) }
+                _state.update {
+                    it.copy(
+                        isDeletingLog = false,
+                        error = "Ошибка удаления лога: ${e.message}"
+                    )
+                }
 
                 viewModelScope.launch {
                     loggingService.logError("Исключение при удалении лога с ID $logId: ${e.message}")

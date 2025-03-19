@@ -8,16 +8,13 @@ import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.presentation.di.ClearableViewModel
-import com.synngate.synnframe.presentation.di.SettingsViewModel
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsState
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -27,12 +24,12 @@ import kotlin.math.min
 /**
  * ViewModel для экрана настроек приложения
  */
-class SettingsViewModelImpl(
+class SettingsViewModel(
     private val settingsUseCases: SettingsUseCases,
     private val serverUseCases: ServerUseCases,
     private val loggingService: LoggingService,
     private val ioDispatcher: CoroutineDispatcher
-) : ClearableViewModel(), SettingsViewModel {
+) : ClearableViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
     val state: StateFlow<SettingsState> = _state.asStateFlow()
@@ -71,16 +68,18 @@ class SettingsViewModelImpl(
             val activeServer = serverUseCases.getActiveServer().first()
 
             // Обновляем состояние с загруженными данными
-            _state.update { it.copy(
-                showServersOnStartup = showServers,
-                periodicUploadEnabled = periodicUpload,
-                uploadIntervalSeconds = uploadInterval,
-                themeMode = themeMode,
-                languageCode = languageCode,
-                navigationButtonHeight = buttonHeight,
-                activeServer = activeServer,
-                isLoading = false
-            ) }
+            _state.update {
+                it.copy(
+                    showServersOnStartup = showServers,
+                    periodicUploadEnabled = periodicUpload,
+                    uploadIntervalSeconds = uploadInterval,
+                    themeMode = themeMode,
+                    languageCode = languageCode,
+                    navigationButtonHeight = buttonHeight,
+                    activeServer = activeServer,
+                    isLoading = false
+                )
+            }
 
             // Запускаем наблюдение за изменениями после первоначальной загрузки
             observeSettingsChanges()
@@ -111,24 +110,30 @@ class SettingsViewModelImpl(
                 val result = settingsUseCases.setShowServersOnStartup(show)
 
                 if (result.isSuccess) {
-                    _state.update { it.copy(
-                        showServersOnStartup = show,
-                        isLoading = false,
-                        error = null
-                    ) }
+                    _state.update {
+                        it.copy(
+                            showServersOnStartup = show,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
                 } else {
                     val exception = result.exceptionOrNull()
-                    _state.update { it.copy(
-                        isLoading = false,
-                        error = "Ошибка обновления настройки: ${exception?.message}"
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Ошибка обновления настройки: ${exception?.message}"
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error updating showServersOnStartup setting")
-                _state.update { it.copy(
-                    isLoading = false,
-                    error = "Ошибка обновления настройки: ${e.message}"
-                ) }
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка обновления настройки: ${e.message}"
+                    )
+                }
 
                 viewModelScope.launch {
                     loggingService.logError("Ошибка обновления настройки отображения серверов: ${e.message}")
@@ -150,25 +155,31 @@ class SettingsViewModelImpl(
                 val result = settingsUseCases.setPeriodicUpload(enabled, interval)
 
                 if (result.isSuccess) {
-                    _state.update { it.copy(
-                        periodicUploadEnabled = enabled,
-                        uploadIntervalSeconds = interval,
-                        isLoading = false,
-                        error = null
-                    ) }
+                    _state.update {
+                        it.copy(
+                            periodicUploadEnabled = enabled,
+                            uploadIntervalSeconds = interval,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
                 } else {
                     val exception = result.exceptionOrNull()
-                    _state.update { it.copy(
-                        isLoading = false,
-                        error = "Ошибка обновления настроек выгрузки: ${exception?.message}"
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Ошибка обновления настроек выгрузки: ${exception?.message}"
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error updating periodic upload settings")
-                _state.update { it.copy(
-                    isLoading = false,
-                    error = "Ошибка обновления настроек выгрузки: ${e.message}"
-                ) }
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка обновления настроек выгрузки: ${e.message}"
+                    )
+                }
 
                 viewModelScope.launch {
                     loggingService.logError("Ошибка обновления настроек периодической выгрузки: ${e.message}")
@@ -181,7 +192,8 @@ class SettingsViewModelImpl(
      * Обновление интервала выгрузки (в секундах)
      */
     fun updateUploadInterval(intervalSeconds: Int) {
-        val validInterval = max(30, min(3600, intervalSeconds)) // Ограничиваем от 30 секунд до 1 часа
+        val validInterval =
+            max(30, min(3600, intervalSeconds)) // Ограничиваем от 30 секунд до 1 часа
         updatePeriodicUpload(state.value.periodicUploadEnabled, validInterval)
     }
 
@@ -196,24 +208,30 @@ class SettingsViewModelImpl(
                 val result = settingsUseCases.setThemeMode(themeMode)
 
                 if (result.isSuccess) {
-                    _state.update { it.copy(
-                        themeMode = themeMode,
-                        isLoading = false,
-                        error = null
-                    ) }
+                    _state.update {
+                        it.copy(
+                            themeMode = themeMode,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
                 } else {
                     val exception = result.exceptionOrNull()
-                    _state.update { it.copy(
-                        isLoading = false,
-                        error = "Ошибка обновления темы: ${exception?.message}"
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Ошибка обновления темы: ${exception?.message}"
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error updating theme mode")
-                _state.update { it.copy(
-                    isLoading = false,
-                    error = "Ошибка обновления темы: ${e.message}"
-                ) }
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка обновления темы: ${e.message}"
+                    )
+                }
 
                 viewModelScope.launch {
                     loggingService.logError("Ошибка обновления режима темы: ${e.message}")
@@ -233,24 +251,30 @@ class SettingsViewModelImpl(
                 val result = settingsUseCases.setLanguageCode(languageCode)
 
                 if (result.isSuccess) {
-                    _state.update { it.copy(
-                        languageCode = languageCode,
-                        isLoading = false,
-                        error = null
-                    ) }
+                    _state.update {
+                        it.copy(
+                            languageCode = languageCode,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
                 } else {
                     val exception = result.exceptionOrNull()
-                    _state.update { it.copy(
-                        isLoading = false,
-                        error = "Ошибка обновления языка: ${exception?.message}"
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Ошибка обновления языка: ${exception?.message}"
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error updating language code")
-                _state.update { it.copy(
-                    isLoading = false,
-                    error = "Ошибка обновления языка: ${e.message}"
-                ) }
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка обновления языка: ${e.message}"
+                    )
+                }
 
                 viewModelScope.launch {
                     loggingService.logError("Ошибка обновления языка интерфейса: ${e.message}")
@@ -271,24 +295,30 @@ class SettingsViewModelImpl(
                 val result = settingsUseCases.setNavigationButtonHeight(validHeight)
 
                 if (result.isSuccess) {
-                    _state.update { it.copy(
-                        navigationButtonHeight = validHeight,
-                        isLoading = false,
-                        error = null
-                    ) }
+                    _state.update {
+                        it.copy(
+                            navigationButtonHeight = validHeight,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
                 } else {
                     val exception = result.exceptionOrNull()
-                    _state.update { it.copy(
-                        isLoading = false,
-                        error = "Ошибка обновления высоты кнопки: ${exception?.message}"
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Ошибка обновления высоты кнопки: ${exception?.message}"
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error updating navigation button height")
-                _state.update { it.copy(
-                    isLoading = false,
-                    error = "Ошибка обновления высоты кнопки: ${e.message}"
-                ) }
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка обновления высоты кнопки: ${e.message}"
+                    )
+                }
 
                 viewModelScope.launch {
                     loggingService.logError("Ошибка обновления высоты кнопки навигации: ${e.message}")
@@ -302,13 +332,15 @@ class SettingsViewModelImpl(
      */
     fun checkForUpdates() {
         viewModelScope.launch(ioDispatcher) {
-            _state.update { it.copy(
-                isCheckingForUpdates = true,
-                error = null,
-                lastVersion = null,
-                releaseDate = null,
-                showUpdateConfirmDialog = false
-            ) }
+            _state.update {
+                it.copy(
+                    isCheckingForUpdates = true,
+                    error = null,
+                    lastVersion = null,
+                    releaseDate = null,
+                    showUpdateConfirmDialog = false
+                )
+            }
 
             try {
                 val result = settingsUseCases.checkForUpdates()
@@ -316,26 +348,32 @@ class SettingsViewModelImpl(
                 if (result.isSuccess) {
                     val (version, date) = result.getOrNull()!!
 
-                    _state.update { it.copy(
-                        isCheckingForUpdates = false,
-                        lastVersion = version,
-                        releaseDate = date,
-                        showUpdateConfirmDialog = version != null,
-                        error = null
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isCheckingForUpdates = false,
+                            lastVersion = version,
+                            releaseDate = date,
+                            showUpdateConfirmDialog = version != null,
+                            error = null
+                        )
+                    }
                 } else {
                     val exception = result.exceptionOrNull()
-                    _state.update { it.copy(
-                        isCheckingForUpdates = false,
-                        error = "Ошибка проверки обновлений: ${exception?.message}"
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isCheckingForUpdates = false,
+                            error = "Ошибка проверки обновлений: ${exception?.message}"
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error checking for updates")
-                _state.update { it.copy(
-                    isCheckingForUpdates = false,
-                    error = "Ошибка проверки обновлений: ${e.message}"
-                ) }
+                _state.update {
+                    it.copy(
+                        isCheckingForUpdates = false,
+                        error = "Ошибка проверки обновлений: ${e.message}"
+                    )
+                }
 
                 viewModelScope.launch {
                     loggingService.logError("Ошибка проверки наличия обновлений: ${e.message}")
@@ -358,11 +396,13 @@ class SettingsViewModelImpl(
         val version = state.value.lastVersion ?: return
 
         viewModelScope.launch(ioDispatcher) {
-            _state.update { it.copy(
-                isDownloadingUpdate = true,
-                showUpdateConfirmDialog = false,
-                error = null
-            ) }
+            _state.update {
+                it.copy(
+                    isDownloadingUpdate = true,
+                    showUpdateConfirmDialog = false,
+                    error = null
+                )
+            }
 
             try {
                 val result = settingsUseCases.downloadUpdate(version)
@@ -370,27 +410,33 @@ class SettingsViewModelImpl(
                 if (result.isSuccess) {
                     val filePath = result.getOrNull()!!
 
-                    _state.update { it.copy(
-                        isDownloadingUpdate = false,
-                        downloadedUpdatePath = filePath,
-                        error = null
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isDownloadingUpdate = false,
+                            downloadedUpdatePath = filePath,
+                            error = null
+                        )
+                    }
 
                     // Автоматически начинаем установку
                     installUpdate(filePath)
                 } else {
                     val exception = result.exceptionOrNull()
-                    _state.update { it.copy(
-                        isDownloadingUpdate = false,
-                        error = "Ошибка загрузки обновления: ${exception?.message}"
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isDownloadingUpdate = false,
+                            error = "Ошибка загрузки обновления: ${exception?.message}"
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error downloading update")
-                _state.update { it.copy(
-                    isDownloadingUpdate = false,
-                    error = "Ошибка загрузки обновления: ${e.message}"
-                ) }
+                _state.update {
+                    it.copy(
+                        isDownloadingUpdate = false,
+                        error = "Ошибка загрузки обновления: ${e.message}"
+                    )
+                }
 
                 viewModelScope.launch {
                     loggingService.logError("Ошибка загрузки обновления: ${e.message}")
@@ -404,34 +450,42 @@ class SettingsViewModelImpl(
      */
     private fun installUpdate(filePath: String) {
         viewModelScope.launch(ioDispatcher) {
-            _state.update { it.copy(
-                isInstallingUpdate = true,
-                error = null
-            ) }
+            _state.update {
+                it.copy(
+                    isInstallingUpdate = true,
+                    error = null
+                )
+            }
 
             try {
                 val result = settingsUseCases.installUpdate(filePath)
 
                 if (result.isSuccess) {
-                    _state.update { it.copy(
-                        isInstallingUpdate = false,
-                        error = null
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isInstallingUpdate = false,
+                            error = null
+                        )
+                    }
 
                     // Установка будет выполнена через Intent в UI слое
                 } else {
                     val exception = result.exceptionOrNull()
-                    _state.update { it.copy(
-                        isInstallingUpdate = false,
-                        error = "Ошибка установки обновления: ${exception?.message}"
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isInstallingUpdate = false,
+                            error = "Ошибка установки обновления: ${exception?.message}"
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error installing update")
-                _state.update { it.copy(
-                    isInstallingUpdate = false,
-                    error = "Ошибка установки обновления: ${e.message}"
-                ) }
+                _state.update {
+                    it.copy(
+                        isInstallingUpdate = false,
+                        error = "Ошибка установки обновления: ${e.message}"
+                    )
+                }
 
                 viewModelScope.launch {
                     loggingService.logError("Ошибка установки обновления: ${e.message}")
