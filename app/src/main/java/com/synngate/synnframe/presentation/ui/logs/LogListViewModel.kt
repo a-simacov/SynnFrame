@@ -1,22 +1,17 @@
-// Файл: com.synngate.synnframe.presentation.ui.logs.LogListViewModel.kt
-
 package com.synngate.synnframe.presentation.ui.logs
 
-import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
-import com.synngate.synnframe.presentation.di.ClearableViewModel
+import com.synngate.synnframe.presentation.ui.logs.model.LogListEvent
 import com.synngate.synnframe.presentation.ui.logs.model.LogListState
+import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 /**
  * ViewModel для экрана списка логов
@@ -24,11 +19,11 @@ import java.time.LocalDateTime
 class LogListViewModel(
     private val logUseCases: LogUseCases,
     private val loggingService: LoggingService,
-    private val ioDispatcher: CoroutineDispatcher
-) : ClearableViewModel() {
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+) : BaseViewModel<LogListState, LogListEvent>(LogListState(), ioDispatcher) {
 
-    private val _state = MutableStateFlow(LogListState())
-    val state: StateFlow<LogListState> = _state.asStateFlow()
+    // Форматтер для отображения даты в UI
+    private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")
 
     init {
         loadLogs()
@@ -38,11 +33,11 @@ class LogListViewModel(
      * Загрузка логов с применением текущих фильтров
      */
     fun loadLogs() {
-        viewModelScope.launch(ioDispatcher) {
-            _state.update { it.copy(isLoading = true, error = null) }
+        launchIO {
+            updateState { it.copy(isLoading = true, error = null) }
 
             try {
-                val currentState = state.value
+                val currentState = uiState.value
 
                 // Подготовка параметров фильтрации
                 val messageFilter = currentState.messageFilter.takeIf { it.isNotEmpty() }
@@ -58,12 +53,12 @@ class LogListViewModel(
                     dateToFilter = dateTo
                 ).catch { e ->
                     Timber.e(e, "Error loading logs")
-                    _state.update { it.copy(
+                    updateState { it.copy(
                         isLoading = false,
                         error = "Ошибка загрузки логов: ${e.message}"
                     ) }
                 }.collect { logs ->
-                    _state.update { it.copy(
+                    updateState { it.copy(
                         logs = logs,
                         isLoading = false,
                         error = null
@@ -71,14 +66,12 @@ class LogListViewModel(
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Exception during logs loading")
-                _state.update { it.copy(
+                updateState { it.copy(
                     isLoading = false,
                     error = "Ошибка загрузки логов: ${e.message}"
                 ) }
 
-                viewModelScope.launch {
-                    loggingService.logError("Ошибка загрузки логов: ${e.message}")
-                }
+                loggingService.logError("Ошибка загрузки логов: ${e.message}")
             }
         }
     }
@@ -87,7 +80,7 @@ class LogListViewModel(
      * Обновление фильтра по сообщению
      */
     fun updateMessageFilter(filter: String) {
-        _state.update { it.copy(messageFilter = filter) }
+        updateState { it.copy(messageFilter = filter) }
         loadLogs()
     }
 
@@ -95,7 +88,7 @@ class LogListViewModel(
      * Обновление фильтра по типу лога
      */
     fun updateTypeFilter(types: Set<LogType>) {
-        _state.update { it.copy(selectedTypes = types) }
+        updateState { it.copy(selectedTypes = types) }
         loadLogs()
     }
 
@@ -103,15 +96,14 @@ class LogListViewModel(
      * Обновление фильтра по диапазону дат
      */
     fun updateDateFilter(dateFrom: LocalDateTime?, dateTo: LocalDateTime?) {
-        _state.update { it.copy(dateFromFilter = dateFrom, dateToFilter = dateTo) }
-        loadLogs()
+        updateState { it.copy(dateFromFilter = dateFrom, dateToFilter = dateTo) }
     }
 
     /**
      * Сброс всех фильтров
      */
     fun resetFilters() {
-        _state.update { it.copy(
+        updateState { it.copy(
             messageFilter = "",
             selectedTypes = emptySet(),
             dateFromFilter = null,
@@ -124,29 +116,37 @@ class LogListViewModel(
      * Переключение видимости панели фильтров
      */
     fun toggleFilterPanel() {
-        _state.update { it.copy(isFilterPanelVisible = !it.isFilterPanelVisible) }
+        updateState { it.copy(isFilterPanelVisible = !it.isFilterPanelVisible) }
+    }
+
+    /**
+     * Показать диалог подтверждения удаления всех логов
+     */
+    fun showDeleteAllConfirmation() {
+        sendEvent(LogListEvent.ShowDeleteAllConfirmation)
     }
 
     /**
      * Удаление всех логов
      */
     fun deleteAllLogs() {
-        viewModelScope.launch(ioDispatcher) {
-            _state.update { it.copy(isLoading = true, error = null) }
+        launchIO {
+            updateState { it.copy(isLoading = true, error = null) }
 
             try {
                 val result = logUseCases.deleteAllLogs()
                 if (result.isSuccess) {
-                    _state.update { it.copy(
+                    updateState { it.copy(
                         logs = emptyList(),
                         isLoading = false,
                         error = null
                     ) }
 
                     loggingService.logInfo("Все логи были удалены")
+                    sendEvent(LogListEvent.ShowSnackbar("Все логи успешно удалены"))
                 } else {
                     val exception = result.exceptionOrNull()
-                    _state.update { it.copy(
+                    updateState { it.copy(
                         isLoading = false,
                         error = "Ошибка удаления логов: ${exception?.message}"
                     ) }
@@ -155,54 +155,21 @@ class LogListViewModel(
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Exception during logs deletion")
-                _state.update { it.copy(
+                updateState { it.copy(
                     isLoading = false,
                     error = "Ошибка удаления логов: ${e.message}"
                 ) }
 
-                viewModelScope.launch {
-                    loggingService.logError("Ошибка удаления логов: ${e.message}")
-                }
+                loggingService.logError("Ошибка удаления логов: ${e.message}")
             }
         }
     }
 
     /**
-     * Удаление старых логов
+     * Навигация к детальной информации о логе
      */
-    fun cleanupOldLogs(daysToKeep: Int = 30) {
-        viewModelScope.launch(ioDispatcher) {
-            _state.update { it.copy(isLoading = true, error = null) }
-
-            try {
-                val result = logUseCases.cleanupOldLogs(daysToKeep)
-                if (result.isSuccess) {
-                    val deletedCount = result.getOrDefault(0)
-                    _state.update { it.copy(isLoading = false, error = null) }
-                    loadLogs() // Перезагружаем список логов
-
-                    loggingService.logInfo("Удалено старых логов: $deletedCount")
-                } else {
-                    val exception = result.exceptionOrNull()
-                    _state.update { it.copy(
-                        isLoading = false,
-                        error = "Ошибка очистки старых логов: ${exception?.message}"
-                    ) }
-
-                    loggingService.logError("Ошибка очистки старых логов: ${exception?.message}")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Exception during old logs cleanup")
-                _state.update { it.copy(
-                    isLoading = false,
-                    error = "Ошибка очистки старых логов: ${e.message}"
-                ) }
-
-                viewModelScope.launch {
-                    loggingService.logError("Ошибка очистки старых логов: ${e.message}")
-                }
-            }
-        }
+    fun navigateToLogDetail(logId: Int) {
+        sendEvent(LogListEvent.NavigateToLogDetail(logId))
     }
 
     /**
@@ -220,6 +187,6 @@ class LogListViewModel(
      * Форматирование даты лога для отображения
      */
     fun formatLogDate(dateTime: LocalDateTime): String {
-        return dateTime.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss"))
+        return dateTime.format(dateFormatter)
     }
 }

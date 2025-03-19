@@ -21,6 +21,8 @@ import com.synngate.synnframe.presentation.di.AppContainer
 import com.synngate.synnframe.presentation.di.NavHostContainer
 import com.synngate.synnframe.presentation.di.ServerListGraphContainer
 import com.synngate.synnframe.presentation.ui.login.LoginScreen
+import com.synngate.synnframe.presentation.ui.logs.LogDetailScreen
+import com.synngate.synnframe.presentation.ui.logs.LogListScreen
 import com.synngate.synnframe.presentation.ui.main.MainMenuScreen
 import com.synngate.synnframe.presentation.ui.server.ServerDetailScreen
 import com.synngate.synnframe.presentation.ui.server.ServerListScreen
@@ -240,6 +242,81 @@ fun AppNavigation(
                         popUpTo(Screen.Settings.route) { inclusive = false }
                     }
                 },
+                navigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Экран списка логов и вложенный граф
+        composable(Screen.LogList.route) { entry ->
+            // Получаем контейнер для подграфа логов
+            val logsGraphContainer = remember {
+                navHostContainer.createLogsGraphContainer()
+            }
+
+            // Отслеживаем жизненный цикл для очистки ресурсов
+            DisposableEffect(lifecycleOwner, entry) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_DESTROY) {
+                        if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                            Timber.d("Logs graph destroyed, clearing container")
+                            logsGraphContainer.clear()
+                        }
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            LogListScreen(
+                viewModel = logsGraphContainer.createLogListViewModel(),
+                navigateToLogDetail = { logId ->
+                    navController.navigate(Screen.LogDetail.createRoute(logId))
+                },
+                navigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+// Экран детальной информации о логе
+        composable(
+            route = Screen.LogDetail.route,
+            arguments = listOf(
+                navArgument("logId") {
+                    type = NavType.IntType
+                }
+            )
+        ) { entry ->
+            // Получаем контейнер для подграфа логов
+            val logsGraphContainer = remember {
+                navHostContainer.createLogsGraphContainer()
+            }
+
+            // Получаем ID лога из аргументов
+            val logId = entry.arguments?.getInt("logId") ?: 0
+
+            // Отслеживаем жизненный цикл для очистки ресурсов
+            DisposableEffect(lifecycleOwner, entry) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_DESTROY) {
+                        if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                            Timber.d("LogDetail screen destroyed, clearing container")
+                            logsGraphContainer.clear()
+                        }
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            LogDetailScreen(
+                viewModel = logsGraphContainer.createLogDetailViewModel(logId),
                 navigateBack = {
                     navController.popBackStack()
                 }

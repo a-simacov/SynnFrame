@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Общие строки для логов -->
+    <string name="logs">Логи</string>
+    <string name="log_details">Детали лога</string>
+    <string name="log_message">Сообщение лога:</string>
+    <string name="loading_log">Загрузка лога...</string>
+    <string name="error_loading_log">Ошибка загрузки лога</string>
+    <string name="no_logs">Список логов пуст</string>
+    <string name="no_logs_with_filter">По заданным фильтрам логи не найдены</string>
+
+    <!-- Типы логов -->
+    <string name="log_type_info">Информация</string>
+    <string name="log_type_warning">Предупреждение</string>
+    <string name="log_type_error">Ошибка</string>
+    <string name="log_type_all">Все</string>
+
+    <!-- Фильтры -->
+    <string name="search_logs">Поиск логов</string>
+    <string name="show_date_filter">Показать фильтр по дате</string>
+    <string name="hide_date_filter">Скрыть фильтр по дате</string>
+    <string name="date_from">Дата с</string>
+    <string name="date_to">Дата по</string>
+    <string name="apply_filter">Применить</string>
+    <string name="clear_filter">Очистить</string>
+
+    <!-- Действия с логами -->
+    <string name="copy_to_clipboard">Копировать в буфер обмена</string>
+    <string name="log_copied_to_clipboard">Лог скопирован в буфер обмена</string>
+    <string name="delete_log">Удалить лог</string>
+    <string name="delete_log_title">Удаление лога</string>
+    <string name="delete_log_message">Вы уверены, что хотите удалить этот лог?</string>
+    <string name="delete_all_logs">Удалить все логи</string>
+    <string name="delete_all_logs_title">Удаление всех логов</string>
+    <string name="delete_all_logs_message">Вы уверены, что хотите удалить все логи? Это действие нельзя отменить.</string>
+    <string name="delete">Удалить</string>
+    <string name="cancel">Отмена</string>
+</resources>

@@ -129,10 +129,11 @@ fun DateRangeFilter(
     onFromDateChange: (LocalDateTime?) -> Unit,
     onToDateChange: (LocalDateTime?) -> Unit,
     onApply: () -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Text(
             text = stringResource(id = R.string.task_date_filter),
@@ -247,11 +248,12 @@ fun <T> StatusFilterChips(
     selectedItems: Set<T>,
     onSelectionChanged: (Set<T>) -> Unit,
     itemToString: (T) -> String,
+    modifier: Modifier = Modifier,
     allItem: T? = null,
     allItemText: String = stringResource(id = R.string.task_status_all)
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
