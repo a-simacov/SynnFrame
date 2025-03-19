@@ -51,6 +51,7 @@ import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.login.LoginViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogListViewModel
+import com.synngate.synnframe.presentation.ui.main.MainMenuViewModel
 import com.synngate.synnframe.presentation.ui.product.ProductListViewModel
 import com.synngate.synnframe.presentation.ui.products.ProductDetailViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModel
@@ -297,6 +298,12 @@ class AppContainer(private val applicationContext: Context) {
             addClearable(container)
             return container
         }
+
+        override fun createMainMenuScreenContainer(): MainMenuScreenContainer {
+            val container = MainMenuScreenContainerImpl(appContainer)
+            addClearable(container)
+            return container
+        }
     }
 
     /**
@@ -470,6 +477,23 @@ class AppContainer(private val applicationContext: Context) {
                 userUseCases = appContainer.userUseCases,
                 serverUseCases = appContainer.serverUseCases,
                 deviceInfoService = appContainer.deviceInfoService,
+                ioDispatcher = Dispatchers.IO
+            )
+            addClearable(viewModel)
+            return viewModel
+        }
+    }
+
+    inner class MainMenuScreenContainerImpl(
+        private val appContainer: AppContainer
+    ) : BaseGraphContainer(), MainMenuScreenContainer {
+
+        override fun createMainMenuViewModel(): MainMenuViewModel {
+            Timber.d("Creating MainMenuViewModel")
+            val viewModel = MainMenuViewModel(
+                userUseCases = appContainer.userUseCases,
+                taskUseCases = appContainer.taskUseCases,
+                productUseCases = appContainer.productUseCases,
                 ioDispatcher = Dispatchers.IO
             )
             addClearable(viewModel)
