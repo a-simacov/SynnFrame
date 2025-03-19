@@ -50,8 +50,8 @@ import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModelImpl
 import com.synngate.synnframe.presentation.ui.logs.LogListViewModelImpl
 import com.synngate.synnframe.presentation.ui.product.ProductListViewModelImpl
 import com.synngate.synnframe.presentation.ui.products.ProductDetailViewModelImpl
-import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModelImpl
-import com.synngate.synnframe.presentation.ui.server.ServerListViewModelImpl
+import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModel
+import com.synngate.synnframe.presentation.ui.server.ServerListViewModel
 import com.synngate.synnframe.presentation.ui.settings.SettingsViewModelImpl
 import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModelImpl
 import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModelImpl
@@ -301,7 +301,7 @@ class AppContainer(private val applicationContext: Context) {
         override fun createServerListViewModel(): ServerListViewModel {
             Timber.d("Creating ServerListViewModel")
             // Используем новый класс ServerListViewModelImpl с UseCases вместо репозиториев
-            val viewModel = ServerListViewModelImpl(
+            val viewModel = ServerListViewModel(
                 serverUseCases = appContainer.serverUseCases,
                 settingsUseCases = appContainer.settingsUseCases,
                 ioDispatcher = Dispatchers.IO
@@ -313,7 +313,7 @@ class AppContainer(private val applicationContext: Context) {
         override fun createServerDetailViewModel(serverId: Int?): ServerDetailViewModel {
             Timber.d("Creating ServerDetailViewModel for serverId=$serverId")
             // Используем новый класс ServerDetailViewModelImpl с UseCases вместо репозиториев
-            val viewModel = ServerDetailViewModelImpl(
+            val viewModel = ServerDetailViewModel(
                 serverId = serverId,
                 serverUseCases = appContainer.serverUseCases,
                 ioDispatcher = Dispatchers.IO

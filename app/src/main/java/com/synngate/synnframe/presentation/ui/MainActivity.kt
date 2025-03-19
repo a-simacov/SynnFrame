@@ -3,6 +3,7 @@ package com.synngate.synnframe.presentation.ui
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -13,6 +14,7 @@ import androidx.core.view.WindowCompat
 import com.synngate.synnframe.SynnFrameApplication
 import com.synngate.synnframe.presentation.di.AppContainer
 import com.synngate.synnframe.presentation.navigation.AppNavigation
+import com.synngate.synnframe.presentation.navigation.Screen
 import com.synngate.synnframe.presentation.theme.SynnFrameTheme
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import timber.log.Timber
@@ -20,6 +22,11 @@ import timber.log.Timber
 class MainActivity : ComponentActivity() {
 
     private lateinit var appContainer: AppContainer
+
+    companion object {
+        const val EXTRA_SHOW_SERVERS_SCREEN = "extra_show_servers_screen"
+        const val EXTRA_FROM_SPLASH = "extra_from_splash"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,7 +37,17 @@ class MainActivity : ComponentActivity() {
         // Настройка edge-to-edge дисплея
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        Timber.d("MainActivity onCreate")
+        // Определяем начальный экран
+        val showServersScreen = intent.getBooleanExtra(EXTRA_SHOW_SERVERS_SCREEN, true)
+        val fromSplash = intent.getBooleanExtra(EXTRA_FROM_SPLASH, false)
+
+        val startDestination = if (showServersScreen) {
+            Screen.ServerList.route
+        } else {
+            Screen.Login.route
+        }
+
+        Timber.d("MainActivity onCreate, startDestination=$startDestination, fromSplash=$fromSplash")
 
         setContent {
             // Получение темы из настроек
@@ -44,9 +61,18 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     // Основная навигация приложения
-                    AppNavigation(appContainer = appContainer)
+                    AppNavigation(
+                        appContainer = appContainer,
+                        startDestination = startDestination
+                    )
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Очистка ресурсов при необходимости
+        Timber.d("MainActivity onDestroy")
     }
 }

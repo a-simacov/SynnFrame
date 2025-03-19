@@ -3,8 +3,6 @@ package com.synngate.synnframe.presentation.ui.server
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
-import com.synngate.synnframe.presentation.di.ClearableViewModel
-import com.synngate.synnframe.presentation.di.ServerListViewModel
 import com.synngate.synnframe.presentation.ui.server.model.ServerListEvent
 import com.synngate.synnframe.presentation.ui.server.model.ServerListState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
@@ -17,11 +15,11 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import timber.log.Timber
 
-class ServerListViewModelImpl(
+class ServerListViewModel(
     private val serverUseCases: ServerUseCases,
     private val settingsUseCases: SettingsUseCases,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-) : BaseViewModel<ServerListState, ServerListEvent>(ServerListState()), ServerListViewModel {
+) : BaseViewModel<ServerListState, ServerListEvent>(ServerListState()) {
 
     init {
         loadServers()
@@ -37,10 +35,10 @@ class ServerListViewModelImpl(
             updateState { it.copy(isLoading = true) }
 
             try {
-                // Загружаем настройку из SettingsUseCases
+                // Загружаем настройку "Показывать при запуске" из SettingsUseCases
                 val showOnStartup = settingsUseCases.showServersOnStartup.first()
 
-                // Отображаем активный сервер
+                // Получаем активный сервер
                 val activeServer = serverUseCases.getActiveServer().first()
 
                 updateState { state ->
@@ -55,7 +53,7 @@ class ServerListViewModelImpl(
                 updateState { state ->
                     state.copy(
                         isLoading = false,
-                        error = e.message ?: "Unknown error occurred"
+                        error = e.message ?: "Неизвестная ошибка"
                     )
                 }
             }
@@ -81,7 +79,7 @@ class ServerListViewModelImpl(
                 updateState { state ->
                     state.copy(
                         isLoading = false,
-                        error = e.message ?: "Unknown error occurred"
+                        error = e.message ?: "Неизвестная ошибка"
                     )
                 }
             }

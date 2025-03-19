@@ -25,10 +25,17 @@
     <string name="completed">Завершено</string>
     <string name="name">Имя</string>
     <string name="exit_app_confirmation">Вы уверены, что хотите выйти из приложения?</string>
+    <string name="active">Активный</string>
 
     <!-- Splash Screen -->
     <string name="splash_initializing">Инициализация приложения…</string>
     <string name="splash_version">Версия %s</string>
+    <string name="splash_copyright">© 2025 SynnGate</string>
+    <string name="splash_loading_settings">Загрузка настроек...</string>
+    <string name="splash_initializing_db">Инициализация базы данных...</string>
+    <string name="splash_checking_dependencies">Проверка зависимостей...</string>
+    <string name="splash_completed">Инициализация завершена</string>
+    <string name="splash_error">Ошибка инициализации: %s</string>
 
     <!-- Server Screens -->
     <string name="servers_title">Внешние серверы</string>
@@ -50,6 +57,12 @@
     <string name="server_test_successful">Подключение успешно</string>
     <string name="server_test_failed">Ошибка подключения: %s</string>
     <string name="server_fields_required">Все поля обязательны для заполнения</string>
+    <string name="add_server">Добавить сервер</string>
+    <string name="loading_servers">Загрузка списка серверов...</string>
+    <string name="delete_server_title">Удаление сервера</string>
+    <string name="delete_server_message">Вы действительно хотите удалить сервер "%1$s"?</string>
+    <string name="server_deleted">Сервер успешно удален</string>
+    <string name="server_delete_error">Ошибка при удалении сервера</string>
 
     <!-- Login Screen -->
     <string name="login_title">Аутентификация</string>
@@ -168,4 +181,13 @@
     <string name="hide_password">скрыть пароль</string>
     <string name="show_password">показать пароль</string>
     <string name="retry">Повторить</string>
+    <string name="server_connection_success">Подключение успешно</string>
+    <string name="server_connection_error">Ошибка подключения: %s</string>
+    <string name="server_saved_success">Сервер сохранен</string>
+    <string name="testing_connection">Проверяется подключение</string>
+    <string name="saving">Записывается</string>
+    <string name="server_edit_title">Редактирование сервера</string>
+    <string name="server_add_title">Новый сервер</string>
+    <string name="server_connection_settings">Настройки подключения сервера</string>
+    <string name="server_credentials">Учетные данные</string>
 </resources>

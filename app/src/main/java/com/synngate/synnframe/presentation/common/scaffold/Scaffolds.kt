@@ -67,6 +67,7 @@ fun AppScaffold(
     onNavigateBack: (() -> Unit)? = null,
     bottomBar: @Composable () -> Unit = {},
     actions: @Composable () -> Unit = {},
+    floatingActionButton: @Composable () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     isSyncing: Boolean = false,
     lastSyncTime: String? = null,
@@ -214,7 +215,8 @@ fun AppScaffold(
             },
             snackbarHost = {
                 SnackbarHost(hostState = snackbarHostState)
-            }
+            },
+            floatingActionButton = floatingActionButton
         ) { paddingValues ->
             Box(
                 modifier = Modifier

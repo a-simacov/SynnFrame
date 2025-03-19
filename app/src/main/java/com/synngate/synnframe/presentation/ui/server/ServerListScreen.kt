@@ -1,23 +1,39 @@
 package com.synngate.synnframe.presentation.ui.server
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,144 +42,264 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
-import com.synngate.synnframe.presentation.di.ServerListViewModel
-import kotlinx.coroutines.launch
-import timber.log.Timber
+import com.synngate.synnframe.presentation.common.buttons.NavigationButton
+import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
+import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
+import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
+import com.synngate.synnframe.presentation.common.scaffold.LoadingScreenContent
+import com.synngate.synnframe.presentation.ui.server.model.ServerListEvent
 
-/**
- * Экран списка серверов с использованием ViewModel
- */
 @Composable
 fun ServerListScreen(
     viewModel: ServerListViewModel,
     navigateToServerDetail: (Int?) -> Unit,
     navigateToLogin: () -> Unit
 ) {
-    val coroutineScope = rememberCoroutineScope()
+    // Получаем состояние через collectAsState()
+    val state by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    // Заглушка для демонстрации (будет заменена на реальные данные из ViewModel)
-    val showOnStartup by remember { mutableStateOf(true) }
-    var serversExist by remember { mutableStateOf(false) }
+    // Состояние диалога удаления
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var serverToDelete by remember { mutableStateOf<Pair<Int, String>?>(null) }
 
-    Scaffold(
-        topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+    // Сбор одноразовых событий
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is ServerListEvent.NavigateToServerDetail -> navigateToServerDetail(event.serverId)
+                is ServerListEvent.NavigateToLogin -> navigateToLogin()
+                is ServerListEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                is ServerListEvent.ShowDeleteConfirmation -> {
+                    serverToDelete = Pair(event.serverId, event.serverName)
+                    showDeleteDialog = true
+                }
+            }
+        }
+    }
+
+    // Диалог подтверждения удаления
+    if (showDeleteDialog && serverToDelete != null) {
+        ConfirmationDialog(
+            title = stringResource(id = R.string.delete_server_title),
+            message = stringResource(id = R.string.delete_server_message, serverToDelete?.second ?: ""),
+            onConfirm = {
+                serverToDelete?.first?.let { serverId ->
+                    viewModel.deleteServer(serverId)
+                }
+                showDeleteDialog = false
+                serverToDelete = null
+            },
+            onDismiss = {
+                showDeleteDialog = false
+                serverToDelete = null
+            }
+        )
+    }
+
+    AppScaffold(
+        title = stringResource(id = R.string.servers_title),
+        snackbarHostState = snackbarHostState,
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { viewModel.onAddServerClick() },
+                modifier = Modifier.padding(16.dp)
             ) {
-                Text(
-                    text = stringResource(id = R.string.servers_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    textAlign = TextAlign.Center
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = stringResource(id = R.string.add_server)
                 )
             }
         },
-        floatingActionButton = {
-            FloatingActionButton(onClick = {
-                // Навигация к экрану добавления нового сервера
-                navigateToServerDetail(null)
-            }) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(id = R.string.add)
-                )
-            }
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            if (!serversExist) {
-                // Если список серверов пуст
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.servers_empty),
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            } else {
-                // Если есть серверы (временная заглушка)
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "Server 1 (localhost:8080)",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Кнопка для редактирования сервера
-                    Button(
-                        onClick = {
-                            Timber.d("Edit server button clicked")
-                            navigateToServerDetail(1)
-                        }
-                    ) {
-                        Text(stringResource(id = R.string.edit))
-                    }
-                }
-            }
-
-            // Переключатель для настройки "показывать при запуске"
+        bottomBar = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .align(Alignment.BottomCenter),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier.padding(16.dp)
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                // Переключатель "Показывать при запуске"
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     Switch(
-                        checked = showOnStartup,
-                        onCheckedChange = {
-                            coroutineScope.launch {
-                                Timber.d("Show on startup setting changed: $it")
-                                // Будет заменено на вызов метода ViewModel
-                            }
-                        }
+                        checked = state.showServersOnStartup,
+                        onCheckedChange = { viewModel.setShowServersOnStartup(it) }
                     )
-
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = stringResource(id = R.string.server_show_on_startup),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = {
-                        Timber.d("Continue button clicked")
-                        navigateToLogin()
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(id = R.string.continue_button))
+                // Кнопка "Продолжить"
+                NavigationButton(
+                    text = stringResource(id = R.string.continue_button),
+                    onClick = { viewModel.navigateToLogin() },
+                    enabled = state.activeServerId != null
+                )
+            }
+        }
+    ) { paddingValues ->
+        if (state.isLoading) {
+            // Индикатор загрузки
+            LoadingScreenContent(
+                message = stringResource(id = R.string.loading_servers),
+                modifier = Modifier.padding(paddingValues)
+            )
+        } else if (state.servers.isEmpty()) {
+            // Пустой список серверов
+            EmptyScreenContent(
+                message = stringResource(id = R.string.servers_empty),
+                modifier = Modifier.padding(paddingValues)
+            )
+        } else {
+            // Список серверов
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+            ) {
+                items(
+                    items = state.servers,
+                    key = { server -> server.id }
+                ) { server ->
+                    ServerListItem(
+                        name = server.name,
+                        id = server.id.toString(),
+                        host = server.host,
+                        port = server.port.toString(),
+                        isActive = server.isActive,
+                        onClick = { viewModel.onServerClick(server.id) },
+                        onDelete = { viewModel.onDeleteServerClick(server.id, server.name) }
+                    )
                 }
             }
         }
+
+        // Обработка ошибок
+        state.error?.let { error ->
+            LaunchedEffect(error) {
+                snackbarHostState.showSnackbar(error)
+            }
+        }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ServerListItem(
+    name: String,
+    id: String,
+    host: String,
+    port: String,
+    isActive: Boolean,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        initialValue = SwipeToDismissBoxValue.Settled,
+        positionalThreshold = { totalDistance -> totalDistance * 0.5f },
+        confirmValueChange = {
+            if (it == SwipeToDismissBoxValue.EndToStart) {
+                onDelete()
+                true
+            } else {
+                false
+            }
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            val color by animateColorAsState(
+                targetValue = MaterialTheme.colorScheme.errorContainer,
+                label = "Dismiss Background"
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .background(color, MaterialTheme.shapes.medium)
+                    .padding(end = 16.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(id = R.string.delete),
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        },
+        content = {
+            // Карточка сервера
+            Card(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .clickable(onClick = onClick),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isActive)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else
+                        MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    // Имя и ID
+                    Text(
+                        text = "$name ($id)",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (isActive)
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        else
+                            MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Хост и порт
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "$host:$port",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isActive)
+                                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        // Метка активного сервера
+                        if (isActive) {
+                            Text(
+                                text = stringResource(id = R.string.active),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = true
+    )
 }

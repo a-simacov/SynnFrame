@@ -2,7 +2,6 @@ package com.synngate.synnframe.presentation.ui.server
 
 import com.synngate.synnframe.domain.entity.Server
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
-import com.synngate.synnframe.presentation.di.ServerDetailViewModel
 import com.synngate.synnframe.presentation.ui.server.model.ServerDetailEvent
 import com.synngate.synnframe.presentation.ui.server.model.ServerDetailState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
@@ -11,13 +10,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
 
-class ServerDetailViewModelImpl(
+class ServerDetailViewModel(
     private val serverId: Int?,
     private val serverUseCases: ServerUseCases,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<ServerDetailState, ServerDetailEvent>(
     ServerDetailState(serverId = serverId, isEditMode = serverId != null)
-), ServerDetailViewModel {
+) {
 
     init {
         if (serverId != null) {

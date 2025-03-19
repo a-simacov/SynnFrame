@@ -1,5 +1,8 @@
 package com.synngate.synnframe.presentation.di
 
+import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModel
+import com.synngate.synnframe.presentation.ui.server.ServerListViewModel
+
 /**
  * Интерфейс для очистки ресурсов контейнера зависимостей
  */
@@ -141,8 +144,6 @@ interface SettingsScreenContainer : GraphContainer {
 }
 
 // Интерфейсы для ViewModels (заглушки, будут реализованы позже)
-interface ServerListViewModel
-interface ServerDetailViewModel
 interface TaskListViewModel
 interface TaskDetailViewModel
 interface ProductListViewModel
