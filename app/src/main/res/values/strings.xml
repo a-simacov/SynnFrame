@@ -87,6 +87,17 @@
     <string name="main_menu_settings">Настройки</string>
     <string name="main_menu_change_user">Смена пользователя</string>
     <string name="main_menu_close">Закрыть приложение</string>
+    <!-- Главное меню -->
+    <string name="welcome_user">Добро пожаловать, %1$s</string>
+    <string name="refresh">Обновить</string>
+    <string name="sync_data">Синхронизировать</string>
+    <string name="main_functions">Основные функции</string>
+    <string name="tasks">Задания</string>
+    <string name="products">Товары</string>
+    <string name="logs">Логи</string>
+    <string name="settings">Настройки</string>
+    <string name="user_actions">Действия пользователя</string>
+    <string name="change_user">Сменить пользователя</string>
 
     <!-- Tasks Screens -->
     <string name="tasks_title">Задания</string>

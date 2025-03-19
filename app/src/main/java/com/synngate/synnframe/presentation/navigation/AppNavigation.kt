@@ -21,6 +21,7 @@ import com.synngate.synnframe.presentation.di.AppContainer
 import com.synngate.synnframe.presentation.di.NavHostContainer
 import com.synngate.synnframe.presentation.di.ServerListGraphContainer
 import com.synngate.synnframe.presentation.ui.login.LoginScreen
+import com.synngate.synnframe.presentation.ui.main.MainMenuScreen
 import com.synngate.synnframe.presentation.ui.server.ServerDetailScreen
 import com.synngate.synnframe.presentation.ui.server.ServerListScreen
 import timber.log.Timber
@@ -151,20 +152,61 @@ fun AppNavigation(
         }
 
         // Экран главного меню
-        composable(Screen.MainMenu.route) {
-            // Временный заполнитель для главного меню
-            // MainMenuScreen(
-            //     appContainer = appContainer,
-            //     navigateToTasks = { navController.navigate(Screen.TaskList.route) },
-            //     navigateToProducts = { navController.navigate(Screen.ProductList.route) },
-            //     navigateToLogs = { navController.navigate(Screen.LogList.route) },
-            //     navigateToSettings = { navController.navigate(Screen.Settings.route) },
-            //     navigateToLogin = {
-            //         navController.navigate(Screen.Login.route) {
-            //             popUpTo(Screen.MainMenu.route) { inclusive = true }
-            //         }
-            //     }
-            // )
+        composable(Screen.MainMenu.route) { entry ->
+            // Получаем контейнер для экрана главного меню
+            val mainMenuScreenContainer = remember {
+                navHostContainer.createMainMenuScreenContainer()
+            }
+
+            // Отслеживаем жизненный цикл для очистки ресурсов
+            DisposableEffect(lifecycleOwner, entry) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_DESTROY) {
+                        if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                            Timber.d("Main Menu screen destroyed, clearing container")
+                            mainMenuScreenContainer.clear()
+                        }
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            MainMenuScreen(
+                viewModel = mainMenuScreenContainer.createMainMenuViewModel(),
+                navigateToTasks = {
+                    navController.navigate(Screen.TaskList.route) {
+                        // Сохраняем главное меню в бэкстеке для возврата
+                        popUpTo(Screen.MainMenu.route) { inclusive = false }
+                    }
+                },
+                navigateToProducts = {
+                    navController.navigate(Screen.ProductList.route) {
+                        popUpTo(Screen.MainMenu.route) { inclusive = false }
+                    }
+                },
+                navigateToLogs = {
+                    navController.navigate(Screen.LogList.route) {
+                        popUpTo(Screen.MainMenu.route) { inclusive = false }
+                    }
+                },
+                navigateToSettings = {
+                    navController.navigate(Screen.Settings.route) {
+                        popUpTo(Screen.MainMenu.route) { inclusive = false }
+                    }
+                },
+                navigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        // При смене пользователя удаляем главное меню из бэкстека
+                        popUpTo(Screen.MainMenu.route) { inclusive = true }
+                    }
+                },
+                exitApp = {
+                    (context as? Activity)?.finish()
+                }
+            )
         }
 
         // Остальные экраны будут добавлены в следующих этапах реализации

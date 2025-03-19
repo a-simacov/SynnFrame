@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.outlined.Assignment
 import androidx.compose.material.icons.outlined.Inventory
 import androidx.compose.material.icons.outlined.ListAlt
@@ -34,9 +35,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.R
+import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
+import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.main.model.MainMenuEvent
 
 /**
@@ -110,6 +113,9 @@ fun MainMenuScreen(
         currentUser = state.currentUser?.name,
         isSyncing = state.isSyncing,
         lastSyncTime = state.lastSyncTime,
+        notification = state.error?.let {
+            Pair(it, StatusType.ERROR)
+        },
         menuItems = listOf(
             stringResource(id = R.string.refresh) to { viewModel.refreshData() },
             stringResource(id = R.string.sync_data) to { viewModel.syncData() }
@@ -170,6 +176,18 @@ fun MainMenuScreen(
                 icon = Icons.Default.Settings,
                 contentDescription = stringResource(id = R.string.settings)
             )
+
+            // Кнопка синхронизации
+            if (!state.isSyncing) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                ActionButton(
+                    text = stringResource(id = R.string.sync_data),
+                    onClick = { viewModel.syncData() },
+                    icon = Icons.Default.Sync,
+                    contentDescription = stringResource(id = R.string.sync_data),
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
             Divider()
