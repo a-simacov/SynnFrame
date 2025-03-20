@@ -374,4 +374,29 @@
     <string name="last_modified_at">Изменено: %s</string>
     <string name="task_completion">Завершено: %s</string>
     <string name="unknown_product">Неизвестный товар</string>
+
+    <!-- Notification channels -->
+    <string name="web_server_channel_name">Локальный веб-сервер</string>
+    <string name="web_server_channel_description">Уведомления о работе локального веб-сервера</string>
+    <string name="sync_channel_name">Синхронизация</string>
+    <string name="sync_channel_description">Уведомления о процессе синхронизации с внешним сервером</string>
+
+    <!-- Service notifications -->
+    <string name="web_server_notification_title">Локальный веб-сервер запущен</string>
+    <string name="web_server_notification_text">Сервер принимает запросы</string>
+    <string name="sync_notification_title">Синхронизация с сервером</string>
+    <string name="sync_notification_text">Выполняется синхронизация данных</string>
+    <string name="sync_notification_complete">Синхронизация завершена</string>
+
+    <!-- Actions -->
+    <string name="action_stop">Остановить</string>
+
+    <!-- Добавляем новые строки для синхронизации -->
+    <string name="sync_notification_error">Ошибка при синхронизации</string>
+    <string name="sync_notification_ready">Готов к синхронизации</string>
+    <string name="sync_notification_last_sync">Последняя синхронизация: %1$s</string>
+
+    <!-- Для SynchronizationWorker -->
+    <string name="sync_worker_name">Периодическая синхронизация</string>
+    <string name="sync_worker_description">Выполняет синхронизацию данных с сервером</string>
 </resources>

@@ -2,6 +2,7 @@ package com.synngate.synnframe.presentation.ui.settings
 
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.service.LoggingService
+import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.WebServerManager
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
@@ -23,6 +24,7 @@ class SettingsViewModel(
     private val serverUseCases: ServerUseCases,
     private val loggingService: LoggingService,
     private val webServerManager: WebServerManager,
+    private val synchronizationController: SynchronizationController,
     private val updateInstaller: UpdateInstaller,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<SettingsState, SettingsEvent>(SettingsState()) {
@@ -583,6 +585,189 @@ class SettingsViewModel(
                     )
                 }
                 sendEvent(SettingsEvent.ShowSnackbar("Ошибка управления сервером"))
+            }
+        }
+    }
+
+    // Добавляем наблюдение за статусом синхронизации
+    private fun observeSynchronizationState() {
+        viewModelScope.launch {
+            synchronizationController.isRunning.collect { isRunning ->
+                updateState { it.copy(isSyncServiceRunning = isRunning) }
+            }
+        }
+
+        viewModelScope.launch {
+            synchronizationController.syncStatus.collect { status ->
+                updateState { it.copy(syncStatus = status) }
+            }
+        }
+
+        viewModelScope.launch {
+            synchronizationController.lastSyncInfo.collect { info ->
+                updateState { it.copy(lastSyncInfo = info) }
+            }
+        }
+
+        viewModelScope.launch {
+            synchronizationController.periodicSyncInfo.collect { info ->
+                updateState {
+                    it.copy(
+                        periodicSyncEnabled = info.enabled,
+                        syncIntervalSeconds = info.intervalSeconds,
+                        nextScheduledSync = info.nextScheduledSync
+                    )
+                }
+            }
+        }
+    }
+
+    // Метод для запуска/остановки сервиса синхронизации
+    fun toggleSyncService() {
+        launchIO {
+            updateState { it.copy(isLoading = true, error = null) }
+
+            try {
+                val result = synchronizationController.toggleService()
+
+                if (result.isSuccess) {
+                    val newState = result.getOrNull() ?: false
+                    updateState {
+                        it.copy(
+                            isSyncServiceRunning = newState,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
+
+                    val message = if (newState) {
+                        "Сервис синхронизации запущен"
+                    } else {
+                        "Сервис синхронизации остановлен"
+                    }
+                    sendEvent(SettingsEvent.ShowSnackbar(message))
+                } else {
+                    val exception = result.exceptionOrNull()
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            error = "Ошибка управления сервисом синхронизации: ${exception?.message}"
+                        )
+                    }
+                    sendEvent(SettingsEvent.ShowSnackbar("Ошибка управления сервисом синхронизации"))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error toggling synchronization service")
+                updateState {
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка управления сервисом синхронизации: ${e.message}"
+                    )
+                }
+                sendEvent(SettingsEvent.ShowSnackbar("Ошибка управления сервисом синхронизации"))
+            }
+        }
+    }
+
+    // Метод для запуска ручной синхронизации
+    fun startManualSync() {
+        launchIO {
+            updateState { it.copy(isManualSyncing = true, error = null) }
+
+            try {
+                val result = synchronizationController.startManualSync()
+
+                if (result.isSuccess) {
+                    val syncResult = result.getOrNull()
+
+                    if (syncResult != null && syncResult.successful) {
+                        updateState {
+                            it.copy(
+                                isManualSyncing = false,
+                                error = null
+                            )
+                        }
+
+                        val message = "Синхронизация завершена успешно. " +
+                                "Выгружено заданий: ${syncResult.tasksUploadedCount}, " +
+                                "загружено заданий: ${syncResult.tasksDownloadedCount}, " +
+                                "загружено товаров: ${syncResult.productsDownloadedCount}"
+                        sendEvent(SettingsEvent.ShowSnackbar(message))
+                    } else {
+                        updateState {
+                            it.copy(
+                                isManualSyncing = false,
+                                error = "Ошибка синхронизации: ${syncResult?.errorMessage}"
+                            )
+                        }
+                        sendEvent(SettingsEvent.ShowSnackbar("Ошибка синхронизации"))
+                    }
+                } else {
+                    val exception = result.exceptionOrNull()
+                    updateState {
+                        it.copy(
+                            isManualSyncing = false,
+                            error = "Ошибка синхронизации: ${exception?.message}"
+                        )
+                    }
+                    sendEvent(SettingsEvent.ShowSnackbar("Ошибка синхронизации"))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error during manual synchronization")
+                updateState {
+                    it.copy(
+                        isManualSyncing = false,
+                        error = "Ошибка синхронизации: ${e.message}"
+                    )
+                }
+                sendEvent(SettingsEvent.ShowSnackbar("Ошибка синхронизации"))
+            }
+        }
+    }
+
+    // Метод для обновления настроек периодической синхронизации
+    fun updatePeriodicSync(enabled: Boolean, intervalSeconds: Int? = null) {
+        launchIO {
+            updateState { it.copy(isLoading = true, error = null) }
+
+            try {
+                val result = synchronizationController.updatePeriodicSync(enabled, intervalSeconds)
+
+                if (result.isSuccess) {
+                    updateState {
+                        it.copy(
+                            periodicSyncEnabled = enabled,
+                            syncIntervalSeconds = intervalSeconds ?: it.syncIntervalSeconds,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
+
+                    val message = if (enabled) {
+                        "Периодическая синхронизация включена"
+                    } else {
+                        "Периодическая синхронизация отключена"
+                    }
+                    sendEvent(SettingsEvent.ShowSnackbar(message))
+                } else {
+                    val exception = result.exceptionOrNull()
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            error = "Ошибка обновления настроек синхронизации: ${exception?.message}"
+                        )
+                    }
+                    sendEvent(SettingsEvent.ShowSnackbar("Ошибка обновления настроек синхронизации"))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error updating periodic sync settings")
+                updateState {
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка обновления настроек синхронизации: ${e.message}"
+                    )
+                }
+                sendEvent(SettingsEvent.ShowSnackbar("Ошибка обновления настроек синхронизации"))
             }
         }
     }

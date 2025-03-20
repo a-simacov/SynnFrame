@@ -71,6 +71,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.work.runtime.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -124,6 +125,7 @@ dependencies {
     implementation("io.ktor:ktor-server-auth:$ktorVersion")
     implementation("io.ktor:ktor-server-cors:$ktorVersion")
     implementation("io.ktor:ktor-server-status-pages:$ktorVersion")
+    implementation("io.ktor:ktor-server-call-logging:$ktorVersion")
 
     // Kotlin Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
@@ -149,6 +151,8 @@ dependencies {
 
     // Markdown parsing (for enhanced text)
     implementation("io.noties.markwon:core:4.6.2")
+
+    implementation("androidx.work:work-runtime-ktx:2.8.1")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

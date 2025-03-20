@@ -33,6 +33,8 @@ import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
 import com.synngate.synnframe.data.service.LoggingServiceImpl
 import com.synngate.synnframe.data.service.ServerCoordinatorImpl
 import com.synngate.synnframe.data.service.SoundServiceImpl
+import com.synngate.synnframe.data.service.SynchronizationControllerImpl
+import com.synngate.synnframe.data.service.WebServerControllerImpl
 import com.synngate.synnframe.data.service.WebServerManagerStub
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
@@ -45,6 +47,7 @@ import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.service.SoundService
+import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.UpdateInstallerImpl
 import com.synngate.synnframe.domain.service.WebServerManager
@@ -54,6 +57,7 @@ import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
+import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.ui.login.LoginViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogListViewModel
@@ -195,7 +199,7 @@ class AppContainer(private val applicationContext: Context) {
         )
     }
 
-    private val loggingService: LoggingService by lazy {
+    val loggingService: LoggingService by lazy {
         Timber.d("Creating LoggingService")
         LoggingServiceImpl(logRepository)
     }
@@ -233,6 +237,29 @@ class AppContainer(private val applicationContext: Context) {
         SoundServiceImpl(applicationContext)
     }
 
+    // Создание NotificationChannelManager
+    private val notificationChannelManager by lazy {
+        NotificationChannelManager(applicationContext)
+    }
+
+    // Создание WebServerController
+    val webServerController by lazy {
+        WebServerControllerImpl(applicationContext, loggingService)
+    }
+
+    // Создание SynchronizationController
+    // Контроллер синхронизации
+    val synchronizationController: SynchronizationController by lazy {
+        SynchronizationControllerImpl(
+            applicationContext,
+            taskUseCases,
+            productUseCases,
+            appSettingsDataStore,
+            loggingService
+        )
+    }
+
+
     private val serverUseCases by lazy {
         ServerUseCases(serverRepository, serverCoordinator, loggingService)
     }
@@ -255,6 +282,12 @@ class AppContainer(private val applicationContext: Context) {
 
     private val settingsUseCases by lazy {
         SettingsUseCases(settingsRepository, loggingService, applicationContext)
+    }
+
+    // Инициализация каналов уведомлений при создании контейнера
+    init {
+        // Создаем каналы уведомлений при инициализации приложения
+        notificationChannelManager.createNotificationChannels()
     }
 
     fun createNavHostContainer(): NavHostContainer {
@@ -445,6 +478,7 @@ class AppContainer(private val applicationContext: Context) {
                 appContainer.serverUseCases,
                 appContainer.loggingService,
                 appContainer.webServerManager,
+                appContainer.synchronizationController,
                 appContainer.updateInstaller,
                 Dispatchers.IO
             )

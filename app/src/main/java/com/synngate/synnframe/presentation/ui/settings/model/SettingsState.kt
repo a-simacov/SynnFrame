@@ -1,7 +1,9 @@
 package com.synngate.synnframe.presentation.ui.settings.model
 
 import com.synngate.synnframe.domain.entity.Server
+import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.theme.ThemeMode
+import java.time.LocalDateTime
 
 data class SettingsState(
     // Активный сервер
@@ -39,5 +41,14 @@ data class SettingsState(
     val error: String? = null,
 
     // Диалоги
-    val showUpdateConfirmDialog: Boolean = false
+    val showUpdateConfirmDialog: Boolean = false,
+
+    // Поля для сервиса синхронизации
+    val isSyncServiceRunning: Boolean = false,
+    val isManualSyncing: Boolean = false,
+    val syncStatus: SynchronizationController.SyncStatus = SynchronizationController.SyncStatus.IDLE,
+    val lastSyncInfo: SynchronizationController.SyncInfo? = null,
+    val periodicSyncEnabled: Boolean = false,
+    val syncIntervalSeconds: Int = 300, // 5 минут
+    val nextScheduledSync: LocalDateTime? = null
 )
