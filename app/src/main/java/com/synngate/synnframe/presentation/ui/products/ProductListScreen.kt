@@ -97,15 +97,14 @@ fun ProductListScreen(
         }
     }
 
-    // Добавим диалог пакетного сканирования
+    // Фрагмент кода с исправленным вызовом BatchScannerDialog
+// Добавим диалог пакетного сканирования
     if (state.showBatchScannerDialog) {
         BatchScannerDialog(
+            // Теперь функция не должна возвращать значение
             onBarcodeScanned = { barcode ->
-                try {
-                    viewModel.findProductByBarcode(barcode)
-                } catch (e: Exception) {
-                    null
-                }
+                // Запускаем поиск в ViewModel без попытки возвращать результат
+                viewModel.findProductByBarcode(barcode)
             },
             onClose = { viewModel.finishBatchScanning() },
             onDone = { results -> viewModel.processBatchScanResults(results) }

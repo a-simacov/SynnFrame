@@ -376,6 +376,7 @@ class AppContainer(private val applicationContext: Context) {
             Timber.d("Creating ProductListViewModel")
             val viewModel = ProductListViewModel(
                 productUseCases = appContainer.productUseCases,
+                loggingService = appContainer.loggingService,
                 ioDispatcher = Dispatchers.IO,
                 isSelectionMode = isSelectionMode
             )

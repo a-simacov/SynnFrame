@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -53,10 +54,13 @@ data class ScanResult(
 
 /**
  * Диалог для пакетного сканирования товаров
+ *
+ * @param onBarcodeScanned Функция, вызываемая при сканировании штрихкода. Она запускает асинхронный поиск
+ *                         товара и не возвращает результат. Результат будет обработан внутри
  */
 @Composable
 fun BatchScannerDialog(
-    onBarcodeScanned: (String) -> Product?,
+    onBarcodeScanned: (String) -> Unit, // Изменена сигнатура - теперь функция ничего не возвращает
     onClose: () -> Unit,
     onDone: (List<ScanResult>) -> Unit,
     modifier: Modifier = Modifier
@@ -255,21 +259,16 @@ fun BatchScannerDialog(
                                     isSearching = true
                                     lastScannedBarcode = barcode
 
-                                    // Временно отключаем сканер
-                                    isScannerActive = false
+                                    // Вызываем обработчик сканирования, который запустит асинхронный поиск
+                                    onBarcodeScanned(barcode)
 
-                                    // Поиск товара по штрихкоду
-                                    val product = onBarcodeScanned(barcode)
-
-                                    // Добавляем результат сканирования
-                                    scanResults.add(ScanResult(barcode, product))
+                                    // Добавляем запись в список пока без информации о товаре
+                                    // Продукт будет null, пока не получим результат поиска
+                                    scanResults.add(ScanResult(barcode, null))
 
                                     // Сбрасываем состояние
                                     isSearching = false
                                     lastScannedBarcode = null
-
-                                    // Снова включаем сканер
-                                    isScannerActive = true
                                 }
                             },
                             modifier = Modifier.fillMaxSize()

@@ -31,7 +31,8 @@ fun ProductListItem(
     product: Product,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isSelected: Boolean = false
+    isSelected: Boolean = false,
+    isSelectionMode: Boolean = false // Добавляем параметр isSelectionMode
 ) {
     Card(
         modifier = modifier
