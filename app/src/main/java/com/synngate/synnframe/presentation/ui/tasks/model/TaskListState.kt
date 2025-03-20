@@ -45,17 +45,3 @@ data class TaskListState(
     // Общее количество заданий
     val tasksCount: Int = 0
 )
-
-/**
- * События для экрана списка заданий
- */
-sealed class TaskListEvent {
-    // Навигация к экрану деталей задания
-    data class NavigateToTaskDetail(val taskId: String) : TaskListEvent()
-
-    // Показать снэкбар с сообщением
-    data class ShowSnackbar(val message: String) : TaskListEvent()
-
-    // Показать диалог выбора даты для фильтра
-    data class ShowDatePicker(val isFromDate: Boolean, val currentDate: LocalDateTime?) : TaskListEvent()
-}
