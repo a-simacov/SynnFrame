@@ -263,4 +263,34 @@ class TaskUseCases(
             Result.failure(e)
         }
     }
+
+    /**
+     * Добавляет новое задание
+     * @param task Задание для добавления
+     * @return Результат операции
+     */
+    suspend fun addTask(task: Task): Result<Unit> {
+        return try {
+            // Проверяем, что задание имеет валидные данные
+            if (task.id.isBlank()) {
+                return Result.failure(IllegalArgumentException("Task ID cannot be empty"))
+            }
+
+            if (task.name.isBlank()) {
+                return Result.failure(IllegalArgumentException("Task name cannot be empty"))
+            }
+
+            // Добавляем задание через репозиторий
+            taskRepository.addTask(task)
+
+            // Логируем операцию
+            loggingService.logInfo("Добавлено новое задание: ${task.name} (${task.id})")
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error adding task")
+            loggingService.logError("Ошибка при добавлении задания: ${e.message}")
+            Result.failure(e)
+        }
+    }
 }

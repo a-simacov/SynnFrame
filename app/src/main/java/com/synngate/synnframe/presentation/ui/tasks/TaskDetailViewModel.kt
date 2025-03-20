@@ -3,9 +3,13 @@ package com.synngate.synnframe.presentation.ui.tasks
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.TaskFactLine
 import com.synngate.synnframe.domain.entity.TaskStatus
+import com.synngate.synnframe.domain.service.SoundService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
+import com.synngate.synnframe.presentation.ui.products.components.ScanResult
+import com.synngate.synnframe.presentation.ui.tasks.model.FactLineDialogState
+import com.synngate.synnframe.presentation.ui.tasks.model.ScanBarcodeDialogState
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailEvent
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailState
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskLineItem
@@ -21,8 +25,11 @@ class TaskDetailViewModel(
     private val taskUseCases: TaskUseCases,
     private val productUseCases: ProductUseCases,
     private val userUseCases: UserUseCases,
+    private val soundService: SoundService,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<TaskDetailState, TaskDetailEvent>(TaskDetailState(taskId = taskId)) {
+
+    private val scannedBarcodeCache = mutableMapOf<String, Product?>()
 
     init {
         loadTask()
@@ -32,6 +39,7 @@ class TaskDetailViewModel(
      * Загружает задание и его детали
      */
     fun loadTask() {
+        scannedBarcodeCache.clear()
         launchIO {
             updateState { it.copy(isLoading = true) }
 
@@ -41,14 +49,8 @@ class TaskDetailViewModel(
                 if (task != null) {
                     // Получаем информацию о продуктах для строк плана и факта
                     val productIds = task.planLines.map { it.productId }.toSet()
-                    val products = mutableMapOf<String, Product>()
-
-                    for (productId in productIds) {
-                        val product = productUseCases.getProductById(productId)
-                        if (product != null) {
-                            products[productId] = product
-                        }
-                    }
+                    val productsList = productUseCases.getProductsByIds(productIds)
+                    val products = productsList.associateBy { it.id }
 
                     // Комбинируем строки плана и факта
                     val taskLines = task.planLines.map { planLine ->
@@ -116,81 +118,12 @@ class TaskDetailViewModel(
 
         // Если введено достаточно символов для поиска, обрабатываем как штрихкод
         if (query.length >= MIN_BARCODE_LENGTH) {
-            processBarcode(query)
+            processScanResult(query)
         }
     }
 
     companion object {
         private const val MIN_BARCODE_LENGTH = 8 // Минимальная длина штрихкода для автоматического поиска
-    }
-
-    /**
-     * Обрабатывает сканированный штрихкод
-     */
-    fun processBarcode(barcode: String) {
-        if (barcode.isBlank()) {
-            return
-        }
-
-        val task = uiState.value.task ?: return
-        if (task.status != TaskStatus.IN_PROGRESS) {
-            return
-        }
-
-        launchIO {
-            try {
-                // Поиск товара по штрихкоду
-                val product = productUseCases.findProductByBarcode(barcode)
-
-                if (product != null) {
-                    // Проверяем, есть ли товар в плане задания
-                    val isInPlan = task.planLines.any { it.productId == product.id }
-
-                    if (isInPlan) {
-                        // Находим строку факта для этого товара или создаем новую
-                        val factLine = task.factLines.find { it.productId == product.id }
-                            ?: TaskFactLine(
-                                id = UUID.randomUUID().toString(),
-                                taskId = task.id,
-                                productId = product.id,
-                                quantity = 0f
-                            )
-
-                        updateState { state ->
-                            state.copy(
-                                scannedBarcode = barcode,
-                                scannedProduct = product,
-                                selectedFactLine = factLine,
-                                isFactLineDialogVisible = true
-                            )
-                        }
-
-                        sendEvent(TaskDetailEvent.ShowFactLineDialog(factLine))
-                    } else {
-                        updateState { state ->
-                            state.copy(
-                                scannedBarcode = barcode,
-                                scannedProduct = product
-                            )
-                        }
-
-                        sendEvent(TaskDetailEvent.ShowSnackbar("Товар '${product.name}' не входит в план задания"))
-                    }
-                } else {
-                    updateState { state ->
-                        state.copy(
-                            scannedBarcode = barcode,
-                            scannedProduct = null
-                        )
-                    }
-
-                    sendEvent(TaskDetailEvent.ShowSnackbar("Товар с штрихкодом '$barcode' не найден"))
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error processing barcode")
-                sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка обработки штрихкода: ${e.message}"))
-            }
-        }
     }
 
     /**
@@ -428,6 +361,36 @@ class TaskDetailViewModel(
     }
 
     /**
+     * Обновляет значение дополнительного количества в диалоге строки факта
+     */
+    fun updateFactLineAdditionalQuantity(value: String) {
+        updateState { it.copy(
+            factLineDialogState = it.factLineDialogState.copy(
+                additionalQuantity = value,
+                isError = false
+            )
+        ) }
+    }
+
+    /**
+     * Устанавливает состояние ошибки ввода количества
+     */
+    fun setFactLineInputError(isError: Boolean) {
+        updateState { it.copy(
+            factLineDialogState = it.factLineDialogState.copy(isError = isError)
+        ) }
+    }
+
+    /**
+     * Очищает состояние диалога строки факта
+     */
+    fun resetFactLineDialogState() {
+        updateState { it.copy(
+            factLineDialogState = FactLineDialogState()
+        ) }
+    }
+
+    /**
      * Выполняет пакетное обновление строк факта
      */
     fun batchUpdateFactLines(updates: List<Pair<TaskFactLine, Float>>) {
@@ -467,8 +430,16 @@ class TaskDetailViewModel(
             updateState { it.copy(isProcessing = true, scannedBarcode = barcode) }
 
             try {
-                // Поиск товара по штрихкоду
-                val product = productUseCases.findProductByBarcode(barcode)
+                // Проверяем кэш перед поиском в базе
+                val product = if (scannedBarcodeCache.containsKey(barcode)) {
+                    // Используем кэшированное значение
+                    scannedBarcodeCache[barcode]
+                } else {
+                    // Ищем товар по штрихкоду и кэшируем результат
+                    val foundProduct = productUseCases.findProductByBarcode(barcode)
+                    scannedBarcodeCache[barcode] = foundProduct
+                    foundProduct
+                }
 
                 if (product != null) {
                     val task = uiState.value.task
@@ -501,7 +472,7 @@ class TaskDetailViewModel(
                         }
 
                         // Звуковое оповещение об успешном сканировании (можно реализовать позже)
-                        // playSuccessSound()
+                        soundService.playSuccessSound()
                     } else {
                         // Если товара нет в плане, показываем сообщение
                         sendEvent(TaskDetailEvent.ShowSnackbar(
@@ -516,7 +487,7 @@ class TaskDetailViewModel(
                         }
 
                         // Звуковое оповещение об ошибке (можно реализовать позже)
-                        // playErrorSound()
+                        soundService.playErrorSound()
                     }
                 } else {
                     // Если товар не найден, показываем сообщение
@@ -532,7 +503,7 @@ class TaskDetailViewModel(
                     }
 
                     // Звуковое оповещение об ошибке (можно реализовать позже)
-                    // playErrorSound()
+                    soundService.playErrorSound()
                 }
 
                 // Логируем длительность операции сканирования для аналитики
@@ -545,6 +516,94 @@ class TaskDetailViewModel(
                 updateState { it.copy(isProcessing = false) }
             }
         }
+    }
+
+    // В TaskDetailViewModel добавить метод для обработки пакетного сканирования
+    // Затем можно добавить кнопку "Пакетное сканирование" в TaskDetailScreen и запускать этот процесс.
+    fun processBatchScanResults(results: List<ScanResult>) {
+        if (results.isEmpty()) return
+
+        // Формируем список обновлений для строк факта
+        val updates = mutableListOf<Pair<TaskFactLine, Float>>()
+
+        results.forEach { result ->
+            if (result.product != null) {
+                val task = uiState.value.task ?: return
+                val isInPlan = task.isProductInPlan(result.product.id)
+
+                if (isInPlan) {
+                    // Находим или создаем строку факта
+                    val factLine = task.getFactLineByProductId(result.product.id)
+                        ?: TaskFactLine(
+                            id = UUID.randomUUID().toString(),
+                            taskId = task.id,
+                            productId = result.product.id,
+                            quantity = 0f
+                        )
+
+                    // Добавляем к существующему количеству 1 (или другое значение)
+                    val newQuantity = factLine.quantity + 1f
+                    updates.add(Pair(factLine, newQuantity))
+                }
+            }
+        }
+
+        // Применяем все обновления за одну операцию
+        if (updates.isNotEmpty()) {
+            batchUpdateFactLines(updates)
+        }
+    }
+
+    /**
+     * Обновляет значение дополнительного количества в диалоге сканирования
+     */
+    fun updateScanDialogAdditionalQuantity(value: String) {
+        updateState { it.copy(
+            scanBarcodeDialogState = it.scanBarcodeDialogState.copy(
+                additionalQuantity = value,
+                isError = false
+            )
+        ) }
+    }
+
+    /**
+     * Устанавливает состояние ошибки ввода количества в диалоге сканирования
+     */
+    fun setScanDialogInputError(isError: Boolean) {
+        updateState { it.copy(
+            scanBarcodeDialogState = it.scanBarcodeDialogState.copy(isError = isError)
+        ) }
+    }
+
+    /**
+     * Активирует/деактивирует сканер в диалоге
+     */
+    fun toggleScannerActive(active: Boolean) {
+        updateState { it.copy(
+            scanBarcodeDialogState = it.scanBarcodeDialogState.copy(isScannerActive = active)
+        ) }
+    }
+
+    /**
+     * Обновляет последний отсканированный штрихкод
+     */
+    fun updateLastScannedBarcode(barcode: String?) {
+        updateState { it.copy(
+            scanBarcodeDialogState = it.scanBarcodeDialogState.copy(lastScannedBarcode = barcode)
+        ) }
+    }
+
+    /**
+     * Сбрасывает состояние диалога сканирования
+     */
+    fun resetScanBarcodeDialogState() {
+        updateState { it.copy(
+            scanBarcodeDialogState = ScanBarcodeDialogState()
+        ) }
+    }
+
+    fun navigateToProductList() {
+        sendEvent(TaskDetailEvent.NavigateToProductsList)
     }
 
     /**

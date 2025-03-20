@@ -27,6 +27,7 @@ import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.TaskFactLine
 import com.synngate.synnframe.presentation.common.inputs.QuantityTextField
+import com.synngate.synnframe.presentation.ui.tasks.model.FactLineDialogState
 import com.synngate.synnframe.presentation.util.formatQuantity
 
 /**
@@ -36,12 +37,15 @@ import com.synngate.synnframe.presentation.util.formatQuantity
 fun TaskFactLineDialog(
     factLine: TaskFactLine,
     product: Product?,
-    onQuantityChange: (TaskFactLine, String) -> Unit,
+    dialogState: FactLineDialogState,
+    onQuantityChange: (String) -> Unit,
+    onError: (Boolean) -> Unit,
+    onApply: (TaskFactLine, String) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var additionalQuantity by remember { mutableStateOf("") }
-    var isError by remember { mutableStateOf(false) }
+    val additionalQuantity = dialogState.additionalQuantity
+    val isError = dialogState.isError
     val errorText = stringResource(R.string.invalid_quantity)
 
     Dialog(onDismissRequest = onDismiss) {
@@ -82,11 +86,11 @@ fun TaskFactLineDialog(
 
                     // Добавляемое количество
                     Column(modifier = Modifier.weight(2f)) {
+                        // Используем функции из ViewModel
                         QuantityTextField(
                             value = additionalQuantity,
                             onValueChange = {
-                                additionalQuantity = it
-                                isError = false
+                                onQuantityChange(it)
                             },
                             label = stringResource(R.string.add_quantity),
                             isError = isError,
@@ -131,18 +135,19 @@ fun TaskFactLineDialog(
                             try {
                                 val addValue = additionalQuantity.toFloatOrNull()
                                 if (addValue != null && addValue != 0f) {
-                                    onQuantityChange(factLine, additionalQuantity)
+                                    onApply(factLine, additionalQuantity)
                                 } else {
-                                    isError = true
+                                    onError(true)
                                 }
                             } catch (e: Exception) {
-                                isError = true
+                                onError(true)
                             }
                         },
                         enabled = additionalQuantity.isNotEmpty()
                     ) {
                         Text(text = stringResource(R.string.apply))
                     }
+
                 }
             }
         }

@@ -15,4 +15,6 @@ sealed class TaskListEvent {
 
     // Показать диалог выбора даты для фильтра
     data class ShowDatePicker(val isFromDate: Boolean, val currentDate: LocalDateTime?) : TaskListEvent()
+
+    data object CreateTask : TaskListEvent()
 }

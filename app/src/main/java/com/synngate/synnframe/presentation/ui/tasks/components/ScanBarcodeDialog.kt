@@ -1,5 +1,7 @@
 package com.synngate.synnframe.presentation.ui.tasks.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,12 +13,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,7 +36,9 @@ import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.TaskFactLine
 import com.synngate.synnframe.presentation.common.inputs.QuantityTextField
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView
+import com.synngate.synnframe.presentation.ui.tasks.model.ScanBarcodeDialogState
 import com.synngate.synnframe.presentation.util.formatQuantity
+import kotlinx.coroutines.delay
 
 /**
  * Диалог сканирования штрихкодов для заданий
@@ -45,11 +51,16 @@ fun ScanBarcodeDialog(
     scannedProduct: Product?,
     selectedFactLine: TaskFactLine?,
     scannedBarcode: String?,
+    dialogState: ScanBarcodeDialogState,
+    onQuantityInputChange: (String) -> Unit,
+    onQuantityError: (Boolean) -> Unit,
+    onScannerActiveChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var additionalQuantity by remember { mutableStateOf("") }
-    var isError by remember { mutableStateOf(false) }
-    val errorText = stringResource(R.string.invalid_quantity)
+    // Используем состояние из ViewModel вместо remember
+    val additionalQuantity = dialogState.additionalQuantity
+    val isError = dialogState.isError
+    val isScannerActive = dialogState.isScannerActive
 
     Dialog(
         onDismissRequest = onClose,
@@ -131,12 +142,11 @@ fun ScanBarcodeDialog(
                                 QuantityTextField(
                                     value = additionalQuantity,
                                     onValueChange = {
-                                        additionalQuantity = it
-                                        isError = false
+                                        onQuantityInputChange(it)
                                     },
                                     label = stringResource(R.string.add_quantity),
                                     isError = isError,
-                                    errorText = if (isError) errorText else null,
+                                    errorText = if (isError) stringResource(R.string.invalid_quantity) else null,
                                     allowNegative = true
                                 )
                             }
@@ -166,12 +176,13 @@ fun ScanBarcodeDialog(
                                     val addValue = additionalQuantity.toFloatOrNull()
                                     if (addValue != null && addValue != 0f) {
                                         onQuantityChange(selectedFactLine, additionalQuantity)
-                                        additionalQuantity = ""
+                                        // Временно отключаем сканер
+                                        onScannerActiveChange(false)
                                     } else {
-                                        isError = true
+                                        onQuantityError(true)
                                     }
                                 } catch (e: Exception) {
-                                    isError = true
+                                    onQuantityError(true)
                                 }
                             },
                             enabled = additionalQuantity.isNotEmpty(),
@@ -185,12 +196,34 @@ fun ScanBarcodeDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Область сканирования
-                BarcodeScannerView(
-                    onBarcodeDetected = onBarcodeScanned,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(0.6f)
-                )
+                if (isScannerActive) {
+                    BarcodeScannerView(
+                        onBarcodeDetected = onBarcodeScanned,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(0.6f)
+                    )
+                } else {
+                    // Заглушка пока сканер отключен
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(0.6f)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                shape = MaterialTheme.shapes.medium
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+
+                    // Автоматически активируем сканер через некоторое время
+                    LaunchedEffect(Unit) {
+                        delay(1000)
+                        onScannerActiveChange(true)
+                    }
+                }
             }
         }
     }

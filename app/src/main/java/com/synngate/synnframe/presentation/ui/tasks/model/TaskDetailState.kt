@@ -62,5 +62,9 @@ data class TaskDetailState(
     val error: String? = null,
 
     // Признак доступности изменения задания
-    val isEditable: Boolean = false
+    val isEditable: Boolean = false,
+
+    val factLineDialogState: FactLineDialogState = FactLineDialogState(),
+
+    val scanBarcodeDialogState: ScanBarcodeDialogState = ScanBarcodeDialogState(),
 )

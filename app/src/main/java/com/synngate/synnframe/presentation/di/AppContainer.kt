@@ -32,6 +32,7 @@ import com.synngate.synnframe.data.service.ClipboardServiceImpl
 import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
 import com.synngate.synnframe.data.service.LoggingServiceImpl
 import com.synngate.synnframe.data.service.ServerCoordinatorImpl
+import com.synngate.synnframe.data.service.SoundServiceImpl
 import com.synngate.synnframe.data.service.WebServerManagerStub
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
@@ -43,6 +44,7 @@ import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
+import com.synngate.synnframe.domain.service.SoundService
 import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.UpdateInstallerImpl
 import com.synngate.synnframe.domain.service.WebServerManager
@@ -227,6 +229,10 @@ class AppContainer(private val applicationContext: Context) {
         UpdateInstallerImpl(applicationContext, loggingService)
     }
 
+    private val soundService: SoundService by lazy {
+        SoundServiceImpl(applicationContext)
+    }
+
     private val serverUseCases by lazy {
         ServerUseCases(serverRepository, serverCoordinator, loggingService)
     }
@@ -361,6 +367,7 @@ class AppContainer(private val applicationContext: Context) {
                 taskUseCases = appContainer.taskUseCases,
                 productUseCases = appContainer.productUseCases,
                 userUseCases = appContainer.userUseCases,
+                soundService = soundService,
                 ioDispatcher = Dispatchers.IO
             )
             addClearable(viewModel)

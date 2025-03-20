@@ -8,8 +8,10 @@ import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.api.ProductApi
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.repository.ProductRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 /**
  * Имплементация репозитория товаров
@@ -33,6 +35,14 @@ class ProductRepositoryImpl(
 
     override suspend fun getProductById(id: String): Product? {
         return productDao.getProductWithDetailsById(id)?.toDomainModel()
+    }
+
+    override suspend fun getProductsByIds(ids: Set<String>): List<Product> {
+        return withContext(Dispatchers.IO) {
+            // Получаем список продуктов по одному, используя существующий метод
+            ids.mapNotNull { productId -> getProductById(productId) }
+        }
+
     }
 
     override suspend fun findProductByBarcode(barcode: String): Product? {

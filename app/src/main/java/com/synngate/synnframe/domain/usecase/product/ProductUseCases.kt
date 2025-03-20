@@ -27,6 +27,13 @@ class ProductUseCases(
     suspend fun getProductById(id: String): Product? =
         productRepository.getProductById(id)
 
+    /**
+     * Получение товаров по списку идентификаторов
+     */
+    suspend fun getProductsByIds(ids: Set<String>): List<Product> {
+        return productRepository.getProductsByIds(ids)
+    }
+
     suspend fun findProductByBarcode(barcode: String): Product? =
         productRepository.findProductByBarcode(barcode)
 

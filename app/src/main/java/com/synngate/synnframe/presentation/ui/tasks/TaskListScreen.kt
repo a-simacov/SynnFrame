@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.DropdownMenu
@@ -73,8 +74,7 @@ fun TaskListScreen(
     // Форматтер для дат
     val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
 
-    // Меню с типами заданий
-    var showTypeMenu by remember { mutableStateOf(false) }
+    val showTypeMenu = state.showTypeMenu
 
     // В TaskListScreen добавим сохранение состояния фильтров
     var showFilterPanel by rememberSaveable { mutableStateOf(state.isFilterPanelVisible) }
@@ -99,6 +99,10 @@ fun TaskListScreen(
                 is TaskListEvent.ShowDatePicker -> {
                     // В реальном приложении здесь был бы вызов диалога выбора даты
                     // На данном этапе мы просто игнорируем это событие
+                }
+
+                is TaskListEvent.CreateTask -> {
+                    viewModel.createNewTask()
                 }
             }
         }
@@ -128,12 +132,11 @@ fun TaskListScreen(
             }
         },
         floatingActionButton = {
-            // Кнопка для создания нового задания (можно добавить позже)
             ExtendedFloatingActionButton(
-                onClick = { /* Создание нового задания */ },
+                onClick = { viewModel.createNewTask() },
                 icon = {
                     Icon(
-                        imageVector = Icons.Default.DateRange,
+                        imageVector = Icons.Default.Add,
                         contentDescription = null
                     )
                 },
@@ -212,7 +215,7 @@ fun TaskListScreen(
                         )
 
                         OutlinedButton(
-                            onClick = { showTypeMenu = true }
+                            onClick = { viewModel.toggleTypeMenu() }
                         ) {
                             Text(
                                 text = when (state.selectedTypeFilter) {
@@ -226,13 +229,13 @@ fun TaskListScreen(
                         // Выпадающее меню для выбора типа задания
                         DropdownMenu(
                             expanded = showTypeMenu,
-                            onDismissRequest = { showTypeMenu = false }
+                            onDismissRequest = { viewModel.closeTypeMenu() }
                         ) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(id = R.string.all_types)) },
                                 onClick = {
                                     viewModel.updateTypeFilter(null)
-                                    showTypeMenu = false
+                                    viewModel.closeTypeMenu()
                                 }
                             )
 
@@ -240,7 +243,7 @@ fun TaskListScreen(
                                 text = { Text(stringResource(id = R.string.task_type_receipt)) },
                                 onClick = {
                                     viewModel.updateTypeFilter(TaskType.RECEIPT)
-                                    showTypeMenu = false
+                                    viewModel.closeTypeMenu()
                                 }
                             )
 
@@ -248,7 +251,7 @@ fun TaskListScreen(
                                 text = { Text(stringResource(id = R.string.task_type_pick)) },
                                 onClick = {
                                     viewModel.updateTypeFilter(TaskType.PICK)
-                                    showTypeMenu = false
+                                    viewModel.closeTypeMenu()
                                 }
                             )
                         }

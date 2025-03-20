@@ -21,6 +21,11 @@ interface ProductRepository {
     suspend fun getProductById(id: String): Product?
 
     /**
+     * Получение товаров по списку идентификаторов
+     */
+    suspend fun getProductsByIds(ids: Set<String>): List<Product>
+
+    /**
      * Поиск товара по штрихкоду
      */
     suspend fun findProductByBarcode(barcode: String): Product?

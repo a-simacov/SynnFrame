@@ -51,6 +51,7 @@ import com.synngate.synnframe.presentation.ui.tasks.components.ScanBarcodeDialog
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskFactLineDialog
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskLineItemRow
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailEvent
+import com.synngate.synnframe.presentation.util.formatQuantity
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -124,14 +125,18 @@ fun TaskDetailScreen(
     // Диалог сканирования штрихкодов
     if (state.isScanDialogVisible) {
         ScanBarcodeDialog(
-            onBarcodeScanned = { barcode -> viewModel.processBarcode(barcode) },
+            onBarcodeScanned = { barcode -> viewModel.processScanResult(barcode) },
             onQuantityChange = { factLine, additionalQuantity ->
                 viewModel.applyQuantityChange(factLine, additionalQuantity)
             },
             onClose = { viewModel.closeDialog() },
             scannedProduct = state.scannedProduct,
             selectedFactLine = state.selectedFactLine,
-            scannedBarcode = state.scannedBarcode
+            scannedBarcode = state.scannedBarcode,
+            dialogState = state.scanBarcodeDialogState,
+            onQuantityInputChange = { viewModel.updateScanDialogAdditionalQuantity(it) },
+            onQuantityError = { viewModel.setScanDialogInputError(it) },
+            onScannerActiveChange = { viewModel.toggleScannerActive(it) }
         )
     }
 
@@ -141,7 +146,10 @@ fun TaskDetailScreen(
         TaskFactLineDialog(
             factLine = state.selectedFactLine!!,
             product = product,
-            onQuantityChange = { factLine, additionalQuantity ->
+            dialogState = state.factLineDialogState,
+            onQuantityChange = { viewModel.updateFactLineAdditionalQuantity(it) },
+            onError = { viewModel.setFactLineInputError(it) },
+            onApply = { factLine, additionalQuantity ->
                 viewModel.applyQuantityChange(factLine, additionalQuantity)
             },
             onDismiss = { viewModel.closeDialog() }
@@ -323,7 +331,7 @@ fun TaskDetailScreen(
                 BarcodeTextField(
                     value = state.searchQuery,
                     onValueChange = { viewModel.onSearchQueryChanged(it) },
-                    onBarcodeScanned = { viewModel.processBarcode(it) },
+                    onBarcodeScanned = { viewModel.processScanResult(it) },
                     label = stringResource(id = R.string.scan_or_enter_barcode),
                     enabled = state.isEditable,
                     modifier = Modifier.fillMaxWidth()
@@ -468,14 +476,5 @@ fun TaskDetailScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
-    }
-}
-
-// Функция для форматирования числового значения
-private fun formatQuantity(quantity: Float): String {
-    return if (quantity == quantity.toInt().toFloat()) {
-        quantity.toInt().toString()
-    } else {
-        "%.3f".format(quantity)
     }
 }

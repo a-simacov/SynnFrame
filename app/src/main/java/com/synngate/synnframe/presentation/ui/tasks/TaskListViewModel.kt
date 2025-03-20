@@ -1,5 +1,7 @@
 package com.synngate.synnframe.presentation.ui.tasks
 
+import com.synngate.synnframe.domain.entity.CreationPlace
+import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.entity.TaskType
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.first
 import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 class TaskListViewModel(
     private val taskUseCases: TaskUseCases,
@@ -166,6 +169,14 @@ class TaskListViewModel(
         updateState { it.copy(isFilterPanelVisible = !it.isFilterPanelVisible) }
     }
 
+    fun toggleTypeMenu() {
+        updateState { it.copy(showTypeMenu = !it.showTypeMenu) }
+    }
+
+    fun closeTypeMenu() {
+        updateState { it.copy(showTypeMenu = false) }
+    }
+
     /**
      * Обрабатывает нажатие на задание
      */
@@ -204,6 +215,55 @@ class TaskListViewModel(
 
                 updateState { it.copy(isSyncing = false) }
                 sendEvent(TaskListEvent.ShowSnackbar("Ошибка синхронизации: ${e.message}"))
+            }
+        }
+    }
+
+    /**
+     * Создает новое задание
+     */
+    fun createNewTask() {
+        launchIO {
+            updateState { it.copy(isProcessing = true) }
+
+            try {
+                // Получаем текущего пользователя
+                val currentUser = userUseCases.getCurrentUser().first()
+
+                if (currentUser == null) {
+                    sendEvent(TaskListEvent.ShowSnackbar("Для создания задания необходимо авторизоваться"))
+                    updateState { it.copy(isProcessing = false) }
+                    return@launchIO
+                }
+
+                // Создаем новое задание с базовыми параметрами
+                val taskId = UUID.randomUUID().toString()
+                val newTask = Task(
+                    id = taskId,
+                    name = "Новое задание",
+                    type = TaskType.RECEIPT, // По умолчанию приёмка
+                    barcode = "NEW-$taskId",
+                    createdAt = LocalDateTime.now(),
+                    creationPlace = CreationPlace.APP,
+                    executorId = currentUser.id,
+                    status = TaskStatus.TO_DO
+                )
+
+                // Добавляем задание
+                val result = taskUseCases.addTask(newTask)
+
+                if (result.isSuccess) {
+                    sendEvent(TaskListEvent.ShowSnackbar("Задание успешно создано"))
+                    sendEvent(TaskListEvent.NavigateToTaskDetail(newTask.id))
+                } else {
+                    val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                    sendEvent(TaskListEvent.ShowSnackbar("Ошибка создания задания: $error"))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error creating task")
+                sendEvent(TaskListEvent.ShowSnackbar("Ошибка создания задания: ${e.message}"))
+            } finally {
+                updateState { it.copy(isProcessing = false) }
             }
         }
     }

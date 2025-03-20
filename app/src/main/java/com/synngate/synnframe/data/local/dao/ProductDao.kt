@@ -39,6 +39,9 @@ interface ProductDao {
     @Query("SELECT * FROM products WHERE id = :id")
     suspend fun getProductWithDetailsById(id: String): ProductWithUnits?
 
+    @Query("SELECT * FROM products WHERE id IN (:ids)")
+    suspend fun getProductsByIds(ids: Set<String>): List<ProductEntity>
+
     /**
      * Поиск товара по штрихкоду
      */

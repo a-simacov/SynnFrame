@@ -43,5 +43,9 @@ data class TaskListState(
     val lastSyncTime: String? = null,
 
     // Общее количество заданий
-    val tasksCount: Int = 0
+    val tasksCount: Int = 0,
+
+    val showTypeMenu: Boolean = false,
+
+    val isProcessing: Boolean = false,
 )
