@@ -136,14 +136,77 @@
     <string name="product_detail_title">Товар</string>
     <string name="product_search_hint">Поиск товаров</string>
     <string name="product_name">Наименование</string>
-    <string name="product_article">Артикул</string>
     <string name="product_accounting_model">Модель учета</string>
     <string name="product_accounting_model_batch">По партиям</string>
     <string name="product_accounting_model_quantity">По количеству</string>
-    <string name="product_main_unit">Основная единица измерения</string>
     <string name="product_units">Единицы измерения</string>
     <string name="product_barcode">Штрихкод</string>
     <string name="product_barcodes">Штрихкоды</string>
+    <!-- Товары -->
+    <string name="product_selection_mode">Режим выбора товара</string>
+    <string name="search_products">Поиск товаров</string>
+    <string name="search_products_hint">Введите название или артикул</string>
+    <string name="products_count">Отображается %1$d из %2$d товаров</string>
+    <string name="no_products">Список товаров пуст</string>
+    <string name="no_products_with_filter">По вашему запросу ничего не найдено</string>
+    <string name="sync_products">Синхронизировать товары</string>
+    <string name="loading_products">Загрузка товаров...</string>
+    <string name="product_article">Артикул: %s</string>
+    <string name="product_main_unit">Ед.: %s</string>
+    <string name="accounting_model_batch">По партиям и количеству</string>
+    <string name="accounting_model_qty">Только по количеству</string>
+    <string name="filter_accounting_model">Фильтр по модели учета</string>
+    <string name="all_models">Все модели</string>
+    <string name="scan_barcode">Сканировать штрихкод</string>
+    <string name="sort">Сортировка</string>
+    <string name="show_filters">Показать фильтры</string>
+    <string name="hide_filters">Скрыть фильтры</string>
+    <string name="reset_filters">Сбросить фильтры</string>
+
+    <!-- Экран деталей товара -->
+    <string name="product_details">Информация о товаре</string>
+    <string name="loading_product">Загрузка информации о товаре...</string>
+    <string name="error_loading_product">Ошибка загрузки информации о товаре</string>
+    <string name="basic_info">Основная информация</string>
+    <string name="article_number">Артикул</string>
+    <string name="product_article_number">Арт.: %s</string>
+    <string name="accounting_model">Модель учета</string>
+    <string name="units_of_measure">Единицы измерения</string>
+    <string name="unit_coefficient">Коэфф.: %s</string>
+    <string name="main_unit">Основная</string>
+    <string name="selected">Выбрана</string>
+    <string name="main_barcode">Основной штрихкод: %s</string>
+    <string name="main_barcode_label">Основной</string>
+    <string name="additional_barcodes_count">Доп. штрихкодов: %d</string>
+    <string name="barcodes">Штрихкоды</string>
+    <string name="no_barcodes">Штрихкоды отсутствуют</string>
+    <string name="copy_barcode">Копировать штрихкод</string>
+    <string name="copy_product_info">Копировать информацию</string>
+    <string name="show_barcodes">Показать штрихкоды</string>
+    <string name="hide_barcodes">Скрыть штрихкоды</string>
+    <string name="show_extended_info">Показать подробную информацию</string>
+    <string name="hide_extended_info">Скрыть подробную информацию</string>
+
+    <!-- Сканирование штрихкодов -->
+    <string name="batch_scanning">Пакетное сканирование</string>
+    <string name="scanned_items">Отсканировано товаров: %d</string>
+    <string name="no_scanned_items">Нет отсканированных товаров</string>
+    <string name="product_not_found">Товар не найден</string>
+    <string name="searching_product">Поиск товара по штрихкоду %s...</string>
+    <string name="scan_barcode_instruction">Отсканируйте штрихкод товара для добавления в список</string>
+    <string name="clear_all">Очистить все</string>
+    <string name="finish_scanning">Завершить сканирование</string>
+    <string name="remove">Удалить</string>
+    <string name="scan_other_product">Сканировать другой товар</string>
+
+    <!-- Режим выбора товара -->
+    <string name="select_product">Выбор товара</string>
+    <string name="select_product_for_task">Выберите товар для задания</string>
+    <string name="confirm_selection">Подтвердить выбор</string>
+
+    <!-- Оптимизация -->
+    <string name="error_occurred">Произошла ошибка: %s</string>
+    <string name="retry">Повторить</string>
 
     <!-- Logs Screens -->
     <string name="logs_title">Логи</string>

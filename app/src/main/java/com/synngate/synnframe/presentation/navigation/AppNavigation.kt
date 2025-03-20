@@ -354,7 +354,9 @@ sealed class Screen(val route: String) {
         fun createRoute(taskId: String) = "task_detail/$taskId"
     }
 
-    object ProductList : Screen("product_list")
+    object ProductList : Screen("product_list?isSelectionMode={isSelectionMode}") {
+        fun createRoute(isSelectionMode: Boolean = false) = "product_list?isSelectionMode=$isSelectionMode"
+    }
     object ProductDetail : Screen("product_detail/{productId}") {
         fun createRoute(productId: String) = "product_detail/$productId"
     }

@@ -56,8 +56,8 @@ import com.synngate.synnframe.presentation.ui.login.LoginViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogListViewModel
 import com.synngate.synnframe.presentation.ui.main.MainMenuViewModel
-import com.synngate.synnframe.presentation.ui.product.ProductListViewModel
 import com.synngate.synnframe.presentation.ui.products.ProductDetailViewModel
+import com.synngate.synnframe.presentation.ui.products.ProductListViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerListViewModel
 import com.synngate.synnframe.presentation.ui.settings.SettingsViewModel
@@ -372,11 +372,12 @@ class AppContainer(private val applicationContext: Context) {
         private val appContainer: AppContainer
     ) : BaseGraphContainer(), ProductsGraphContainer {
 
-        override fun createProductListViewModel(): ProductListViewModel {
+        override fun createProductListViewModel(isSelectionMode: Boolean): ProductListViewModel {
             Timber.d("Creating ProductListViewModel")
             val viewModel = ProductListViewModel(
                 productUseCases = appContainer.productUseCases,
-                ioDispatcher = Dispatchers.IO
+                ioDispatcher = Dispatchers.IO,
+                isSelectionMode = isSelectionMode
             )
             addClearable(viewModel)
             return viewModel
@@ -388,6 +389,7 @@ class AppContainer(private val applicationContext: Context) {
                 productId = productId,
                 productUseCases = appContainer.productUseCases,
                 loggingService = appContainer.loggingService,
+                clipboardService = appContainer.clipboardService,  // Добавляем ClipboardService
                 ioDispatcher = Dispatchers.IO
             )
             addClearable(viewModel)
