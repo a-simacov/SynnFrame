@@ -31,7 +31,7 @@ class TaskDetailViewModel(
     /**
      * Загружает задание и его детали
      */
-    private fun loadTask() {
+    fun loadTask() {
         launchIO {
             updateState { it.copy(isLoading = true) }
 

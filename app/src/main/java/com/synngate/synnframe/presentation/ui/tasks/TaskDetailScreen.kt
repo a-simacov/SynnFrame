@@ -25,13 +25,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.synngate.synnframe.R
+import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.entity.TaskType
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
@@ -52,17 +58,19 @@ fun TaskDetailScreen(
     viewModel: TaskDetailViewModel,
     navigateBack: () -> Unit,
     navigateToProductsList: () -> Unit,
+    navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
-    // Получаем состояние из ViewModel
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+
     val state by viewModel.uiState.collectAsState()
     val task = state.task
 
-    // Для отображения Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Форматтер для дат
     val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+
+    val updateSuccessMessage = stringResource(id = R.string.update_success)
 
     // Обработка событий
     LaunchedEffect(key1 = viewModel) {
@@ -83,13 +91,33 @@ fun TaskDetailScreen(
                 is TaskDetailEvent.ShowFactLineDialog -> {
                     // Диалог отображается через state.isFactLineDialogVisible
                 }
-                TaskDetailEvent.CloseDialog -> {
+                is TaskDetailEvent.CloseDialog -> {
                     // Закрытие диалогов обрабатывается через ViewMоdel
                 }
-                TaskDetailEvent.UpdateSuccess -> {
-                    snackbarHostState.showSnackbar(stringResource(id = R.string.update_success))
+                is TaskDetailEvent.UpdateSuccess -> {
+                    snackbarHostState.showSnackbar(updateSuccessMessage)
                 }
             }
+        }
+    }
+
+    // В TaskDetailScreen сохраняем состояние диалогов
+    var showScanDialog by rememberSaveable { mutableStateOf(state.isScanDialogVisible) }
+    var showFactLineDialog by rememberSaveable { mutableStateOf(state.isFactLineDialogVisible) }
+    var showCompleteConfirmation by rememberSaveable { mutableStateOf(state.isCompleteConfirmationVisible) }
+
+// При изменении обновляем состояние во ViewModel
+    LaunchedEffect(showScanDialog, showFactLineDialog, showCompleteConfirmation) {
+        if (showScanDialog != state.isScanDialogVisible) {
+            if (showScanDialog) viewModel.showScanDialog() else viewModel.closeDialog()
+        }
+
+        if (showFactLineDialog != state.isFactLineDialogVisible) {
+            if (!showFactLineDialog) viewModel.closeDialog()
+        }
+
+        if (showCompleteConfirmation != state.isCompleteConfirmationVisible) {
+            if (showCompleteConfirmation) viewModel.showCompleteConfirmation() else viewModel.closeDialog()
         }
     }
 
@@ -109,9 +137,9 @@ fun TaskDetailScreen(
 
     // Диалог редактирования строки факта
     if (state.isFactLineDialogVisible && state.selectedFactLine != null) {
-        val product = state.taskLines.find { it.factLine?.id == state.selectedFactLine.id }?.product
+        val product = state.taskLines.find { it.factLine?.id == state.selectedFactLine!!.id }?.product
         TaskFactLineDialog(
-            factLine = state.selectedFactLine,
+            factLine = state.selectedFactLine!!,
             product = product,
             onQuantityChange = { factLine, additionalQuantity ->
                 viewModel.applyQuantityChange(factLine, additionalQuantity)
@@ -208,7 +236,7 @@ fun TaskDetailScreen(
             LoadingScreenContent(message = stringResource(id = R.string.loading_task))
         } else if (state.error != null && task == null) {
             ErrorScreenContent(
-                message = state.error,
+                message = state.error!!,
                 onRetry = { viewModel.loadTask() }
             )
         } else if (task != null) {

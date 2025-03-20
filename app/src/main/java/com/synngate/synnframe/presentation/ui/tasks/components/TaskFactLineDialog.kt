@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.tasks.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +27,7 @@ import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.TaskFactLine
 import com.synngate.synnframe.presentation.common.inputs.QuantityTextField
+import com.synngate.synnframe.presentation.util.formatQuantity
 
 /**
  * Диалог редактирования строки факта задания

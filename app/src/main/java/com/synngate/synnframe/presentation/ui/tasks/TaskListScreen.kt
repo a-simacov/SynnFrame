@@ -86,26 +86,6 @@ fun TaskListScreen(
         }
     }
 
-// В TaskDetailScreen сохраняем состояние диалогов
-    var showScanDialog by rememberSaveable { mutableStateOf(state.isScanDialogVisible) }
-    var showFactLineDialog by rememberSaveable { mutableStateOf(state.isFactLineDialogVisible) }
-    var showCompleteConfirmation by rememberSaveable { mutableStateOf(state.isCompleteConfirmationVisible) }
-
-// При изменении обновляем состояние во ViewModel
-    LaunchedEffect(showScanDialog, showFactLineDialog, showCompleteConfirmation) {
-        if (showScanDialog != state.isScanDialogVisible) {
-            if (showScanDialog) viewModel.showScanDialog() else viewModel.closeDialog()
-        }
-
-        if (showFactLineDialog != state.isFactLineDialogVisible) {
-            if (!showFactLineDialog) viewModel.closeDialog()
-        }
-
-        if (showCompleteConfirmation != state.isCompleteConfirmationVisible) {
-            if (showCompleteConfirmation) viewModel.showCompleteConfirmation() else viewModel.closeDialog()
-        }
-    }
-
     // Обработка событий от ViewModel
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->

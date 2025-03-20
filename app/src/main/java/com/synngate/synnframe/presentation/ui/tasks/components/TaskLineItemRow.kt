@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskLineItem
+import com.synngate.synnframe.presentation.util.formatQuantity
 
 /**
  * Строка таблицы с данными плана и факта задания
@@ -80,17 +81,6 @@ fun TaskLineItemRow(
             modifier = Modifier.padding(top = 8.dp),
             color = MaterialTheme.colorScheme.outlineVariant
         )
-    }
-}
-
-/**
- * Форматирует число с плавающей точкой для отображения
- */
-private fun formatQuantity(quantity: Float): String {
-    return if (quantity == quantity.toInt().toFloat()) {
-        quantity.toInt().toString()
-    } else {
-        "%.3f".format(quantity)
     }
 }
 

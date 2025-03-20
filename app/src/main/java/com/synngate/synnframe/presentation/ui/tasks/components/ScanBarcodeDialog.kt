@@ -32,6 +32,7 @@ import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.TaskFactLine
 import com.synngate.synnframe.presentation.common.inputs.QuantityTextField
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView
+import com.synngate.synnframe.presentation.util.formatQuantity
 
 /**
  * Диалог сканирования штрихкодов для заданий

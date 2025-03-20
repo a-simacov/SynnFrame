@@ -93,7 +93,8 @@ fun NavGraphBuilder.tasksNavGraph(
                 navigateToProductsList = {
                     // Вызываем функцию для перехода к списку товаров в режиме выбора
                     navigateToProductsList(true)
-                }
+                },
+                navController = navController
             )
 
             // Удаляем наблюдателя при выходе из композиции

@@ -206,7 +206,6 @@
 
     <!-- Оптимизация -->
     <string name="error_occurred">Произошла ошибка: %s</string>
-    <string name="retry">Повторить</string>
 
     <!-- Logs Screens -->
     <string name="logs_title">Логи</string>
@@ -315,4 +314,64 @@
     <string name="server_connection_settings">Настройки подключения сервера</string>
     <string name="server_credentials">Учетные данные</string>
     <string name="interval_error">Ошибка в установке интервала</string>
+
+    <!-- Общие строки -->
+    <string name="all">Все</string>
+
+    <!-- Экран списка заданий -->
+    <string name="tasks_count">Всего заданий: %d</string>
+    <string name="filtered_tasks_count">Найдено заданий: %d</string>
+    <string name="search_tasks">Поиск заданий</string>
+    <string name="search_tasks_hint">Введите имя или штрихкод задания</string>
+    <string name="loading_tasks">Загрузка заданий...</string>
+    <string name="no_tasks">Нет доступных заданий</string>
+    <string name="no_tasks_with_filter">По указанным фильтрам ничего не найдено</string>
+    <string name="sync_tasks">Синхронизировать задания</string>
+    <string name="create_task">Создать задание</string>
+
+    <!-- Статусы заданий -->
+
+    <!-- Типы заданий -->
+    <string name="all_types">Все типы</string>
+
+    <!-- Фильтрация -->
+    <string name="task_type_filter">Фильтр по типу</string>
+
+    <!-- Экран деталей задания -->
+    <string name="task_details">Детали задания</string>
+    <string name="task_id">Идентификатор</string>
+    <string name="task_status">Статус</string>
+    <string name="task_created_at">Создано</string>
+    <string name="task_started_at">Начато</string>
+    <string name="task_completed_at">Завершено</string>
+    <string name="task_uploaded_at">Выгружено</string>
+    <string name="task_executor">Исполнитель</string>
+    <string name="loading_task">Загрузка данных задания...</string>
+    <string name="scan_or_enter_barcode">Сканируйте или введите штрихкод</string>
+    <string name="product">Товар</string>
+    <string name="plan_quantity">План</string>
+    <string name="fact_quantity">Факт</string>
+    <string name="no_task_lines">Нет строк в задании</string>
+    <string name="total">Итого</string>
+    <string name="start_task">Начать выполнение</string>
+    <string name="complete_task">Завершить</string>
+    <string name="complete_task_confirmation">Вы уверены, что хотите завершить задание?</string>
+    <string name="upload_task">Выгрузить</string>
+    <string name="task_already_uploaded">Задание выгружено</string>
+    <string name="task_completion_percentage">Выполнено: %.1f%%</string>
+    <string name="update_success">Данные успешно обновлены</string>
+
+    <!-- Работа со строками факта -->
+    <string name="current_quantity">Текущее: </string>
+    <string name="add_quantity">Добавить: </string>
+    <string name="result_quantity">Итого: %s</string>
+    <string name="invalid_quantity">Неверное значение</string>
+    <string name="product_not_found_by_barcode">Товар не найден по штрихкоду %s</string>
+    <string name="scan_barcode_to_find_product">Сканируйте штрихкод для поиска товара</string>
+
+    <!-- Даты -->
+    <string name="created_at">Создано: %s</string>
+    <string name="last_modified_at">Изменено: %s</string>
+    <string name="task_completion">Завершено: %s</string>
+    <string name="unknown_product">Неизвестный товар</string>
 </resources>
