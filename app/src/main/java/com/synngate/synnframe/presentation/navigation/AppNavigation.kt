@@ -17,6 +17,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.presentation.di.AppContainer
 import com.synngate.synnframe.presentation.di.NavHostContainer
 import com.synngate.synnframe.presentation.di.ServerListGraphContainer
@@ -39,7 +40,8 @@ fun AppNavigation(
     startDestination: String = Screen.ServerList.route
 ) {
     val context = LocalContext.current
-
+    // Отслеживаем жизненный цикл навигационного хоста для очистки ресурсов
+    val lifecycleOwner = LocalLifecycleOwner.current
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -47,8 +49,6 @@ fun AppNavigation(
 
     val navHostContainer = remember { appContainer.createNavHostContainer() }
 
-    // Отслеживаем жизненный цикл навигационного хоста для очистки ресурсов
-    val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_DESTROY) {
@@ -303,6 +303,37 @@ fun AppNavigation(
                 }
             )
         }
+
+        // Подключаем граф навигации для заданий
+        tasksNavGraph(
+            navController = navController,
+            tasksGraphContainer = navHostContainer.createTasksGraphContainer(),
+            lifecycleOwner = lifecycleOwner,
+            navigateToProductsList = { isSelectionMode ->
+                navController.navigate(Screen.ProductList.createRoute(isSelectionMode))
+            }
+        )
+
+        // Подключаем граф навигации для товаров
+        // Добавляем обработку возврата товара к заданию
+        var selectedProduct: Product? = null
+
+        productsNavGraph(
+            navController = navController,
+            productsGraphContainer = navHostContainer.createProductsGraphContainer(),
+            lifecycleOwner = lifecycleOwner,
+            returnProductToTask = { product ->
+                // Сохраняем выбранный товар
+                selectedProduct = product
+
+                // Возвращаемся к предыдущему экрану (экрану задания)
+                navController.previousBackStackEntry?.savedStateHandle?.set(
+                    "selected_product", product
+                )
+                navController.popBackStack()
+            }
+        )
+
 
         // Остальные экраны будут добавлены в следующих этапах реализации
     }

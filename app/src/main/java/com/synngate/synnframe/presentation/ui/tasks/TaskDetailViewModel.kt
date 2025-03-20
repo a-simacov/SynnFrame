@@ -104,14 +104,24 @@ class TaskDetailViewModel(
         updateState { it.copy(searchQuery = query) }
 
         // Обработка специальных команд
-        if (query == "0") {
-            sendEvent(TaskDetailEvent.NavigateToProductsList)
-            updateState { it.copy(searchQuery = "") }
-            return
+        when (query) {
+            "0" -> {
+                // Переход к списку товаров
+                sendEvent(TaskDetailEvent.NavigateToProductsList)
+                updateState { it.copy(searchQuery = "") }
+                return
+            }
+            // Можно добавить другие специальные команды при необходимости
         }
 
-        // Обработка штрихкода
-        processBarcode(query)
+        // Если введено достаточно символов для поиска, обрабатываем как штрихкод
+        if (query.length >= MIN_BARCODE_LENGTH) {
+            processBarcode(query)
+        }
+    }
+
+    companion object {
+        private const val MIN_BARCODE_LENGTH = 8 // Минимальная длина штрихкода для автоматического поиска
     }
 
     /**
@@ -375,6 +385,163 @@ class TaskDetailViewModel(
                 Timber.e(e, "Error uploading task")
                 sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка выгрузки: ${e.message}"))
             } finally {
+                updateState { it.copy(isProcessing = false) }
+            }
+        }
+    }
+
+    /**
+     * Обрабатывает выбранный товар со страницы выбора товаров
+     */
+    fun handleSelectedProduct(product: Product) {
+        launchIO {
+            val task = uiState.value.task ?: return@launchIO
+
+            // Проверяем, есть ли товар в плане задания
+            val isInPlan = task.planLines.any { it.productId == product.id }
+
+            if (isInPlan) {
+                // Находим или создаем строку факта
+                val factLine = task.factLines.find { it.productId == product.id }
+                    ?: TaskFactLine(
+                        id = UUID.randomUUID().toString(),
+                        taskId = task.id,
+                        productId = product.id,
+                        quantity = 0f
+                    )
+
+                // Показываем диалог редактирования строки факта
+                updateState { state ->
+                    state.copy(
+                        scannedProduct = product,
+                        selectedFactLine = factLine,
+                        isFactLineDialogVisible = true
+                    )
+                }
+            } else {
+                // Если товара нет в плане задания, показываем сообщение
+                sendEvent(TaskDetailEvent.ShowSnackbar(
+                    "Товар '${product.name}' не входит в план задания"
+                ))
+            }
+        }
+    }
+
+    /**
+     * Выполняет пакетное обновление строк факта
+     */
+    fun batchUpdateFactLines(updates: List<Pair<TaskFactLine, Float>>) {
+        if (updates.isEmpty()) return
+
+        launchIO {
+            updateState { it.copy(isProcessing = true) }
+
+            try {
+                // Обновляем все строки факта одной транзакцией
+                updates.forEach { (factLine, newQuantity) ->
+                    val updatedFactLine = factLine.copy(quantity = newQuantity)
+                    taskUseCases.updateTaskFactLine(updatedFactLine)
+                }
+
+                // Перезагружаем задание после всех обновлений
+                loadTask()
+
+                sendEvent(TaskDetailEvent.UpdateSuccess)
+            } catch (e: Exception) {
+                Timber.e(e, "Error batch updating task fact lines")
+                sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка обновления: ${e.message}"))
+            } finally {
+                updateState { it.copy(isProcessing = false) }
+            }
+        }
+    }
+
+    /**
+     * Улучшенная обработка результатов сканирования штрихкода
+     */
+    fun processScanResult(barcode: String) {
+        // Зафиксируем время начала сканирования для расчета длительности операции
+        val startTime = System.currentTimeMillis()
+
+        launchIO {
+            updateState { it.copy(isProcessing = true, scannedBarcode = barcode) }
+
+            try {
+                // Поиск товара по штрихкоду
+                val product = productUseCases.findProductByBarcode(barcode)
+
+                if (product != null) {
+                    val task = uiState.value.task
+                    if (task == null) {
+                        sendEvent(TaskDetailEvent.ShowSnackbar("Задание не найдено"))
+                        return@launchIO
+                    }
+
+                    // Проверяем, есть ли товар в плане задания
+                    val isInPlan = task.isProductInPlan(product.id)
+
+                    if (isInPlan) {
+                        // Находим или создаем строку факта
+                        val factLine = task.getFactLineByProductId(product.id)
+                            ?: TaskFactLine(
+                                id = UUID.randomUUID().toString(),
+                                taskId = task.id,
+                                productId = product.id,
+                                quantity = 0f
+                            )
+
+                        // Обновляем состояние для отображения диалога
+                        updateState { state ->
+                            state.copy(
+                                scannedProduct = product,
+                                selectedFactLine = factLine,
+                                isFactLineDialogVisible = true,
+                                isProcessing = false
+                            )
+                        }
+
+                        // Звуковое оповещение об успешном сканировании (можно реализовать позже)
+                        // playSuccessSound()
+                    } else {
+                        // Если товара нет в плане, показываем сообщение
+                        sendEvent(TaskDetailEvent.ShowSnackbar(
+                            "Товар '${product.name}' не входит в план задания"
+                        ))
+
+                        updateState { state ->
+                            state.copy(
+                                scannedProduct = product,
+                                isProcessing = false
+                            )
+                        }
+
+                        // Звуковое оповещение об ошибке (можно реализовать позже)
+                        // playErrorSound()
+                    }
+                } else {
+                    // Если товар не найден, показываем сообщение
+                    sendEvent(TaskDetailEvent.ShowSnackbar(
+                        "Товар со штрихкодом '$barcode' не найден"
+                    ))
+
+                    updateState { state ->
+                        state.copy(
+                            scannedProduct = null,
+                            isProcessing = false
+                        )
+                    }
+
+                    // Звуковое оповещение об ошибке (можно реализовать позже)
+                    // playErrorSound()
+                }
+
+                // Логируем длительность операции сканирования для аналитики
+                val duration = System.currentTimeMillis() - startTime
+                Timber.d("Scan processing took $duration ms")
+
+            } catch (e: Exception) {
+                Timber.e(e, "Error processing barcode")
+                sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка обработки штрихкода: ${e.message}"))
                 updateState { it.copy(isProcessing = false) }
             }
         }
