@@ -13,9 +13,6 @@ import com.synngate.synnframe.presentation.ui.logs.LogDetailScreen
 import com.synngate.synnframe.presentation.ui.logs.LogListScreen
 import timber.log.Timber
 
-/**
- * Навигационный граф для экранов логов
- */
 fun NavGraphBuilder.logsNavGraph(
     navController: NavHostController,
     logsGraphContainer: LogsGraphContainer,
@@ -25,7 +22,6 @@ fun NavGraphBuilder.logsNavGraph(
         startDestination = Screen.LogList.route,
         route = "logs_graph"
     ) {
-        // Экран списка логов
         composable(Screen.LogList.route) { entry ->
             // Отслеживаем жизненный цикл для очистки ресурсов
             val observer = LifecycleEventObserver { _, event ->
@@ -38,7 +34,6 @@ fun NavGraphBuilder.logsNavGraph(
             }
             lifecycleOwner.lifecycle.addObserver(observer)
 
-            // Создаем ViewModel и отображаем экран
             LogListScreen(
                 viewModel = logsGraphContainer.createLogListViewModel(),
                 navigateToLogDetail = { logId ->
@@ -57,7 +52,6 @@ fun NavGraphBuilder.logsNavGraph(
             }
         }
 
-        // Экран детального просмотра лога
         composable(
             route = Screen.LogDetail.route,
             arguments = listOf(
@@ -66,7 +60,6 @@ fun NavGraphBuilder.logsNavGraph(
                 }
             )
         ) { entry ->
-            // Получаем ID лога из аргументов
             val logId = entry.arguments?.getInt("logId") ?: 0
 
             // Отслеживаем жизненный цикл для очистки ресурсов
@@ -80,7 +73,6 @@ fun NavGraphBuilder.logsNavGraph(
             }
             lifecycleOwner.lifecycle.addObserver(observer)
 
-            // Создаем ViewModel и отображаем экран
             LogDetailScreen(
                 viewModel = logsGraphContainer.createLogDetailViewModel(logId),
                 navigateBack = {

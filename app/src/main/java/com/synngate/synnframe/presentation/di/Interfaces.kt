@@ -89,8 +89,6 @@ interface LoginScreenContainer : GraphContainer {
 }
 
 interface MainMenuScreenContainer : GraphContainer {
-    /**
-     * Создание ViewModel для экрана главного меню
-     */
+
     fun createMainMenuViewModel(): MainMenuViewModel
 }

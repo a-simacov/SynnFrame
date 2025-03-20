@@ -41,25 +41,19 @@ import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.logs.model.LogDetailEvent
 import java.time.format.DateTimeFormatter
 
-/**
- * Экран детальной информации о логе
- */
 @Composable
 fun LogDetailScreen(
     viewModel: LogDetailViewModel,
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Получаем состояние из ViewModel
     val state by viewModel.uiState.collectAsState()
 
-    // Для отображения Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Получаем строку ресурса перед использованием в LaunchedEffect
     val copiedToClipboardMessage = stringResource(R.string.log_copied_to_clipboard)
 
-    // Обработка событий
     LaunchedEffect(key1 = Unit) {
         viewModel.events.collect { event ->
             when (event) {
@@ -92,7 +86,6 @@ fun LogDetailScreen(
         }
     }
 
-    // Диалог подтверждения удаления
     if (state.showDeleteConfirmation) {
         ConfirmationDialog(
             title = stringResource(R.string.delete_log_title),
@@ -106,7 +99,6 @@ fun LogDetailScreen(
         )
     }
 
-    // Основной интерфейс
     AppScaffold(
         title = stringResource(id = R.string.log_details),
         onNavigateBack = navigateBack,
@@ -116,7 +108,6 @@ fun LogDetailScreen(
         },
         isLoading = state.isLoading || state.isDeletingLog,
         actions = {
-            // Кнопка удаления лога
             IconButton(
                 onClick = { viewModel.showDeleteConfirmation() }
             ) {
@@ -126,7 +117,6 @@ fun LogDetailScreen(
                 )
             }
 
-            // Кнопка копирования в буфер обмена
             IconButton(
                 onClick = { viewModel.copyLogToClipboard() }
             ) {
@@ -155,14 +145,12 @@ fun LogDetailScreen(
                     )
                 }
                 state.log != null -> {
-                    // Отображаем детали лога
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp)
                             .verticalScroll(rememberScrollState())
                     ) {
-                        // Информация о типе лога
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -174,7 +162,6 @@ fun LogDetailScreen(
                                     modifier = Modifier.align(Alignment.CenterStart)
                                 )
 
-                                // Дата создания лога
                                 val formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")
                                 Text(
                                     text = log.createdAt.format(formatter),
@@ -184,7 +171,6 @@ fun LogDetailScreen(
                             }
                         }
 
-                        // Карточка с сообщением лога
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -204,7 +190,6 @@ fun LogDetailScreen(
 
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                // Текст сообщения лога
                                 Text(
                                     text = state.log?.message ?: "",
                                     style = MaterialTheme.typography.bodyLarge
@@ -212,7 +197,6 @@ fun LogDetailScreen(
                             }
                         }
 
-                        // Кнопки действий
                         Button(
                             onClick = { viewModel.copyLogToClipboard() },
                             modifier = Modifier

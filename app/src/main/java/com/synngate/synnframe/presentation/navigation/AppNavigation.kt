@@ -45,8 +45,7 @@ fun AppNavigation(
 
     Timber.d("Current navigation route: $currentRoute")
 
-    // Создаем контейнер для NavHost
-    val navHostContainer = remember { (appContainer as AppContainer).createNavHostContainer() }
+    val navHostContainer = remember { appContainer.createNavHostContainer() }
 
     // Отслеживаем жизненный цикл навигационного хоста для очистки ресурсов
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -63,14 +62,11 @@ fun AppNavigation(
         }
     }
 
-    // Основная навигация приложения
     NavHost(
         navController = navController,
         startDestination = startDestination
     ) {
-        // Экран списка серверов
         composable(Screen.ServerList.route) { entry ->
-            // Получаем контейнер для подграфа серверов
             val serverListGraphContainer = rememberServerListGraphContainer(navHostContainer, entry)
 
             ServerListScreen(
@@ -86,7 +82,6 @@ fun AppNavigation(
             )
         }
 
-        // Экран деталей сервера
         composable(
             route = Screen.ServerDetail.route,
             arguments = listOf(
@@ -97,10 +92,8 @@ fun AppNavigation(
                 }
             )
         ) { entry ->
-            // Получаем контейнер для подграфа серверов
             val serverListGraphContainer = rememberServerListGraphContainer(navHostContainer, entry)
 
-            // Получаем serverId из аргументов
             val serverIdArg = entry.arguments?.getString("serverId")
             val serverId = serverIdArg?.toIntOrNull()
 
@@ -112,15 +105,12 @@ fun AppNavigation(
             )
         }
 
-        // Экран аутентификации
         composable(Screen.Login.route) { entry ->
-            // Получаем контейнер для экрана логина
             val loginScreenContainer = remember {
                 navHostContainer.createLoginScreenContainer()
             }
 
             // Отслеживаем жизненный цикл для очистки ресурсов
-            //val lifecycleOwner = LocalLifecycleOwner.current
             DisposableEffect(lifecycleOwner, entry) {
                 val observer = LifecycleEventObserver { _, event ->
                     if (event == Lifecycle.Event.ON_DESTROY) {
@@ -154,9 +144,7 @@ fun AppNavigation(
             )
         }
 
-        // Экран главного меню
         composable(Screen.MainMenu.route) { entry ->
-            // Получаем контейнер для экрана главного меню
             val mainMenuScreenContainer = remember {
                 navHostContainer.createMainMenuScreenContainer()
             }
@@ -212,9 +200,7 @@ fun AppNavigation(
             )
         }
 
-        // Экран настроек
         composable(Screen.Settings.route) { entry ->
-            // Получаем контейнер для экрана настроек
             val settingsScreenContainer = remember {
                 navHostContainer.createSettingsScreenContainer()
             }
@@ -248,9 +234,7 @@ fun AppNavigation(
             )
         }
 
-        // Экран списка логов и вложенный граф
         composable(Screen.LogList.route) { entry ->
-            // Получаем контейнер для подграфа логов
             val logsGraphContainer = remember {
                 navHostContainer.createLogsGraphContainer()
             }
@@ -282,7 +266,6 @@ fun AppNavigation(
             )
         }
 
-// Экран детальной информации о логе
         composable(
             route = Screen.LogDetail.route,
             arguments = listOf(
@@ -291,12 +274,10 @@ fun AppNavigation(
                 }
             )
         ) { entry ->
-            // Получаем контейнер для подграфа логов
             val logsGraphContainer = remember {
                 navHostContainer.createLogsGraphContainer()
             }
 
-            // Получаем ID лога из аргументов
             val logId = entry.arguments?.getInt("logId") ?: 0
 
             // Отслеживаем жизненный цикл для очистки ресурсов
@@ -335,7 +316,6 @@ private fun rememberServerListGraphContainer(
     navHostContainer: NavHostContainer,
     entry: NavBackStackEntry
 ): ServerListGraphContainer {
-    // Создаем контейнер для подграфа
     val container = remember(navHostContainer) {
         navHostContainer.createServerListGraphContainer()
     }
@@ -360,9 +340,6 @@ private fun rememberServerListGraphContainer(
     return container
 }
 
-/**
- * Класс, представляющий экраны в навигационном графе
- */
 sealed class Screen(val route: String) {
     object ServerList : Screen("server_list")
     object ServerDetail : Screen("server_detail/{serverId}") {

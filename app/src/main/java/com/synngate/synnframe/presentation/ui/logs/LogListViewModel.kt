@@ -13,25 +13,18 @@ import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-/**
- * ViewModel для экрана списка логов
- */
 class LogListViewModel(
     private val logUseCases: LogUseCases,
     private val loggingService: LoggingService,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<LogListState, LogListEvent>(LogListState(), ioDispatcher) {
 
-    // Форматтер для отображения даты в UI
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")
 
     init {
         loadLogs()
     }
 
-    /**
-     * Загрузка логов с применением текущих фильтров
-     */
     fun loadLogs() {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
@@ -39,13 +32,11 @@ class LogListViewModel(
             try {
                 val currentState = uiState.value
 
-                // Подготовка параметров фильтрации
                 val messageFilter = currentState.messageFilter.takeIf { it.isNotEmpty() }
                 val typeFilter = currentState.selectedTypes.takeIf { it.isNotEmpty() }?.toList()
                 val dateFrom = currentState.dateFromFilter
                 val dateTo = currentState.dateToFilter
 
-                // Получение отфильтрованных логов
                 logUseCases.getFilteredLogs(
                     messageFilter = messageFilter,
                     typeFilter = typeFilter,
@@ -76,32 +67,20 @@ class LogListViewModel(
         }
     }
 
-    /**
-     * Обновление фильтра по сообщению
-     */
     fun updateMessageFilter(filter: String) {
         updateState { it.copy(messageFilter = filter) }
         loadLogs()
     }
 
-    /**
-     * Обновление фильтра по типу лога
-     */
     fun updateTypeFilter(types: Set<LogType>) {
         updateState { it.copy(selectedTypes = types) }
         loadLogs()
     }
 
-    /**
-     * Обновление фильтра по диапазону дат
-     */
     fun updateDateFilter(dateFrom: LocalDateTime?, dateTo: LocalDateTime?) {
         updateState { it.copy(dateFromFilter = dateFrom, dateToFilter = dateTo) }
     }
 
-    /**
-     * Сброс всех фильтров
-     */
     fun resetFilters() {
         updateState { it.copy(
             messageFilter = "",
@@ -112,23 +91,14 @@ class LogListViewModel(
         loadLogs()
     }
 
-    /**
-     * Переключение видимости панели фильтров
-     */
     fun toggleFilterPanel() {
         updateState { it.copy(isFilterPanelVisible = !it.isFilterPanelVisible) }
     }
 
-    /**
-     * Показать диалог подтверждения удаления всех логов
-     */
     fun showDeleteAllConfirmation() {
         sendEvent(LogListEvent.ShowDeleteAllConfirmation)
     }
 
-    /**
-     * Удаление всех логов
-     */
     fun deleteAllLogs() {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
@@ -165,16 +135,10 @@ class LogListViewModel(
         }
     }
 
-    /**
-     * Навигация к детальной информации о логе
-     */
     fun navigateToLogDetail(logId: Int) {
         sendEvent(LogListEvent.NavigateToLogDetail(logId))
     }
 
-    /**
-     * Форматирование типа лога для отображения
-     */
     fun formatLogType(type: LogType): String {
         return when (type) {
             LogType.INFO -> "Информация"
@@ -183,9 +147,6 @@ class LogListViewModel(
         }
     }
 
-    /**
-     * Форматирование даты лога для отображения
-     */
     fun formatLogDate(dateTime: LocalDateTime): String {
         return dateTime.format(dateFormatter)
     }

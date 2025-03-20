@@ -17,15 +17,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * Базовый класс для всех ViewModel
- */
 abstract class BaseViewModel<S, E>(
     initialState: S,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ViewModel(), Clearable {
 
-    // UI состояние
     private val _uiState = MutableStateFlow(initialState)
     val uiState: StateFlow<S> = _uiState.asStateFlow()
 
@@ -39,34 +35,22 @@ abstract class BaseViewModel<S, E>(
         // Здесь можно добавить логику обработки ошибок по умолчанию
     }
 
-    /**
-     * Обновляет UI состояние
-     */
     protected fun updateState(update: (S) -> S) {
         _uiState.value = update(_uiState.value)
     }
 
-    /**
-     * Отправляет событие
-     */
     protected fun sendEvent(event: E) {
         viewModelScope.launch {
             _events.emit(event)
         }
     }
 
-    /**
-     * Запускает корутину в viewModelScope на IO диспетчере
-     */
     protected fun launchIO(block: suspend CoroutineScope.() -> Unit): Job {
         return viewModelScope.launch(ioDispatcher + exceptionHandler) {
             block()
         }
     }
 
-    /**
-     * Запускает корутину в viewModelScope на Main диспетчере
-     */
     protected fun launchMain(block: suspend CoroutineScope.() -> Unit) {
         viewModelScope.launch(Dispatchers.Main + exceptionHandler) {
             block()

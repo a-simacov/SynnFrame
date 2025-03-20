@@ -43,9 +43,6 @@ import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.logs.model.LogListEvent
 import java.time.LocalDateTime
 
-/**
- * Экран списка логов
- */
 @Composable
 fun LogListScreen(
     viewModel: LogListViewModel,
@@ -53,16 +50,12 @@ fun LogListScreen(
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Получаем состояние из ViewModel
     val state by viewModel.uiState.collectAsState()
 
-    // Для отображения Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Состояние диалога подтверждения удаления всех логов
     var showDeleteAllConfirmation by remember { mutableStateOf(false) }
 
-    // Обработка событий
     LaunchedEffect(key1 = Unit) {
         viewModel.events.collect { event ->
             when (event) {
@@ -82,7 +75,6 @@ fun LogListScreen(
         }
     }
 
-    // Показываем подтверждение удаления всех логов
     if (showDeleteAllConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteAllConfirmation = false },
@@ -108,7 +100,6 @@ fun LogListScreen(
         )
     }
 
-    // Основной интерфейс
     AppScaffold(
         title = stringResource(id = R.string.logs),
         onNavigateBack = navigateBack,
@@ -117,7 +108,6 @@ fun LogListScreen(
             Pair(it, StatusType.ERROR)
         },
         actions = {
-            // Кнопка удаления всех логов
             IconButton(
                 onClick = { viewModel.showDeleteAllConfirmation() }
             ) {
@@ -134,7 +124,6 @@ fun LogListScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Поле поиска
             SearchTextField(
                 value = state.messageFilter,
                 onValueChange = { viewModel.updateMessageFilter(it) },
@@ -145,7 +134,6 @@ fun LogListScreen(
                 onSearch = { viewModel.loadLogs() }
             )
 
-            // Фильтры по типу лога
             val logTypes = remember { LogType.entries.toList() }
 
             StatusFilterChips(
@@ -158,7 +146,6 @@ fun LogListScreen(
                     .padding(horizontal = 16.dp)
             )
 
-            // Кнопка отображения/скрытия панели фильтров по дате
             OutlinedButton(
                 onClick = { viewModel.toggleFilterPanel() },
                 modifier = Modifier
@@ -173,7 +160,6 @@ fun LogListScreen(
                 )
             }
 
-            // Панель фильтров по дате (отображается/скрывается)
             AnimatedVisibility(visible = state.isFilterPanelVisible) {
                 DateRangeFilter(
                     fromDate = state.dateFromFilter,
@@ -195,7 +181,6 @@ fun LogListScreen(
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider()
 
-            // Список логов
             if (state.logs.isEmpty()) {
                 EmptyScreenContent(
                     message = if (state.hasActiveFilters)

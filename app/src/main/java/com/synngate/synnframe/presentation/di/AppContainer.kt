@@ -91,13 +91,11 @@ class AppContainer(private val applicationContext: Context) {
         AppSettingsDataStore(applicationContext.dataStore)
     }
 
-    // База данных Room
     private val database by lazy {
         Timber.d("Creating AppDatabase")
         AppDatabase.getInstance(applicationContext)
     }
 
-    // DAO объекты
     private val serverDao: ServerDao by lazy { database.serverDao() }
     private val userDao: UserDao by lazy { database.userDao() }
     private val logDao: LogDao by lazy { database.logDao() }
@@ -110,7 +108,6 @@ class AppContainer(private val applicationContext: Context) {
         LogRepositoryImpl(logDao)
     }
 
-    // HTTP клиент
     private val httpClient by lazy {
         Timber.d("Creating HttpClient")
         HttpClient(Android) {
@@ -135,7 +132,6 @@ class AppContainer(private val applicationContext: Context) {
         }
     }
 
-    // Провайдер данных о сервере для API
     private val serverProvider by lazy {
         Timber.d("Creating ServerProvider")
         object : ServerProvider {
@@ -144,7 +140,6 @@ class AppContainer(private val applicationContext: Context) {
         }
     }
 
-    // API сервисы
     private val apiService: ApiService by lazy {
         Timber.d("Creating ApiService")
         ApiServiceImpl(httpClient, serverProvider)
@@ -170,7 +165,6 @@ class AppContainer(private val applicationContext: Context) {
         AppUpdateApiImpl(httpClient, serverProvider)
     }
 
-    // Репозитории
     private val serverRepository: ServerRepository by lazy {
         Timber.d("Creating ServerRepository")
         ServerRepositoryImpl(serverDao, apiService)
@@ -199,7 +193,6 @@ class AppContainer(private val applicationContext: Context) {
         )
     }
 
-    // Создаем экземпляр LoggingService
     private val loggingService: LoggingService by lazy {
         Timber.d("Creating LoggingService")
         LoggingServiceImpl(logRepository)
@@ -219,25 +212,21 @@ class AppContainer(private val applicationContext: Context) {
         )
     }
 
-    // Сервис информации об устройстве
     private val deviceInfoService: DeviceInfoService by lazy {
         Timber.d("Creating DeviceInfoService")
         DeviceInfoServiceImpl(applicationContext)
     }
 
-    // Менеджер веб-сервера
     private val webServerManager: WebServerManager by lazy {
         Timber.d("Creating WebServerManager")
         WebServerManagerStub(loggingService)
     }
 
-    // Установщик обновлений
     private val updateInstaller: UpdateInstaller by lazy {
         Timber.d("Creating UpdateInstaller")
         UpdateInstallerImpl(applicationContext, loggingService)
     }
 
-    // Use Cases - создаем lazy для повторного использования
     private val serverUseCases by lazy {
         ServerUseCases(serverRepository, serverCoordinator, loggingService)
     }
@@ -262,17 +251,11 @@ class AppContainer(private val applicationContext: Context) {
         SettingsUseCases(settingsRepository, loggingService, applicationContext)
     }
 
-    /**
-     * Создание контейнера для навигационного хоста
-     */
     fun createNavHostContainer(): NavHostContainer {
         Timber.d("Creating NavHostContainer")
         return NavHostContainerImpl(this)
     }
 
-    /**
-     * Внутренний класс-контейнер для навигационного хоста
-     */
     inner class NavHostContainerImpl(
         private val appContainer: AppContainer
     ) : NavHostContainer {
@@ -329,16 +312,12 @@ class AppContainer(private val applicationContext: Context) {
         override val clearables: MutableList<Clearable> = mutableListOf()
     }
 
-    /**
-     * Контейнер для подграфа серверов
-     */
     inner class ServerListGraphContainerImpl(
         private val appContainer: AppContainer
     ) : BaseGraphContainer(), ServerListGraphContainer {
 
         override fun createServerListViewModel(): ServerListViewModel {
             Timber.d("Creating ServerListViewModel")
-            // Используем новый класс ServerListViewModelImpl с UseCases вместо репозиториев
             val viewModel = ServerListViewModel(
                 serverUseCases = appContainer.serverUseCases,
                 settingsUseCases = appContainer.settingsUseCases,
@@ -350,7 +329,6 @@ class AppContainer(private val applicationContext: Context) {
 
         override fun createServerDetailViewModel(serverId: Int?): ServerDetailViewModel {
             Timber.d("Creating ServerDetailViewModel for serverId=$serverId")
-            // Используем новый класс ServerDetailViewModelImpl с UseCases вместо репозиториев
             val viewModel = ServerDetailViewModel(
                 serverId = serverId,
                 serverUseCases = appContainer.serverUseCases,
@@ -361,16 +339,12 @@ class AppContainer(private val applicationContext: Context) {
         }
     }
 
-    /**
-     * Контейнер для подграфа заданий
-     */
     inner class TasksGraphContainerImpl(
         private val appContainer: AppContainer
     ) : BaseGraphContainer(), TasksGraphContainer {
 
         override fun createTaskListViewModel(): TaskListViewModel {
             Timber.d("Creating TaskListViewModel")
-            // Используем новый класс TaskListViewModelImpl с UseCases вместо репозиториев
             val viewModel = TaskListViewModel(
                 taskUseCases = appContainer.taskUseCases,
                 userUseCases = appContainer.userUseCases,
@@ -382,7 +356,6 @@ class AppContainer(private val applicationContext: Context) {
 
         override fun createTaskDetailViewModel(taskId: String): TaskDetailViewModel {
             Timber.d("Creating TaskDetailViewModel for taskId=$taskId")
-            // Используем новый класс TaskDetailViewModelImpl с UseCases вместо репозиториев
             val viewModel = TaskDetailViewModel(
                 taskId = taskId,
                 taskUseCases = appContainer.taskUseCases,
@@ -395,16 +368,12 @@ class AppContainer(private val applicationContext: Context) {
         }
     }
 
-    /**
-     * Контейнер для подграфа товаров
-     */
     inner class ProductsGraphContainerImpl(
         private val appContainer: AppContainer
     ) : BaseGraphContainer(), ProductsGraphContainer {
 
         override fun createProductListViewModel(): ProductListViewModel {
             Timber.d("Creating ProductListViewModel")
-            // Используем новый класс ProductListViewModelImpl с UseCases вместо репозиториев
             val viewModel = ProductListViewModel(
                 productUseCases = appContainer.productUseCases,
                 ioDispatcher = Dispatchers.IO
@@ -415,8 +384,6 @@ class AppContainer(private val applicationContext: Context) {
 
         override fun createProductDetailViewModel(productId: String): ProductDetailViewModel {
             Timber.d("Creating ProductDetailViewModel for productId=$productId")
-            // Вместо внутреннего класса используем реальную реализацию ViewModel
-            // Здесь нужно реализовать ProductDetailViewModelImpl, мы её пока не создавали
             val viewModel = ProductDetailViewModel(
                 productId = productId,
                 productUseCases = appContainer.productUseCases,
@@ -428,9 +395,6 @@ class AppContainer(private val applicationContext: Context) {
         }
     }
 
-    /**
-     * Контейнер для подграфа логов
-     */
     inner class LogsGraphContainerImpl(
         private val appContainer: AppContainer
     ) : BaseGraphContainer(), LogsGraphContainer {
@@ -460,9 +424,6 @@ class AppContainer(private val applicationContext: Context) {
         }
     }
 
-    /**
-     * Контейнер для экрана настроек
-     */
     inner class SettingsScreenContainerImpl(
         private val appContainer: AppContainer
     ) : BaseGraphContainer(), SettingsScreenContainer {
@@ -482,9 +443,6 @@ class AppContainer(private val applicationContext: Context) {
         }
     }
 
-    /**
-     * Контейнер для экрана логина
-     */
     inner class LoginScreenContainerImpl(
         private val appContainer: AppContainer
     ) : BaseGraphContainer(), LoginScreenContainer {

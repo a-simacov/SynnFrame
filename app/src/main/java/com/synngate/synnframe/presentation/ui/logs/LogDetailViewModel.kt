@@ -13,9 +13,6 @@ import kotlinx.coroutines.delay
 import timber.log.Timber
 import java.time.format.DateTimeFormatter
 
-/**
- * ViewModel для экрана деталей лога
- */
 class LogDetailViewModel(
     private val logId: Int,
     private val logUseCases: LogUseCases,
@@ -24,16 +21,12 @@ class LogDetailViewModel(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<LogDetailState, LogDetailEvent>(LogDetailState(), ioDispatcher) {
 
-    // Форматтер для отображения даты
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")
 
     init {
         loadLog()
     }
 
-    /**
-     * Загрузка данных лога
-     */
     fun loadLog() {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
@@ -73,9 +66,6 @@ class LogDetailViewModel(
         }
     }
 
-    /**
-     * Копирование содержимого лога в буфер обмена
-     */
     fun copyLogToClipboard() {
         val log = uiState.value.log ?: return
 
@@ -95,11 +85,10 @@ class LogDetailViewModel(
 
         // Автоматически сбрасываем флаг через некоторое время
         launchIO {
-            delay(2000) // 2 секунды
+            delay(2000)
             updateState { it.copy(isTextCopied = false) }
         }
 
-        // Логируем успешное копирование и отправляем уведомление
         if (isCopied) {
             launchIO {
                 loggingService.logInfo("Лог с ID ${log.id} скопирован в буфер обмена")
@@ -108,25 +97,16 @@ class LogDetailViewModel(
         }
     }
 
-    /**
-     * Показать диалог подтверждения удаления
-     */
     fun showDeleteConfirmation() {
         sendEvent(LogDetailEvent.ShowDeleteConfirmation)
         updateState { it.copy(showDeleteConfirmation = true) }
     }
 
-    /**
-     * Скрыть диалог подтверждения удаления
-     */
     fun hideDeleteConfirmation() {
         sendEvent(LogDetailEvent.HideDeleteConfirmation)
         updateState { it.copy(showDeleteConfirmation = false) }
     }
 
-    /**
-     * Удаление лога
-     */
     fun deleteLog(onDeleted: () -> Unit) {
         launchIO {
             updateState {
@@ -180,9 +160,6 @@ class LogDetailViewModel(
         }
     }
 
-    /**
-     * Форматирование типа лога для отображения
-     */
     private fun formatLogType(type: LogType): String {
         return when (type) {
             LogType.INFO -> "Информация"

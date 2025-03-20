@@ -33,9 +33,6 @@ import com.synngate.synnframe.presentation.common.inputs.PasswordTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.ui.login.model.LoginEvent
 
-/**
- * Экран логина
- */
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel,
@@ -43,15 +40,12 @@ fun LoginScreen(
     navigateToServersList: () -> Unit,
     exitApp: () -> Unit
 ) {
-    // Получаем состояние экрана из ViewModel
     val state by viewModel.uiState.collectAsState()
 
-    // SnackbarHostState для показа уведомлений
     val snackbarHostState = remember { SnackbarHostState() }
 
     val context = LocalContext.current
 
-    // Обработка событий из ViewModel
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
@@ -66,12 +60,10 @@ fun LoginScreen(
         }
     }
 
-    // Обработка нажатия кнопки Назад
     BackHandler {
         viewModel.showExitConfirmation()
     }
 
-    // Диалог подтверждения выхода
     if (state.showExitConfirmation) {
         ConfirmationDialog(
             title = stringResource(id = R.string.exit_confirmation_title),
@@ -81,7 +73,6 @@ fun LoginScreen(
         )
     }
 
-    // Основной UI экрана
     AppScaffold(
         title = stringResource(id = R.string.login_title),
         snackbarHostState = snackbarHostState
@@ -99,7 +90,6 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Отображаем информацию об активном сервере
                 if (!state.hasActiveServer) {
                     Text(
                         text = stringResource(id = R.string.no_active_server),
@@ -115,7 +105,6 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // Поле ввода пароля
                 PasswordTextField(
                     value = state.password,
                     onValueChange = { viewModel.updatePassword(it) },
@@ -127,7 +116,6 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Кнопка логина
                 ActionButton(
                     text = stringResource(id = R.string.login),
                     onClick = { viewModel.login() },
@@ -138,7 +126,6 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Кнопка выхода
                 NavigationButton(
                     text = stringResource(id = R.string.exit),
                     onClick = { viewModel.showExitConfirmation() },
@@ -148,7 +135,6 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Информация о версии приложения
                 Text(
                     text = stringResource(
                         id = R.string.splash_version,
