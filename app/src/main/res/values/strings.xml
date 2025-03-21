@@ -399,4 +399,8 @@
     <!-- Для SynchronizationWorker -->
     <string name="sync_worker_name">Периодическая синхронизация</string>
     <string name="sync_worker_description">Выполняет синхронизацию данных с сервером</string>
+
+    <!-- Обновление приложения -->
+    <string name="permission_required">Требуется разрешение</string>
+    <string name="install_permission_required">Для установки обновления требуется разрешение на установку приложений из этого источника.</string>
 </resources>

@@ -1,9 +1,13 @@
 package com.synngate.synnframe.domain.usecase.settings
 
 import android.content.Context
+import android.os.StatFs
 import androidx.core.content.FileProvider
+import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.data.remote.api.ApiResult
+import com.synngate.synnframe.data.remote.api.DownloadProgressListener
 import com.synngate.synnframe.domain.repository.SettingsRepository
+import com.synngate.synnframe.domain.service.FileService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import com.synngate.synnframe.presentation.theme.ThemeMode
@@ -21,6 +25,7 @@ import java.io.IOException
 class SettingsUseCases(
     private val settingsRepository: SettingsRepository,
     private val loggingService: LoggingService,
+    private val fileService: FileService,
     private val applicationContext: Context
 ) : BaseUseCase {
 
@@ -93,7 +98,7 @@ class SettingsUseCases(
         }
     }
 
-    // Методы работы с обновлениями с перенесенной бизнес-логикой
+    // Модификация существующего метода для использования сравнения версий
     suspend fun checkForUpdates(): Result<Pair<String?, String?>> {
         return try {
             val response = settingsRepository.getLatestAppVersion()
@@ -101,8 +106,20 @@ class SettingsUseCases(
             when (response) {
                 is ApiResult.Success -> {
                     val updateInfo = response.data
-                    loggingService.logInfo("Проверка обновлений: доступна версия ${updateInfo?.lastVersion}")
-                    Result.success(Pair(updateInfo?.lastVersion, updateInfo?.releaseDate))
+                    val serverVersion = updateInfo?.lastVersion
+
+                    // Проверяем, является ли версия с сервера новее текущей
+                    val currentVersion = BuildConfig.VERSION_NAME
+                    val isNewVersionAvailable = serverVersion != null &&
+                            isNewVersionAvailable(currentVersion, serverVersion)
+
+                    if (isNewVersionAvailable) {
+                        loggingService.logInfo("Проверка обновлений: доступна версия ${updateInfo?.lastVersion}")
+                        Result.success(Pair(updateInfo?.lastVersion, updateInfo?.releaseDate))
+                    } else {
+                        loggingService.logInfo("Проверка обновлений: обновлений не найдено")
+                        Result.success(Pair(null, null))
+                    }
                 }
                 is ApiResult.Error -> {
                     loggingService.logWarning("Ошибка проверки обновлений: ${response.message}")
@@ -118,29 +135,36 @@ class SettingsUseCases(
 
     suspend fun downloadUpdate(version: String): Result<String> {
         return try {
+            // Проверяем наличие свободного места (примерно 50 МБ для APK)
+            if (!fileService.hasEnoughStorage(50 * 1024 * 1024L)) {
+                loggingService.logWarning("Недостаточно места для загрузки обновления")
+                return Result.failure(IOException("Insufficient storage space"))
+            }
+
+            // Создаем директорию для обновлений, если она не существует
+            if (!fileService.ensureDirectoryExists("updates")) {
+                loggingService.logWarning("Не удалось создать директорию для обновлений")
+                return Result.failure(IOException("Failed to create updates directory"))
+            }
+
+            // Загружаем обновление
             val response = settingsRepository.downloadAppUpdate(version)
 
             when (response) {
                 is ApiResult.Success -> {
                     val responseBody = response.data
 
-                    // Бизнес-логика работы с файловой системой
-                    val downloadDir = File(applicationContext.filesDir, "updates")
-                    if (!downloadDir.exists()) {
-                        downloadDir.mkdirs()
+                    // Сохраняем файл
+                    val fileName = "app-update-$version.apk"
+                    val filePath = fileService.saveFile(fileName, responseBody)
+
+                    if (filePath != null) {
+                        loggingService.logInfo("Обновление загружено: $version, путь: $filePath")
+                        Result.success(filePath)
+                    } else {
+                        loggingService.logWarning("Не удалось сохранить обновление")
+                        Result.failure(IOException("Failed to save update file"))
                     }
-
-                    val apkFile = File(downloadDir, "app-update-$version.apk")
-
-                    withContext(Dispatchers.IO) {
-                        FileOutputStream(apkFile).use { outputStream ->
-                            outputStream.write(responseBody)
-                            outputStream.flush()
-                        }
-                    }
-
-                    loggingService.logInfo("Обновление загружено: $version, путь: ${apkFile.absolutePath}")
-                    Result.success(apkFile.absolutePath)
                 }
                 is ApiResult.Error -> {
                     loggingService.logWarning("Ошибка загрузки обновления: ${response.message}")
@@ -152,6 +176,11 @@ class SettingsUseCases(
             loggingService.logError("Исключение при загрузке обновления: ${e.message}")
             Result.failure(e)
         }
+    }
+    // Вспомогательный метод для проверки доступного места
+    private fun getAvailableStorage(): Long {
+        val stat = StatFs(applicationContext.filesDir.path)
+        return stat.availableBlocksLong * stat.blockSizeLong
     }
 
     suspend fun installUpdate(filePath: String): Result<Boolean> {
@@ -175,6 +204,24 @@ class SettingsUseCases(
             Timber.e(e, "Exception during update installation preparation")
             loggingService.logError("Исключение при подготовке установки обновления: ${e.message}")
             Result.failure(e)
+        }
+    }
+
+    // Добавим новый приватный метод для сравнения версий
+    private fun isNewVersionAvailable(currentVersion: String, serverVersion: String): Boolean {
+        try {
+            val current = currentVersion.split(".").map { it.toInt() }
+            val server = serverVersion.split(".").map { it.toInt() }
+
+            for (i in 0 until minOf(current.size, server.size)) {
+                if (server[i] > current[i]) return true
+                if (server[i] < current[i]) return false
+            }
+
+            return server.size > current.size
+        } catch (e: Exception) {
+            Timber.e(e, "Error comparing versions")
+            return false
         }
     }
 }

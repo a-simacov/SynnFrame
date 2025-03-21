@@ -30,6 +30,7 @@ import com.synngate.synnframe.data.repository.TaskRepositoryImpl
 import com.synngate.synnframe.data.repository.UserRepositoryImpl
 import com.synngate.synnframe.data.service.ClipboardServiceImpl
 import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
+import com.synngate.synnframe.data.service.FileServiceImpl
 import com.synngate.synnframe.data.service.LoggingServiceImpl
 import com.synngate.synnframe.data.service.ServerCoordinatorImpl
 import com.synngate.synnframe.data.service.SoundServiceImpl
@@ -44,6 +45,7 @@ import com.synngate.synnframe.domain.repository.TaskRepository
 import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
+import com.synngate.synnframe.domain.service.FileService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.service.SoundService
@@ -237,6 +239,10 @@ class AppContainer(private val applicationContext: Context) {
         SoundServiceImpl(applicationContext)
     }
 
+    private val fileService: FileService by lazy {
+        FileServiceImpl(applicationContext)
+    }
+
     // Создание NotificationChannelManager
     private val notificationChannelManager by lazy {
         NotificationChannelManager(applicationContext)
@@ -281,7 +287,7 @@ class AppContainer(private val applicationContext: Context) {
     }
 
     private val settingsUseCases by lazy {
-        SettingsUseCases(settingsRepository, loggingService, applicationContext)
+        SettingsUseCases(settingsRepository, loggingService, fileService, applicationContext)
     }
 
     // Инициализация каналов уведомлений при создании контейнера

@@ -1,9 +1,13 @@
 package com.synngate.synnframe.presentation.ui.settings
 
+import android.app.Activity
+import android.content.ContextWrapper
+import android.content.Intent
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.service.UpdateInstaller
+import com.synngate.synnframe.domain.service.UpdateInstallerImpl
 import com.synngate.synnframe.domain.service.WebServerManager
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
@@ -438,15 +442,40 @@ class SettingsViewModel(
     /**
      * Загрузка обновления
      */
+    // Добавим методы для работы с разрешениями
+    fun checkInstallPermission(): Boolean {
+        return if (updateInstaller is UpdateInstallerImpl) {
+            (updateInstaller as UpdateInstallerImpl).canInstallPackages()
+        } else {
+            true
+        }
+    }
+
+    fun getInstallPermissionIntent(): Intent? {
+        return if (updateInstaller is UpdateInstallerImpl) {
+            (updateInstaller as UpdateInstallerImpl).getInstallPermissionIntent()
+        } else {
+            null
+        }
+    }
+
+    // Модификация метода загрузки обновления
     fun downloadUpdate() {
         val version = uiState.value.lastVersion ?: return
+
+        // Перед загрузкой проверяем разрешение на установку
+        if (!checkInstallPermission()) {
+            sendEvent(SettingsEvent.RequestInstallPermission(getInstallPermissionIntent()))
+            return
+        }
 
         launchIO {
             updateState {
                 it.copy(
                     isDownloadingUpdate = true,
                     showUpdateConfirmDialog = false,
-                    error = null
+                    error = null,
+                    downloadProgress = 0 // Добавляем отслеживание прогресса
                 )
             }
 
@@ -460,7 +489,8 @@ class SettingsViewModel(
                         it.copy(
                             isDownloadingUpdate = false,
                             downloadedUpdatePath = filePath,
-                            error = null
+                            error = null,
+                            downloadProgress = 100 // Загрузка завершена
                         )
                     }
 
@@ -471,7 +501,8 @@ class SettingsViewModel(
                     updateState {
                         it.copy(
                             isDownloadingUpdate = false,
-                            error = "Ошибка загрузки обновления: ${exception?.message}"
+                            error = "Ошибка загрузки обновления: ${exception?.message}",
+                            downloadProgress = 0
                         )
                     }
                     sendEvent(SettingsEvent.ShowSnackbar("Ошибка загрузки обновления"))
@@ -481,7 +512,8 @@ class SettingsViewModel(
                 updateState {
                     it.copy(
                         isDownloadingUpdate = false,
-                        error = "Ошибка загрузки обновления: ${e.message}"
+                        error = "Ошибка загрузки обновления: ${e.message}",
+                        downloadProgress = 0
                     )
                 }
                 sendEvent(SettingsEvent.ShowSnackbar("Ошибка загрузки обновления"))

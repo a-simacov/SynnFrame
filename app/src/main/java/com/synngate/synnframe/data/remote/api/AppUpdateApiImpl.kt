@@ -6,8 +6,16 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.prepareGet
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentLength
+import io.ktor.util.toByteArray
+import io.ktor.utils.io.ByteChannel
+import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.copyTo
 import timber.log.Timber
+import java.nio.ByteBuffer
 
 /**
  * Реализация интерфейса AppUpdateApi
@@ -42,7 +50,18 @@ class AppUpdateApiImpl(
         }
     }
 
-    override suspend fun downloadUpdate(version: String): ApiResult<ByteArray> {
+    /**
+     * Получение строки Basic аутентификации
+     */
+    private fun getBasicAuth(login: String, password: String): String {
+        val credentials = "$login:$password"
+        return java.util.Base64.getEncoder().encodeToString(credentials.toByteArray())
+    }
+
+    override suspend fun downloadUpdate(
+        version: String,
+        progressListener: DownloadProgressListener?
+    ): ApiResult<ByteArray> {
         val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
             HttpStatusCode.InternalServerError.value,
             "No active server configured"
@@ -50,13 +69,22 @@ class AppUpdateApiImpl(
 
         return try {
             val url = "${server.apiUrl}/app/file?version=$version"
+
+            // Создаем и выполняем запрос
             val response = client.get(url) {
-                // Basic аутентификация
                 header("Authorization", "Basic ${getBasicAuth(server.login, server.password)}")
             }
 
             if (response.status == HttpStatusCode.OK) {
+                // Получаем общий размер файла из заголовка Content-Length
+                val contentLength = response.headers["Content-Length"]?.toLongOrNull() ?: -1L
+
+                // Получаем массив байтов из ответа
                 val bytes = response.body<ByteArray>()
+
+                // Сообщаем о завершении загрузки
+                progressListener?.onProgressUpdate(bytes.size.toLong(), contentLength)
+
                 ApiResult.Success(bytes)
             } else {
                 ApiResult.Error(response.status.value, "Server returned ${response.status}")
@@ -67,11 +95,8 @@ class AppUpdateApiImpl(
         }
     }
 
-    /**
-     * Получение строки Basic аутентификации
-     */
-    private fun getBasicAuth(login: String, password: String): String {
-        val credentials = "$login:$password"
-        return java.util.Base64.getEncoder().encodeToString(credentials.toByteArray())
-    }
+}
+
+interface DownloadProgressListener {
+    fun onProgressUpdate(bytesDownloaded: Long, totalBytes: Long)
 }

@@ -1,6 +1,9 @@
 package com.synngate.synnframe.presentation.ui.settings
 
+import android.app.Activity
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -14,8 +17,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHostState
@@ -28,6 +35,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,7 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.R
@@ -53,6 +61,7 @@ import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsEvent
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsState
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @Composable
@@ -67,9 +76,28 @@ fun SettingsScreen(
 
     // SnackbarHostState для показа уведомлений
     val snackbarHostState = rememberSaveable { SnackbarHostState() }
+    // Получаем CoroutineScope привязанный к этому composable
+    val coroutineScope = rememberCoroutineScope()
 
     // Контекст для работы с файловой системой и установкой обновлений
     val context = LocalContext.current
+    // ActivityResultLauncher для обработки результата запроса разрешений
+    val installPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            // Разрешение получено, можно начать загрузку
+            viewModel.downloadUpdate()
+        } else {
+            // Разрешение не получено, показываем сообщение
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar(
+                    "Для установки обновления требуется разрешение"
+                )
+            }
+        }
+    }
+
 
     // Обработка событий из ViewModel
     LaunchedEffect(key1 = viewModel) {
@@ -89,6 +117,13 @@ fun SettingsScreen(
 
                 is SettingsEvent.SettingsUpdated -> {
                     // Опционально можно показать сообщение об успешном обновлении
+                }
+
+                is SettingsEvent.RequestInstallPermission -> {
+                    // Запускаем Intent для запроса разрешения на установку
+                    event.intent?.let { intent ->
+                        installPermissionLauncher.launch(intent)
+                    }
                 }
 
                 is SettingsEvent.InstallUpdate -> {
@@ -540,43 +575,13 @@ private fun LanguageButton(
 fun UpdateSection(
     state: SettingsState,
     onCheckForUpdates: () -> Unit,
-    onShowUpdateConfirmDialog: () -> Unit, // Добавляем функцию для показа диалога
+    onShowUpdateConfirmDialog: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     InfoCard(
         title = stringResource(id = R.string.update_settings),
         modifier = modifier
     ) {
-        // Анимированное появление информации о доступной версии
-        AnimatedVisibility(
-            visible = state.lastVersion != null,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            Column {
-                Text(
-                    text = stringResource(
-                        id = R.string.available_version,
-                        state.lastVersion ?: ""
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                if (state.releaseDate != null) {
-                    Text(
-                        text = stringResource(
-                            id = R.string.release_date,
-                            state.releaseDate
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
-            }
-        }
-
         // Информация о текущей версии
         Text(
             text = stringResource(
@@ -611,6 +616,39 @@ fun UpdateSection(
             }
         }
 
+        // Индикатор прогресса загрузки
+        AnimatedVisibility(
+            visible = state.isDownloadingUpdate,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(id = R.string.downloading_update),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                LinearProgressIndicator(
+                    progress = { state.downloadProgress / 100f },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                )
+
+                Text(
+                    text = "${state.downloadProgress}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         // Кнопка проверки обновлений
         ActionButton(
             text = stringResource(
@@ -628,6 +666,7 @@ fun UpdateSection(
                     onCheckForUpdates()
                 }
             },
+            icon = Icons.Default.SystemUpdate,
             isLoading = state.isCheckingForUpdates ||
                     state.isDownloadingUpdate ||
                     state.isInstallingUpdate,

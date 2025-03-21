@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.settings.model
 
+import android.content.Intent
 import android.net.Uri
 
 sealed class SettingsEvent {
@@ -22,6 +23,8 @@ sealed class SettingsEvent {
      * Обновление настроек успешно
      */
     data object SettingsUpdated : SettingsEvent()
+
+    data class RequestInstallPermission(val intent: Intent?) : SettingsEvent()
 
     /**
      * Установка обновления

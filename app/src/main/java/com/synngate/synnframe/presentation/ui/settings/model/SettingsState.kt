@@ -50,5 +50,7 @@ data class SettingsState(
     val lastSyncInfo: SynchronizationController.SyncInfo? = null,
     val periodicSyncEnabled: Boolean = false,
     val syncIntervalSeconds: Int = 300, // 5 минут
-    val nextScheduledSync: LocalDateTime? = null
+    val nextScheduledSync: LocalDateTime? = null,
+
+    val downloadProgress: Int = 0
 )
