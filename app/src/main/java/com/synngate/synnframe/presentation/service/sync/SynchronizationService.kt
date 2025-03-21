@@ -13,7 +13,9 @@ import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.service.base.BaseForegroundService
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.ui.MainActivity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -48,16 +50,35 @@ class SynchronizationService : BaseForegroundService() {
         // Обрабатываем дополнительные команды
         when (intent?.action) {
             ACTION_UPDATE_PROGRESS -> {
-                // Обновление прогресса синхронизации из Intent
-                val progress = intent.getParcelableExtra<SyncProgress>(EXTRA_PROGRESS)
-                if (progress != null) {
-                    currentProgress = progress
+                // Создаем новый объект SyncProgress из параметров Intent
+                val progressId = intent.getStringExtra(EXTRA_PROGRESS_ID) ?: System.currentTimeMillis().toString()
+                val statusName = intent.getStringExtra(EXTRA_PROGRESS_STATUS) ?: SyncStatus.STARTED.name
+                val tasksUploaded = intent.getIntExtra(EXTRA_TASKS_UPLOADED, 0)
+                val tasksDownloaded = intent.getIntExtra(EXTRA_TASKS_DOWNLOADED, 0)
+                val productsDownloaded = intent.getIntExtra(EXTRA_PRODUCTS_DOWNLOADED, 0)
+                val currentOperation = intent.getStringExtra(EXTRA_CURRENT_OPERATION) ?: ""
+                val progressPercent = intent.getIntExtra(EXTRA_PROGRESS_PERCENT, 0)
+                val errorCount = intent.getIntExtra(EXTRA_ERROR_COUNT, 0)
+                val errorMessage = intent.getStringExtra(EXTRA_ERROR_MESSAGE)
 
-                    // Обновляем уведомление с новым прогрессом
-                    if (isServiceRunning) {
-                        val notification = createNotification()
-                        startForeground(notificationId, notification)
-                    }
+                val progress = SyncProgress(
+                    id = progressId,
+                    status = SyncStatus.valueOf(statusName),
+                    tasksUploaded = tasksUploaded,
+                    tasksDownloaded = tasksDownloaded,
+                    productsDownloaded = productsDownloaded,
+                    currentOperation = currentOperation,
+                    progressPercent = progressPercent,
+                    errorCount = errorCount,
+                    lastErrorMessage = errorMessage
+                )
+
+                currentProgress = progress
+
+                // Обновляем уведомление с новым прогрессом
+                if (isServiceRunning) {
+                    val notification = createNotification()
+                    startForeground(notificationId, notification)
                 }
             }
         }
@@ -69,7 +90,7 @@ class SynchronizationService : BaseForegroundService() {
         Timber.d("Starting synchronization service")
 
         // Запускаем наблюдение за прогрессом синхронизации
-        launchIO {
+        serviceScope.launch(Dispatchers.IO) {
             synchronizationController.syncProgressFlow.collect { progress ->
                 currentProgress = progress
 
@@ -217,5 +238,16 @@ class SynchronizationService : BaseForegroundService() {
         // Дополнительные данные для Intent
         const val EXTRA_PROGRESS = "extra_progress"
         const val EXTRA_OPEN_SYNC_SCREEN = "extra_open_sync_screen"
+
+        // Константы для параметров Intent
+        const val EXTRA_PROGRESS_ID = "extra_progress_id"
+        const val EXTRA_PROGRESS_STATUS = "extra_progress_status"
+        const val EXTRA_TASKS_UPLOADED = "extra_tasks_uploaded"
+        const val EXTRA_TASKS_DOWNLOADED = "extra_tasks_downloaded"
+        const val EXTRA_PRODUCTS_DOWNLOADED = "extra_products_downloaded"
+        const val EXTRA_CURRENT_OPERATION = "extra_current_operation"
+        const val EXTRA_PROGRESS_PERCENT = "extra_progress_percent"
+        const val EXTRA_ERROR_COUNT = "extra_error_count"
+        const val EXTRA_ERROR_MESSAGE = "extra_error_message"
     }
 }

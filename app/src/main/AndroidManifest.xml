@@ -34,7 +34,7 @@
         <activity
             android:name=".presentation.ui.splash.SplashActivity"
             android:exported="true"
-            android:theme="@style/Theme.SynnFrame.Splash">
+            android:theme="@style/Theme.SynnFrame">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

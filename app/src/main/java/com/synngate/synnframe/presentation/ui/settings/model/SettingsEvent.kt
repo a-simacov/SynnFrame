@@ -30,4 +30,6 @@ sealed class SettingsEvent {
      * Установка обновления
      */
     data class InstallUpdate(val uri: Uri) : SettingsEvent()
+
+    data object NavigateToSyncHistory : SettingsEvent()
 }

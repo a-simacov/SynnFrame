@@ -403,4 +403,69 @@
     <!-- Обновление приложения -->
     <string name="permission_required">Требуется разрешение</string>
     <string name="install_permission_required">Для установки обновления требуется разрешение на установку приложений из этого источника.</string>
+
+    <!-- Строки для экрана истории синхронизаций -->
+    <string name="sync_history_title">История синхронизаций</string>
+    <string name="no_sync_history">Нет истории синхронизаций</string>
+    <string name="sync_history_empty_description">История синхронизаций появится после выполнения первой синхронизации</string>
+    <string name="sync_statistics">Статистика синхронизаций</string>
+    <string name="successful_syncs">Успешные</string>
+    <string name="failed_syncs">Неудачные</string>
+    <string name="items_processed">Обработано</string>
+    <string name="average_duration">Ср. время</string>
+    <string name="sync_item_summary">Выгружено: %1$d, загружено заданий: %2$d, товаров: %3$d</string>
+    <string name="sync_details_title">Детали синхронизации</string>
+    <string name="sync_start_time">Время начала</string>
+    <string name="sync_end_time">Время окончания</string>
+    <string name="sync_duration">Длительность</string>
+    <string name="sync_network_type">Тип сети</string>
+    <string name="sync_metered_connection">Лимитированное соединение</string>
+    <string name="sync_tasks_uploaded">Выгружено заданий</string>
+    <string name="sync_tasks_downloaded">Загружено заданий</string>
+    <string name="sync_products_downloaded">Загружено товаров</string>
+    <string name="sync_retry_attempts">Повторные попытки</string>
+    <string name="sync_status">Статус</string>
+    <string name="sync_success">Успешно</string>
+    <string name="sync_failure">Ошибка</string>
+    <string name="sync_error">Сообщение об ошибке</string>
+
+    <!-- Строки для уведомлений в SynchronizationService -->
+    <string name="sync_notification_title_started">Синхронизация начата</string>
+    <string name="sync_notification_title_in_progress">Синхронизация выполняется</string>
+    <string name="sync_notification_title_completed">Синхронизация завершена</string>
+    <string name="sync_notification_title_failed">Синхронизация не удалась</string>
+    <string name="sync_notification_completed">Выгружено заданий: %1$d, загружено заданий: %2$d, товаров: %3$d</string>
+    <string name="sync_notification_started_at">Начата: %1$s</string>
+    <string name="sync_notification_finished_at">Завершена: %1$s</string>
+    <string name="action_sync_now">Синхронизировать</string>
+    <string name="action_clear">Очистить</string>
+
+    <!-- Общие строки для логов -->
+    <string name="log_details">Детали лога</string>
+    <string name="log_message">Сообщение лога:</string>
+    <string name="loading_log">Загрузка лога...</string>
+    <string name="error_loading_log">Ошибка загрузки лога</string>
+    <string name="no_logs">Список логов пуст</string>
+    <string name="no_logs_with_filter">По заданным фильтрам логи не найдены</string>
+
+    <!-- Фильтры -->
+    <string name="search_logs">Поиск логов</string>
+    <string name="show_date_filter">Показать фильтр по дате</string>
+    <string name="hide_date_filter">Скрыть фильтр по дате</string>
+    <string name="date_from">Дата с</string>
+    <string name="date_to">Дата по</string>
+    <string name="apply_filter">Применить</string>
+    <string name="clear_filter">Очистить</string>
+
+    <!-- Действия с логами -->
+    <string name="copy_to_clipboard">Копировать в буфер обмена</string>
+    <string name="log_copied_to_clipboard">Лог скопирован в буфер обмена</string>
+    <string name="delete_log">Удалить лог</string>
+    <string name="delete_log_title">Удаление лога</string>
+    <string name="delete_log_message">Вы уверены, что хотите удалить этот лог?</string>
+    <string name="delete_all_logs">Удалить все логи</string>
+    <string name="delete_all_logs_title">Удаление всех логов</string>
+    <string name="delete_all_logs_message">Вы уверены, что хотите удалить все логи? Это действие нельзя отменить.</string>
+
+    <string name="sync_history">История синхронизаций</string>
 </resources>

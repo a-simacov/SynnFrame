@@ -817,4 +817,8 @@ class SettingsViewModel(
     fun navigateBack() {
         sendEvent(SettingsEvent.NavigateBack)
     }
+
+    fun onSyncHistoryClick() {
+        sendEvent(SettingsEvent.NavigateToSyncHistory)
+    }
 }

@@ -28,6 +28,7 @@ import com.synngate.synnframe.presentation.ui.main.MainMenuScreen
 import com.synngate.synnframe.presentation.ui.server.ServerDetailScreen
 import com.synngate.synnframe.presentation.ui.server.ServerListScreen
 import com.synngate.synnframe.presentation.ui.settings.SettingsScreen
+import com.synngate.synnframe.presentation.ui.sync.SyncHistoryScreen
 import timber.log.Timber
 
 /**
@@ -228,6 +229,9 @@ fun AppNavigation(
                         popUpTo(Screen.Settings.route) { inclusive = false }
                     }
                 },
+                navigateToSyncHistory = {
+                    navController.navigate(Screen.SyncHistory.route)
+                },
                 navigateBack = {
                     navController.popBackStack()
                 }
@@ -334,6 +338,34 @@ fun AppNavigation(
             }
         )
 
+        composable(Screen.SyncHistory.route) { entry ->
+            val settingsScreenContainer = remember {
+                navHostContainer.createSettingsScreenContainer()
+            }
+
+            // Отслеживаем жизненный цикл для очистки ресурсов
+            DisposableEffect(lifecycleOwner, entry) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_DESTROY) {
+                        if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                            Timber.d("SyncHistory screen destroyed, clearing container")
+                            settingsScreenContainer.clear()
+                        }
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            SyncHistoryScreen(
+                viewModel = settingsScreenContainer.createSyncHistoryViewModel(),
+                navigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
 
         // Остальные экраны будут добавлены в следующих этапах реализации
     }
@@ -398,4 +430,6 @@ sealed class Screen(val route: String) {
     }
 
     object Settings : Screen("settings")
+
+    object SyncHistory : Screen("sync_history")
 }

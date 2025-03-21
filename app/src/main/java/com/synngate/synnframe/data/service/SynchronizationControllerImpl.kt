@@ -8,6 +8,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.synngate.synnframe.data.datastore.AppSettingsDataStore
+import com.synngate.synnframe.data.local.dao.SyncHistoryDao
 import com.synngate.synnframe.data.local.database.AppDatabase
 import com.synngate.synnframe.data.local.entity.OperationType
 import com.synngate.synnframe.data.sync.SyncHistoryRecord
@@ -82,6 +83,8 @@ class SynchronizationControllerImpl(
         initialDelayMs = 1000,
         maxDelayMs = 60000
     )
+
+    private val syncHistoryDao: SyncHistoryDao = appDatabase.syncHistoryDao()
 
     private val networkMonitor: NetworkMonitor
     private val syncQueueManager: SyncQueueManager
@@ -399,7 +402,15 @@ class SynchronizationControllerImpl(
         try {
             val intent = Intent(context, SynchronizationService::class.java).apply {
                 action = SynchronizationService.ACTION_UPDATE_PROGRESS
-                putExtra(SynchronizationService.EXTRA_PROGRESS, progress)
+                putExtra(SynchronizationService.EXTRA_PROGRESS_ID, progress.id)
+                putExtra(SynchronizationService.EXTRA_PROGRESS_STATUS, progress.status.name)
+                putExtra(SynchronizationService.EXTRA_TASKS_UPLOADED, progress.tasksUploaded)
+                putExtra(SynchronizationService.EXTRA_TASKS_DOWNLOADED, progress.tasksDownloaded)
+                putExtra(SynchronizationService.EXTRA_PRODUCTS_DOWNLOADED, progress.productsDownloaded)
+                putExtra(SynchronizationService.EXTRA_CURRENT_OPERATION, progress.currentOperation)
+                putExtra(SynchronizationService.EXTRA_PROGRESS_PERCENT, progress.progressPercent)
+                putExtra(SynchronizationService.EXTRA_ERROR_COUNT, progress.errorCount)
+                putExtra(SynchronizationService.EXTRA_ERROR_MESSAGE, progress.lastErrorMessage)
             }
             context.startService(intent)
         } catch (e: Exception) {

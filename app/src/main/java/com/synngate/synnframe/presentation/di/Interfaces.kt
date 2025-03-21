@@ -9,6 +9,7 @@ import com.synngate.synnframe.presentation.ui.products.ProductListViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerListViewModel
 import com.synngate.synnframe.presentation.ui.settings.SettingsViewModel
+import com.synngate.synnframe.presentation.ui.sync.SyncHistoryViewModel
 import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModel
 import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModel
 
@@ -81,6 +82,8 @@ interface LogsGraphContainer : GraphContainer {
 interface SettingsScreenContainer : GraphContainer {
 
     fun createSettingsViewModel(): SettingsViewModel
+
+    fun createSyncHistoryViewModel(): SyncHistoryViewModel
 }
 
 interface LoginScreenContainer : GraphContainer {

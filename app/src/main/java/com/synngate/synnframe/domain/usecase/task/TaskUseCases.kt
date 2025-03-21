@@ -293,4 +293,18 @@ class TaskUseCases(
             Result.failure(e)
         }
     }
+
+    /**
+     * Получение завершенных, но не выгруженных заданий
+     */
+    suspend fun getCompletedNotUploadedTasks(): Result<List<Task>> {
+        return try {
+            val tasks = taskRepository.getCompletedNotUploadedTasks()
+            Result.success(tasks)
+        } catch (e: Exception) {
+            Timber.e(e, "Error getting completed not uploaded tasks")
+            loggingService.logError("Ошибка получения невыгруженных заданий: ${e.message}")
+            Result.failure(e)
+        }
+    }
 }

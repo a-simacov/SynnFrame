@@ -69,6 +69,7 @@ import com.synngate.synnframe.presentation.ui.products.ProductListViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerListViewModel
 import com.synngate.synnframe.presentation.ui.settings.SettingsViewModel
+import com.synngate.synnframe.presentation.ui.sync.SyncHistoryViewModel
 import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModel
 import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModel
 import io.ktor.client.HttpClient
@@ -261,7 +262,8 @@ class AppContainer(private val applicationContext: Context) {
             taskUseCases,
             productUseCases,
             appSettingsDataStore,
-            loggingService
+            loggingService,
+            database
         )
     }
 
@@ -487,6 +489,16 @@ class AppContainer(private val applicationContext: Context) {
                 appContainer.synchronizationController,
                 appContainer.updateInstaller,
                 Dispatchers.IO
+            )
+            addClearable(viewModel)
+            return viewModel
+        }
+
+        override fun createSyncHistoryViewModel(): SyncHistoryViewModel {
+            Timber.d("Creating SyncHistoryViewModel")
+            val viewModel = SyncHistoryViewModel(
+                synchronizationController = appContainer.synchronizationController,
+                ioDispatcher = Dispatchers.IO
             )
             addClearable(viewModel)
             return viewModel

@@ -8,6 +8,7 @@ import androidx.room.TypeConverters
 import com.synngate.synnframe.data.local.dao.LogDao
 import com.synngate.synnframe.data.local.dao.ProductDao
 import com.synngate.synnframe.data.local.dao.ServerDao
+import com.synngate.synnframe.data.local.dao.SyncHistoryDao
 import com.synngate.synnframe.data.local.dao.SyncOperationDao
 import com.synngate.synnframe.data.local.dao.TaskDao
 import com.synngate.synnframe.data.local.dao.UserDao
@@ -56,6 +57,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
 
     abstract fun syncOperationDao(): SyncOperationDao
+
+    abstract fun syncHistoryDao(): SyncHistoryDao
 
     companion object {
         private const val DATABASE_NAME = "synnframe_database"

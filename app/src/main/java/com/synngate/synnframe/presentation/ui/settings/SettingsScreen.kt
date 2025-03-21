@@ -18,10 +18,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -68,6 +68,7 @@ import timber.log.Timber
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     navigateToServerList: () -> Unit,
+    navigateToSyncHistory: () -> Unit,
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -144,6 +145,8 @@ fun SettingsScreen(
                         snackbarHostState.showSnackbar("Ошибка установки: ${e.message}")
                     }
                 }
+
+                is SettingsEvent.NavigateToSyncHistory -> navigateToSyncHistory()
             }
         }
     }
@@ -214,6 +217,15 @@ fun SettingsScreen(
             WebServerSection(
                 state = state,
                 onToggleWebServer = viewModel::toggleWebServer
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            NavigationButton(
+                text = stringResource(id = R.string.sync_history),
+                onClick = { viewModel.onSyncHistoryClick() },
+                icon = Icons.Filled.History,
+                contentDescription = stringResource(id = R.string.sync_history)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
