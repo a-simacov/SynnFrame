@@ -6,6 +6,7 @@ import com.synngate.synnframe.data.remote.dto.AuthResponseDto
 import com.synngate.synnframe.data.remote.dto.TaskAvailabilityResponseDto
 import com.synngate.synnframe.domain.entity.Server
 import com.synngate.synnframe.domain.entity.Task
+import com.synngate.synnframe.util.network.ApiUtils
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -69,7 +70,7 @@ class ApiServiceImpl(
         return try {
             val response = client.get(server.echoUrl) {
                 // Basic аутентификация
-                header("Authorization", "Basic ${getBasicAuth(server.login, server.password)}")
+                header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
             }
 
             if (response.status.isSuccess()) {
@@ -98,7 +99,7 @@ class ApiServiceImpl(
                 // Заголовок с паролем
                 header("User-Auth-Pass", password)
                 // Basic аутентификация
-                header("Authorization", "Basic ${getBasicAuth(server.login, server.password)}")
+                header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
                 // Тело запроса
                 contentType(ContentType.Application.Json)
                 setBody(
@@ -142,7 +143,7 @@ class ApiServiceImpl(
             val url = "${server.apiUrl}/tasks/$taskId/availability"
             val response = client.get(url) {
                 // Basic аутентификация
-                header("Authorization", "Basic ${getBasicAuth(server.login, server.password)}")
+                header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
                 // Заголовок с ID текущего пользователя
                 header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
             }
@@ -172,7 +173,7 @@ class ApiServiceImpl(
             val url = "${server.apiUrl}/tasks/$taskId"
             val response = client.post(url) {
                 // Basic аутентификация
-                header("Authorization", "Basic ${getBasicAuth(server.login, server.password)}")
+                header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
                 // Заголовок с ID текущего пользователя
                 header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
                 // Тело запроса
@@ -192,14 +193,6 @@ class ApiServiceImpl(
                 e.message ?: "Task upload failed"
             )
         }
-    }
-
-    /**
-     * Получение строки Basic аутентификации
-     */
-    private fun getBasicAuth(login: String, password: String): String {
-        val credentials = "$login:$password"
-        return java.util.Base64.getEncoder().encodeToString(credentials.toByteArray())
     }
 }
 

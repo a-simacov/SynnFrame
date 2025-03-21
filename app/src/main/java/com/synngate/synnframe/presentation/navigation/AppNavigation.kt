@@ -318,18 +318,11 @@ fun AppNavigation(
             }
         )
 
-        // Подключаем граф навигации для товаров
-        // Добавляем обработку возврата товара к заданию
-        var selectedProduct: Product? = null
-
         productsNavGraph(
             navController = navController,
             productsGraphContainer = navHostContainer.createProductsGraphContainer(),
             lifecycleOwner = lifecycleOwner,
             returnProductToTask = { product ->
-                // Сохраняем выбранный товар
-                selectedProduct = product
-
                 // Возвращаемся к предыдущему экрану (экрану задания)
                 navController.previousBackStackEntry?.savedStateHandle?.set(
                     "selected_product", product

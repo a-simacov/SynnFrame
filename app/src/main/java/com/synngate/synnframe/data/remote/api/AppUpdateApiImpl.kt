@@ -2,6 +2,7 @@ package com.synngate.synnframe.data.remote.api
 
 import com.synngate.synnframe.data.remote.dto.AppVersionDto
 import com.synngate.synnframe.data.remote.service.ServerProvider
+import com.synngate.synnframe.util.network.ApiUtils
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -12,10 +13,25 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentLength
 import io.ktor.util.toByteArray
 import io.ktor.utils.io.ByteChannel
-import io.ktor.utils.io.ByteWriteChannel
-import io.ktor.utils.io.copyTo
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.core.readBytes
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.nio.ByteBuffer
+
+/**
+ * Интерфейс для отслеживания прогресса загрузки
+ */
+interface DownloadProgressListener {
+    /**
+     * Вызывается при обновлении прогресса загрузки
+     *
+     * @param bytesDownloaded Количество загруженных байт
+     * @param totalBytes Общее количество байт для загрузки
+     */
+    fun onProgressUpdate(bytesDownloaded: Long, totalBytes: Long)
+}
 
 /**
  * Реализация интерфейса AppUpdateApi
@@ -35,7 +51,7 @@ class AppUpdateApiImpl(
             val url = "${server.apiUrl}/app/lastversion"
             val response = client.get(url) {
                 // Basic аутентификация
-                header("Authorization", "Basic ${getBasicAuth(server.login, server.password)}")
+                header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
             }
 
             if (response.status == HttpStatusCode.OK) {
@@ -50,14 +66,6 @@ class AppUpdateApiImpl(
         }
     }
 
-    /**
-     * Получение строки Basic аутентификации
-     */
-    private fun getBasicAuth(login: String, password: String): String {
-        val credentials = "$login:$password"
-        return java.util.Base64.getEncoder().encodeToString(credentials.toByteArray())
-    }
-
     override suspend fun downloadUpdate(
         version: String,
         progressListener: DownloadProgressListener?
@@ -70,22 +78,59 @@ class AppUpdateApiImpl(
         return try {
             val url = "${server.apiUrl}/app/file?version=$version"
 
-            // Создаем и выполняем запрос
-            val response = client.get(url) {
-                header("Authorization", "Basic ${getBasicAuth(server.login, server.password)}")
+            // Используем prepareGet для возможности работы с потоком данных
+            val call = client.prepareGet(url) {
+                header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
             }
+
+            val response = call.execute()
 
             if (response.status == HttpStatusCode.OK) {
                 // Получаем общий размер файла из заголовка Content-Length
-                val contentLength = response.headers["Content-Length"]?.toLongOrNull() ?: -1L
+                val contentLength = response.contentLength() ?: -1L
 
-                // Получаем массив байтов из ответа
-                val bytes = response.body<ByteArray>()
+                // Получаем канал для чтения данных
+                val channel = response.bodyAsChannel()
+                val result = withContext(Dispatchers.IO) {
+                    // Создаем буфер для данных
+                    val byteArrayOutputStream = java.io.ByteArrayOutputStream()
+                    var downloadedBytes = 0L
+                    var lastReportedProgress = 0L
 
-                // Сообщаем о завершении загрузки
-                progressListener?.onProgressUpdate(bytes.size.toLong(), contentLength)
+                    // Буфер для чтения данных блоками
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
 
-                ApiResult.Success(bytes)
+                    // Читаем данные блоками
+                    while (!channel.isClosedForRead) {
+                        val bytesRead = channel.readAvailable(buffer, 0, buffer.size)
+                        if (bytesRead < 0) break
+
+                        // Записываем прочитанные данные в выходной поток
+                        byteArrayOutputStream.write(buffer, 0, bytesRead)
+
+                        // Обновляем счетчик загруженных байт
+                        downloadedBytes += bytesRead
+
+                        // Отправляем обновление прогресса раз в PROGRESS_UPDATE_THRESHOLD байт
+                        // или если это первое или последнее обновление
+                        if (progressListener != null && (
+                                    downloadedBytes - lastReportedProgress >= PROGRESS_UPDATE_THRESHOLD ||
+                                            downloadedBytes == bytesRead.toLong() ||
+                                            channel.isClosedForRead
+                                    )) {
+                            lastReportedProgress = downloadedBytes
+                            progressListener.onProgressUpdate(downloadedBytes, contentLength)
+                        }
+                    }
+
+                    // Отправляем финальное обновление прогресса
+                    progressListener?.onProgressUpdate(downloadedBytes, contentLength)
+
+                    // Возвращаем полученные данные как ByteArray
+                    byteArrayOutputStream.toByteArray()
+                }
+
+                ApiResult.Success(result)
             } else {
                 ApiResult.Error(response.status.value, "Server returned ${response.status}")
             }
@@ -95,8 +140,21 @@ class AppUpdateApiImpl(
         }
     }
 
-}
+    /**
+     * Читает доступные данные из канала в буфер
+     * @return Количество прочитанных байт или -1, если канал закрыт
+     */
+    private suspend fun ByteReadChannel.readAvailable(buffer: ByteArray, offset: Int, length: Int): Int {
+        if (isClosedForRead) return -1
+        val bytesRead = availableForRead.coerceAtMost(length)
+        if (bytesRead == 0) return 0
 
-interface DownloadProgressListener {
-    fun onProgressUpdate(bytesDownloaded: Long, totalBytes: Long)
+        readFully(buffer, offset, bytesRead)
+        return bytesRead
+    }
+
+    companion object {
+        private const val DEFAULT_BUFFER_SIZE = 8192 // 8 KB
+        private const val PROGRESS_UPDATE_THRESHOLD = 64 * 1024 // 64 KB
+    }
 }

@@ -55,12 +55,6 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <service
-            android:name=".presentation.service.exchange.ExchangeService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
-
         <!-- Provider for installation of updates -->
         <provider
             android:name="androidx.core.content.FileProvider"

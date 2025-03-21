@@ -1,6 +1,11 @@
 package com.synngate.synnframe.util.scanner
 
 import android.annotation.SuppressLint
+import android.graphics.ImageFormat
+import android.graphics.Rect
+import android.graphics.YuvImage
+import android.hardware.camera2.CameraManager
+import android.media.Image
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.zxing.BarcodeFormat
@@ -10,6 +15,7 @@ import com.google.zxing.MultiFormatReader
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import timber.log.Timber
+import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.util.EnumMap
 import java.util.EnumSet
@@ -63,14 +69,13 @@ class BarcodeAnalyzer(
             // Получаем изображение для анализа
             val mediaImage = imageProxy.image
             if (mediaImage != null) {
-                // Получаем данные изображения в формате YUV
-                val buffer = mediaImage.planes[0].buffer
-                val data = ByteArray(buffer.remaining())
-                buffer.get(data)
+                // Получаем данные изображения с учетом поворота
+                val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+                val imageData = mediaImage.toByteArray()
 
-                // Создаем источник изображения для ZXing
+                // Создаем источник изображения для ZXing с учетом поворота
                 val source = PlanarYUVLuminanceSource(
-                    data,
+                    imageData,
                     mediaImage.width,
                     mediaImage.height,
                     0,
@@ -107,13 +112,54 @@ class BarcodeAnalyzer(
     }
 
     /**
-     * Преобразование изображения для учета поворота камеры
-     * В зависимости от ориентации устройства нужно повернуть изображение
+     * Преобразование Image в ByteArray с учетом ориентации изображения
+     */
+    private fun Image.toByteArray(): ByteArray {
+        // Получаем данные из буфера Y-плоскости (YUV формат)
+        val yBuffer = planes[0].buffer
+        val ySize = yBuffer.remaining()
+
+        val uBuffer = planes[1].buffer
+        val vBuffer = planes[2].buffer
+
+        val uSize = uBuffer.remaining()
+        val vSize = vBuffer.remaining()
+
+        val data = ByteArray(ySize + uSize + vSize)
+
+        // Копируем данные из буферов
+        yBuffer.get(data, 0, ySize)
+        uBuffer.get(data, ySize, uSize)
+        vBuffer.get(data, ySize + uSize, vSize)
+
+        return data
+    }
+
+    /**
+     * Преобразование ByteBuffer в ByteArray
      */
     private fun ByteBuffer.toByteArray(): ByteArray {
         rewind()
         val data = ByteArray(remaining())
         get(data)
         return data
+    }
+
+    /**
+     * Альтернативный метод преобразования Image в ByteArray через YuvImage
+     * Может быть полезен для отладки или если основной метод даёт некорректные результаты
+     */
+    private fun Image.toByteArrayAlternative(): ByteArray {
+        val yuvImage = YuvImage(
+            toByteArray(),
+            ImageFormat.NV21,
+            width,
+            height,
+            null
+        )
+
+        val out = ByteArrayOutputStream()
+        yuvImage.compressToJpeg(Rect(0, 0, width, height), 100, out)
+        return out.toByteArray()
     }
 }

@@ -689,6 +689,9 @@ class SynchronizationControllerImpl(
      * @param forceUpload Флаг принудительной выгрузки
      * @return Результат операции (true - выгружено, false - поставлено в очередь)
      */
+    /**
+     * Адаптивная выгрузка задания с учетом типа сети и стратегии повторных попыток
+     */
     suspend fun uploadTask(taskId: String, forceUpload: Boolean = false): Result<Boolean> {
         // Если нет сети, добавляем в очередь и возвращаем результат
         if (!networkMonitor.isNetworkAvailable() && !forceUpload) {
@@ -702,20 +705,9 @@ class SynchronizationControllerImpl(
 
         // Проверка политики выгрузки по типу сети
         if (!forceUpload && networkMonitor.isCellularAvailable() && networkMonitor.isMeteredConnection()) {
-            // Получаем настройки мобильной выгрузки с безопасными значениями по умолчанию
-            val allowMobileUpload = try {
-                appSettingsDataStore.allowMobileUpload.first()
-            } catch (e: Exception) {
-                Timber.e(e, "Ошибка получения настройки allowMobileUpload")
-                false  // По умолчанию - не разрешать
-            }
-
-            val mobileSizeLimit = try {
-                appSettingsDataStore.mobileSizeLimit.first()
-            } catch (e: Exception) {
-                Timber.e(e, "Ошибка получения настройки mobileSizeLimit")
-                500_000  // По умолчанию 500 KB
-            }
+            // Получаем настройки мобильной выгрузки
+            val allowMobileUpload = appSettingsDataStore.allowMobileUpload.first()
+            val mobileSizeLimit = appSettingsDataStore.mobileSizeLimit.first()
 
             if (!allowMobileUpload) {
                 Timber.d("Мобильная сеть, выгрузка не разрешена, добавляем в очередь")

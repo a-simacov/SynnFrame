@@ -36,6 +36,7 @@ class SettingsViewModel(
     init {
         loadSettings()
         observeWebServerState()
+        observeSynchronizationState()
     }
 
     /**

@@ -94,13 +94,6 @@ class SyncHistoryViewModel(
     }
 
     /**
-     * Обновление данных
-     */
-    fun refreshData() {
-        loadSyncHistory()
-    }
-
-    /**
      * Навигация назад
      */
     fun navigateBack() {

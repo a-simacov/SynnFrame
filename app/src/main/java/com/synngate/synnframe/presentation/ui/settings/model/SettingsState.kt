@@ -1,5 +1,7 @@
 package com.synngate.synnframe.presentation.ui.settings.model
 
+import com.synngate.synnframe.data.local.entity.OperationType
+import com.synngate.synnframe.data.sync.RetrySettings
 import com.synngate.synnframe.domain.entity.Server
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.theme.ThemeMode
@@ -52,5 +54,16 @@ data class SettingsState(
     val syncIntervalSeconds: Int = 300, // 5 минут
     val nextScheduledSync: LocalDateTime? = null,
 
-    val downloadProgress: Int = 0
+    val downloadProgress: Int = 0,
+
+    // Настройки повторных попыток
+    val retrySettings: Map<OperationType, RetrySettings> = mapOf(
+        OperationType.UPLOAD_TASK to RetrySettings(5, 60, 3600, 2.0),
+        OperationType.DOWNLOAD_TASKS to RetrySettings(5, 60, 3600, 2.0),
+        OperationType.DOWNLOAD_PRODUCTS to RetrySettings(5, 60, 3600, 2.0),
+        OperationType.FULL_SYNC to RetrySettings(5, 60, 3600, 2.0)
+    ),
+
+// Отображение раздела с настройками повторных попыток
+    val showRetrySettings: Boolean = false
 )

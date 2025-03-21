@@ -83,4 +83,11 @@ interface SyncOperationDao {
      */
     @Query("DELETE FROM sync_operations WHERE completed = 1 AND lastAttemptAt < :cutoffTime")
     suspend fun deleteOldCompletedOperations(cutoffTime: LocalDateTime)
+
+    /**
+     * Получение операции по идентификатору
+     */
+    @Query("SELECT * FROM sync_operations WHERE id = :id")
+    suspend fun getOperationById(id: Long): SyncOperation?
+
 }

@@ -4,6 +4,7 @@ import com.synngate.synnframe.data.remote.dto.TaskAvailabilityResponseDto
 import com.synngate.synnframe.data.remote.service.ApiService
 import com.synngate.synnframe.data.remote.service.ServerProvider
 import com.synngate.synnframe.domain.entity.Task
+import com.synngate.synnframe.util.network.ApiUtils
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -31,7 +32,7 @@ class TaskApiImpl(
             val url = "${server.apiUrl}/tasks"
             val response = client.get(url) {
                 // Basic аутентификация
-                header("Authorization", "Basic ${getBasicAuth(server.login, server.password)}")
+                header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
                 // Заголовок с ID текущего пользователя
                 header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
             }
@@ -60,13 +61,5 @@ class TaskApiImpl(
 
     override suspend fun uploadTask(taskId: String, task: Task): ApiResult<Unit> {
         return apiService.uploadTask(taskId, task)
-    }
-
-    /**
-     * Получение строки Basic аутентификации
-     */
-    private fun getBasicAuth(login: String, password: String): String {
-        val credentials = "$login:$password"
-        return java.util.Base64.getEncoder().encodeToString(credentials.toByteArray())
     }
 }

@@ -3,6 +3,7 @@ package com.synngate.synnframe.data.service
 import com.synngate.synnframe.data.local.dao.SyncOperationDao
 import com.synngate.synnframe.data.local.entity.OperationType
 import com.synngate.synnframe.data.local.entity.SyncOperation
+import com.synngate.synnframe.data.sync.RetryStrategy
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.util.network.NetworkMonitor
 import kotlinx.coroutines.CoroutineScope
@@ -12,23 +13,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
-import kotlin.math.min
-import kotlin.math.pow
 
 /**
- * Менеджер очереди синхронизации
+ * Менеджер очереди синхронизации с улучшенной системой повторных попыток
  */
 class SyncQueueManager(
     private val syncOperationDao: SyncOperationDao,
     private val networkMonitor: NetworkMonitor,
-    private val loggingService: LoggingService
+    private val loggingService: LoggingService,
+    private val defaultStrategy: RetryStrategy = RetryStrategy.NORMAL
 ) {
-    // Константы для расчета задержки между попытками
-    private val maxAttempts = 5
-    private val initialDelaySeconds = 60L
-    private val maxDelaySeconds = 3600L  // 1 час
-    private val backoffFactor = 2.0
-
+    // Scope для запуска корутин
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /**
@@ -77,9 +72,7 @@ class SyncQueueManager(
         if (executeImmediately && networkMonitor.isNetworkAvailable()) {
             scope.launch {
                 Timber.d("Выполнение новой операции сразу: $id")
-                // Здесь будет вызов функции для выполнения синхронизации
                 // В полной реализации это будет вызов synchronizationController.processQueuedOperations()
-                // Реализуем эту функцию позже
             }
         }
 
@@ -107,11 +100,16 @@ class SyncQueueManager(
     }
 
     /**
-     * Обработка неудачной попытки с увеличением счетчика и расчетом времени следующей попытки
+     * Обработка неудачной попытки с улучшенным механизмом расчета задержки
+     * @return true, если операция будет повторена позже, false, если превышено максимальное число попыток
+     */
+    /**
+     * Обработка неудачной попытки с улучшенным механизмом расчета задержки
+     * @return true, если операция будет повторена позже, false, если превышено максимальное число попыток
      */
     suspend fun handleFailedAttempt(id: Long, error: String): Boolean {
-        val operations = syncOperationDao.getReadyOperations()
-        val operation = operations.find { it.id == id } ?: return false
+        val operation = syncOperationDao.getOperationById(id)
+            ?: return false
 
         val newAttempts = operation.attempts + 1
         val now = LocalDateTime.now()
@@ -122,34 +120,45 @@ class SyncQueueManager(
         // Устанавливаем текст ошибки
         syncOperationDao.setOperationError(id, error)
 
+        // Получаем стратегию для данного типа операции
+        val strategy = RetryStrategy.forOperationType(operation.operationType)
+
         // Если превышено максимальное количество попыток, отмечаем операцию как завершенную (с ошибкой)
-        if (newAttempts >= maxAttempts) {
+        if (newAttempts >= strategy.maxAttempts) {
             syncOperationDao.markOperationAsCompleted(id)
-            loggingService.logWarning("Операция синхронизации $id не удалась после $maxAttempts попыток: $error")
+            loggingService.logWarning("Операция синхронизации $id не удалась после ${strategy.maxAttempts} попыток: $error")
             return false
         }
 
-        // Рассчитываем время следующей попытки с экспоненциальной задержкой
-        val delaySeconds = min(
-            initialDelaySeconds * backoffFactor.pow(newAttempts - 1).toLong(),
-            maxDelaySeconds
-        )
+        // Получаем текущее состояние сети для адаптации задержки - используем существующий метод
+        val networkState = networkMonitor.getCurrentNetworkState()
+
+        // Рассчитываем задержку с учетом состояния сети
+        val delaySeconds = strategy.calculateDelay(newAttempts, networkState)
+
+        // Вычисляем время следующей попытки
         val nextAttemptTime = now.plusSeconds(delaySeconds)
 
         // Устанавливаем время следующей попытки
         syncOperationDao.setNextAttemptTime(id, nextAttemptTime)
 
-        loggingService.logWarning("Операция синхронизации $id не удалась (попытка $newAttempts). Следующая попытка в $nextAttemptTime. Ошибка: $error")
+        // Записываем событие в лог с подробной информацией
+        loggingService.logWarning(
+            "Операция синхронизации $id (${operation.operationType}) не удалась (попытка $newAttempts/${strategy.maxAttempts}). " +
+                    "Следующая попытка в $nextAttemptTime (задержка ${delaySeconds}с). " +
+                    "Состояние сети: ${networkState.javaClass.simpleName}. " +
+                    "Ошибка: $error"
+        )
+
         return true
     }
-
     /**
      * Очистка старых завершенных операций
      */
     suspend fun cleanupOldOperations(daysToKeep: Int = 7) {
         val cutoffTime = LocalDateTime.now().minusDays(daysToKeep.toLong())
-        syncOperationDao.deleteOldCompletedOperations(cutoffTime)
-        Timber.d("Очищены завершенные операции старше $daysToKeep дней")
+        val deletedCount = syncOperationDao.deleteOldCompletedOperations(cutoffTime)
+        Timber.d("Очищены завершенные операции старше $daysToKeep дней: удалено $deletedCount записей")
     }
 
     /**
