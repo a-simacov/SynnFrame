@@ -1,5 +1,3 @@
-// File: com.synngate.synnframe.presentation.service.sync.SynchronizationService.kt
-
 package com.synngate.synnframe.presentation.service.sync
 
 import android.app.Notification
@@ -8,22 +6,24 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.synngate.synnframe.R
 import com.synngate.synnframe.SynnFrameApplication
+import com.synngate.synnframe.data.sync.SyncProgress
+import com.synngate.synnframe.data.sync.SyncStatus
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.service.base.BaseForegroundService
-import com.synngate.synnframe.presentation.service.base.launchSafely
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.ui.MainActivity
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * Foreground-сервис для синхронизации с внешним сервером
+ * Улучшенный сервис синхронизации с расширенными уведомлениями
  */
 class SynchronizationService : BaseForegroundService() {
 
-    // Получаем зависимости через appContainer вместо inject
+    // Получаем зависимости через appContainer
     override val loggingService: LoggingService by lazy {
         (application as SynnFrameApplication).appContainer.loggingService
     }
@@ -32,61 +32,53 @@ class SynchronizationService : BaseForegroundService() {
         (application as SynnFrameApplication).appContainer.synchronizationController
     }
 
-    // Формат даты для отображения в уведомлении
+    // Текущий прогресс синхронизации
+    private var currentProgress: SyncProgress? = null
+
+    // Форматер для даты и времени в уведомлении
     private val dateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")
 
     // Метаданные сервиса
     override val serviceName: String = "SynchronizationService"
     override val notificationId: Int = NotificationChannelManager.NOTIFICATION_ID_SYNCHRONIZATION
 
-    // Текущее состояние синхронизации
-    private var currentSyncStatus: SynchronizationController.SyncStatus = SynchronizationController.SyncStatus.IDLE
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Timber.d("SynchronizationService onStartCommand, action: ${intent?.action}")
 
-    // Добавляем кэш для lastSyncInfo
-    private var lastSyncInfoCache: SynchronizationController.SyncInfo? = null
+        // Обрабатываем дополнительные команды
+        when (intent?.action) {
+            ACTION_UPDATE_PROGRESS -> {
+                // Обновление прогресса синхронизации из Intent
+                val progress = intent.getParcelableExtra<SyncProgress>(EXTRA_PROGRESS)
+                if (progress != null) {
+                    currentProgress = progress
 
-    override fun onCreate() {
-        super.onCreate()
-        Timber.d("SynchronizationService onCreate")
-
-        // Наблюдаем за статусом синхронизации
-        serviceScope.launchSafely {
-            synchronizationController.syncStatus.collect { status ->
-                currentSyncStatus = status
-
-                // Обновляем уведомление при изменении статуса
-                if (isServiceRunning) {
-                    updateNotification()
+                    // Обновляем уведомление с новым прогрессом
+                    if (isServiceRunning) {
+                        val notification = createNotification()
+                        startForeground(notificationId, notification)
+                    }
                 }
             }
         }
 
-        // Добавляем корутину для наблюдения за lastSyncInfo
-        serviceScope.launchSafely {
-            synchronizationController.lastSyncInfo.collect { syncInfo ->
-                lastSyncInfoCache = syncInfo
-
-                // Обновляем уведомление при получении новой информации о синхронизации
-                if (isServiceRunning) {
-                    updateNotification()
-                }
-            }
-        }
+        return super.onStartCommand(intent, flags, startId)
     }
 
     override suspend fun onServiceStart() {
         Timber.d("Starting synchronization service")
 
-        // Проверяем, включена ли периодическая синхронизация
-        val periodicSyncInfo = synchronizationController.periodicSyncInfo.first()
+        // Запускаем наблюдение за прогрессом синхронизации
+        launchIO {
+            synchronizationController.syncProgressFlow.collect { progress ->
+                currentProgress = progress
 
-        if (periodicSyncInfo.enabled) {
-            loggingService.logInfo(
-                "Запущен сервис синхронизации. " +
-                        "Интервал периодической синхронизации: ${periodicSyncInfo.intervalSeconds} секунд"
-            )
-        } else {
-            loggingService.logInfo("Запущен сервис синхронизации без периодической синхронизации")
+                // Обновляем уведомление при изменении прогресса
+                if (isServiceRunning) {
+                    val notification = createNotification()
+                    startForeground(notificationId, notification)
+                }
+            }
         }
     }
 
@@ -98,9 +90,10 @@ class SynchronizationService : BaseForegroundService() {
     override fun createNotification(): Notification {
         // Создаем Intent для открытия приложения при клике на уведомление
         val pendingIntent = Intent(this, MainActivity::class.java).let { notificationIntent ->
+            notificationIntent.putExtra(EXTRA_OPEN_SYNC_SCREEN, true)
             PendingIntent.getActivity(
                 this, 0, notificationIntent,
-                PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
         }
 
@@ -113,47 +106,116 @@ class SynchronizationService : BaseForegroundService() {
             PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Определяем текст уведомления в зависимости от статуса
-        val notificationText = when (currentSyncStatus) {
-            SynchronizationController.SyncStatus.SYNCING -> getString(R.string.sync_notification_text)
-            SynchronizationController.SyncStatus.ERROR -> getString(R.string.sync_notification_error)
-            SynchronizationController.SyncStatus.IDLE -> {
-                // Вместо прямого вызова first(), используем lastSyncInfo из кэша
-                // Мы будем обновлять этот кэш в корутине
-                lastSyncInfoCache?.let { lastSyncInfo ->
-                    getString(
-                        R.string.sync_notification_last_sync,
-                        lastSyncInfo.timestamp.format(dateTimeFormatter)
+        // Создаем Intent для принудительного запуска синхронизации
+        val syncIntent = Intent(this, SynchronizationService::class.java).apply {
+            action = ACTION_FORCE_SYNC
+        }
+        val syncPendingIntent = PendingIntent.getService(
+            this, 2, syncIntent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Получаем текущий прогресс синхронизации
+        val progress = currentProgress ?: SyncProgress()
+        val progressMessage = progress.getProgressMessage()
+        val progressPercentage = progress.calculateOverallProgress()
+
+        // Создаем заголовок уведомления
+        val notificationTitle = when (progress.status) {
+            SyncStatus.STARTED -> getString(R.string.sync_notification_title_started)
+            SyncStatus.IN_PROGRESS -> getString(R.string.sync_notification_title_in_progress)
+            SyncStatus.COMPLETED -> getString(R.string.sync_notification_title_completed)
+            SyncStatus.FAILED -> getString(R.string.sync_notification_title_failed)
+        }
+
+        // Формируем текст уведомления
+        val contentText = when (progress.status) {
+            SyncStatus.STARTED -> progressMessage
+            SyncStatus.IN_PROGRESS -> progressMessage
+            SyncStatus.COMPLETED -> getString(
+                R.string.sync_notification_completed,
+                progress.tasksUploaded,
+                progress.tasksDownloaded,
+                progress.productsDownloaded
+            )
+            SyncStatus.FAILED -> progressMessage
+        }
+
+        // Дополнительная строка с информацией о времени
+        val timeInfo = when {
+            progress.endTime != null -> getString(
+                R.string.sync_notification_finished_at,
+                progress.endTime.format(dateTimeFormatter)
+            )
+            progress.status == SyncStatus.IN_PROGRESS -> getString(
+                R.string.sync_notification_started_at,
+                progress.startTime.format(dateTimeFormatter)
+            )
+            else -> null
+        }
+
+        // Строим уведомление
+        val builder = NotificationCompat.Builder(this, NotificationChannelManager.CHANNEL_SYNCHRONIZATION)
+            .setContentTitle(notificationTitle)
+            .setContentText(contentText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(
+                contentText + (timeInfo?.let { "\n$it" } ?: "")
+            ))
+            .setSmallIcon(R.drawable.ic_sync) // Или другая подходящая иконка
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+
+        // Добавляем прогресс-бар для синхронизации в процессе
+        if (progress.status == SyncStatus.IN_PROGRESS) {
+            builder.setProgress(100, progressPercentage, false)
+        }
+
+        // Добавляем действия в зависимости от статуса
+        when (progress.status) {
+            SyncStatus.STARTED, SyncStatus.IN_PROGRESS -> {
+                builder.addAction(
+                    R.drawable.ic_stop,
+                    getString(R.string.action_stop),
+                    stopPendingIntent
+                )
+            }
+            SyncStatus.COMPLETED, SyncStatus.FAILED -> {
+                builder.addAction(
+                    R.drawable.ic_sync,
+                    getString(R.string.action_sync_now),
+                    syncPendingIntent
+                )
+
+                // Добавляем кнопку для очистки уведомления
+                if (progress.status == SyncStatus.COMPLETED) {
+                    val clearIntent = Intent(this, SynchronizationService::class.java).apply {
+                        action = ACTION_CLEAR_NOTIFICATION
+                    }
+                    val clearPendingIntent = PendingIntent.getService(
+                        this, 3, clearIntent,
+                        PendingIntent.FLAG_IMMUTABLE
                     )
-                } ?: getString(R.string.sync_notification_ready)
+
+                    builder.addAction(
+                        R.drawable.ic_clear,
+                        getString(R.string.action_clear),
+                        clearPendingIntent
+                    )
+                }
             }
         }
 
-        // Создаем уведомление
-        return NotificationCompat.Builder(this, NotificationChannelManager.CHANNEL_SYNCHRONIZATION)
-            .setContentTitle(getString(R.string.sync_notification_title))
-            .setContentText(notificationText)
-            .setSmallIcon(R.drawable.ic_sync)
-            .setContentIntent(pendingIntent)
-            .addAction(
-                R.drawable.ic_stop,
-                getString(R.string.action_stop),
-                stopPendingIntent
-            )
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
-    }
-
-    /**
-     * Обновление уведомления при изменении статуса
-     */
-    private fun updateNotification() {
-        val notification = createNotification()
-        startForeground(notificationId, notification)
+        return builder.build()
     }
 
     companion object {
-        // Идентификатор для периодической задачи в WorkManager
-        const val PERIODIC_SYNC_WORK_NAME = "periodic_sync_work"
+        // Константы для Intent
+        const val ACTION_UPDATE_PROGRESS = "com.synngate.synnframe.ACTION_UPDATE_PROGRESS"
+        const val ACTION_FORCE_SYNC = "com.synngate.synnframe.ACTION_FORCE_SYNC"
+        const val ACTION_CLEAR_NOTIFICATION = "com.synngate.synnframe.ACTION_CLEAR_NOTIFICATION"
+
+        // Дополнительные данные для Intent
+        const val EXTRA_PROGRESS = "extra_progress"
+        const val EXTRA_OPEN_SYNC_SCREEN = "extra_open_sync_screen"
     }
 }

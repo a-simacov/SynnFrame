@@ -2,6 +2,8 @@
 
 package com.synngate.synnframe.domain.service
 
+import com.synngate.synnframe.data.sync.SyncHistoryRecord
+import com.synngate.synnframe.data.sync.SyncProgress
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDateTime
 
@@ -23,6 +25,16 @@ interface SynchronizationController : ServiceController {
      * Информация о процессе периодической синхронизации
      */
     val periodicSyncInfo: Flow<PeriodicSyncInfo>
+
+    /**
+     * Поток прогресса синхронизации
+     */
+    val syncProgressFlow: Flow<SyncProgress>
+
+    /**
+     * Получение истории синхронизаций
+     */
+    fun getSyncHistory(): Flow<List<SyncHistoryRecord>>
 
     /**
      * Запуск ручной синхронизации

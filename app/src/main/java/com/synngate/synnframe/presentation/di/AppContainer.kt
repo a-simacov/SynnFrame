@@ -36,7 +36,7 @@ import com.synngate.synnframe.data.service.ServerCoordinatorImpl
 import com.synngate.synnframe.data.service.SoundServiceImpl
 import com.synngate.synnframe.data.service.SynchronizationControllerImpl
 import com.synngate.synnframe.data.service.WebServerControllerImpl
-import com.synngate.synnframe.data.service.WebServerManagerStub
+import com.synngate.synnframe.data.service.WebServerManagerImpl
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
@@ -227,7 +227,7 @@ class AppContainer(private val applicationContext: Context) {
 
     private val webServerManager: WebServerManager by lazy {
         Timber.d("Creating WebServerManager")
-        WebServerManagerStub(loggingService)
+        WebServerManagerImpl(webServerController, loggingService)
     }
 
     private val updateInstaller: UpdateInstaller by lazy {

@@ -7,6 +7,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.synngate.synnframe.SynnFrameApplication
 import com.synngate.synnframe.domain.service.SynchronizationController
+import com.synngate.synnframe.util.network.NetworkErrorClassifier
 import timber.log.Timber
 
 /**
@@ -35,16 +36,38 @@ class SynchronizationWorker(
                     Timber.d("SynchronizationWorker: sync completed successfully")
                     Result.success()
                 } else {
-                    Timber.w("SynchronizationWorker: sync failed with error: ${result?.errorMessage}")
-                    Result.retry()
+                    val error = result?.errorMessage ?: "Неизвестная ошибка"
+                    Timber.w("SynchronizationWorker: sync failed with error: $error")
+
+                    // Определяем, стоит ли повторять попытку
+                    val exception = syncResult.exceptionOrNull()
+                    if (exception != null && NetworkErrorClassifier.isRetryable(exception)) {
+                        // Для временных ошибок повторяем попытку
+                        Timber.d("SynchronizationWorker: error is retryable, scheduling retry")
+                        Result.retry()
+                    } else {
+                        // Для постоянных ошибок отмечаем как неудачу
+                        Timber.d("SynchronizationWorker: error is not retryable, marking as failure")
+                        Result.failure()
+                    }
                 }
             } else {
                 val error = syncResult.exceptionOrNull()
                 Timber.e(error, "SynchronizationWorker: sync failed with exception")
-                Result.retry()
+
+                // Определяем, стоит ли повторять попытку
+                if (error != null && NetworkErrorClassifier.isRetryable(error)) {
+                    Timber.d("SynchronizationWorker: error is retryable, scheduling retry")
+                    Result.retry()
+                } else {
+                    Timber.d("SynchronizationWorker: error is not retryable, marking as failure")
+                    Result.failure()
+                }
             }
         } catch (e: Exception) {
             Timber.e(e, "SynchronizationWorker: exception during sync")
+
+            // Для любых неожиданных исключений пытаемся повторить
             Result.retry()
         }
     }

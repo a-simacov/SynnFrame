@@ -28,6 +28,8 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
         private val LANGUAGE_CODE = stringPreferencesKey("language_code")
         private val NAVIGATION_BUTTON_HEIGHT = floatPreferencesKey("navigation_button_height")
         private val CURRENT_USER_ID = stringPreferencesKey("current_user_id")
+        private val ALLOW_MOBILE_UPLOAD = booleanPreferencesKey("allow_mobile_upload")
+        private val MOBILE_SIZE_LIMIT = intPreferencesKey("mobile_size_limit")
     }
 
     // Показывать ли экран серверов при запуске
@@ -79,6 +81,15 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
     // ID текущего пользователя
     val currentUserId: Flow<String?> = dataStore.data.map { preferences ->
         preferences[CURRENT_USER_ID]
+    }
+
+    // Геттеры для новых настроек
+    val allowMobileUpload: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[ALLOW_MOBILE_UPLOAD] ?: false  // По умолчанию не разрешаем
+    }
+
+    val mobileSizeLimit: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[MOBILE_SIZE_LIMIT] ?: 500_000  // По умолчанию 500 KB
     }
 
     // Методы для сохранения настроек
@@ -137,6 +148,18 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
             } else {
                 preferences.remove(CURRENT_USER_ID)
             }
+        }
+    }
+
+    suspend fun setAllowMobileUpload(allow: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[ALLOW_MOBILE_UPLOAD] = allow
+        }
+    }
+
+    suspend fun setMobileSizeLimit(sizeInBytes: Int) {
+        dataStore.edit { preferences ->
+            preferences[MOBILE_SIZE_LIMIT] = sizeInBytes
         }
     }
 }
