@@ -37,7 +37,7 @@ class DeviceInfoServiceImpl(
             Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
         } catch (e: Exception) {
             Timber.e(e, "Error getting device ID")
-            Build.SERIAL.takeIf { it != Build.UNKNOWN } ?: "unknown"
+            Build.getSerial().takeIf { it != Build.UNKNOWN } ?: "unknown"
         }
     }
 

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
@@ -23,6 +24,7 @@ import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -110,7 +112,7 @@ fun AppScaffold(
                             if (onNavigateBack != null) {
                                 IconButton(onClick = onNavigateBack) {
                                     Icon(
-                                        imageVector = Icons.Default.ArrowBack,
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = stringResource(id = R.string.back)
                                     )
                                 }
@@ -202,7 +204,7 @@ fun AppScaffold(
                             )
                         }
 
-                        Divider(
+                        HorizontalDivider(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
@@ -390,7 +392,7 @@ fun SplitScreenContent(
         }
 
         if (showDivider) {
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier
                     .fillMaxSize()
                     .width(1.dp),
@@ -481,7 +483,7 @@ fun SectionHeader(
             modifier = Modifier.padding(vertical = 8.dp)
         )
 
-        Divider(
+        HorizontalDivider(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.outlineVariant
         )
@@ -517,7 +519,7 @@ fun InfoCard(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
-                Divider(
+                HorizontalDivider(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.outlineVariant
                 )

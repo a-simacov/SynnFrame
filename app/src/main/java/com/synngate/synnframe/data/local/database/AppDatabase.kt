@@ -18,11 +18,11 @@ import com.synngate.synnframe.data.local.entity.ProductEntity
 import com.synngate.synnframe.data.local.entity.ProductUnitEntity
 import com.synngate.synnframe.data.local.entity.ServerEntity
 import com.synngate.synnframe.data.local.entity.SyncOperation
-import com.synngate.synnframe.data.local.entity.SyncOperationTypeConverters
 import com.synngate.synnframe.data.local.entity.TaskEntity
 import com.synngate.synnframe.data.local.entity.TaskFactLineEntity
 import com.synngate.synnframe.data.local.entity.TaskPlanLineEntity
 import com.synngate.synnframe.data.local.entity.UserEntity
+import com.synngate.synnframe.data.sync.SyncHistoryRecord
 
 /**
  * Основная база данных приложения
@@ -38,12 +38,13 @@ import com.synngate.synnframe.data.local.entity.UserEntity
         TaskEntity::class,
         TaskPlanLineEntity::class,
         TaskFactLineEntity::class,
-        SyncOperation::class
+        SyncOperation::class,
+        SyncHistoryRecord::class
     ],
     version = 1,
     exportSchema = false
 )
-@TypeConverters(RoomConverters::class, SyncOperationTypeConverters::class)
+@TypeConverters(RoomConverters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun serverDao(): ServerDao

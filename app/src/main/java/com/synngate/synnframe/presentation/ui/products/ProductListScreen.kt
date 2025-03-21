@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Sort
@@ -141,7 +142,7 @@ fun ProductListScreen(
             // Кнопка сортировки
             IconButton(onClick = { showSortMenu = true }) {
                 Icon(
-                    imageVector = Icons.Default.Sort,
+                    imageVector = Icons.AutoMirrored.Filled.Sort,
                     contentDescription = stringResource(id = R.string.sort)
                 )
             }
@@ -161,7 +162,7 @@ fun ProductListScreen(
                         leadingIcon = {
                             if (state.sortOrder == sortOption) {
                                 Icon(
-                                    imageVector = Icons.Default.Sort,
+                                    imageVector = Icons.AutoMirrored.Filled.Sort,
                                     contentDescription = null
                                 )
                             }

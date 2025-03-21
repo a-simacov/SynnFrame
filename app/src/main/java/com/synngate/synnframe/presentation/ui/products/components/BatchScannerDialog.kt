@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -116,7 +117,7 @@ fun BatchScannerDialog(
                     }
                 }
 
-                Divider(modifier = Modifier.padding(bottom = 16.dp))
+                HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp))
 
                 // Область результатов сканирования
                 Text(
@@ -197,7 +198,7 @@ fun BatchScannerDialog(
                                 }
                             }
 
-                            Divider(modifier = Modifier.padding(vertical = 4.dp))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         }
                     }
                 }

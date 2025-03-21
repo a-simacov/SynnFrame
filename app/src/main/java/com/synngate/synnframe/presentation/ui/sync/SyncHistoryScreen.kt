@@ -333,7 +333,7 @@ fun SyncDetailsDialog(
                         stringResource(id = R.string.no)
                 )
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 DetailItem(
                     label = stringResource(id = R.string.sync_tasks_uploaded),
@@ -355,7 +355,7 @@ fun SyncDetailsDialog(
                     value = record.retryAttempts.toString()
                 )
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 DetailItem(
                     label = stringResource(id = R.string.sync_status),

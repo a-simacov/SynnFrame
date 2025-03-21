@@ -445,7 +445,7 @@ class SettingsViewModel(
     // Добавим методы для работы с разрешениями
     fun checkInstallPermission(): Boolean {
         return if (updateInstaller is UpdateInstallerImpl) {
-            (updateInstaller as UpdateInstallerImpl).canInstallPackages()
+            updateInstaller.canInstallPackages()
         } else {
             true
         }
@@ -453,7 +453,7 @@ class SettingsViewModel(
 
     fun getInstallPermissionIntent(): Intent? {
         return if (updateInstaller is UpdateInstallerImpl) {
-            (updateInstaller as UpdateInstallerImpl).getInstallPermissionIntent()
+            updateInstaller.getInstallPermissionIntent()
         } else {
             null
         }

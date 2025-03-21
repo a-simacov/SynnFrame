@@ -142,7 +142,7 @@ class ProductUseCases(
             when (response) {
                 is ApiResult.Success -> {
                     val products = response.data
-                    if (products != null) {
+                    if (products.isNotEmpty()) {
                         // Очищаем существующие товары и добавляем новые
                         productRepository.deleteAllProducts()
                         productRepository.addProducts(products)

@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.outlined.Assignment
+import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -19,6 +22,7 @@ import androidx.compose.material.icons.outlined.Assignment
 import androidx.compose.material.icons.outlined.Inventory
 import androidx.compose.material.icons.outlined.ListAlt
 import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -61,9 +65,6 @@ fun MainMenuScreen(
 
     // SnackbarHostState для показа уведомлений
     val snackbarHostState = remember { SnackbarHostState() }
-
-    // Контекст для выхода из приложения
-    val context = LocalContext.current
 
     // Обработка событий из ViewModel
     LaunchedEffect(key1 = viewModel) {
@@ -141,7 +142,7 @@ fun MainMenuScreen(
             NavigationButton(
                 text = stringResource(id = R.string.tasks),
                 onClick = { viewModel.onTasksClick() },
-                icon = Icons.Outlined.Assignment,
+                icon = Icons.AutoMirrored.Outlined.Assignment,
                 contentDescription = stringResource(id = R.string.tasks),
                 badge = state.assignedTasksCount.takeIf { it > 0 }
             )
@@ -163,7 +164,7 @@ fun MainMenuScreen(
             NavigationButton(
                 text = stringResource(id = R.string.logs),
                 onClick = { viewModel.onLogsClick() },
-                icon = Icons.Outlined.ListAlt,
+                icon = Icons.AutoMirrored.Outlined.ListAlt,
                 contentDescription = stringResource(id = R.string.logs)
             )
 
@@ -190,7 +191,7 @@ fun MainMenuScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-            Divider()
+            HorizontalDivider()
             Spacer(modifier = Modifier.height(24.dp))
 
             // Раздел действий с пользователем
@@ -215,7 +216,7 @@ fun MainMenuScreen(
             NavigationButton(
                 text = stringResource(id = R.string.exit),
                 onClick = { viewModel.onExitClick() },
-                icon = Icons.Default.ExitToApp,
+                icon = Icons.AutoMirrored.Filled.ExitToApp,
                 contentDescription = stringResource(id = R.string.exit)
             )
 

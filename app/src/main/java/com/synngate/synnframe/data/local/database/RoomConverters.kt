@@ -1,6 +1,7 @@
 package com.synngate.synnframe.data.local.database
 
 import androidx.room.TypeConverter
+import com.synngate.synnframe.data.local.entity.OperationType
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -40,5 +41,21 @@ class RoomConverters {
     @TypeConverter
     fun toStringList(value: String?): List<String>? {
         return value?.split(",")?.filter { it.isNotEmpty() }
+    }
+
+    /**
+     * Конвертация OperationType в String
+     */
+    @TypeConverter
+    fun fromOperationType(value: OperationType): String {
+        return value.name
+    }
+
+    /**
+     * Конвертация String в OperationType
+     */
+    @TypeConverter
+    fun toOperationType(value: String): OperationType {
+        return OperationType.valueOf(value)
     }
 }

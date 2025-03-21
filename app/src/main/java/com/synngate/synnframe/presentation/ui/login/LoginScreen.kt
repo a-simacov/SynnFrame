@@ -44,8 +44,6 @@ fun LoginScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val context = LocalContext.current
-
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {

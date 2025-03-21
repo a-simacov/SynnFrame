@@ -30,10 +30,6 @@ class SynnFrameApplication : Application() {
         super.onTerminate()
 
         // Очистка ресурсов при завершении работы приложения
-        // Это метод вызывается только в эмуляторе, но мы добавляем его для демонстрации
-        if (appContainer is AppContainer) {
-            Timber.i("Cleaning up Application resources")
-            // Здесь можно добавить явное освобождение ресурсов, если это необходимо
-        }
+        Timber.i("Cleaning up Application resources")
     }
 }

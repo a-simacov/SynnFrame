@@ -71,9 +71,6 @@ fun TaskListScreen(
     // Для отображения Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Форматтер для дат
-    val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
-
     val showTypeMenu = state.showTypeMenu
 
     // В TaskListScreen добавим сохранение состояния фильтров

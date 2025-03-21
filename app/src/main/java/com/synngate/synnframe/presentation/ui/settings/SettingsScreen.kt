@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -311,7 +312,7 @@ fun ActiveServerSection(
             )
         }
 
-        Divider()
+        HorizontalDivider()
 
         // Настройка отображения при запуске
         Spacer(modifier = Modifier.height(16.dp))
@@ -464,7 +465,7 @@ fun InterfaceSettingsSection(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        Divider()
+        HorizontalDivider()
         Spacer(modifier = Modifier.height(16.dp))
 
         // Выбор языка
@@ -493,7 +494,7 @@ fun InterfaceSettingsSection(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        Divider()
+        HorizontalDivider()
         Spacer(modifier = Modifier.height(16.dp))
 
         // Настройка высоты кнопки навигации

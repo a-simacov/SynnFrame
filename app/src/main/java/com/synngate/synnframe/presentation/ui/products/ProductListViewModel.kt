@@ -11,6 +11,7 @@ import com.synngate.synnframe.presentation.ui.products.model.SortOrder
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
@@ -106,6 +107,7 @@ class ProductListViewModel(
     /**
      * Обновляет поисковый запрос и фильтрует товары
      */
+    @OptIn(FlowPreview::class)
     fun updateSearchQuery(query: String) {
         updateState { it.copy(searchQuery = query) }
 

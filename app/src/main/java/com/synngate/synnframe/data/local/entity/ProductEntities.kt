@@ -128,6 +128,7 @@ data class BarcodeEntity(
 data class ProductWithUnits(
     @Embedded val product: ProductEntity,
     @Relation(
+        entity = ProductUnitEntity::class,
         parentColumn = "id",
         entityColumn = "productId"
     )

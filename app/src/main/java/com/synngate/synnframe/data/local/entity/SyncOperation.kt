@@ -2,16 +2,15 @@ package com.synngate.synnframe.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import com.synngate.synnframe.data.local.database.RoomConverters
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 /**
  * Очередь операций синхронизации
  */
 @Entity(tableName = "sync_operations")
-@TypeConverters(SyncOperationTypeConverters::class)
+@TypeConverters(RoomConverters::class)
 data class SyncOperation(
     /**
      * Уникальный идентификатор операции
@@ -88,31 +87,4 @@ enum class OperationType {
      * Полная синхронизация
      */
     FULL_SYNC
-}
-
-/**
- * Конвертеры типов для Room
- */
-class SyncOperationTypeConverters {
-    private val formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
-
-    @TypeConverter
-    fun fromLocalDateTime(value: LocalDateTime?): String? {
-        return value?.format(formatter)
-    }
-
-    @TypeConverter
-    fun toLocalDateTime(value: String?): LocalDateTime? {
-        return value?.let { LocalDateTime.parse(it, formatter) }
-    }
-
-    @TypeConverter
-    fun fromOperationType(value: OperationType): String {
-        return value.name
-    }
-
-    @TypeConverter
-    fun toOperationType(value: String): OperationType {
-        return OperationType.valueOf(value)
-    }
 }
