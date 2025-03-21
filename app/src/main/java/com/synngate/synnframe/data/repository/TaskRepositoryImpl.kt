@@ -15,18 +15,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDateTime
 
-/**
- * Имплементация репозитория заданий
- * Отвечает только за операции с данными заданий, без бизнес-логики
- */
 class TaskRepositoryImpl(
     private val taskDao: TaskDao,
     private val taskApi: TaskApi
 ) : TaskRepository {
 
     override fun getTasks(): Flow<List<Task>> {
-        return taskDao.getAllTasksWithDetails().map { entities ->
-            entities.map { it.toDomainModel() }
+        return taskDao.getAllTasks().map { taskEntities ->
+            buildTasksWithDetails(taskEntities)
         }
     }
 
@@ -60,17 +56,19 @@ class TaskRepositoryImpl(
             dateTo = dateToFilter ?: LocalDateTime.MAX,
             hasExecutorFilter = hasExecutorFilter,
             executorId = executorIdFilter ?: ""
-        ).map { entities ->
-            entities.map { it.toDomainModel() }
+        ).map { taskEntities ->
+            buildTasksWithDetails(taskEntities)
         }
     }
 
     override suspend fun getTaskById(id: String): Task? {
-        return taskDao.getTaskWithDetailsById(id)?.toDomainModel()
+        val taskEntity = taskDao.getTaskById(id) ?: return null
+        return buildTaskWithDetails(taskEntity)
     }
 
     override suspend fun getTaskByBarcode(barcode: String): Task? {
-        return taskDao.getTaskByBarcode(barcode)?.toDomainModel()
+        val taskEntity = taskDao.getTaskByBarcode(barcode) ?: return null
+        return buildTaskWithDetails(taskEntity)
     }
 
     override fun getTasksCountForCurrentUser(): Flow<Int> {
@@ -127,21 +125,21 @@ class TaskRepositoryImpl(
     }
 
     override suspend fun setTaskStatus(id: String, status: TaskStatus) {
-        val task = taskDao.getTaskWithDetailsById(id)
+        val task = taskDao.getTaskById(id)
         if (task != null) {
             // Обновляем статус задания
-            val updatedTask = task.task.copy(
+            val updatedTask = task.copy(
                 status = status.name,
                 // Обновляем соответствующие даты в зависимости от статуса
-                startedAt = if (status == TaskStatus.IN_PROGRESS && task.task.startedAt == null) {
+                startedAt = if (status == TaskStatus.IN_PROGRESS && task.startedAt == null) {
                     LocalDateTime.now()
                 } else {
-                    task.task.startedAt
+                    task.startedAt
                 },
-                completedAt = if (status == TaskStatus.COMPLETED && task.task.completedAt == null) {
+                completedAt = if (status == TaskStatus.COMPLETED && task.completedAt == null) {
                     LocalDateTime.now()
                 } else {
-                    task.task.completedAt
+                    task.completedAt
                 }
             )
 
@@ -181,8 +179,11 @@ class TaskRepositoryImpl(
 
     override suspend fun uploadTaskToServer(id: String): Result<Boolean> {
         try {
-            val task = taskDao.getTaskWithDetailsById(id)?.toDomainModel()
-                ?: return Result.failure(Exception("Task not found"))
+            val taskEntity = taskDao.getTaskById(id) ?:
+            return Result.failure(Exception("Task not found"))
+
+            // Преобразуем задание в доменную модель
+            val task = buildTaskWithDetails(taskEntity)
 
             // Отправляем задание на сервер
             val response = taskApi.uploadTask(id, task)
@@ -209,7 +210,8 @@ class TaskRepositoryImpl(
     }
 
     override suspend fun getCompletedNotUploadedTasks(): List<Task> {
-        return taskDao.getCompletedNotUploadedTasks().map { it.toDomainModel() }
+        val taskEntities = taskDao.getCompletedNotUploadedTasks()
+        return buildTasksWithDetails(taskEntities)
     }
 
     override suspend fun getTasksFromServer(): Result<List<Task>> {
@@ -221,6 +223,42 @@ class TaskRepositoryImpl(
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Построение доменной модели Task из TaskEntity и связанных данных
+     */
+    private suspend fun buildTaskWithDetails(taskEntity: TaskEntity): Task {
+        val planLines = taskDao.getPlanLinesForTask(taskEntity.id).map { it.toDomainModel() }
+        val factLines = taskDao.getFactLinesForTask(taskEntity.id).map { it.toDomainModel() }
+
+        return taskEntity.toDomainModel(planLines, factLines)
+    }
+
+    /**
+     * Построение списка доменных моделей Task из списка TaskEntity и связанных данных
+     */
+    private suspend fun buildTasksWithDetails(taskEntities: List<TaskEntity>): List<Task> {
+        if (taskEntities.isEmpty()) return emptyList()
+
+        // Получаем ID всех заданий
+        val taskIds = taskEntities.map { it.id }
+
+        // Загружаем все связанные данные за один запрос
+        val allPlanLines = taskDao.getPlanLinesForTasks(taskIds)
+        val allFactLines = taskDao.getFactLinesForTasks(taskIds)
+
+        // Группируем данные по ID задания для быстрого доступа
+        val planLinesMap = allPlanLines.groupBy { it.taskId }
+        val factLinesMap = allFactLines.groupBy { it.taskId }
+
+        // Собираем доменные модели
+        return taskEntities.map { taskEntity ->
+            val planLines = planLinesMap[taskEntity.id]?.map { it.toDomainModel() } ?: emptyList()
+            val factLines = factLinesMap[taskEntity.id]?.map { it.toDomainModel() } ?: emptyList()
+
+            taskEntity.toDomainModel(planLines, factLines)
         }
     }
 }

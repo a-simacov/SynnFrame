@@ -7,6 +7,7 @@ import com.synngate.synnframe.data.local.entity.ProductUnitEntity
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.api.ProductApi
 import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.ProductUnit
 import com.synngate.synnframe.domain.repository.ProductRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -22,31 +23,33 @@ class ProductRepositoryImpl(
 ) : ProductRepository {
 
     override fun getProducts(): Flow<List<Product>> {
-        return productDao.getAllProductsWithDetails().map { entities ->
-            entities.map { it.toDomainModel() }
+        return productDao.getAllProducts().map { productEntities ->
+            buildProductsWithDetails(productEntities)
         }
     }
 
     override fun getProductsByNameFilter(nameFilter: String): Flow<List<Product>> {
-        return productDao.getProductsByNameFilter(nameFilter).map { entities ->
-            entities.map { it.toDomainModel() }
+        return productDao.getProductsByNameFilter(nameFilter).map { productEntities ->
+            buildProductsWithDetails(productEntities)
         }
     }
 
     override suspend fun getProductById(id: String): Product? {
-        return productDao.getProductWithDetailsById(id)?.toDomainModel()
+        val productEntity = productDao.getProductById(id) ?: return null
+        return buildProductWithDetails(productEntity)
     }
 
     override suspend fun getProductsByIds(ids: Set<String>): List<Product> {
         return withContext(Dispatchers.IO) {
-            // Получаем список продуктов по одному, используя существующий метод
-            ids.mapNotNull { productId -> getProductById(productId) }
+            val productEntities = productDao.getProductEntitiesByIds(ids)
+            buildProductsWithDetails(productEntities)
         }
-
     }
 
     override suspend fun findProductByBarcode(barcode: String): Product? {
-        return productDao.findProductByBarcode(barcode)?.toDomainModel()
+        // Сначала ищем товар по штрихкоду
+        val productEntity = productDao.findProductByBarcode(barcode) ?: return null
+        return buildProductWithDetails(productEntity)
     }
 
     override fun getProductsCount(): Flow<Int> {
@@ -104,10 +107,70 @@ class ProductRepositoryImpl(
     }
 
     override suspend fun deleteAllProducts() {
+        // Удаляем все записи в правильном порядке с учетом зависимостей
+        productDao.deleteAllBarcodes()
+        productDao.deleteAllProductUnits()
         productDao.deleteAllProducts()
     }
 
     override suspend fun getProductsFromRemote(): ApiResult<List<Product>> {
         return productApi.getProducts()
+    }
+
+    /**
+     * Построение доменной модели Product из ProductEntity и связанных данных
+     */
+    private suspend fun buildProductWithDetails(productEntity: ProductEntity): Product {
+        // Получаем единицы измерения для товара
+        val unitEntities = productDao.getProductUnitsForProduct(productEntity.id)
+
+        // Строим доменные модели единиц измерения с их штрихкодами
+        val units = unitEntities.map { unitEntity ->
+            val barcodeEntities = productDao.getBarcodesForUnit(unitEntity.id)
+            val barcodes = barcodeEntities.map { it.code }
+
+            unitEntity.toDomainModel(barcodes)
+        }
+
+        // Возвращаем полную доменную модель товара
+        return productEntity.toDomainModel(units)
+    }
+
+    /**
+     * Построение списка доменных моделей Product из списка ProductEntity и связанных данных
+     */
+    private suspend fun buildProductsWithDetails(productEntities: List<ProductEntity>): List<Product> {
+        if (productEntities.isEmpty()) return emptyList()
+
+        // Получаем ID всех товаров
+        val productIds = productEntities.map { it.id }
+
+        // Загружаем все единицы измерения за один запрос
+        val allUnits = productDao.getProductUnitsForProducts(productIds)
+
+        // Получаем ID всех единиц измерения
+        val unitIds = allUnits.map { it.id }
+
+        // Загружаем все штрихкоды за один запрос
+        val allBarcodes = productDao.getBarcodesForUnits(unitIds)
+
+        // Группируем единицы измерения и штрихкоды для быстрого доступа
+        val unitsMap = allUnits.groupBy { it.productId }
+        val barcodesMap = allBarcodes.groupBy { it.productUnitId }
+
+        // Собираем доменные модели товаров
+        return productEntities.map { productEntity ->
+            // Получаем единицы измерения для текущего товара
+            val units = unitsMap[productEntity.id]?.map { unitEntity ->
+                // Получаем штрихкоды для текущей единицы измерения
+                val barcodes = barcodesMap[unitEntity.id]?.map { it.code } ?: emptyList()
+
+                // Создаем доменную модель единицы измерения
+                unitEntity.toDomainModel(barcodes)
+            } ?: emptyList()
+
+            // Создаем доменную модель товара
+            productEntity.toDomainModel(units)
+        }
     }
 }

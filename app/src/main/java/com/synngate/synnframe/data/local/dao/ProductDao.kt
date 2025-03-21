@@ -5,36 +5,50 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Transaction
 import androidx.room.Update
 import com.synngate.synnframe.data.local.entity.BarcodeEntity
 import com.synngate.synnframe.data.local.entity.ProductEntity
 import com.synngate.synnframe.data.local.entity.ProductUnitEntity
-import com.synngate.synnframe.data.local.entity.ProductWithUnits
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProductDao {
 
-    @Transaction
     @Query("SELECT * FROM products ORDER BY name ASC")
-    fun getAllProductsWithDetails(): Flow<List<ProductWithUnits>>
+    fun getAllProducts(): Flow<List<ProductEntity>>
 
-    @Transaction
     @Query("SELECT * FROM products WHERE name LIKE '%' || :nameFilter || '%' ORDER BY name ASC")
-    fun getProductsByNameFilter(nameFilter: String): Flow<List<ProductWithUnits>>
+    fun getProductsByNameFilter(nameFilter: String): Flow<List<ProductEntity>>
 
-    @Transaction
     @Query("SELECT * FROM products WHERE id = :id")
-    suspend fun getProductWithDetailsById(id: String): ProductWithUnits?
+    suspend fun getProductById(id: String): ProductEntity?
 
-    @Transaction
     @Query("SELECT * FROM products WHERE id IN (:ids)")
-    suspend fun getProductsByIds(ids: Set<String>): List<ProductEntity>
+    suspend fun getProductEntitiesByIds(ids: Set<String>): List<ProductEntity>
 
-    @Transaction
-    @Query("SELECT p.* FROM products p INNER JOIN product_units pu ON p.id = pu.productId WHERE pu.mainBarcode = :barcode OR EXISTS (SELECT 1 FROM barcodes b WHERE b.productId = p.id AND b.code = :barcode) LIMIT 1")
-    suspend fun findProductByBarcode(barcode: String): ProductWithUnits?
+    @Query("SELECT * FROM product_units WHERE productId = :productId")
+    suspend fun getProductUnitsForProduct(productId: String): List<ProductUnitEntity>
+
+    @Query("SELECT * FROM product_units WHERE productId IN (:productIds)")
+    suspend fun getProductUnitsForProducts(productIds: List<String>): List<ProductUnitEntity>
+
+    @Query("SELECT * FROM barcodes WHERE productUnitId = :unitId")
+    suspend fun getBarcodesForUnit(unitId: String): List<BarcodeEntity>
+
+    @Query("SELECT * FROM barcodes WHERE productUnitId IN (:unitIds)")
+    suspend fun getBarcodesForUnits(unitIds: List<String>): List<BarcodeEntity>
+
+    @Query("SELECT * FROM barcodes WHERE code = :barcode")
+    suspend fun findBarcodeEntity(barcode: String): BarcodeEntity?
+
+    @Query("SELECT * FROM product_units WHERE mainBarcode = :barcode")
+    suspend fun findProductUnitByMainBarcode(barcode: String): ProductUnitEntity?
+
+    @Query("SELECT p.* FROM products p " +
+            "INNER JOIN product_units pu ON p.id = pu.productId " +
+            "LEFT JOIN barcodes b ON pu.id = b.productUnitId " +
+            "WHERE pu.mainBarcode = :barcode OR b.code = :barcode LIMIT 1")
+    suspend fun findProductByBarcode(barcode: String): ProductEntity?
 
     @Query("SELECT COUNT(*) FROM products")
     fun getProductsCount(): Flow<Int>
@@ -63,9 +77,6 @@ interface ProductDao {
     @Delete
     suspend fun deleteBarcode(barcode: BarcodeEntity)
 
-    /**
-     * Удаление товара по идентификатору (каскадно удаляет единицы измерения и штрихкоды)
-     */
     @Query("DELETE FROM products WHERE id = :id")
     suspend fun deleteProductById(id: String)
 
@@ -81,7 +92,12 @@ interface ProductDao {
     @Query("DELETE FROM products")
     suspend fun deleteAllProducts()
 
-    @Transaction
+    @Query("DELETE FROM product_units")
+    suspend fun deleteAllProductUnits()
+
+    @Query("DELETE FROM barcodes")
+    suspend fun deleteAllBarcodes()
+
     @Query("SELECT * FROM products WHERE id IN (:productIds)")
-    suspend fun getProductsByIds(productIds: List<String>): List<ProductWithUnits>
+    suspend fun getProductsByIds(productIds: List<String>): List<ProductEntity>
 }

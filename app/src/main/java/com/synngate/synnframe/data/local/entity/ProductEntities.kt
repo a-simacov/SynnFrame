@@ -1,9 +1,7 @@
 package com.synngate.synnframe.data.local.entity
 
-import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import androidx.room.Relation
 import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.ProductUnit
@@ -119,46 +117,5 @@ data class BarcodeEntity(
                 )
             }
         }
-    }
-}
-
-/**
- * Класс для связывания Product с его единицами измерения
- */
-data class ProductWithUnits(
-    @Embedded val product: ProductEntity,
-    @Relation(
-        entity = ProductUnitEntity::class,
-        parentColumn = "id",
-        entityColumn = "productId"
-    )
-    val units: List<ProductUnitWithBarcodes>
-) {
-    /**
-     * Преобразование в доменную модель
-     */
-    fun toDomainModel(): Product {
-        val domainUnits = units.map { it.toDomainModel() }
-        return product.toDomainModel(domainUnits)
-    }
-}
-
-/**
- * Класс для связывания ProductUnit с его штрихкодами
- */
-data class ProductUnitWithBarcodes(
-    @Embedded val unit: ProductUnitEntity,
-    @Relation(
-        parentColumn = "id",
-        entityColumn = "productUnitId"
-    )
-    val barcodes: List<BarcodeEntity>
-) {
-    /**
-     * Преобразование в доменную модель
-     */
-    fun toDomainModel(): ProductUnit {
-        val barcodeCodes = barcodes.map { it.code }
-        return unit.toDomainModel(barcodeCodes)
     }
 }

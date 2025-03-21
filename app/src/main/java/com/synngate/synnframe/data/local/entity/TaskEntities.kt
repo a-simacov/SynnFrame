@@ -1,9 +1,7 @@
 package com.synngate.synnframe.data.local.entity
 
-import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import androidx.room.Relation
 import com.synngate.synnframe.domain.entity.CreationPlace
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskFactLine
@@ -159,31 +157,5 @@ data class TaskFactLineEntity(
                 quantity = factLine.quantity
             )
         }
-    }
-}
-
-/**
- * Класс для связывания Task с его строками плана и факта
- */
-data class TaskWithDetails(
-    @Embedded val task: TaskEntity,
-    @Relation(
-        parentColumn = "id",
-        entityColumn = "taskId"
-    )
-    val planLines: List<TaskPlanLineEntity>,
-    @Relation(
-        parentColumn = "id",
-        entityColumn = "taskId"
-    )
-    val factLines: List<TaskFactLineEntity>
-) {
-    /**
-     * Преобразование в доменную модель
-     */
-    fun toDomainModel(): Task {
-        val domainPlanLines = planLines.map { it.toDomainModel() }
-        val domainFactLines = factLines.map { it.toDomainModel() }
-        return task.toDomainModel(domainPlanLines, domainFactLines)
     }
 }
