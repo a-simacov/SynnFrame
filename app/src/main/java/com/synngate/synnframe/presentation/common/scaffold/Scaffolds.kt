@@ -223,7 +223,7 @@ fun AppScaffold(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    //.padding(paddingValues)
             ) {
                 content(paddingValues)
 

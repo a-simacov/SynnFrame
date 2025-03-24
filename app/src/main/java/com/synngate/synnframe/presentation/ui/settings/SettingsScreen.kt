@@ -73,25 +73,18 @@ fun SettingsScreen(
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Состояние экрана из ViewModel
     val state by viewModel.uiState.collectAsState()
 
-    // SnackbarHostState для показа уведомлений
-    val snackbarHostState = rememberSaveable { SnackbarHostState() }
-    // Получаем CoroutineScope привязанный к этому composable
+    val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    // Контекст для работы с файловой системой и установкой обновлений
     val context = LocalContext.current
-    // ActivityResultLauncher для обработки результата запроса разрешений
     val installPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            // Разрешение получено, можно начать загрузку
             viewModel.downloadUpdate()
         } else {
-            // Разрешение не получено, показываем сообщение
             coroutineScope.launch {
                 snackbarHostState.showSnackbar(
                     "Для установки обновления требуется разрешение"
@@ -101,7 +94,6 @@ fun SettingsScreen(
     }
 
 
-    // Обработка событий из ViewModel
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
@@ -583,6 +575,8 @@ private fun LanguageButton(
         buttonHeight = 48f // Уменьшенная высота для вариантов выбора
     )
 }
+
+
 
 @Composable
 fun UpdateSection(

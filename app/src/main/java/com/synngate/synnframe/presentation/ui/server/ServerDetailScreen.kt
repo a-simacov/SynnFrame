@@ -54,7 +54,7 @@ fun ServerDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(key1 = true) {
+    LaunchedEffect(key1 = viewModel) {
         events.collect { event ->
             when (event) {
                 is ServerDetailEvent.NavigateBack -> navigateBack()
@@ -130,7 +130,7 @@ fun ServerDetailScreen(
             onTestConnection = viewModel::testConnection,
             onSave = viewModel::saveServer,
             onBack = viewModel::navigateBack,
-            modifier = Modifier.padding(paddingValues)
+            //modifier = Modifier.padding(paddingValues)
         )
     }
 }

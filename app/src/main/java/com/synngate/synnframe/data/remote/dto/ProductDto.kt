@@ -3,6 +3,7 @@ package com.synngate.synnframe.data.remote.dto
 import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.ProductUnit
+import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -117,7 +118,7 @@ data class ProductUnitDto(
      * Дополнительные штрихкоды
      */
     @SerialName("barcodes")
-    val barcodes: List<String>
+    val barcodes: List<String> = emptyList()
 ) {
     /**
      * Преобразование DTO в доменную модель

@@ -49,7 +49,7 @@
     <string name="server_api_endpoint">Точка подключения к API</string>
     <string name="server_test_connection">Проверить подключение</string>
     <string name="server_status">Статус: ожидание подключения</string>
-    <string name="server_active">Активный: %s</string>
+    <string name="server_active">Активный</string>
     <string name="server_active_yes">Да</string>
     <string name="server_active_no">Нет</string>
     <string name="server_delete_confirm">Вы уверены, что хотите удалить этот сервер?</string>

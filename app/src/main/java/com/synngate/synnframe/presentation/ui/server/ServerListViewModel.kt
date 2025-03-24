@@ -32,17 +32,20 @@ class ServerListViewModel(
      */
     private fun loadServers() {
         launchIO {
+            val serversCount = serverUseCases.getServers().first().size
+            Timber.d("Database contains $serversCount servers on startup")
+
             updateState { it.copy(isLoading = true) }
 
             try {
-                // Загружаем настройку "Показывать при запуске" из SettingsUseCases
                 val showOnStartup = settingsUseCases.showServersOnStartup.first()
-
-                // Получаем активный сервер
                 val activeServer = serverUseCases.getActiveServer().first()
+
+                val servers = serverUseCases.getServers().first()
 
                 updateState { state ->
                     state.copy(
+                        servers = servers,
                         showServersOnStartup = showOnStartup,
                         activeServerId = activeServer?.id,
                         isLoading = false
@@ -66,6 +69,7 @@ class ServerListViewModel(
     private fun observeServers() {
         serverUseCases.getServers()
             .onEach { servers ->
+                Timber.d("Received servers: ${servers.size}")
                 updateState { state ->
                     state.copy(
                         servers = servers,

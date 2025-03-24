@@ -69,7 +69,6 @@ class ApiServiceImpl(
     override suspend fun testConnection(server: Server): ApiResult<Unit> {
         return try {
             val response = client.get(server.echoUrl) {
-                // Basic аутентификация
                 header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
             }
 
@@ -96,11 +95,8 @@ class ApiServiceImpl(
         return try {
             val url = "${server.apiUrl}/auth"
             val response = client.post(url) {
-                // Заголовок с паролем
                 header("User-Auth-Pass", password)
-                // Basic аутентификация
                 header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
-                // Тело запроса
                 contentType(ContentType.Application.Json)
                 setBody(
                     AuthRequestDto(
@@ -116,7 +112,6 @@ class ApiServiceImpl(
                 ApiResult.Success(authResponse)
             } else {
                 try {
-                    // Пытаемся получить сообщение об ошибке из ответа
                     val errorBody = response.body<Map<String, String>>()
                     val errorMessage = errorBody["message"] ?: "Authentication failed"
                     ApiResult.Error(response.status.value, errorMessage)
@@ -142,9 +137,7 @@ class ApiServiceImpl(
         return try {
             val url = "${server.apiUrl}/tasks/$taskId/availability"
             val response = client.get(url) {
-                // Basic аутентификация
                 header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
-                // Заголовок с ID текущего пользователя
                 header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
             }
 

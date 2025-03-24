@@ -3,6 +3,7 @@ package com.synngate.synnframe
 import android.app.Application
 import com.synngate.synnframe.presentation.di.AppContainer
 import com.synngate.synnframe.util.logging.ReleaseTree
+import com.synngate.synnframe.util.network.TrustAllCertificates
 import timber.log.Timber
 
 class SynnFrameApplication : Application() {
@@ -19,6 +20,9 @@ class SynnFrameApplication : Application() {
         } else {
             Timber.plant(ReleaseTree())
         }
+
+        // Настраиваем доверие всем SSL сертификатам (только для разработки)
+        TrustAllCertificates.initialize()
 
         // Инициализация DI контейнера
         appContainer = AppContainer(applicationContext)

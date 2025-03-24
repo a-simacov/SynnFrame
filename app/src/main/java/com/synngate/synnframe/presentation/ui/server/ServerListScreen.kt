@@ -66,7 +66,7 @@ fun ServerListScreen(
     var serverToDelete by remember { mutableStateOf<Pair<Int, String>?>(null) }
 
     // Сбор одноразовых событий
-    LaunchedEffect(Unit) {
+    LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 is ServerListEvent.NavigateToServerDetail -> navigateToServerDetail(event.serverId)

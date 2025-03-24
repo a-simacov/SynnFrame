@@ -82,6 +82,7 @@ import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 
@@ -117,6 +118,7 @@ class AppContainer(private val applicationContext: Context) {
         LogRepositoryImpl(logDao)
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     private val httpClient by lazy {
         Timber.d("Creating HttpClient")
         HttpClient(Android) {
@@ -125,6 +127,9 @@ class AppContainer(private val applicationContext: Context) {
                     prettyPrint = true
                     isLenient = true
                     ignoreUnknownKeys = true
+                    useArrayPolymorphism = true
+                    explicitNulls = false // Игнорировать null поля при сериализации
+                    coerceInputValues = true
                 })
             }
             install(Logging) {
