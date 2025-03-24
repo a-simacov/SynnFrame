@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -37,7 +36,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -48,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.R
+import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.buttons.PropertyToggleButton
@@ -64,6 +63,7 @@ import com.synngate.synnframe.presentation.ui.settings.model.SettingsEvent
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsState
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun SettingsScreen(
@@ -159,7 +159,6 @@ fun SettingsScreen(
         }
     }
 
-    // Отображение диалога обновления если доступно
     if (showUpdateConfirmDialog) {
         ConfirmationDialog(
             title = stringResource(id = R.string.update_available),
@@ -173,7 +172,6 @@ fun SettingsScreen(
         )
     }
 
-    // Диалог прогресса при загрузке - используем переменную isLoading
     if (isLoading) {
         val message = when {
             state.isCheckingForUpdates -> stringResource(id = R.string.checking_for_updates)
@@ -214,6 +212,16 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            SynchronizationSection(
+                state = state,
+                onToggleSyncService = viewModel::toggleSyncService,
+                onStartManualSync = viewModel::startManualSync,
+                onUpdatePeriodicSync = viewModel::updatePeriodicSync,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             NavigationButton(
                 text = stringResource(id = R.string.sync_history),
                 onClick = { viewModel.onSyncHistoryClick() },
@@ -243,7 +251,6 @@ fun SettingsScreen(
         }
     }
 
-    // Обработка ошибок
     LaunchedEffect(state.error) {
         state.error?.let { error ->
             snackbarHostState.showSnackbar(error)
@@ -346,6 +353,154 @@ fun ActiveServerSection(
                         value = state.uploadIntervalSeconds.toString(),
                         onValueChange = { value ->
                             value.toIntOrNull()?.let { onUploadIntervalChange(it) }
+                        },
+                        label = stringResource(id = R.string.interval_seconds),
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Информационный текст
+                    Text(
+                        text = stringResource(id = R.string.seconds),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                }
+
+                // Подсказка по диапазону
+                Text(
+                    text = stringResource(id = R.string.interval_range_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SynchronizationSection(
+    state: SettingsState,
+    onToggleSyncService: () -> Unit,
+    onStartManualSync: () -> Unit,
+    onUpdatePeriodicSync: (Boolean, Int?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    InfoCard(
+        title = stringResource(id = R.string.sync_settings),
+        modifier = modifier
+    ) {
+        // Статус сервиса синхронизации
+        Text(
+            text = stringResource(
+                id = if (state.isSyncServiceRunning)
+                    R.string.sync_service_running
+                else
+                    R.string.sync_service_stopped
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (state.isSyncServiceRunning)
+                MaterialTheme.colorScheme.primary
+            else
+                MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Кнопка управления сервисом синхронизации
+        ActionButton(
+            text = stringResource(
+                id = if (state.isSyncServiceRunning)
+                    R.string.stop_sync_service
+                else
+                    R.string.start_sync_service
+            ),
+            onClick = onToggleSyncService,
+            modifier = Modifier.fillMaxWidth(),
+            buttonColors = if (state.isSyncServiceRunning)
+                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            else
+                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Кнопка для ручной синхронизации
+        ActionButton(
+            text = stringResource(id = R.string.start_manual_sync),
+            onClick = onStartManualSync,
+            isLoading = state.isManualSyncing,
+            enabled = !state.isManualSyncing && state.syncStatus != SynchronizationController.SyncStatus.SYNCING,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Информация о последней синхронизации
+        if (state.lastSyncInfo != null) {
+            val lastSync = state.lastSyncInfo
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = stringResource(id = R.string.last_sync_info),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+
+            Text(
+                text = stringResource(
+                    id = R.string.last_sync_time,
+                    lastSync.timestamp.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss"))
+                ),
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            Text(
+                text = stringResource(
+                    id = R.string.sync_results,
+                    lastSync.tasksUploadedCount,
+                    lastSync.tasksDownloadedCount,
+                    lastSync.productsDownloadedCount
+                ),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Настройка периодической синхронизации
+        PropertyToggleButton(
+            property = stringResource(id = R.string.periodic_sync_enabled),
+            value = state.periodicSyncEnabled,
+            onToggle = { enabled -> onUpdatePeriodicSync(enabled, null) },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Настройка интервала синхронизации
+        AnimatedVisibility(visible = state.periodicSyncEnabled) {
+            Column {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = stringResource(id = R.string.sync_interval_seconds),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Поле ввода интервала
+                    NumberTextField(
+                        value = state.syncIntervalSeconds.toString(),
+                        onValueChange = { value ->
+                            value.toIntOrNull()?.let {
+                                onUpdatePeriodicSync(true, it)
+                            }
                         },
                         label = stringResource(id = R.string.interval_seconds),
                         modifier = Modifier.weight(1f)

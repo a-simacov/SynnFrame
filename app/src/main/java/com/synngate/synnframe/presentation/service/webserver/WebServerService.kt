@@ -36,6 +36,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 //import org.koin.android.ext.android.inject
 import timber.log.Timber
@@ -59,16 +60,27 @@ class WebServerService : BaseForegroundService() {
     // Сервер Ktor
     private var server: ApplicationEngine? = null
 
-    // Порт сервера
     private var serverPort: Int = DEFAULT_PORT
+    private var currentServerHost = "localhost"
 
-    // Метаданные сервиса
     override val serviceName: String = "WebServerService"
     override val notificationId: Int = NotificationChannelManager.NOTIFICATION_ID_WEB_SERVER
 
     override fun onCreate() {
         super.onCreate()
         Timber.d("WebServerService onCreate")
+
+        // Подписка на обновления адреса
+        serviceScope.launch {
+            webServerController.serverHost.collect { host ->
+                currentServerHost = host
+                // При изменении хоста обновим уведомление
+                if (isServiceRunning) {
+                    val notification = createNotification()
+                    startForeground(notificationId, notification)
+                }
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -113,11 +125,11 @@ class WebServerService : BaseForegroundService() {
         // Создаем уведомление
         return NotificationCompat.Builder(this, NotificationChannelManager.CHANNEL_WEB_SERVER)
             .setContentTitle(getString(R.string.web_server_notification_title))
-            .setContentText(getString(R.string.web_server_notification_text) + " ($serverPort)")
-            .setSmallIcon(R.drawable.ic_web_server) // todo add web server icon
+            .setContentText(getString(R.string.web_server_notification_text) + " ($currentServerHost:$serverPort)")
+            .setSmallIcon(R.drawable.ic_web_server)
             .setContentIntent(pendingIntent)
             .addAction(
-                R.drawable.ic_stop, // todo add stop icon
+                R.drawable.ic_stop,
                 getString(R.string.action_stop),
                 stopPendingIntent
             )
@@ -159,7 +171,10 @@ class WebServerService : BaseForegroundService() {
         install(StatusPages) {
             exception<Throwable> { call, cause ->
                 Timber.e(cause, "Error handling request")
-                call.respond(io.ktor.http.HttpStatusCode.InternalServerError, "Internal Server Error")
+                call.respond(
+                    io.ktor.http.HttpStatusCode.InternalServerError,
+                    "Internal Server Error"
+                )
             }
         }
 

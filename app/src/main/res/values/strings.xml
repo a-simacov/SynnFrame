@@ -467,5 +467,17 @@
     <string name="delete_all_logs_title">Удаление всех логов</string>
     <string name="delete_all_logs_message">Вы уверены, что хотите удалить все логи? Это действие нельзя отменить.</string>
 
+    <!-- Секция синхронизации -->
+    <string name="sync_settings">Настройки синхронизации</string>
+    <string name="sync_service_running">Сервис синхронизации запущен</string>
+    <string name="sync_service_stopped">Сервис синхронизации остановлен</string>
+    <string name="start_sync_service">Запустить сервис синхронизации</string>
+    <string name="stop_sync_service">Остановить сервис синхронизации</string>
+    <string name="start_manual_sync">Запустить синхронизацию вручную</string>
+    <string name="last_sync_info">Информация о последней синхронизации</string>
+    <string name="last_sync_time">Время: %1$s</string>
+    <string name="sync_results">Выгружено заданий: %1$d\nЗагружено заданий: %2$d\nЗагружено товаров: %3$d</string>
+    <string name="periodic_sync_enabled">Периодическая синхронизация</string>
+    <string name="sync_interval_seconds">Интервал синхронизации (в секундах)</string>
     <string name="sync_history">История синхронизаций</string>
 </resources>
