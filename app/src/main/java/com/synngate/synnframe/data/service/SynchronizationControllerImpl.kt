@@ -4,6 +4,7 @@ package com.synngate.synnframe.data.service
 
 import android.content.Context
 import android.content.Intent
+import androidx.work.BackoffPolicy
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -20,6 +21,7 @@ import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.presentation.service.base.BaseForegroundService
 import com.synngate.synnframe.presentation.service.sync.SynchronizationService
+import com.synngate.synnframe.presentation.service.sync.SynchronizationService.Companion.ACTION_RESET_STATE
 import com.synngate.synnframe.presentation.service.sync.SynchronizationWorker
 import com.synngate.synnframe.util.network.NetworkErrorClassifier
 import com.synngate.synnframe.util.network.NetworkMonitor
@@ -28,6 +30,7 @@ import com.synngate.synnframe.util.network.RetryStrategy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,6 +40,7 @@ import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Реализация контроллера синхронизации
@@ -120,12 +124,64 @@ class SynchronizationControllerImpl(
         // Настраиваем наблюдение за состоянием сети
         coroutineScope.launch {
             networkMonitor.networkState.collect { state ->
-                Timber.d("Изменение состояния сети: $state")
+                Timber.d("Network state changed: $state")
 
                 // Если сеть стала доступна, запускаем обработку ожидающих операций
                 if (state is NetworkState.Available) {
-                    Timber.d("Сеть доступна, обрабатываем отложенные операции")
+                    Timber.d("Network is available, processing queued operations")
                     processQueuedOperations()
+                }
+            }
+        }
+
+        // Запускаем периодическую обработку отложенных операций с проверкой состояния
+        coroutineScope.launch {
+            while (true) {
+                try {
+                    // Проверяем, не находится ли контроллер в состоянии ошибки
+                    if (_syncStatus.value == SynchronizationController.SyncStatus.ERROR) {
+                        resetSyncState()
+                        loggingService.logInfo("Reset error state for a new sync attempt")
+                    }
+
+                    // Обрабатываем отложенные операции только если контроллер не в процессе синхронизации
+                    if (_syncStatus.value != SynchronizationController.SyncStatus.SYNCING) {
+                        processQueuedOperations()
+                    }
+
+                    delay(CHECK_QUEUE_INTERVAL_MS)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "Error processing queued operations")
+                }
+            }
+        }
+
+        // Добавим механизм периодического сброса состояния ошибки
+        coroutineScope.launch {
+            while (true) {
+                try {
+                    // Проверяем состояние контроллера
+                    val currentStatus = _syncStatus.value
+                    val currentTime = System.currentTimeMillis()
+
+                    // Если в состоянии ошибки более 30 секунд - принудительно сбрасываем
+                    if (currentStatus == SynchronizationController.SyncStatus.ERROR) {
+                        Timber.d("Resetting ERROR state to IDLE")
+                        resetSyncState()
+
+                        // Также добавляем операцию в очередь
+                        syncQueueManager.enqueueOperation(
+                            operationType = OperationType.FULL_SYNC,
+                            targetId = "retry-sync-${System.currentTimeMillis()}",
+                            executeImmediately = false
+                        )
+                    }
+
+                    delay(30000) // Проверяем каждые 30 секунд
+                } catch (e: Exception) {
+                    Timber.e(e, "Error in state reset monitoring")
                 }
             }
         }
@@ -133,16 +189,18 @@ class SynchronizationControllerImpl(
 
     override suspend fun startService(): Result<Unit> {
         return try {
+            resetSyncState()
+
             val intent = Intent(context, SynchronizationService::class.java).apply {
                 action = BaseForegroundService.ACTION_START_SERVICE
             }
             context.startForegroundService(intent)
             _isRunning.value = true
-            loggingService.logInfo("Сервис синхронизации запущен")
+            loggingService.logInfo("Sync service started")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Error starting synchronization service")
-            loggingService.logError("Ошибка запуска сервиса синхронизации: ${e.message}")
+            loggingService.logError("Error starting synchronization service: ${e.message}")
             Result.failure(e)
         }
     }
@@ -154,11 +212,11 @@ class SynchronizationControllerImpl(
             }
             context.startService(intent)
             _isRunning.value = false
-            loggingService.logInfo("Сервис синхронизации остановлен")
+            loggingService.logInfo("Sync service stopped")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Error stopping synchronization service")
-            loggingService.logError("Ошибка остановки сервиса синхронизации: ${e.message}")
+            loggingService.logError("Error stopping synchronization service: ${e.message}")
             Result.failure(e)
         }
     }
@@ -167,9 +225,24 @@ class SynchronizationControllerImpl(
         return if (_isRunning.value) {
             stopService().map { false }
         } else {
+            // При запуске сбрасываем состояние
+            resetSyncState()
             startService().map { true }
         }
     }
+
+    // Добавить метод для сброса состояния синхронизации
+    suspend fun resetSyncState() {
+        // Сброс состояния контроллера
+        _syncStatus.value = SynchronizationController.SyncStatus.IDLE
+
+        // Отправка команды сервису для сброса состояния уведомления
+        val intent = Intent(context, SynchronizationService::class.java).apply {
+            action = ACTION_RESET_STATE
+        }
+        context.startService(intent)
+    }
+
 
     /**
      * Модифицированная версия startManualSync, использующая очередь
@@ -177,22 +250,22 @@ class SynchronizationControllerImpl(
     override suspend fun startManualSync(): Result<SynchronizationController.SyncResult> {
         // Если синхронизация уже идет, возвращаем ошибку
         if (_syncStatus.value == SynchronizationController.SyncStatus.SYNCING) {
-            return Result.failure(IllegalStateException("Синхронизация уже выполняется"))
+            return Result.failure(IllegalStateException("Syncing is already in process"))
         }
 
         // Если нет сети, добавляем операцию в очередь
         if (!networkMonitor.isNetworkAvailable()) {
-            Timber.d("Нет сети, добавляем операцию FULL_SYNC в очередь")
+            Timber.d("No network, adding operation FULL_SYNC to queue")
             val operationId = syncQueueManager.enqueueOperation(
                 operationType = OperationType.FULL_SYNC,
                 targetId = "manual-sync-${System.currentTimeMillis()}",
                 executeImmediately = false
             )
 
-            loggingService.logInfo("Синхронизация поставлена в очередь и будет выполнена при появлении сети")
+            loggingService.logInfo("Sync is enqueued and will be proceeded when network appears")
 
             return Result.failure(
-                NoNetworkException("Нет подключения к сети. Синхронизация будет выполнена при появлении сети.")
+                NoNetworkException("No network connection. Sync will start when network appears.")
             )
         }
 
@@ -205,6 +278,18 @@ class SynchronizationControllerImpl(
             return Result.success(syncResult)
         } catch (e: Exception) {
             _syncStatus.value = SynchronizationController.SyncStatus.ERROR
+
+            // Добавляем операцию повторной синхронизации в очередь если ошибка временная
+            if (NetworkErrorClassifier.isRetryable(e)) {
+                val operationId = syncQueueManager.enqueueOperation(
+                    operationType = OperationType.FULL_SYNC,
+                    targetId = "retry-sync-${System.currentTimeMillis()}",
+                    executeImmediately = false
+                )
+
+                loggingService.logWarning("Sync failed: ${e.message}. Retry attempt planned.")
+            }
+
             return Result.failure(e)
         }
     }
@@ -227,16 +312,16 @@ class SynchronizationControllerImpl(
             // Планируем или отменяем периодическую синхронизацию
             if (enabled) {
                 schedulePeriodicSync(interval)
-                loggingService.logInfo("Периодическая синхронизация включена с интервалом $interval секунд")
+                loggingService.logInfo("Periodical sync is on with interval $interval seconds")
             } else {
                 cancelPeriodicSync()
-                loggingService.logInfo("Периодическая синхронизация отключена")
+                loggingService.logInfo("Periodical sync is off")
             }
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Error updating periodic sync settings")
-            loggingService.logError("Ошибка обновления настроек периодической синхронизации: ${e.message}")
+            loggingService.logError("Error updating periodic sync settings: ${e.message}")
             Result.failure(e)
         }
     }
@@ -266,7 +351,9 @@ class SynchronizationControllerImpl(
         val periodicWorkRequest = PeriodicWorkRequestBuilder<SynchronizationWorker>(
             intervalSeconds.toLong(),
             TimeUnit.SECONDS
-        ).build()
+        ).setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .setInitialDelay(30, TimeUnit.SECONDS)
+            .build()
 
         // Отменяем предыдущую запланированную работу и планируем новую
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
@@ -300,35 +387,36 @@ class SynchronizationControllerImpl(
     private suspend fun processQueuedOperations() {
         // Если синхронизация уже идет или сервис не запущен, пропускаем
         if (_syncStatus.value == SynchronizationController.SyncStatus.SYNCING ||
-            !_isRunning.value) {
+            !_isRunning.value
+        ) {
             return
         }
 
         // Если сеть недоступна, пропускаем
         if (!networkMonitor.isNetworkAvailable()) {
-            Timber.d("Сеть недоступна, пропускаем обработку операций")
+            Timber.d("Network is unavailable, skipping operations processing")
             return
         }
 
         // Получаем операции, готовые для выполнения
         val operations = syncQueueManager.getReadyOperations()
         if (operations.isEmpty()) {
-            Timber.d("Нет операций, готовых для выполнения")
+            Timber.d("No operations, ready to execute")
             return
         }
 
-        Timber.d("Начинаем обработку ${operations.size} операций")
+        Timber.d("Starting processing ${operations.size} operations")
         _syncStatus.value = SynchronizationController.SyncStatus.SYNCING
 
         try {
             for (operation in operations) {
                 // Проверяем, не потеряли ли мы сеть во время обработки
                 if (!networkMonitor.isNetworkAvailable()) {
-                    Timber.d("Сеть стала недоступна во время обработки операций")
+                    Timber.d("Network became unavailable while processing operations")
                     break
                 }
 
-                Timber.d("Обработка операции ${operation.id}: ${operation.operationType}")
+                Timber.d("Operation processing ${operation.id}: ${operation.operationType}")
 
                 try {
                     when (operation.operationType) {
@@ -338,7 +426,8 @@ class SynchronizationControllerImpl(
                             if (result.isSuccess) {
                                 syncQueueManager.markOperationCompleted(operation.id)
                             } else {
-                                val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                                val error =
+                                    result.exceptionOrNull()?.message ?: "Unknown error"
                                 syncQueueManager.handleFailedAttempt(operation.id, error)
                             }
                         }
@@ -349,7 +438,8 @@ class SynchronizationControllerImpl(
                             if (result.isSuccess) {
                                 syncQueueManager.markOperationCompleted(operation.id)
                             } else {
-                                val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                                val error =
+                                    result.exceptionOrNull()?.message ?: "Unknown error"
                                 syncQueueManager.handleFailedAttempt(operation.id, error)
                             }
                         }
@@ -360,7 +450,8 @@ class SynchronizationControllerImpl(
                             if (result.isSuccess) {
                                 syncQueueManager.markOperationCompleted(operation.id)
                             } else {
-                                val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                                val error =
+                                    result.exceptionOrNull()?.message ?: "Unknown error"
                                 syncQueueManager.handleFailedAttempt(operation.id, error)
                             }
                         }
@@ -371,13 +462,19 @@ class SynchronizationControllerImpl(
                             if (syncResult.successful) {
                                 syncQueueManager.markOperationCompleted(operation.id)
                             } else {
-                                syncQueueManager.handleFailedAttempt(operation.id, syncResult.errorMessage ?: "Ошибка синхронизации")
+                                syncQueueManager.handleFailedAttempt(
+                                    operation.id,
+                                    syncResult.errorMessage ?: "Sync error"
+                                )
                             }
                         }
                     }
                 } catch (e: Exception) {
-                    Timber.e(e, "Ошибка при обработке операции ${operation.id}")
-                    syncQueueManager.handleFailedAttempt(operation.id, e.message ?: "Неизвестная ошибка")
+                    Timber.e(e, "Error while operation processing ${operation.id}")
+                    syncQueueManager.handleFailedAttempt(
+                        operation.id,
+                        e.message ?: "Unknown error"
+                    )
                 }
             }
         } finally {
@@ -406,15 +503,18 @@ class SynchronizationControllerImpl(
                 putExtra(SynchronizationService.EXTRA_PROGRESS_STATUS, progress.status.name)
                 putExtra(SynchronizationService.EXTRA_TASKS_UPLOADED, progress.tasksUploaded)
                 putExtra(SynchronizationService.EXTRA_TASKS_DOWNLOADED, progress.tasksDownloaded)
-                putExtra(SynchronizationService.EXTRA_PRODUCTS_DOWNLOADED, progress.productsDownloaded)
+                putExtra(
+                    SynchronizationService.EXTRA_PRODUCTS_DOWNLOADED,
+                    progress.productsDownloaded
+                )
                 putExtra(SynchronizationService.EXTRA_CURRENT_OPERATION, progress.currentOperation)
                 putExtra(SynchronizationService.EXTRA_PROGRESS_PERCENT, progress.progressPercent)
                 putExtra(SynchronizationService.EXTRA_ERROR_COUNT, progress.errorCount)
-                putExtra(SynchronizationService.EXTRA_ERROR_MESSAGE, progress.lastErrorMessage)
+                putExtra(SynchronizationService.EXTRA_ERROR_MESSAGE, "${progress.endTime}:${progress.lastErrorMessage}")
             }
             context.startService(intent)
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка отправки обновления прогресса в сервис")
+            Timber.e(e, "Error on sending updates to the service")
         }
     }
 
@@ -494,8 +594,8 @@ class SynchronizationControllerImpl(
                     }
 
                     loggingService.logWarning(
-                        "Попытка $attempt загрузки заданий не удалась. " +
-                                "Повтор через ${delay}мс. Ошибка: ${e.message}"
+                        "Attempt $attempt downloading tasks failed. " +
+                                "Repeat after ${delay}ms. Error: ${e.message}"
                     )
                 },
                 tag = "TasksDownload"
@@ -525,8 +625,8 @@ class SynchronizationControllerImpl(
                     }
 
                     loggingService.logWarning(
-                        "Попытка $attempt синхронизации товаров не удалась. " +
-                                "Повтор через ${delay}мс. Ошибка: ${e.message}"
+                        "Attempt $attempt products sync failed. " +
+                                "Repeat after ${delay}ms. Error: ${e.message}"
                     )
                 },
                 tag = "ProductsSync"
@@ -623,7 +723,7 @@ class SynchronizationControllerImpl(
             // Сохраняем информацию о синхронизации
             saveSyncInfo(syncResult)
 
-            loggingService.logError("Ошибка полной синхронизации: ${e.message}")
+            loggingService.logError("Full sync error: ${e.message}")
 
             return syncResult
         }
@@ -673,7 +773,7 @@ class SynchronizationControllerImpl(
             // Сохраняем в базу данных
             syncHistoryDao.insertHistory(record)
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка сохранения истории синхронизации")
+            Timber.e(e, "Error in saving sync history")
         }
     }
 
@@ -695,7 +795,7 @@ class SynchronizationControllerImpl(
     suspend fun uploadTask(taskId: String, forceUpload: Boolean = false): Result<Boolean> {
         // Если нет сети, добавляем в очередь и возвращаем результат
         if (!networkMonitor.isNetworkAvailable() && !forceUpload) {
-            Timber.d("Нет сети, добавляем операцию UPLOAD_TASK в очередь для задания $taskId")
+            Timber.d("No network, adding operation UPLOAD_TASK in queue for task $taskId")
             syncQueueManager.enqueueOperation(
                 operationType = OperationType.UPLOAD_TASK,
                 targetId = taskId
@@ -710,7 +810,7 @@ class SynchronizationControllerImpl(
             val mobileSizeLimit = appSettingsDataStore.mobileSizeLimit.first()
 
             if (!allowMobileUpload) {
-                Timber.d("Мобильная сеть, выгрузка не разрешена, добавляем в очередь")
+                Timber.d("Mobile network, sync is forbidden, adding to the queue")
                 syncQueueManager.enqueueOperation(
                     operationType = OperationType.UPLOAD_TASK,
                     targetId = taskId
@@ -721,7 +821,7 @@ class SynchronizationControllerImpl(
             // Проверяем размер задания для мобильной сети
             val taskSize = estimateTaskSize(taskId)
             if (taskSize > mobileSizeLimit) {
-                Timber.d("Задание слишком большое для мобильной сети ($taskSize байт), добавляем в очередь")
+                Timber.d("The task is too big for mobile network ($taskSize bytes), enqueueing")
                 syncQueueManager.enqueueOperation(
                     operationType = OperationType.UPLOAD_TASK,
                     targetId = taskId
@@ -740,17 +840,17 @@ class SynchronizationControllerImpl(
                 shouldRetry = { e -> NetworkErrorClassifier.isRetryable(e) },
                 onError = { e, attempt, delay ->
                     loggingService.logWarning(
-                        "Попытка $attempt выгрузки задания $taskId не удалась. " +
+                        "Attempt $attempt uploading task $taskId failed. " +
                                 "Повтор через ${delay}мс. Ошибка: ${e.message}"
                     )
                 },
                 tag = "TaskUpload"
             )
 
-            loggingService.logInfo("Задание $taskId успешно выгружено")
+            loggingService.logInfo("Task $taskId uploaded successfully")
             Result.success(true)
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при выгрузке задания $taskId")
+            Timber.e(e, "Error while uploading task $taskId")
 
             // Добавляем в очередь, если ошибка временная
             if (NetworkErrorClassifier.isRetryable(e)) {
@@ -793,5 +893,6 @@ class SynchronizationControllerImpl(
     companion object {
         private const val DEFAULT_SYNC_INTERVAL_SECONDS = 300 // 5 минут
         private const val WORK_NAME_PERIODIC_SYNC = "periodic_sync_work"
+        private const val CHECK_QUEUE_INTERVAL_MS = 30_000L // 30 секунд
     }
 }

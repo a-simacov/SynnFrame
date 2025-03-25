@@ -27,8 +27,8 @@ class RetryStrategy(
 
         val NORMAL = RetryStrategy(
             maxAttempts = 5,
-            initialDelaySeconds = 60L,
-            maxDelaySeconds = 3600L, // 1 час
+            initialDelaySeconds = 30L,
+            maxDelaySeconds = 1800L, // 1 час
             backoffFactor = 2.0
         )
 

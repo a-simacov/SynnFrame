@@ -79,6 +79,12 @@ object NetworkErrorClassifier {
      * Определяет, можно ли повторить запрос при данной ошибке
      */
     fun isRetryable(e: Throwable): Boolean {
+        // Добавим специальную проверку на таймаут
+        if (e.message?.contains("timeout", ignoreCase = true) == true ||
+            e.message?.contains("timed out", ignoreCase = true) == true) {
+            return true
+        }
+
         return when (classify(e)) {
             ErrorType.TRANSIENT, ErrorType.SERVER_ERROR -> true
             ErrorType.AUTHENTICATION_ERROR, ErrorType.CLIENT_ERROR, ErrorType.UNKNOWN -> false

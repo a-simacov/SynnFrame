@@ -31,18 +31,18 @@ class NetworkMonitor(private val context: Context) {
             override fun onAvailable(network: Network) {
                 val capabilities = connectivityManager.getNetworkCapabilities(network)
                 val state = getNetworkState(capabilities)
-                Timber.d("Сеть доступна: $state")
+                Timber.d("Network is available: $state")
                 _networkState.value = state
             }
 
             override fun onLost(network: Network) {
-                Timber.d("Сеть недоступна")
+                Timber.d("Network is unavailable")
                 _networkState.value = NetworkState.Unavailable
             }
 
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
                 val state = getNetworkState(capabilities)
-                Timber.d("Изменение возможностей сети: $state")
+                Timber.d("Changing of network capability: $state")
                 _networkState.value = state
             }
         }

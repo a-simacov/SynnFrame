@@ -39,24 +39,34 @@ class SynchronizationWorker(
                     val error = result?.errorMessage ?: "Неизвестная ошибка"
                     Timber.w("SynchronizationWorker: sync failed with error: $error")
 
-                    // Определяем, стоит ли повторять попытку
-                    val exception = syncResult.exceptionOrNull()
-                    if (exception != null && NetworkErrorClassifier.isRetryable(exception)) {
-                        // Для временных ошибок повторяем попытку
-                        Timber.d("SynchronizationWorker: error is retryable, scheduling retry")
+                    // Для таймаутов всегда ставим retry
+                    if (error.contains("timeout", ignoreCase = true) ||
+                        error.contains("timed out", ignoreCase = true) ||
+                        error.contains("connect", ignoreCase = true)) {
+                        Timber.d("SynchronizationWorker: timeout error, scheduling retry")
                         Result.retry()
                     } else {
-                        // Для постоянных ошибок отмечаем как неудачу
-                        Timber.d("SynchronizationWorker: error is not retryable, marking as failure")
-                        Result.failure()
+                        // Проверяем обычные критерии
+                        val exception = syncResult.exceptionOrNull()
+                        if (exception != null && NetworkErrorClassifier.isRetryable(exception)) {
+                            Timber.d("SynchronizationWorker: error is retryable, scheduling retry")
+                            Result.retry()
+                        } else {
+                            Timber.d("SynchronizationWorker: error is not retryable, marking as failure")
+                            Result.failure()
+                        }
                     }
                 }
             } else {
                 val error = syncResult.exceptionOrNull()
                 Timber.e(error, "SynchronizationWorker: sync failed with exception")
 
-                // Определяем, стоит ли повторять попытку
-                if (error != null && NetworkErrorClassifier.isRetryable(error)) {
+                // Определяем, стоит ли повторять попытку с прямой проверкой на таймаут
+                if (error != null && (
+                            error.message?.contains("timeout", ignoreCase = true) == true ||
+                                    error.message?.contains("connect", ignoreCase = true) == true ||
+                                    NetworkErrorClassifier.isRetryable(error))
+                ) {
                     Timber.d("SynchronizationWorker: error is retryable, scheduling retry")
                     Result.retry()
                 } else {
@@ -66,8 +76,6 @@ class SynchronizationWorker(
             }
         } catch (e: Exception) {
             Timber.e(e, "SynchronizationWorker: exception during sync")
-
-            // Для любых неожиданных исключений пытаемся повторить
             Result.retry()
         }
     }

@@ -74,6 +74,7 @@ import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModel
 import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
@@ -131,6 +132,12 @@ class AppContainer(private val applicationContext: Context) {
                     explicitNulls = false // Игнорировать null поля при сериализации
                     coerceInputValues = true
                 })
+            }
+            // Добавляем настройки таймаутов
+            install(HttpTimeout) {
+                connectTimeoutMillis = 10000  // 10 секунд на установку соединения
+                //requestTimeoutMillis = 15000  // 15 секунд на выполнение запроса
+                //socketTimeoutMillis = 10000   // 10 секунд на операции с сокетом
             }
             install(Logging) {
                 logger = object : Logger {

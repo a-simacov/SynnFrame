@@ -11,6 +11,7 @@ import com.synngate.synnframe.data.sync.SyncStatus
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.service.base.BaseForegroundService
+import com.synngate.synnframe.presentation.service.base.launchSafely
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.ui.MainActivity
 import kotlinx.coroutines.Dispatchers
@@ -81,9 +82,51 @@ class SynchronizationService : BaseForegroundService() {
                     startForeground(notificationId, notification)
                 }
             }
+            // Добавляем новое действие для сброса состояния
+            ACTION_RESET_STATE -> {
+                // Создаем новое состояние "готов к синхронизации"
+                val progress = SyncProgress(
+                    id = System.currentTimeMillis().toString(),
+                    startTime = LocalDateTime.now(),
+                    status = SyncStatus.STARTED,
+                    currentOperation = "Готов к синхронизации"
+                )
+
+                // Обновляем уведомление напрямую
+                val notification = createNotificationWithProgress(progress)
+                startForeground(notificationId, notification)
+
+                // Логируем сброс состояния
+                serviceScope.launchSafely {
+                    loggingService.logInfo("Состояние синхронизации сброшено")
+                }
+            }
+
         }
 
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    // Добавим метод для создания уведомления на основе объекта прогресса
+    private fun createNotificationWithProgress(progress: SyncProgress): Notification {
+        // Аналогичен существующему createNotification(), но принимает прогресс как параметр
+
+        // Возвращаем построенное уведомление
+        return NotificationCompat.Builder(this, NotificationChannelManager.CHANNEL_SYNCHRONIZATION)
+            .setContentTitle(getTitleForStatus(progress.status))
+            .setContentText(progress.getProgressMessage())
+            // Остальные настройки билдера...
+            .build()
+    }
+
+    // Вспомогательный метод для получения заголовка по статусу
+    private fun getTitleForStatus(status: SyncStatus): String {
+        return when (status) {
+            SyncStatus.STARTED -> getString(R.string.sync_notification_title_started)
+            SyncStatus.IN_PROGRESS -> getString(R.string.sync_notification_title_in_progress)
+            SyncStatus.COMPLETED -> getString(R.string.sync_notification_title_completed)
+            SyncStatus.FAILED -> getString(R.string.sync_notification_title_failed)
+        }
     }
 
     override suspend fun onServiceStart() {
@@ -112,6 +155,9 @@ class SynchronizationService : BaseForegroundService() {
         // Создаем Intent для открытия приложения при клике на уведомление
         val pendingIntent = Intent(this, MainActivity::class.java).let { notificationIntent ->
             notificationIntent.putExtra(EXTRA_OPEN_SYNC_SCREEN, true)
+            notificationIntent.action = Intent.ACTION_MAIN
+            notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+            notificationIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             PendingIntent.getActivity(
                 this, 0, notificationIntent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
@@ -234,11 +280,12 @@ class SynchronizationService : BaseForegroundService() {
         const val ACTION_UPDATE_PROGRESS = "com.synngate.synnframe.ACTION_UPDATE_PROGRESS"
         const val ACTION_FORCE_SYNC = "com.synngate.synnframe.ACTION_FORCE_SYNC"
         const val ACTION_CLEAR_NOTIFICATION = "com.synngate.synnframe.ACTION_CLEAR_NOTIFICATION"
+        const val ACTION_RESET_STATE = "com.synngate.synnframe.ACTION_RESET_STATE"
 
         // Дополнительные данные для Intent
         const val EXTRA_PROGRESS = "extra_progress"
-        const val EXTRA_OPEN_SYNC_SCREEN = "extra_open_sync_screen"
 
+        const val EXTRA_OPEN_SYNC_SCREEN = "extra_open_sync_screen"
         // Константы для параметров Intent
         const val EXTRA_PROGRESS_ID = "extra_progress_id"
         const val EXTRA_PROGRESS_STATUS = "extra_progress_status"
