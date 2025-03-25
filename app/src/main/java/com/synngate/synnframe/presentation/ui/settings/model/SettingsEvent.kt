@@ -32,4 +32,6 @@ sealed class SettingsEvent {
     data class InstallUpdate(val uri: Uri) : SettingsEvent()
 
     data object NavigateToSyncHistory : SettingsEvent()
+
+    data class ChangeAppLanguage(val languageCode: String) : SettingsEvent()
 }

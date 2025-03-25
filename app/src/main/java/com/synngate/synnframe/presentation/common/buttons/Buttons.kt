@@ -434,3 +434,53 @@ fun CyclicThemeButton(
         modifier = modifier.fillMaxWidth()
     )
 }
+
+/**
+ * Универсальная циклическая кнопка для переключения между значениями.
+ *
+ * @param T тип значений для переключения
+ * @param values список всех возможных значений
+ * @param currentValue текущее выбранное значение
+ * @param onValueChange колбэк, вызываемый при изменении значения
+ * @param valueToString функция для преобразования значения в строку для отображения
+ * @param labelText опциональный текст метки, который будет отображаться перед значением
+ * @param buttonHeight высота кнопки в dp
+ * @param modifier модификатор для стилизации кнопки
+ */
+@Composable
+fun <T> CyclicValueButton(
+    values: List<T>,
+    currentValue: T,
+    onValueChange: (T) -> Unit,
+    valueToString: @Composable (T) -> String,
+    labelText: String? = null,
+    buttonHeight: Float = 72f,
+    modifier: Modifier = Modifier
+) {
+    // Проверка на пустой список значений
+    if (values.isEmpty()) {
+        return
+    }
+
+    // Текст, отображаемый на кнопке
+    val valueText = valueToString(currentValue)
+    val buttonText = if (labelText != null) "$labelText: $valueText" else valueText
+
+    // При нажатии переключаемся на следующее значение в списке
+    val onClick = {
+        // Находим индекс текущего значения
+        val currentIndex = values.indexOf(currentValue)
+        // Если по какой-то причине текущее значение не найдено в списке,
+        // начинаем с первого элемента
+        val nextIndex = if (currentIndex == -1) 0 else (currentIndex + 1) % values.size
+        // Вызываем колбэк со следующим значением
+        onValueChange(values[nextIndex])
+    }
+
+    ActionButton(
+        text = buttonText,
+        onClick = onClick,
+        modifier = modifier,
+        buttonHeight = buttonHeight
+    )
+}

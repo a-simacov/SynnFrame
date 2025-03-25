@@ -49,6 +49,7 @@ import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.buttons.CyclicThemeButton
+import com.synngate.synnframe.presentation.common.buttons.CyclicValueButton
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.buttons.PropertyToggleButton
 import com.synngate.synnframe.presentation.common.buttons.SelectableButton
@@ -65,6 +66,7 @@ import com.synngate.synnframe.presentation.ui.settings.model.SettingsState
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(
@@ -140,6 +142,20 @@ fun SettingsScreen(
                 }
 
                 is SettingsEvent.NavigateToSyncHistory -> navigateToSyncHistory()
+
+                is SettingsEvent.ChangeAppLanguage -> {
+                    // Изменяем локаль приложения
+                    val locale = Locale(event.languageCode)
+                    val resources = context.resources
+                    val configuration = resources.configuration
+                    configuration.setLocale(locale)
+                    resources.updateConfiguration(configuration, resources.displayMetrics)
+
+                    // Перезапускаем активность для применения изменений
+                    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                    intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    context.startActivity(intent)
+                }
             }
         }
     }
@@ -571,39 +587,56 @@ fun InterfaceSettingsSection(
         title = stringResource(id = R.string.interface_settings),
         modifier = modifier
     ) {
-        CyclicThemeButton(
-            currentTheme = state.themeMode,
-            onThemeChange = onThemeModeChange
+//        CyclicThemeButton(
+//            currentTheme = state.themeMode,
+//            onThemeChange = onThemeModeChange
+//        )
+        // В InterfaceSettingsSection
+        Text(
+            text = stringResource(id = R.string.theme_selection),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        CyclicValueButton(
+            values = ThemeMode.values().toList(),
+            currentValue = state.themeMode,
+            onValueChange = onThemeModeChange,
+            valueToString = { theme ->
+                when(theme) {
+                    ThemeMode.SYSTEM -> stringResource(id = R.string.theme_system)
+                    ThemeMode.LIGHT -> stringResource(id = R.string.theme_light)
+                    ThemeMode.DARK -> stringResource(id = R.string.theme_dark)
+                }
+            },
+            //labelText = stringResource(id = R.string.theme),
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
         HorizontalDivider()
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Выбор языка
         Text(
             text = stringResource(id = R.string.language_selection),
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            // Кнопки выбора языка
-            LanguageButton(
-                text = "Русский",
-                selected = state.languageCode == "ru",
-                onClick = { onLanguageCodeChange("ru") }
-            )
-
-            LanguageButton(
-                text = "English",
-                selected = state.languageCode == "en",
-                onClick = { onLanguageCodeChange("en") }
-            )
-        }
+        CyclicValueButton(
+            values = listOf("ru", "en"),
+            currentValue = state.languageCode,
+            onValueChange = onLanguageCodeChange,
+            valueToString = { code ->
+                when(code) {
+                    "ru" -> "Русский"
+                    "en" -> "English"
+                    else -> code
+                }
+            },
+            //labelText = stringResource(id = R.string.language),
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
         HorizontalDivider()

@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,6 +18,7 @@ import com.synngate.synnframe.presentation.navigation.AppNavigation
 import com.synngate.synnframe.presentation.navigation.Screen
 import com.synngate.synnframe.presentation.theme.SynnFrameTheme
 import com.synngate.synnframe.presentation.theme.ThemeMode
+import com.synngate.synnframe.presentation.util.LocaleHelper
 import timber.log.Timber
 
 class MainActivity : ComponentActivity() {
@@ -71,6 +73,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    // В MainActivity.kt
+    override fun attachBaseContext(newBase: Context) {
+        // Получаем сохраненный код языка (можно использовать другой способ хранения)
+        val sharedPreferences = newBase.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        val languageCode = sharedPreferences.getString("language_code", "ru") ?: "ru"
+
+        // Применяем локаль
+        val context = LocaleHelper.updateLocale(newBase, languageCode)
+        super.attachBaseContext(context)
     }
 
     override fun onDestroy() {

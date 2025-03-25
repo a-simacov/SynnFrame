@@ -281,26 +281,27 @@ class SettingsViewModel(
                             error = null
                         )
                     }
+                    sendEvent(SettingsEvent.ChangeAppLanguage(languageCode))
                     sendEvent(SettingsEvent.SettingsUpdated)
                 } else {
                     val exception = result.exceptionOrNull()
                     updateState {
                         it.copy(
                             isLoading = false,
-                            error = "Ошибка обновления языка: ${exception?.message}"
+                            error = "Error in updating lang locale: ${exception?.message}"
                         )
                     }
-                    sendEvent(SettingsEvent.ShowSnackbar("Ошибка обновления языка"))
+                    sendEvent(SettingsEvent.ShowSnackbar("Error in updating lang locale"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error updating language code")
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка обновления языка: ${e.message}"
+                        error = "Error in updating lang locale: ${e.message}"
                     )
                 }
-                sendEvent(SettingsEvent.ShowSnackbar("Ошибка обновления языка"))
+                sendEvent(SettingsEvent.ShowSnackbar("Error in updating lang locale"))
             }
         }
     }
