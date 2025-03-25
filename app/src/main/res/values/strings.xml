@@ -480,4 +480,6 @@
     <string name="periodic_sync_enabled">Периодическая синхронизация</string>
     <string name="sync_interval_seconds">Интервал синхронизации (в секундах)</string>
     <string name="sync_history">История синхронизаций</string>
+
+    <string name="theme_selection_button">Тема: %1$s</string>
 </resources>

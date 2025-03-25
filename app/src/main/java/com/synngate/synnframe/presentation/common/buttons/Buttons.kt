@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.presentation.theme.LocalNavigationButtonHeight
+import com.synngate.synnframe.presentation.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 
@@ -399,4 +400,37 @@ fun SelectableButton(
             }
         }
     }
+}
+
+@Composable
+fun CyclicThemeButton(
+    currentTheme: ThemeMode,
+    onThemeChange: (ThemeMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Все возможные значения темы
+    val themes = ThemeMode.values()
+
+    // Текст, отображаемый на кнопке
+    val buttonText = when(currentTheme) {
+        ThemeMode.SYSTEM -> stringResource(id = R.string.theme_system)
+        ThemeMode.LIGHT -> stringResource(id = R.string.theme_light)
+        ThemeMode.DARK -> stringResource(id = R.string.theme_dark)
+    }
+
+    // При нажатии переключаемся на следующую тему в списке
+    val onClick = {
+        // Находим индекс текущей темы
+        val currentIndex = themes.indexOf(currentTheme)
+        // Вычисляем индекс следующей темы (циклически)
+        val nextIndex = (currentIndex + 1) % themes.size
+        // Вызываем колбэк со следующей темой
+        onThemeChange(themes[nextIndex])
+    }
+
+    ActionButton(
+        text = stringResource(id = R.string.theme_selection_button, buttonText),
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth()
+    )
 }

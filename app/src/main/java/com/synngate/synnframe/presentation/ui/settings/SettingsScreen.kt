@@ -48,6 +48,7 @@ import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.common.buttons.ActionButton
+import com.synngate.synnframe.presentation.common.buttons.CyclicThemeButton
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.buttons.PropertyToggleButton
 import com.synngate.synnframe.presentation.common.buttons.SelectableButton
@@ -570,32 +571,10 @@ fun InterfaceSettingsSection(
         title = stringResource(id = R.string.interface_settings),
         modifier = modifier
     ) {
-        // Выбор темы
-        Text(
-            text = stringResource(id = R.string.theme_selection),
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(bottom = 8.dp)
+        CyclicThemeButton(
+            currentTheme = state.themeMode,
+            onThemeChange = onThemeModeChange
         )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            // Добавляем key для каждой кнопки
-            ThemeMode.values().forEach { theme ->
-                key(theme) {
-                    ThemeModeButton(
-                        text = when(theme) {
-                            ThemeMode.SYSTEM -> stringResource(id = R.string.theme_system)
-                            ThemeMode.LIGHT -> stringResource(id = R.string.theme_light)
-                            ThemeMode.DARK -> stringResource(id = R.string.theme_dark)
-                        },
-                        selected = state.themeMode == theme,
-                        onClick = { onThemeModeChange(theme) }
-                    )
-                }
-            }
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
         HorizontalDivider()
@@ -668,7 +647,8 @@ fun InterfaceSettingsSection(
                 onValueChange = onNavigationButtonHeightChange,
                 valueRange = 48f..96f,
                 steps = 8,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .semantics {
                         contentDescription = "Высота кнопки: ${sliderPosition.toInt()} dp"
                     }

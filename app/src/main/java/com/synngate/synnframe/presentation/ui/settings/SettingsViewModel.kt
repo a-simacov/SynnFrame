@@ -39,9 +39,6 @@ class SettingsViewModel(
         observeSynchronizationState()
     }
 
-    /**
-     * Загрузка всех настроек приложения
-     */
     private fun loadSettings() {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
@@ -86,9 +83,6 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Наблюдение за состоянием веб-сервера
-     */
     private fun observeWebServerState() {
         viewModelScope.launch {
             webServerManager.isRunning.collect { isRunning ->
@@ -97,9 +91,6 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Наблюдение за изменениями настроек
-     */
     private fun observeSettingsChanges() {
         viewModelScope.launch {
             settingsUseCases.showServersOnStartup.collect { showServers ->
@@ -144,9 +135,6 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Обновление настройки отображения серверов при запуске
-     */
     fun updateShowServersOnStartup(show: Boolean) {
         if (uiState.value.showServersOnStartup == show) return
 
@@ -188,9 +176,6 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Обновление настроек периодической выгрузки
-     */
     fun updatePeriodicUpload(enabled: Boolean, intervalSeconds: Int? = null) {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
@@ -233,18 +218,12 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Обновление интервала выгрузки (в секундах)
-     */
     fun updateUploadInterval(intervalSeconds: Int) {
         val validInterval =
             max(30, min(3600, intervalSeconds)) // Ограничиваем от 30 секунд до 1 часа
         updatePeriodicUpload(uiState.value.periodicUploadEnabled, validInterval)
     }
 
-    /**
-     * Обновление режима темы
-     */
     fun updateThemeMode(themeMode: ThemeMode) {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
