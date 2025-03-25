@@ -76,6 +76,7 @@ fun LoginScreen(
         snackbarHostState = snackbarHostState
     ) { paddingValues ->
         Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)

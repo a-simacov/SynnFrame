@@ -300,7 +300,7 @@ class AppContainer(private val applicationContext: Context) {
         LogUseCases(logRepository, loggingService)
     }
 
-    private val settingsUseCases by lazy {
+    val settingsUseCases by lazy {
         SettingsUseCases(settingsRepository, loggingService, fileService, applicationContext)
     }
 

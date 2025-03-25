@@ -30,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
+import com.synngate.synnframe.presentation.theme.LocalNavigationButtonHeight
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 
@@ -42,12 +43,14 @@ fun NavigationButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    buttonHeight: Float = 72f,
     icon: ImageVector? = null,
     contentDescription: String? = null,
     badge: Int? = null,
     badgeColor: Color = MaterialTheme.colorScheme.error
 ) {
+    // Получаем высоту кнопки из CompositionLocal
+    val buttonHeight = LocalNavigationButtonHeight.current
+
     Button(
         onClick = onClick,
         enabled = enabled,

@@ -9,11 +9,15 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 
 private val LightColorScheme = lightColorScheme(
     primary = md_theme_light_primary,
@@ -86,6 +90,7 @@ enum class ThemeMode {
 @Composable
 fun SynnFrameTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
+    settingsUseCases: SettingsUseCases? = null,
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
@@ -113,10 +118,22 @@ fun SynnFrameTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        shapes = Shapes,
-        content = content
-    )
+    // Получаем высоту кнопки навигации из настроек, если они доступны
+    val navigationButtonHeight = if (settingsUseCases != null) {
+        val height by settingsUseCases.navigationButtonHeight.collectAsState(initial = 72f)
+        height
+    } else {
+        72f // значение по умолчанию
+    }
+
+    CompositionLocalProvider(
+        LocalNavigationButtonHeight provides navigationButtonHeight
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            shapes = Shapes,
+            content = content
+        )
+    }
 }

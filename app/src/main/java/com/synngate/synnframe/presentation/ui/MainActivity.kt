@@ -50,12 +50,15 @@ class MainActivity : ComponentActivity() {
         Timber.d("MainActivity onCreate, startDestination=$startDestination, fromSplash=$fromSplash")
 
         setContent {
-            // Получение темы из настроек
+
+            // Получаем настройки темы из DataStore
+            val settingsUseCases = appContainer.settingsUseCases
+
             val themeMode by appContainer.appSettingsDataStore.themeMode
                 .collectAsState(initial = ThemeMode.SYSTEM)
 
             // Применение темы
-            SynnFrameTheme(themeMode = themeMode) {
+            SynnFrameTheme(themeMode = themeMode, settingsUseCases = settingsUseCases) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

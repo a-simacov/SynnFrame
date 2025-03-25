@@ -93,7 +93,6 @@ fun SettingsScreen(
         }
     }
 
-
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
@@ -144,7 +143,6 @@ fun SettingsScreen(
         }
     }
 
-    // Оптимизация: используем derivedStateOf для проверки условий вместо прямых вычислений
     val showUpdateConfirmDialog by remember(state.showUpdateConfirmDialog, state.lastVersion) {
         derivedStateOf { state.showUpdateConfirmDialog && state.lastVersion != null }
     }
@@ -193,7 +191,6 @@ fun SettingsScreen(
         ScrollableScreenContent(
             modifier = modifier.padding(paddingValues)
         ) {
-            // Активный внешний сервер
             ActiveServerSection(
                 state = state,
                 onNavigateToServerList = navigateToServerList,
@@ -204,7 +201,6 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Локальный веб-сервер
             WebServerSection(
                 state = state,
                 onToggleWebServer = viewModel::toggleWebServer
@@ -275,7 +271,6 @@ fun ActiveServerSection(
         title = stringResource(id = R.string.active_server_settings),
         modifier = modifier
     ) {
-        // Кнопка перехода к списку серверов
         NavigationButton(
             text = stringResource(id = R.string.navigate_to_servers),
             onClick = onNavigateToServerList,
@@ -284,7 +279,6 @@ fun ActiveServerSection(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Информация об активном сервере
         if (state.activeServer != null) {
             val server = state.activeServer
             Text(
@@ -313,7 +307,6 @@ fun ActiveServerSection(
 
         HorizontalDivider()
 
-        // Настройка отображения при запуске
         Spacer(modifier = Modifier.height(16.dp))
         PropertyToggleButton(
             property = stringResource(id = R.string.server_show_on_startup),
@@ -322,7 +315,6 @@ fun ActiveServerSection(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Настройка периодической выгрузки
         Spacer(modifier = Modifier.height(16.dp))
         PropertyToggleButton(
             property = stringResource(id = R.string.periodic_upload_enabled),
@@ -348,7 +340,6 @@ fun ActiveServerSection(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Поле ввода интервала
                     NumberTextField(
                         value = state.uploadIntervalSeconds.toString(),
                         onValueChange = { value ->
@@ -360,7 +351,6 @@ fun ActiveServerSection(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Информационный текст
                     Text(
                         text = stringResource(id = R.string.seconds),
                         style = MaterialTheme.typography.bodyMedium,
@@ -368,7 +358,6 @@ fun ActiveServerSection(
                     )
                 }
 
-                // Подсказка по диапазону
                 Text(
                     text = stringResource(id = R.string.interval_range_hint),
                     style = MaterialTheme.typography.bodySmall,
@@ -494,7 +483,6 @@ fun SynchronizationSection(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Поле ввода интервала
                     NumberTextField(
                         value = state.syncIntervalSeconds.toString(),
                         onValueChange = { value ->
@@ -508,7 +496,6 @@ fun SynchronizationSection(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Информационный текст
                     Text(
                         text = stringResource(id = R.string.seconds),
                         style = MaterialTheme.typography.bodyMedium,
@@ -516,7 +503,6 @@ fun SynchronizationSection(
                     )
                 }
 
-                // Подсказка по диапазону
                 Text(
                     text = stringResource(id = R.string.interval_range_hint),
                     style = MaterialTheme.typography.bodySmall,
