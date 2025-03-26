@@ -74,7 +74,7 @@ fun AppNavigation(
     ) {
         // Экран списка серверов
         composable(Screen.ServerList.route) { entry ->
-            val screenContainer = rememberScreenContainer(navController, entry, navigationScopeManager)
+            val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
             val viewModel = remember { screenContainer.createServerListViewModel() }
 
             ServerListScreen(
@@ -104,7 +104,7 @@ fun AppNavigation(
             val serverIdArg = entry.arguments?.getString("serverId")
             val serverId = serverIdArg?.toIntOrNull()
 
-            val screenContainer = rememberScreenContainer(navController, entry, navigationScopeManager)
+            val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
             val viewModel = remember(serverId) { screenContainer.createServerDetailViewModel(serverId) }
 
             ServerDetailScreen(
@@ -117,7 +117,7 @@ fun AppNavigation(
 
         // Экран логина
         composable(Screen.Login.route) { entry ->
-            val screenContainer = rememberScreenContainer(navController, entry, navigationScopeManager)
+            val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
             val viewModel = remember { screenContainer.createLoginViewModel() }
 
             LoginScreen(
@@ -140,7 +140,7 @@ fun AppNavigation(
 
         // Главное меню
         composable(Screen.MainMenu.route) { entry ->
-            val screenContainer = rememberScreenContainer(navController, entry, navigationScopeManager)
+            val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
             val viewModel = remember { screenContainer.createMainMenuViewModel() }
 
             MainMenuScreen(
@@ -178,7 +178,7 @@ fun AppNavigation(
 
         // Экран настроек
         composable(Screen.Settings.route) { entry ->
-            val screenContainer = rememberScreenContainer(navController, entry, navigationScopeManager)
+            val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
             val viewModel = remember { screenContainer.createSettingsViewModel() }
 
             SettingsScreen(
@@ -217,7 +217,7 @@ fun AppNavigation(
 
         // Экран истории синхронизации
         composable(Screen.SyncHistory.route) { entry ->
-            val screenContainer = rememberScreenContainer(navController, entry, navigationScopeManager)
+            val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
             val viewModel = remember { screenContainer.createSyncHistoryViewModel() }
 
             SyncHistoryScreen(
@@ -232,22 +232,22 @@ fun AppNavigation(
 
 /**
  * Функция добавления графа навигации для задач
- * ВАЖНО: Эта функция НЕ должна иметь аннотацию @Composable
  */
 fun NavGraphBuilder.tasksNavGraph(
     navController: NavHostController,
     navigationScopeManager: NavigationScopeManager
 ) {
-    // Получаем контейнер для графа напрямую (не через composable-функцию)
+    // Получаем контейнер для графа напрямую
     val graphContainer = navigationScopeManager.getGraphContainer("tasks_graph")
 
     navigation(
         startDestination = Screen.TaskList.route,
         route = "tasks_graph"
     ) {
-        // Экран списка задач
+        // Экран списка задач - используем ПОСТОЯННЫЙ контейнер
         composable(Screen.TaskList.route) { entry ->
-            val screenContainer = rememberScreenContainer(navController, entry, navigationScopeManager)
+            // Для списка задач используем постоянный контейнер, чтобы сохранять состояние
+            val screenContainer = rememberPersistentScreenContainer(navController, entry, navigationScopeManager)
             val viewModel = remember { screenContainer.createTaskListViewModel() }
 
             TaskListScreen(
@@ -261,7 +261,7 @@ fun NavGraphBuilder.tasksNavGraph(
             )
         }
 
-        // Экран детальной информации о задаче
+        // Экран детальной информации о задаче - используем ВРЕМЕННЫЙ контейнер
         composable(
             route = Screen.TaskDetail.route,
             arguments = listOf(
@@ -271,7 +271,8 @@ fun NavGraphBuilder.tasksNavGraph(
             )
         ) { entry ->
             val taskId = entry.arguments?.getString("taskId") ?: ""
-            val screenContainer = rememberScreenContainer(navController, entry, navigationScopeManager)
+            // Для деталей задачи используем временный контейнер, который будет уничтожен при возврате
+            val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
             val viewModel = remember(taskId) { screenContainer.createTaskDetailViewModel(taskId) }
 
             TaskDetailScreen(
@@ -290,20 +291,19 @@ fun NavGraphBuilder.tasksNavGraph(
 
 /**
  * Функция добавления графа навигации для продуктов
- * ВАЖНО: Эта функция НЕ должна иметь аннотацию @Composable
  */
 fun NavGraphBuilder.productsNavGraph(
     navController: NavHostController,
     navigationScopeManager: NavigationScopeManager
 ) {
-    // Получаем контейнер для графа напрямую (не через composable-функцию)
+    // Получаем контейнер для графа напрямую
     val graphContainer = navigationScopeManager.getGraphContainer("products_graph")
 
     navigation(
         startDestination = Screen.ProductList.route,
         route = "products_graph"
     ) {
-        // Экран списка продуктов
+        // Экран списка продуктов - используем ПОСТОЯННЫЙ контейнер
         composable(
             route = Screen.ProductList.route,
             arguments = listOf(
@@ -314,7 +314,8 @@ fun NavGraphBuilder.productsNavGraph(
             )
         ) { entry ->
             val isSelectionMode = entry.arguments?.getBoolean("isSelectionMode") ?: false
-            val screenContainer = rememberScreenContainer(navController, entry, navigationScopeManager)
+            // Для списка продуктов используем постоянный контейнер
+            val screenContainer = rememberPersistentScreenContainer(navController, entry, navigationScopeManager)
             val viewModel = remember(isSelectionMode) {
                 screenContainer.createProductListViewModel(isSelectionMode)
             }
@@ -337,7 +338,7 @@ fun NavGraphBuilder.productsNavGraph(
             )
         }
 
-        // Экран детальной информации о продукте
+        // Экран детальной информации о продукте - используем ВРЕМЕННЫЙ контейнер
         composable(
             route = Screen.ProductDetail.route,
             arguments = listOf(
@@ -347,7 +348,8 @@ fun NavGraphBuilder.productsNavGraph(
             )
         ) { entry ->
             val productId = entry.arguments?.getString("productId") ?: ""
-            val screenContainer = rememberScreenContainer(navController, entry, navigationScopeManager)
+            // Для детальной информации используем временный контейнер
+            val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
             val viewModel = remember(productId) {
                 screenContainer.createProductDetailViewModel(productId)
             }
@@ -369,23 +371,27 @@ fun NavGraphBuilder.productsNavGraph(
 
 /**
  * Функция добавления графа навигации для логов
- * ВАЖНО: Эта функция НЕ должна иметь аннотацию @Composable
  */
 fun NavGraphBuilder.logsNavGraph(
     navController: NavHostController,
     navigationScopeManager: NavigationScopeManager
 ) {
-    // Получаем контейнер для графа напрямую (не через composable-функцию)
+    // Получаем контейнер для графа напрямую
     val graphContainer = navigationScopeManager.getGraphContainer("logs_graph")
 
     navigation(
         startDestination = Screen.LogList.route,
         route = "logs_graph"
     ) {
-        // Экран списка логов
+        // Экран списка логов - используем ПОСТОЯННЫЙ контейнер
         composable(Screen.LogList.route) { entry ->
-            val screenContainer = rememberScreenContainer(navController, entry, navigationScopeManager)
+            // Используем постоянный контейнер для списка логов, который будет сохранен
+            // до выхода из графа навигации
+            val screenContainer = rememberPersistentScreenContainer(navController, entry, navigationScopeManager)
             val viewModel = remember { screenContainer.createLogListViewModel() }
+
+            // Логгируем для отладки, чтобы видеть, когда создается ViewModel
+            Timber.d("Using LogListViewModel from persistent container")
 
             LogListScreen(
                 viewModel = viewModel,
@@ -398,7 +404,7 @@ fun NavGraphBuilder.logsNavGraph(
             )
         }
 
-        // Экран детальной информации о логе
+        // Экран детальной информации о логе - используем ВРЕМЕННЫЙ контейнер
         composable(
             route = Screen.LogDetail.route,
             arguments = listOf(
@@ -408,8 +414,13 @@ fun NavGraphBuilder.logsNavGraph(
             )
         ) { entry ->
             val logId = entry.arguments?.getInt("logId") ?: 0
-            val screenContainer = rememberScreenContainer(navController, entry, navigationScopeManager)
+            // Используем временный контейнер для детального экрана, который будет уничтожен
+            // при возврате к списку логов
+            val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
             val viewModel = remember(logId) { screenContainer.createLogDetailViewModel(logId) }
+
+            // Логгируем для отладки, чтобы видеть, когда создается ViewModel
+            Timber.d("Using LogDetailViewModel from ephemeral container for logId: $logId")
 
             LogDetailScreen(
                 viewModel = viewModel,

@@ -14,14 +14,17 @@ import com.synngate.synnframe.presentation.di.ScreenContainer
 import timber.log.Timber
 
 /**
- * Менеджер областей навигации, который отслеживает жизненный цикл экранов и графов навигации.
+ * Менеджер областей навигации c поддержкой сохранения ViewModels в пределах графа
  */
 class NavigationScopeManager(
     private val navController: NavController,
     private val onCreateScreenContainer: () -> ScreenContainer
 ) {
-    // Карта контейнеров для экранов
-    private val screenContainers = mutableMapOf<String, ScreenContainer>()
+    // Карта временных контейнеров для экранов (удаляются при выходе из экрана)
+    private val ephemeralScreenContainers = mutableMapOf<String, ScreenContainer>()
+
+    // Карта постоянных контейнеров для экранов в рамках графа (сохраняются пока активен граф)
+    private val persistentScreenContainers = mutableMapOf<String, ScreenContainer>()
 
     // Карта контейнеров для графов навигации
     private val graphContainers = mutableMapOf<String, ScreenContainer>()
@@ -37,11 +40,24 @@ class NavigationScopeManager(
     }
 
     /**
-     * Получение контейнера для экрана
+     * Получение временного контейнера для экрана (удаляется при выходе с экрана)
      */
-    fun getScreenContainer(route: String): ScreenContainer {
-        return screenContainers.getOrPut(route) {
-            Timber.d("Creating ScreenContainer for screen: $route")
+    fun getEphemeralScreenContainer(route: String): ScreenContainer {
+        return ephemeralScreenContainers.getOrPut(route) {
+            Timber.d("Creating ephemeral ScreenContainer for screen: $route")
+            onCreateScreenContainer()
+        }
+    }
+
+    /**
+     * Получение постоянного контейнера для экрана (сохраняется в пределах графа)
+     */
+    fun getPersistentScreenContainer(route: String, graphRoute: String?): ScreenContainer {
+        // Используем уникальный ключ, включающий и граф, и экран
+        val key = if (graphRoute != null) "$graphRoute:$route" else route
+
+        return persistentScreenContainers.getOrPut(key) {
+            Timber.d("Creating persistent ScreenContainer for screen: $route in graph: $graphRoute")
             onCreateScreenContainer()
         }
     }
@@ -65,23 +81,36 @@ class NavigationScopeManager(
 
         // Если изменился экран, проверяем необходимость очистки
         if (previousRoute != null && previousRoute != currentRoute) {
+            // Определяем графы для предыдущего и текущего экрана
+            val previousGraph = getGraphForRoute(previousRoute)
+            val currentGraph = getGraphForRoute(currentRoute)
+
             // Проверяем, не является ли предыдущий экран частью текущей иерархии
             val isBackNavigation = !destination.hierarchy.any { it.route == previousRoute }
 
             if (isBackNavigation) {
-                // Удаляем контейнер для предыдущего экрана
-                screenContainers.remove(previousRoute)?.let {
-                    Timber.d("Disposing ScreenContainer for screen: $previousRoute")
+                // Всегда удаляем временный контейнер для предыдущего экрана
+                ephemeralScreenContainers.remove(previousRoute)?.let {
+                    Timber.d("Disposing ephemeral ScreenContainer for screen: $previousRoute")
                     it.dispose()
                 }
 
-                // Проверяем, не покинули ли мы граф навигации
-                val previousGraph = getGraphForRoute(previousRoute)
-                val currentGraph = getGraphForRoute(currentRoute)
-
+                // Если произошел выход из графа, удаляем все связанные постоянные контейнеры
                 if (previousGraph != null && previousGraph != currentGraph) {
+                    // Удаляем постоянные контейнеры, связанные с предыдущим графом
+                    val keysToRemove = persistentScreenContainers.keys
+                        .filter { it.startsWith("$previousGraph:") }
+
+                    keysToRemove.forEach { key ->
+                        persistentScreenContainers.remove(key)?.let {
+                            Timber.d("Disposing persistent ScreenContainer for key: $key")
+                            it.dispose()
+                        }
+                    }
+
+                    // Удаляем контейнер графа
                     graphContainers.remove(previousGraph)?.let {
-                        Timber.d("Disposing ScreenContainer for graph: $previousGraph")
+                        Timber.d("Disposing graph ScreenContainer for graph: $previousGraph")
                         it.dispose()
                     }
                 }
@@ -94,7 +123,7 @@ class NavigationScopeManager(
     /**
      * Получение графа для маршрута
      */
-    private fun getGraphForRoute(route: String?): String? {
+    fun getGraphForRoute(route: String?): String? {
         if (route == null) return null
 
         return when {
@@ -110,8 +139,11 @@ class NavigationScopeManager(
      * Очистка всех ресурсов
      */
     fun dispose() {
-        screenContainers.values.forEach { it.dispose() }
-        screenContainers.clear()
+        ephemeralScreenContainers.values.forEach { it.dispose() }
+        ephemeralScreenContainers.clear()
+
+        persistentScreenContainers.values.forEach { it.dispose() }
+        persistentScreenContainers.clear()
 
         graphContainers.values.forEach { it.dispose() }
         graphContainers.clear()
@@ -119,17 +151,18 @@ class NavigationScopeManager(
 }
 
 /**
- * Composable функция для получения контейнера экрана с учетом жизненного цикла
+ * Composable функция для получения временного контейнера экрана
+ * (будет удален при выходе из экрана)
  */
 @Composable
-fun rememberScreenContainer(
+fun rememberEphemeralScreenContainer(
     navController: NavController,
     navBackStackEntry: NavBackStackEntry,
     navigationScopeManager: NavigationScopeManager
 ): ScreenContainer {
     val route = navBackStackEntry.destination.route ?: "unknown"
     val screenContainer = remember(route) {
-        navigationScopeManager.getScreenContainer(route)
+        navigationScopeManager.getEphemeralScreenContainer(route)
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -140,7 +173,7 @@ fun rememberScreenContainer(
             if (event == Lifecycle.Event.ON_DESTROY &&
                 !navBackStackEntry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
                 // Экран навсегда уничтожается, очищаем контейнер
-                Timber.d("Screen $route destroyed, container will be disposed")
+                Timber.d("Screen $route destroyed, ephemeral container will be disposed")
             }
         }
 
@@ -148,6 +181,26 @@ fun rememberScreenContainer(
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
+    }
+
+    return screenContainer
+}
+
+/**
+ * Composable функция для получения постоянного контейнера экрана
+ * (сохраняется в пределах графа навигации)
+ */
+@Composable
+fun rememberPersistentScreenContainer(
+    navController: NavController,
+    navBackStackEntry: NavBackStackEntry,
+    navigationScopeManager: NavigationScopeManager
+): ScreenContainer {
+    val route = navBackStackEntry.destination.route ?: "unknown"
+    val graphRoute = navigationScopeManager.getGraphForRoute(route)
+
+    val screenContainer = remember(route, graphRoute) {
+        navigationScopeManager.getPersistentScreenContainer(route, graphRoute)
     }
 
     return screenContainer
