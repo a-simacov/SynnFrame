@@ -1,6 +1,6 @@
 package com.synngate.synnframe.presentation.ui.logs
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -27,12 +29,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.LogType
-import com.synngate.synnframe.presentation.common.filter.DateRangeFilter
+import com.synngate.synnframe.presentation.common.dialog.DateFilterSummary
+import com.synngate.synnframe.presentation.common.dialog.DateTimeFilterDialog
 import com.synngate.synnframe.presentation.common.filter.StatusFilterChips
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.list.LogListItem
@@ -69,10 +73,17 @@ fun LogListScreen(
                 is LogListEvent.ShowDeleteAllConfirmation -> {
                     showDeleteAllConfirmation = true
                 }
+                is LogListEvent.ShowDateFilterDialog -> {
+                    // Обрабатывается через состояние viewModel
+                }
+                is LogListEvent.HideDateFilterDialog -> {
+                    // Обрабатывается через состояние viewModel
+                }
             }
         }
     }
 
+    // Диалог подтверждения удаления всех логов
     if (showDeleteAllConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteAllConfirmation = false },
@@ -98,6 +109,18 @@ fun LogListScreen(
         )
     }
 
+    // Диалог фильтра по дате
+    if (state.isDateFilterDialogVisible) {
+        DateTimeFilterDialog(
+            fromDate = state.dateFromFilter,
+            toDate = state.dateToFilter,
+            onApply = { fromDate, toDate ->
+                viewModel.updateDateFilter(fromDate, toDate)
+            },
+            onDismiss = { viewModel.hideDateFilterDialog() }
+        )
+    }
+
     AppScaffold(
         title = stringResource(id = R.string.logs),
         onNavigateBack = navigateBack,
@@ -106,6 +129,17 @@ fun LogListScreen(
             Pair(it, StatusType.ERROR)
         },
         actions = {
+            // Кнопка фильтра по дате
+            IconButton(
+                onClick = { viewModel.showDateFilterDialog() }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = stringResource(R.string.date_filter)
+                )
+            }
+
+            // Кнопка удаления всех логов
             IconButton(
                 onClick = { viewModel.showDeleteAllConfirmation() }
             ) {
@@ -144,36 +178,29 @@ fun LogListScreen(
                     .padding(horizontal = 8.dp)
             )
 
-            OutlinedButton(
-                onClick = { viewModel.toggleFilterPanel() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = if (state.isFilterPanelVisible)
-                        stringResource(R.string.hide_date_filter)
-                    else
-                        stringResource(R.string.show_date_filter)
-                )
-            }
-
-            AnimatedVisibility(visible = state.isFilterPanelVisible) {
-                DateRangeFilter(
-                    fromDate = state.dateFromFilter,
-                    toDate = state.dateToFilter,
-                    onFromDateChange = { date ->
-                        viewModel.updateDateFilter(date, state.dateToFilter)
-                    },
-                    onToDateChange = { date ->
-                        viewModel.updateDateFilter(state.dateFromFilter, date)
-                    },
-                    onApply = { viewModel.loadLogs() },
-                    onClear = { viewModel.resetFilters() },
+            // Если активен фильтр по дате, показываем информацию о нем
+            if (state.hasActiveDateFilter) {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                )
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    DateFilterSummary(
+                        fromDate = state.dateFromFilter,
+                        toDate = state.dateToFilter,
+                        modifier = Modifier.align(Alignment.CenterStart)
+                    )
+
+                    IconButton(
+                        onClick = { viewModel.clearDateFilter() },
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = stringResource(R.string.clear_date_filter)
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

@@ -1,8 +1,14 @@
 package com.synngate.synnframe.presentation.ui.logs
 
+/*
+ * Обратите внимание: для применения этого файла замените существующий файл LogListViewModel.kt
+ * Этот файл содержит обновленный ViewModel с поддержкой диалога выбора периода фильтрации
+ */
+
 import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
+import com.synngate.synnframe.presentation.common.dialog.DateFilterPreset
 import com.synngate.synnframe.presentation.ui.logs.model.LogListEvent
 import com.synngate.synnframe.presentation.ui.logs.model.LogListState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
@@ -78,7 +84,27 @@ class LogListViewModel(
     }
 
     fun updateDateFilter(dateFrom: LocalDateTime?, dateTo: LocalDateTime?) {
-        updateState { it.copy(dateFromFilter = dateFrom, dateToFilter = dateTo) }
+        updateState {
+            it.copy(
+                dateFromFilter = dateFrom,
+                dateToFilter = dateTo,
+                activeDateFilterPreset = null // Сбрасываем предустановленный период
+            )
+        }
+        loadLogs()
+    }
+
+    fun applyDateFilterPreset(preset: DateFilterPreset) {
+        val (startDate, endDate) = preset.getDates()
+        updateState {
+            it.copy(
+                dateFromFilter = startDate,
+                dateToFilter = endDate,
+                activeDateFilterPreset = preset,
+                isDateFilterDialogVisible = false
+            )
+        }
+        loadLogs()
     }
 
     fun resetFilters() {
@@ -86,13 +112,29 @@ class LogListViewModel(
             messageFilter = "",
             selectedTypes = emptySet(),
             dateFromFilter = null,
-            dateToFilter = null
+            dateToFilter = null,
+            activeDateFilterPreset = null
         ) }
         loadLogs()
     }
 
-    fun toggleFilterPanel() {
-        updateState { it.copy(isFilterPanelVisible = !it.isFilterPanelVisible) }
+    fun clearDateFilter() {
+        updateState { it.copy(
+            dateFromFilter = null,
+            dateToFilter = null,
+            activeDateFilterPreset = null
+        ) }
+        loadLogs()
+    }
+
+    fun showDateFilterDialog() {
+        sendEvent(LogListEvent.ShowDateFilterDialog)
+        updateState { it.copy(isDateFilterDialogVisible = true) }
+    }
+
+    fun hideDateFilterDialog() {
+        sendEvent(LogListEvent.HideDateFilterDialog)
+        updateState { it.copy(isDateFilterDialogVisible = false) }
     }
 
     fun showDeleteAllConfirmation() {
@@ -149,5 +191,15 @@ class LogListViewModel(
 
     fun formatLogDate(dateTime: LocalDateTime): String {
         return dateTime.format(dateFormatter)
+    }
+
+    fun formatDateFilterPeriod(): String {
+        val fromDate = uiState.value.dateFromFilter
+        val toDate = uiState.value.dateToFilter
+
+        if (fromDate == null || toDate == null) return ""
+
+        val formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+        return "${fromDate.format(formatter)} - ${toDate.format(formatter)}"
     }
 }
