@@ -8,18 +8,26 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,7 +41,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.synngate.synnframe.R
+import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
@@ -267,8 +279,33 @@ enum class DateFilterPreset {
     }
 }
 
+
+@Composable
+@androidx.compose.ui.tooling.preview.Preview(
+    name = "Date Time Filter Dialog",
+    showBackground = true,
+    backgroundColor = 0xFFFFFFFF
+)
+fun DateTimeFilterDialogPreview() {
+    // Используем текущую дату и время для превью
+    val currentDateTime = LocalDateTime.now()
+    val fromDate = currentDateTime.minusHours(1)
+    val toDate = currentDateTime
+
+    MaterialTheme {
+        Surface {
+            DateTimeFilterDialog(
+                fromDate = fromDate,
+                toDate = toDate,
+                onApply = { _, _ -> /* Ничего не делаем в превью */ },
+                onDismiss = { /* Ничего не делаем в превью */ }
+            )
+        }
+    }
+}
+
 /**
- * Диалог выбора периода фильтрации логов
+ * Диалог выбора периода фильтрации логов с поддержкой пикеров даты и времени
  */
 @Composable
 fun DateTimeFilterDialog(
@@ -285,16 +322,87 @@ fun DateTimeFilterDialog(
     var selectedFromDate by remember { mutableStateOf(fromDate ?: LocalDateTime.now().minusHours(1)) }
     var selectedToDate by remember { mutableStateOf(toDate ?: LocalDateTime.now()) }
 
+    // Состояния для отображения диалогов выбора даты и времени
+    var showFromDatePicker by remember { mutableStateOf(false) }
+    var showFromTimePicker by remember { mutableStateOf(false) }
+    var showToDatePicker by remember { mutableStateOf(false) }
+    var showToTimePicker by remember { mutableStateOf(false) }
+
     val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
 
+    // Диалоги выбора даты и времени
+    if (showFromDatePicker) {
+        CustomDatePickerDialog(
+            selectedDate = selectedFromDate.toLocalDate(),
+            onDateSelected = { newDate ->
+                // Сохраняем выбранную дату, сохраняя текущее время
+                selectedFromDate = LocalDateTime.of(
+                    newDate,
+                    selectedFromDate.toLocalTime()
+                )
+                showFromDatePicker = false
+            },
+            onDismiss = { showFromDatePicker = false }
+        )
+    }
+
+    if (showFromTimePicker) {
+        CustomTimePickerDialog(
+            selectedTime = selectedFromDate.toLocalTime(),
+            onTimeSelected = { newTime ->
+                // Сохраняем выбранное время, сохраняя текущую дату
+                selectedFromDate = LocalDateTime.of(
+                    selectedFromDate.toLocalDate(),
+                    newTime
+                )
+                showFromTimePicker = false
+            },
+            onDismiss = { showFromTimePicker = false }
+        )
+    }
+
+    if (showToDatePicker) {
+        CustomDatePickerDialog(
+            selectedDate = selectedToDate.toLocalDate(),
+            onDateSelected = { newDate ->
+                // Сохраняем выбранную дату, сохраняя текущее время
+                selectedToDate = LocalDateTime.of(
+                    newDate,
+                    selectedToDate.toLocalTime()
+                )
+                showToDatePicker = false
+            },
+            onDismiss = { showToDatePicker = false }
+        )
+    }
+
+    if (showToTimePicker) {
+        CustomTimePickerDialog(
+            selectedTime = selectedToDate.toLocalTime(),
+            onTimeSelected = { newTime ->
+                // Сохраняем выбранное время, сохраняя текущую дату
+                selectedToDate = LocalDateTime.of(
+                    selectedToDate.toLocalDate(),
+                    newTime
+                )
+                showToTimePicker = false
+            },
+            onDismiss = { showToTimePicker = false }
+        )
+    }
+
     Dialog(
-        onDismissRequest = onDismiss
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false // Отключаем ограничение ширины платформы
+        )
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+                .fillMaxWidth(0.95f)
+                .padding(16.dp)
+                .widthIn(min = 360.dp),
             elevation = CardDefaults.cardElevation(
                 defaultElevation = 8.dp
             )
@@ -372,12 +480,8 @@ fun DateTimeFilterDialog(
                 ) {
                     // Кнопка выбора даты
                     OutlinedButton(
-                        onClick = {
-                            // Здесь будет открываться DatePicker для начальной даты
-                            // В этой реализации используется заглушка, в реальном приложении
-                            // нужно реализовать открытие датапикера
-                        },
-                        modifier = Modifier.weight(2f)
+                        onClick = { showFromDatePicker = true },
+                        modifier = Modifier.weight(1f)
                     ) {
                         Text(selectedFromDate.format(dateFormatter))
                     }
@@ -386,9 +490,7 @@ fun DateTimeFilterDialog(
 
                     // Кнопка выбора времени
                     OutlinedButton(
-                        onClick = {
-                            // Здесь будет открываться TimePicker для начального времени
-                        },
+                        onClick = { showFromTimePicker = true },
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(selectedFromDate.format(timeFormatter))
@@ -411,10 +513,8 @@ fun DateTimeFilterDialog(
                 ) {
                     // Кнопка выбора даты
                     OutlinedButton(
-                        onClick = {
-                            // Здесь будет открываться DatePicker для конечной даты
-                        },
-                        modifier = Modifier.weight(2f)
+                        onClick = { showToDatePicker = true },
+                        modifier = Modifier.weight(1f)
                     ) {
                         Text(selectedToDate.format(dateFormatter))
                     }
@@ -423,9 +523,7 @@ fun DateTimeFilterDialog(
 
                     // Кнопка выбора времени
                     OutlinedButton(
-                        onClick = {
-                            // Здесь будет открываться TimePicker для конечного времени
-                        },
+                        onClick = { showToTimePicker = true },
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(selectedToDate.format(timeFormatter))
@@ -459,6 +557,119 @@ fun DateTimeFilterDialog(
                         }
                     ) {
                         Text(stringResource(id = R.string.apply))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Диалог выбора даты
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CustomDatePickerDialog(
+    selectedDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault())
+            .toInstant().toEpochMilli()
+    )
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    datePickerState.selectedDateMillis?.let { dateMillis ->
+                        val localDate = Instant.ofEpochMilli(dateMillis)
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDate()
+                        onDateSelected(localDate)
+                    }
+                }
+            ) {
+                Text(stringResource(id = R.string.ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(id = R.string.cancel))
+            }
+        }
+    ) {
+        DatePicker(state = datePickerState)
+    }
+}
+
+/**
+ * Диалог выбора времени
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CustomTimePickerDialog(
+    selectedTime: LocalTime,
+    onTimeSelected: (LocalTime) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val timePickerState = rememberTimePickerState(
+        initialHour = selectedTime.hour,
+        initialMinute = selectedTime.minute
+    )
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 6.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = stringResource(id = R.string.select_time),
+                    style = MaterialTheme.typography.titleLarge
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                TimePicker(state = timePickerState)
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(id = R.string.cancel))
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    TextButton(
+                        onClick = {
+                            val selectedTimeFromPicker = LocalTime.of(
+                                timePickerState.hour,
+                                timePickerState.minute,
+                                0  // seconds
+                            )
+                            onTimeSelected(selectedTimeFromPicker)
+                        }
+                    ) {
+                        Text(stringResource(id = R.string.ok))
                     }
                 }
             }
