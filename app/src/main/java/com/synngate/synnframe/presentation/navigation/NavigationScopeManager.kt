@@ -199,9 +199,9 @@ fun rememberPersistentScreenContainer(
     val route = navBackStackEntry.destination.route ?: "unknown"
     val graphRoute = navigationScopeManager.getGraphForRoute(route)
 
-    val screenContainer = remember(route, graphRoute) {
+    // Используем стабильные ключи для remember
+    return remember(navBackStackEntry.id, graphRoute) {
+        Timber.d("Creating persistent container for screen: $route in graph: $graphRoute")
         navigationScopeManager.getPersistentScreenContainer(route, graphRoute)
     }
-
-    return screenContainer
 }
