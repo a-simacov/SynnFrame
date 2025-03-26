@@ -107,7 +107,7 @@ class LogDetailViewModel(
         updateState { it.copy(showDeleteConfirmation = false) }
     }
 
-    fun deleteLog(onDeleted: () -> Unit) {
+    fun deleteLog() {
         launchIO {
             updateState {
                 it.copy(
@@ -130,11 +130,8 @@ class LogDetailViewModel(
 
                     loggingService.logInfo("Лог с ID $logId успешно удален")
 
-                    // Отправляем событие навигации назад
+                    // Отправляем событие навигации назад вместо прямого вызова колбэка
                     sendEvent(LogDetailEvent.NavigateBack)
-
-                    // Вызываем колбэк для навигации назад
-                    onDeleted()
                 } else {
                     val exception = result.exceptionOrNull()
                     updateState {

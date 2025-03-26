@@ -1,7 +1,6 @@
 package com.synngate.synnframe.presentation.ui.logs
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,14 +27,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.presentation.common.filter.DateRangeFilter
-import com.synngate.synnframe.presentation.common.filter.FilterPanel
 import com.synngate.synnframe.presentation.common.filter.StatusFilterChips
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.list.LogListItem
@@ -44,7 +40,6 @@ import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.logs.model.LogListEvent
-import java.time.LocalDateTime
 
 @Composable
 fun LogListScreen(
@@ -146,7 +141,7 @@ fun LogListScreen(
                 itemToString = { viewModel.formatLogType(it) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 8.dp)
             )
 
             OutlinedButton(

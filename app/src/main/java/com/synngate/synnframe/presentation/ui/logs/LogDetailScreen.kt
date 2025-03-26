@@ -2,6 +2,7 @@ package com.synngate.synnframe.presentation.ui.logs
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,12 +13,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -51,10 +50,8 @@ fun LogDetailScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Получаем строку ресурса перед использованием в LaunchedEffect
-    val copiedToClipboardMessage = stringResource(R.string.log_copied_to_clipboard)
-
-    LaunchedEffect(key1 = Unit) {
+    // Обрабатываем события из ViewModel
+    LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 is LogDetailEvent.ShowSnackbar -> {
@@ -76,22 +73,13 @@ fun LogDetailScreen(
         }
     }
 
-    // Показываем уведомление о копировании в буфер обмена
-    LaunchedEffect(state.isTextCopied) {
-        if (state.isTextCopied) {
-            snackbarHostState.showSnackbar(
-                message = copiedToClipboardMessage,
-                duration = SnackbarDuration.Short
-            )
-        }
-    }
-
+    // Диалог подтверждения удаления
     if (state.showDeleteConfirmation) {
         ConfirmationDialog(
             title = stringResource(R.string.delete_log_title),
             message = stringResource(R.string.delete_log_message),
             onConfirm = {
-                viewModel.deleteLog(navigateBack)
+                viewModel.deleteLog()
             },
             onDismiss = {
                 viewModel.hideDeleteConfirmation()
@@ -108,21 +96,22 @@ fun LogDetailScreen(
         },
         isLoading = state.isLoading || state.isDeletingLog,
         actions = {
-            IconButton(
-                onClick = { viewModel.showDeleteConfirmation() }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.delete_log)
-                )
-            }
-
+            // Кнопки в верхней панели
             IconButton(
                 onClick = { viewModel.copyLogToClipboard() }
             ) {
                 Icon(
                     imageVector = Icons.Default.ContentCopy,
                     contentDescription = stringResource(R.string.copy_to_clipboard)
+                )
+            }
+
+            IconButton(
+                onClick = { viewModel.showDeleteConfirmation() }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.delete_log)
                 )
             }
         }
@@ -151,30 +140,43 @@ fun LogDetailScreen(
                             .padding(16.dp)
                             .verticalScroll(rememberScrollState())
                     ) {
-                        Box(
+                        // Заголовок с информацией о логе
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 16.dp)
+                                .padding(bottom = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             state.log?.let { log ->
+                                // ID лога рядом с иконкой типа
+                                Text(
+                                    text = "ID: ${log.id}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(end = 8.dp)
+                                )
+
                                 LogTypeIndicator(
                                     type = log.type,
-                                    modifier = Modifier.align(Alignment.CenterStart)
+                                    modifier = Modifier
                                 )
+
+                                Spacer(modifier = Modifier.weight(1f))
 
                                 val formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")
                                 Text(
                                     text = log.createdAt.format(formatter),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.align(Alignment.CenterEnd)
+                                    modifier = Modifier.padding(start = 8.dp)
                                 )
                             }
                         }
 
+                        // Текст сообщения лога на весь экран
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 16.dp)
+                                .weight(1f, fill = false)
                         ) {
                             Column(
                                 modifier = Modifier
@@ -190,38 +192,16 @@ fun LogDetailScreen(
 
                                 Spacer(modifier = Modifier.height(4.dp))
 
+                                // Текст лога занимает всё доступное место
                                 Text(
                                     text = state.log?.message ?: "",
-                                    style = MaterialTheme.typography.bodyLarge
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         }
 
-                        Button(
-                            onClick = { viewModel.copyLogToClipboard() },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 8.dp)
-                            )
-                            Text(text = stringResource(R.string.copy_to_clipboard))
-                        }
-
-                        OutlinedButton(
-                            onClick = { viewModel.showDeleteConfirmation() },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 8.dp)
-                            )
-                            Text(text = stringResource(R.string.delete_log))
-                        }
+                        // Удалены дублирующиеся кнопки
                     }
                 }
             }
