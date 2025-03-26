@@ -2,7 +2,7 @@ package com.synngate.synnframe.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.synngate.synnframe.presentation.di.Clearable
+import com.synngate.synnframe.presentation.di.Disposable
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -17,10 +17,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
+/**
+ * Базовый класс для всех ViewModel
+ * @param S Тип состояния экрана
+ * @param E Тип событий экрана
+ * @param initialState Начальное состояние
+ * @param ioDispatcher Диспетчер для операций ввода-вывода
+ */
 abstract class BaseViewModel<S, E>(
     initialState: S,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-) : ViewModel(), Clearable {
+) : ViewModel(), Disposable {
 
     private val _uiState = MutableStateFlow(initialState)
     val uiState: StateFlow<S> = _uiState.asStateFlow()
@@ -31,36 +38,55 @@ abstract class BaseViewModel<S, E>(
 
     // Обработчик исключений в корутинах
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
-        Timber.e(throwable, "Unhandled exception in ViewModel")
+        Timber.e(throwable, "Unhandled exception in ViewModel: ${this::class.java.simpleName}")
         // Здесь можно добавить логику обработки ошибок по умолчанию
     }
 
+    /**
+     * Обновление состояния UI
+     * @param update Функция для обновления состояния
+     */
     protected fun updateState(update: (S) -> S) {
         _uiState.value = update(_uiState.value)
     }
 
+    /**
+     * Отправка события на UI
+     * @param event Событие для отправки
+     */
     protected fun sendEvent(event: E) {
         viewModelScope.launch {
             _events.emit(event)
         }
     }
 
+    /**
+     * Запуск корутины в IO-диспетчере
+     * @param block Блок кода для выполнения
+     * @return Job запущенной корутины
+     */
     protected fun launchIO(block: suspend CoroutineScope.() -> Unit): Job {
         return viewModelScope.launch(ioDispatcher + exceptionHandler) {
             block()
         }
     }
 
-    protected fun launchMain(block: suspend CoroutineScope.() -> Unit) {
-        viewModelScope.launch(Dispatchers.Main + exceptionHandler) {
+    /**
+     * Запуск корутины в Main-диспетчере
+     * @param block Блок кода для выполнения
+     * @return Job запущенной корутины
+     */
+    protected fun launchMain(block: suspend CoroutineScope.() -> Unit): Job {
+        return viewModelScope.launch(Dispatchers.Main + exceptionHandler) {
             block()
         }
     }
 
     /**
-     * Очистка ресурсов при уничтожении ViewModel
+     * Освобождение ресурсов при уничтожении ViewModel
      */
-    override fun clear() {
+    override fun dispose() {
+        Timber.d("Disposing ViewModel: ${this::class.java.simpleName}")
         // Переопределяется в подклассах при необходимости
     }
 
@@ -69,6 +95,6 @@ abstract class BaseViewModel<S, E>(
      */
     override fun onCleared() {
         super.onCleared()
-        clear()
+        dispose()
     }
 }

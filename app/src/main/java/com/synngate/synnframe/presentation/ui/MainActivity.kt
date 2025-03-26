@@ -33,8 +33,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Получение контейнера зависимостей
-        appContainer = (application as SynnFrameApplication).appContainer
+        // Получение приложения
+        val app = application as SynnFrameApplication
 
         // Настройка edge-to-edge дисплея
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -53,21 +53,17 @@ class MainActivity : ComponentActivity() {
 
         setContent {
 
-            // Получаем настройки темы из DataStore
-            val settingsUseCases = appContainer.settingsUseCases
-
-            val themeMode by appContainer.appSettingsDataStore.themeMode
+            val themeMode by app.appContainer.appSettingsDataStore.themeMode
                 .collectAsState(initial = ThemeMode.SYSTEM)
 
             // Применение темы
-            SynnFrameTheme(themeMode = themeMode, settingsUseCases = settingsUseCases) {
+            SynnFrameTheme(themeMode = themeMode, settingsUseCases = app.appContainer.settingsUseCases) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     // Основная навигация приложения
                     AppNavigation(
-                        appContainer = appContainer,
                         startDestination = startDestination
                     )
                 }

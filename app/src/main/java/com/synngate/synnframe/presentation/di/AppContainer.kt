@@ -91,7 +91,7 @@ import timber.log.Timber
  * Реализация контейнера зависимостей для всего приложения.
  * Содержит зависимости, которые живут на протяжении всего жизненного цикла приложения.
  */
-class AppContainer(private val applicationContext: Context) {
+class AppContainer(private val applicationContext: Context) : DiContainer(){
 
     // Единый экземпляр DataStore для настроек приложения
     private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -102,25 +102,22 @@ class AppContainer(private val applicationContext: Context) {
         AppSettingsDataStore(applicationContext.dataStore)
     }
 
+    // Database
     private val database by lazy {
         Timber.d("Creating AppDatabase")
         AppDatabase.getInstance(applicationContext)
     }
 
-    private val serverDao: ServerDao by lazy { database.serverDao() }
-    private val userDao: UserDao by lazy { database.userDao() }
-    private val logDao: LogDao by lazy { database.logDao() }
-    private val productDao: ProductDao by lazy { database.productDao() }
-    private val taskDao: TaskDao by lazy { database.taskDao() }
+    // DAO
+    val serverDao by lazy { database.serverDao() }
+    val userDao by lazy { database.userDao() }
+    val logDao by lazy { database.logDao() }
+    val productDao by lazy { database.productDao() }
+    val taskDao by lazy { database.taskDao() }
 
-    // Репозиторий логов (создаем раньше других, так как он нужен для логирования)
-    private val logRepository: LogRepository by lazy {
-        Timber.d("Creating LogRepository")
-        LogRepositoryImpl(logDao)
-    }
-
+    // HTTP Client
     @OptIn(ExperimentalSerializationApi::class)
-    private val httpClient by lazy {
+    val httpClient by lazy {
         Timber.d("Creating HttpClient")
         HttpClient(Android) {
             install(ContentNegotiation) {
@@ -129,15 +126,12 @@ class AppContainer(private val applicationContext: Context) {
                     isLenient = true
                     ignoreUnknownKeys = true
                     useArrayPolymorphism = true
-                    explicitNulls = false // Игнорировать null поля при сериализации
+                    explicitNulls = false
                     coerceInputValues = true
                 })
             }
-            // Добавляем настройки таймаутов
             install(HttpTimeout) {
-                connectTimeoutMillis = 10000  // 10 секунд на установку соединения
-                //requestTimeoutMillis = 15000  // 15 секунд на выполнение запроса
-                //socketTimeoutMillis = 10000   // 10 секунд на операции с сокетом
+                connectTimeoutMillis = 10000
             }
             install(Logging) {
                 logger = object : Logger {
@@ -147,13 +141,11 @@ class AppContainer(private val applicationContext: Context) {
                 }
                 level = LogLevel.BODY
             }
-            defaultRequest {
-                // Общие настройки для всех запросов
-            }
         }
     }
 
-    private val serverProvider by lazy {
+    // Сервисы
+    val serverProvider by lazy {
         Timber.d("Creating ServerProvider")
         object : ServerProvider {
             override suspend fun getActiveServer() = serverRepository.getActiveServer().first()
@@ -161,52 +153,33 @@ class AppContainer(private val applicationContext: Context) {
         }
     }
 
-    private val apiService: ApiService by lazy {
-        Timber.d("Creating ApiService")
-        ApiServiceImpl(httpClient, serverProvider)
+    // Репозитории
+    val logRepository: LogRepository by lazy {
+        Timber.d("Creating LogRepository")
+        LogRepositoryImpl(logDao)
     }
 
-    private val authApi: AuthApi by lazy {
-        Timber.d("Creating AuthApi")
-        AuthApiImpl(apiService)
-    }
-
-    private val productApi: ProductApi by lazy {
-        Timber.d("Creating ProductApi")
-        ProductApiImpl(httpClient, serverProvider)
-    }
-
-    private val taskApi: TaskApi by lazy {
-        Timber.d("Creating TaskApi")
-        TaskApiImpl(httpClient, serverProvider, apiService)
-    }
-
-    private val appUpdateApi: AppUpdateApi by lazy {
-        Timber.d("Creating AppUpdateApi")
-        AppUpdateApiImpl(httpClient, serverProvider)
-    }
-
-    private val serverRepository: ServerRepository by lazy {
+    val serverRepository: ServerRepository by lazy {
         Timber.d("Creating ServerRepository")
         ServerRepositoryImpl(serverDao, apiService)
     }
 
-    private val userRepository: UserRepository by lazy {
+    val userRepository: UserRepository by lazy {
         Timber.d("Creating UserRepository")
         UserRepositoryImpl(userDao, authApi, appSettingsDataStore)
     }
 
-    private val productRepository: ProductRepository by lazy {
+    val productRepository: ProductRepository by lazy {
         Timber.d("Creating ProductRepository")
         ProductRepositoryImpl(productDao, productApi)
     }
 
-    private val taskRepository: TaskRepository by lazy {
+    val taskRepository: TaskRepository by lazy {
         Timber.d("Creating TaskRepository")
         TaskRepositoryImpl(taskDao, taskApi)
     }
 
-    private val settingsRepository: SettingsRepository by lazy {
+    val settingsRepository: SettingsRepository by lazy {
         Timber.d("Creating SettingsRepository")
         SettingsRepositoryImpl(
             appSettingsDataStore,
@@ -214,17 +187,44 @@ class AppContainer(private val applicationContext: Context) {
         )
     }
 
+    // API сервисы
+    val apiService: ApiService by lazy {
+        Timber.d("Creating ApiService")
+        ApiServiceImpl(httpClient, serverProvider)
+    }
+
+    val authApi: AuthApi by lazy {
+        Timber.d("Creating AuthApi")
+        AuthApiImpl(apiService)
+    }
+
+    val productApi: ProductApi by lazy {
+        Timber.d("Creating ProductApi")
+        ProductApiImpl(httpClient, serverProvider)
+    }
+
+    val taskApi: TaskApi by lazy {
+        Timber.d("Creating TaskApi")
+        TaskApiImpl(httpClient, serverProvider, apiService)
+    }
+
+    val appUpdateApi: AppUpdateApi by lazy {
+        Timber.d("Creating AppUpdateApi")
+        AppUpdateApiImpl(httpClient, serverProvider)
+    }
+
+    // Сервисы
     val loggingService: LoggingService by lazy {
         Timber.d("Creating LoggingService")
         LoggingServiceImpl(logRepository)
     }
 
-    private val clipboardService: ClipboardService by lazy {
+    val clipboardService: ClipboardService by lazy {
         Timber.d("Creating ClipboardService")
         ClipboardServiceImpl(applicationContext)
     }
 
-    private val serverCoordinator: ServerCoordinator by lazy {
+    val serverCoordinator: ServerCoordinator by lazy {
         Timber.d("Creating ServerCoordinator")
         ServerCoordinatorImpl(
             serverRepository,
@@ -233,41 +233,37 @@ class AppContainer(private val applicationContext: Context) {
         )
     }
 
-    private val deviceInfoService: DeviceInfoService by lazy {
+    val deviceInfoService: DeviceInfoService by lazy {
         Timber.d("Creating DeviceInfoService")
         DeviceInfoServiceImpl(applicationContext)
     }
 
-    private val webServerManager: WebServerManager by lazy {
-        Timber.d("Creating WebServerManager")
-        WebServerManagerImpl(webServerController, loggingService)
-    }
-
-    private val updateInstaller: UpdateInstaller by lazy {
-        Timber.d("Creating UpdateInstaller")
-        UpdateInstallerImpl(applicationContext, loggingService)
-    }
-
-    private val soundService: SoundService by lazy {
-        SoundServiceImpl(applicationContext)
-    }
-
-    private val fileService: FileService by lazy {
-        FileServiceImpl(applicationContext)
-    }
-
-    // Создание NotificationChannelManager
-    private val notificationChannelManager by lazy {
-        NotificationChannelManager(applicationContext)
-    }
-
-    // Создание WebServerController
     val webServerController by lazy {
         WebServerControllerImpl(applicationContext, loggingService)
     }
 
-    // Создание SynchronizationController
-    // Контроллер синхронизации
+    val webServerManager: WebServerManager by lazy {
+        Timber.d("Creating WebServerManager")
+        WebServerManagerImpl(webServerController, loggingService)
+    }
+
+    val updateInstaller: UpdateInstaller by lazy {
+        Timber.d("Creating UpdateInstaller")
+        UpdateInstallerImpl(applicationContext, loggingService)
+    }
+
+    val soundService: SoundService by lazy {
+        SoundServiceImpl(applicationContext)
+    }
+
+    val fileService: FileService by lazy {
+        FileServiceImpl(applicationContext)
+    }
+
+    val notificationChannelManager by lazy {
+        NotificationChannelManager(applicationContext)
+    }
+
     val synchronizationController: SynchronizationController by lazy {
         SynchronizationControllerImpl(
             applicationContext,
@@ -279,24 +275,24 @@ class AppContainer(private val applicationContext: Context) {
         )
     }
 
-
-    private val serverUseCases by lazy {
+    // Use Cases
+    val serverUseCases by lazy {
         ServerUseCases(serverRepository, serverCoordinator, loggingService)
     }
 
-    private val userUseCases by lazy {
+    val userUseCases by lazy {
         UserUseCases(userRepository, loggingService)
     }
 
-    private val taskUseCases by lazy {
+    val taskUseCases by lazy {
         TaskUseCases(taskRepository, loggingService)
     }
 
-    private val productUseCases by lazy {
+    val productUseCases by lazy {
         ProductUseCases(productRepository, loggingService)
     }
 
-    private val logUseCases by lazy {
+    val logUseCases by lazy {
         LogUseCases(logRepository, loggingService)
     }
 
@@ -304,196 +300,149 @@ class AppContainer(private val applicationContext: Context) {
         SettingsUseCases(settingsRepository, loggingService, fileService, applicationContext)
     }
 
-    // Инициализация каналов уведомлений при создании контейнера
+    // Создание контейнера для уровня навигации
+    fun createNavigationContainer(): NavigationContainer {
+        return createChildContainer { NavigationContainer(this) }
+    }
+
     init {
-        // Создаем каналы уведомлений при инициализации приложения
+        // Инициализация каналов уведомлений
         notificationChannelManager.createNotificationChannels()
     }
+}
 
-    fun createNavHostContainer(): NavHostContainer {
-        Timber.d("Creating NavHostContainer")
-        return NavHostContainerImpl(this)
+/**
+ * Контейнер для уровня навигации, содержит зависимости для всей навигации
+ */
+class NavigationContainer(private val appContainer: AppContainer) : DiContainer() {
+
+    // Создание контейнеров для экранов
+    fun createScreenContainer(): ScreenContainer {
+        return createChildContainer { ScreenContainer(appContainer) }
     }
+}
 
-    inner class NavHostContainerImpl(
-        private val appContainer: AppContainer
-    ) : NavHostContainer {
+/**
+ * Контейнер для уровня экрана, содержит ViewModels и другие зависимости
+ * с жизненным циклом, привязанным к экрану
+ */
+class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
 
-        override val clearables: MutableList<Clearable> = mutableListOf()
+    // Фабрики для создания ViewModels
 
-        override fun createServerListGraphContainer(): ServerListGraphContainer {
-            val container = ServerListGraphContainerImpl(appContainer)
-            addClearable(container)
-            return container
-        }
-
-        override fun createTasksGraphContainer(): TasksGraphContainer {
-            val container = TasksGraphContainerImpl(appContainer)
-            addClearable(container)
-            return container
-        }
-
-        override fun createProductsGraphContainer(): ProductsGraphContainer {
-            val container = ProductsGraphContainerImpl(appContainer)
-            addClearable(container)
-            return container
-        }
-
-        override fun createLogsGraphContainer(): LogsGraphContainer {
-            val container = LogsGraphContainerImpl(appContainer)
-            addClearable(container)
-            return container
-        }
-
-        override fun createSettingsScreenContainer(): SettingsScreenContainer {
-            val container = SettingsScreenContainerImpl(appContainer)
-            addClearable(container)
-            return container
-        }
-
-        override fun createLoginScreenContainer(): LoginScreenContainer {
-            val container = LoginScreenContainerImpl(appContainer)
-            addClearable(container)
-            return container
-        }
-
-        override fun createMainMenuScreenContainer(): MainMenuScreenContainer {
-            val container = MainMenuScreenContainerImpl(appContainer)
-            addClearable(container)
-            return container
+    fun createLogListViewModel(): LogListViewModel {
+        return getOrCreateViewModel("LogListViewModel") {
+            LogListViewModel(
+                appContainer.logUseCases,
+                appContainer.loggingService,
+                Dispatchers.IO
+            )
         }
     }
 
-    /**
-     * Базовый класс для контейнеров подграфов
-     */
-    abstract inner class BaseGraphContainer : GraphContainer {
-        override val clearables: MutableList<Clearable> = mutableListOf()
-    }
-
-    inner class ServerListGraphContainerImpl(
-        private val appContainer: AppContainer
-    ) : BaseGraphContainer(), ServerListGraphContainer {
-
-        override fun createServerListViewModel(): ServerListViewModel {
-            Timber.d("Creating ServerListViewModel")
-            val viewModel = ServerListViewModel(
-                serverUseCases = appContainer.serverUseCases,
-                settingsUseCases = appContainer.settingsUseCases,
-                ioDispatcher = Dispatchers.IO
-            )
-            addClearable(viewModel)
-            return viewModel
-        }
-
-        override fun createServerDetailViewModel(serverId: Int?): ServerDetailViewModel {
-            Timber.d("Creating ServerDetailViewModel for serverId=$serverId")
-            val viewModel = ServerDetailViewModel(
-                serverId = serverId,
-                serverUseCases = appContainer.serverUseCases,
-                ioDispatcher = Dispatchers.IO
-            )
-            addClearable(viewModel)
-            return viewModel
-        }
-    }
-
-    inner class TasksGraphContainerImpl(
-        private val appContainer: AppContainer
-    ) : BaseGraphContainer(), TasksGraphContainer {
-
-        override fun createTaskListViewModel(): TaskListViewModel {
-            Timber.d("Creating TaskListViewModel")
-            val viewModel = TaskListViewModel(
-                taskUseCases = appContainer.taskUseCases,
-                userUseCases = appContainer.userUseCases,
-                ioDispatcher = Dispatchers.IO
-            )
-            addClearable(viewModel)
-            return viewModel
-        }
-
-        override fun createTaskDetailViewModel(taskId: String): TaskDetailViewModel {
-            Timber.d("Creating TaskDetailViewModel for taskId=$taskId")
-            val viewModel = TaskDetailViewModel(
-                taskId = taskId,
-                taskUseCases = appContainer.taskUseCases,
-                productUseCases = appContainer.productUseCases,
-                userUseCases = appContainer.userUseCases,
-                soundService = soundService,
-                ioDispatcher = Dispatchers.IO
-            )
-            addClearable(viewModel)
-            return viewModel
-        }
-    }
-
-    inner class ProductsGraphContainerImpl(
-        private val appContainer: AppContainer
-    ) : BaseGraphContainer(), ProductsGraphContainer {
-
-        override fun createProductListViewModel(isSelectionMode: Boolean): ProductListViewModel {
-            Timber.d("Creating ProductListViewModel")
-            val viewModel = ProductListViewModel(
-                productUseCases = appContainer.productUseCases,
-                loggingService = appContainer.loggingService,
-                ioDispatcher = Dispatchers.IO,
-                isSelectionMode = isSelectionMode
-            )
-            addClearable(viewModel)
-            return viewModel
-        }
-
-        override fun createProductDetailViewModel(productId: String): ProductDetailViewModel {
-            Timber.d("Creating ProductDetailViewModel for productId=$productId")
-            val viewModel = ProductDetailViewModel(
-                productId = productId,
-                productUseCases = appContainer.productUseCases,
-                loggingService = appContainer.loggingService,
-                clipboardService = appContainer.clipboardService,  // Добавляем ClipboardService
-                ioDispatcher = Dispatchers.IO
-            )
-            addClearable(viewModel)
-            return viewModel
-        }
-    }
-
-    inner class LogsGraphContainerImpl(
-        private val appContainer: AppContainer
-    ) : BaseGraphContainer(), LogsGraphContainer {
-
-        override fun createLogListViewModel(): LogListViewModel {
-            Timber.d("Creating LogListViewModel")
-            val viewModel = LogListViewModel(
-                logUseCases = appContainer.logUseCases,
-                loggingService = appContainer.loggingService,
-                ioDispatcher = Dispatchers.IO
-            )
-            addClearable(viewModel)
-            return viewModel
-        }
-
-        override fun createLogDetailViewModel(logId: Int): LogDetailViewModel {
-            Timber.d("Creating LogDetailViewModel for logId=$logId")
-            val viewModel = LogDetailViewModel(
+    fun createLogDetailViewModel(logId: Int): LogDetailViewModel {
+        return getOrCreateViewModel("LogDetailViewModel_$logId") {
+            LogDetailViewModel(
                 logId,
                 appContainer.logUseCases,
                 appContainer.loggingService,
                 appContainer.clipboardService,
                 Dispatchers.IO
             )
-            addClearable(viewModel)
-            return viewModel
         }
     }
 
-    inner class SettingsScreenContainerImpl(
-        private val appContainer: AppContainer
-    ) : BaseGraphContainer(), SettingsScreenContainer {
+    fun createServerListViewModel(): ServerListViewModel {
+        return getOrCreateViewModel("ServerListViewModel") {
+            ServerListViewModel(
+                serverUseCases = appContainer.serverUseCases,
+                settingsUseCases = appContainer.settingsUseCases,
+                ioDispatcher = Dispatchers.IO
+            )
+        }
+    }
 
-        override fun createSettingsViewModel(): SettingsViewModel {
-            Timber.d("Creating SettingsViewModel")
-            val viewModel = SettingsViewModel(
+    fun createServerDetailViewModel(serverId: Int?): ServerDetailViewModel {
+        return getOrCreateViewModel("ServerDetailViewModel_${serverId ?: "new"}") {
+            ServerDetailViewModel(
+                serverId = serverId,
+                serverUseCases = appContainer.serverUseCases,
+                ioDispatcher = Dispatchers.IO
+            )
+        }
+    }
+
+    fun createLoginViewModel(): LoginViewModel {
+        return getOrCreateViewModel("LoginViewModel") {
+            LoginViewModel(
+                userUseCases = appContainer.userUseCases,
+                serverUseCases = appContainer.serverUseCases,
+                deviceInfoService = appContainer.deviceInfoService,
+                ioDispatcher = Dispatchers.IO
+            )
+        }
+    }
+
+    fun createMainMenuViewModel(): MainMenuViewModel {
+        return getOrCreateViewModel("MainMenuViewModel") {
+            MainMenuViewModel(
+                userUseCases = appContainer.userUseCases,
+                taskUseCases = appContainer.taskUseCases,
+                productUseCases = appContainer.productUseCases,
+                ioDispatcher = Dispatchers.IO
+            )
+        }
+    }
+
+    fun createTaskListViewModel(): TaskListViewModel {
+        return getOrCreateViewModel("TaskListViewModel") {
+            TaskListViewModel(
+                taskUseCases = appContainer.taskUseCases,
+                userUseCases = appContainer.userUseCases,
+                ioDispatcher = Dispatchers.IO
+            )
+        }
+    }
+
+    fun createTaskDetailViewModel(taskId: String): TaskDetailViewModel {
+        return getOrCreateViewModel("TaskDetailViewModel_$taskId") {
+            TaskDetailViewModel(
+                taskId = taskId,
+                taskUseCases = appContainer.taskUseCases,
+                productUseCases = appContainer.productUseCases,
+                userUseCases = appContainer.userUseCases,
+                soundService = appContainer.soundService,
+                ioDispatcher = Dispatchers.IO
+            )
+        }
+    }
+
+    fun createProductListViewModel(isSelectionMode: Boolean): ProductListViewModel {
+        return getOrCreateViewModel("ProductListViewModel_${if (isSelectionMode) "selection" else "normal"}") {
+            ProductListViewModel(
+                productUseCases = appContainer.productUseCases,
+                loggingService = appContainer.loggingService,
+                ioDispatcher = Dispatchers.IO,
+                isSelectionMode = isSelectionMode
+            )
+        }
+    }
+
+    fun createProductDetailViewModel(productId: String): ProductDetailViewModel {
+        return getOrCreateViewModel("ProductDetailViewModel_$productId") {
+            ProductDetailViewModel(
+                productId = productId,
+                productUseCases = appContainer.productUseCases,
+                loggingService = appContainer.loggingService,
+                clipboardService = appContainer.clipboardService,
+                ioDispatcher = Dispatchers.IO
+            )
+        }
+    }
+
+    fun createSettingsViewModel(): SettingsViewModel {
+        return getOrCreateViewModel("SettingsViewModel") {
+            SettingsViewModel(
                 appContainer.settingsUseCases,
                 appContainer.serverUseCases,
                 appContainer.loggingService,
@@ -502,52 +451,15 @@ class AppContainer(private val applicationContext: Context) {
                 appContainer.updateInstaller,
                 Dispatchers.IO
             )
-            addClearable(viewModel)
-            return viewModel
         }
+    }
 
-        override fun createSyncHistoryViewModel(): SyncHistoryViewModel {
-            Timber.d("Creating SyncHistoryViewModel")
-            val viewModel = SyncHistoryViewModel(
+    fun createSyncHistoryViewModel(): SyncHistoryViewModel {
+        return getOrCreateViewModel("SyncHistoryViewModel") {
+            SyncHistoryViewModel(
                 synchronizationController = appContainer.synchronizationController,
                 ioDispatcher = Dispatchers.IO
             )
-            addClearable(viewModel)
-            return viewModel
-        }
-    }
-
-    inner class LoginScreenContainerImpl(
-        private val appContainer: AppContainer
-    ) : BaseGraphContainer(), LoginScreenContainer {
-
-        override fun createLoginViewModel(): LoginViewModel {
-            Timber.d("Creating LoginViewModel")
-            val viewModel = LoginViewModel(
-                userUseCases = appContainer.userUseCases,
-                serverUseCases = appContainer.serverUseCases,
-                deviceInfoService = appContainer.deviceInfoService,
-                ioDispatcher = Dispatchers.IO
-            )
-            addClearable(viewModel)
-            return viewModel
-        }
-    }
-
-    inner class MainMenuScreenContainerImpl(
-        private val appContainer: AppContainer
-    ) : BaseGraphContainer(), MainMenuScreenContainer {
-
-        override fun createMainMenuViewModel(): MainMenuViewModel {
-            Timber.d("Creating MainMenuViewModel")
-            val viewModel = MainMenuViewModel(
-                userUseCases = appContainer.userUseCases,
-                taskUseCases = appContainer.taskUseCases,
-                productUseCases = appContainer.productUseCases,
-                ioDispatcher = Dispatchers.IO
-            )
-            addClearable(viewModel)
-            return viewModel
         }
     }
 }

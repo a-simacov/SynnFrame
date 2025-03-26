@@ -34,7 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
+import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.Product
@@ -59,7 +59,7 @@ fun TaskDetailScreen(
     viewModel: TaskDetailViewModel,
     navigateBack: () -> Unit,
     navigateToProductsList: () -> Unit,
-    navController: NavHostController,
+    navController: NavController,
     modifier: Modifier = Modifier
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()

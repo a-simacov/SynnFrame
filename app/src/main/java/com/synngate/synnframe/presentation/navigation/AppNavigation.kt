@@ -3,58 +3,60 @@ package com.synngate.synnframe.presentation.navigation
 import android.app.Activity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavController
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.synngate.synnframe.domain.entity.Product
-import com.synngate.synnframe.presentation.di.AppContainer
-import com.synngate.synnframe.presentation.di.NavHostContainer
-import com.synngate.synnframe.presentation.di.ServerListGraphContainer
+import androidx.navigation.navigation
+import com.synngate.synnframe.SynnFrameApplication
+import com.synngate.synnframe.presentation.di.ScreenContainer
 import com.synngate.synnframe.presentation.ui.login.LoginScreen
 import com.synngate.synnframe.presentation.ui.logs.LogDetailScreen
 import com.synngate.synnframe.presentation.ui.logs.LogListScreen
 import com.synngate.synnframe.presentation.ui.main.MainMenuScreen
+import com.synngate.synnframe.presentation.ui.products.ProductDetailScreen
+import com.synngate.synnframe.presentation.ui.products.ProductListScreen
 import com.synngate.synnframe.presentation.ui.server.ServerDetailScreen
 import com.synngate.synnframe.presentation.ui.server.ServerListScreen
 import com.synngate.synnframe.presentation.ui.settings.SettingsScreen
 import com.synngate.synnframe.presentation.ui.sync.SyncHistoryScreen
+import com.synngate.synnframe.presentation.ui.tasks.TaskDetailScreen
+import com.synngate.synnframe.presentation.ui.tasks.TaskListScreen
 import timber.log.Timber
 
 /**
- * Основной навигационный граф приложения с интеграцией DI
+ * Основной навигационный компонент приложения
  */
 @Composable
 fun AppNavigation(
-    appContainer: AppContainer,
-    navController: NavHostController = rememberNavController(),
-    startDestination: String = Screen.ServerList.route
+    startDestination: String = Screen.ServerList.route,
+    navController: NavHostController = rememberNavController()
 ) {
     val context = LocalContext.current
-    // Отслеживаем жизненный цикл навигационного хоста для очистки ресурсов
     val lifecycleOwner = LocalLifecycleOwner.current
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
 
-    Timber.d("Current navigation route: $currentRoute")
+    // Получаем приложение и создаем контейнер навигации
+    val app = context.applicationContext as SynnFrameApplication
+    val navigationContainer = remember { app.appContainer.createNavigationContainer() }
 
-    val navHostContainer = remember { appContainer.createNavHostContainer() }
+    // Создаем контейнер экрана
+    val screenContainer = remember { navigationContainer.createScreenContainer() }
 
+    // Отслеживаем жизненный цикл для освобождения ресурсов
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_DESTROY) {
-                Timber.d("NavHost destroyed, clearing NavHostContainer")
-                navHostContainer.clear()
+                Timber.d("Navigation destroyed, disposing navigation container")
+                navigationContainer.dispose()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -67,11 +69,12 @@ fun AppNavigation(
         navController = navController,
         startDestination = startDestination
     ) {
-        composable(Screen.ServerList.route) { entry ->
-            val serverListGraphContainer = rememberServerListGraphContainer(navHostContainer, entry)
+        // Экран списка серверов
+        composable(Screen.ServerList.route) {
+            val viewModel = remember { screenContainer.createServerListViewModel() }
 
             ServerListScreen(
-                viewModel = serverListGraphContainer.createServerListViewModel(),
+                viewModel = viewModel,
                 navigateToServerDetail = { serverId ->
                     navController.navigate(Screen.ServerDetail.createRoute(serverId))
                 },
@@ -83,6 +86,7 @@ fun AppNavigation(
             )
         }
 
+        // Экран детальной информации о сервере
         composable(
             route = Screen.ServerDetail.route,
             arguments = listOf(
@@ -92,43 +96,26 @@ fun AppNavigation(
                     defaultValue = null
                 }
             )
-        ) { entry ->
-            val serverListGraphContainer = rememberServerListGraphContainer(navHostContainer, entry)
-
-            val serverIdArg = entry.arguments?.getString("serverId")
+        ) {
+            val serverIdArg = it.arguments?.getString("serverId")
             val serverId = serverIdArg?.toIntOrNull()
 
+            val viewModel = remember { screenContainer.createServerDetailViewModel(serverId) }
+
             ServerDetailScreen(
-                viewModel = serverListGraphContainer.createServerDetailViewModel(serverId),
+                viewModel = viewModel,
                 navigateBack = {
                     navController.popBackStack()
                 }
             )
         }
 
-        composable(Screen.Login.route) { entry ->
-            val loginScreenContainer = remember {
-                navHostContainer.createLoginScreenContainer()
-            }
-
-            // Отслеживаем жизненный цикл для очистки ресурсов
-            DisposableEffect(lifecycleOwner, entry) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_DESTROY) {
-                        if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                            Timber.d("Login screen destroyed, clearing container")
-                            loginScreenContainer.clear()
-                        }
-                    }
-                }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                onDispose {
-                    lifecycleOwner.lifecycle.removeObserver(observer)
-                }
-            }
+        // Экран логина
+        composable(Screen.Login.route) {
+            val viewModel = remember { screenContainer.createLoginViewModel() }
 
             LoginScreen(
-                viewModel = loginScreenContainer.createLoginViewModel(),
+                viewModel = viewModel,
                 navigateToMainMenu = {
                     navController.navigate(Screen.MainMenu.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
@@ -145,32 +132,14 @@ fun AppNavigation(
             )
         }
 
-        composable(Screen.MainMenu.route) { entry ->
-            val mainMenuScreenContainer = remember {
-                navHostContainer.createMainMenuScreenContainer()
-            }
-
-            // Отслеживаем жизненный цикл для очистки ресурсов
-            DisposableEffect(lifecycleOwner, entry) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_DESTROY) {
-                        if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                            Timber.d("Main Menu screen destroyed, clearing container")
-                            mainMenuScreenContainer.clear()
-                        }
-                    }
-                }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                onDispose {
-                    lifecycleOwner.lifecycle.removeObserver(observer)
-                }
-            }
+        // Главное меню
+        composable(Screen.MainMenu.route) {
+            val viewModel = remember { screenContainer.createMainMenuViewModel() }
 
             MainMenuScreen(
-                viewModel = mainMenuScreenContainer.createMainMenuViewModel(),
+                viewModel = viewModel,
                 navigateToTasks = {
                     navController.navigate(Screen.TaskList.route) {
-                        // Сохраняем главное меню в бэкстеке для возврата
                         popUpTo(Screen.MainMenu.route) { inclusive = false }
                     }
                 },
@@ -191,7 +160,6 @@ fun AppNavigation(
                 },
                 navigateToLogin = {
                     navController.navigate(Screen.Login.route) {
-                        // При смене пользователя удаляем главное меню из бэкстека
                         popUpTo(Screen.MainMenu.route) { inclusive = true }
                     }
                 },
@@ -201,29 +169,12 @@ fun AppNavigation(
             )
         }
 
-        composable(Screen.Settings.route) { entry ->
-            val settingsScreenContainer = remember {
-                navHostContainer.createSettingsScreenContainer()
-            }
-
-            // Отслеживаем жизненный цикл для очистки ресурсов
-            DisposableEffect(lifecycleOwner, entry) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_DESTROY) {
-                        if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                            Timber.d("Settings screen destroyed, clearing container")
-                            settingsScreenContainer.clear()
-                        }
-                    }
-                }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                onDispose {
-                    lifecycleOwner.lifecycle.removeObserver(observer)
-                }
-            }
+        // Экран настроек
+        composable(Screen.Settings.route) {
+            val viewModel = remember { screenContainer.createSettingsViewModel() }
 
             SettingsScreen(
-                viewModel = settingsScreenContainer.createSettingsViewModel(),
+                viewModel = viewModel,
                 navigateToServerList = {
                     navController.navigate(Screen.ServerList.route) {
                         popUpTo(Screen.Settings.route) { inclusive = false }
@@ -238,29 +189,176 @@ fun AppNavigation(
             )
         }
 
-        composable(Screen.LogList.route) { entry ->
-            val logsGraphContainer = remember {
-                navHostContainer.createLogsGraphContainer()
-            }
+        // Граф навигации для задач
+        tasksNavGraph(
+            navController = navController,
+            screenContainer = screenContainer
+        )
 
-            // Отслеживаем жизненный цикл для очистки ресурсов
-            DisposableEffect(lifecycleOwner, entry) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_DESTROY) {
-                        if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                            Timber.d("Logs graph destroyed, clearing container")
-                            logsGraphContainer.clear()
-                        }
+        // Граф навигации для продуктов
+        productsNavGraph(
+            navController = navController,
+            screenContainer = screenContainer
+        )
+
+        // Граф навигации для логов
+        logsNavGraph(
+            navController = navController,
+            screenContainer = screenContainer
+        )
+
+        // Экран истории синхронизации
+        composable(Screen.SyncHistory.route) {
+            val viewModel = remember { screenContainer.createSyncHistoryViewModel() }
+
+            SyncHistoryScreen(
+                viewModel = viewModel,
+                navigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+    }
+}
+
+/**
+ * Функция добавления графа навигации для задач
+ */
+fun NavGraphBuilder.tasksNavGraph(
+    navController: NavController,
+    screenContainer: ScreenContainer
+) {
+    navigation(
+        startDestination = Screen.TaskList.route,
+        route = "tasks_graph"
+    ) {
+        // Экран списка задач
+        composable(Screen.TaskList.route) {
+            val viewModel = remember { screenContainer.createTaskListViewModel() }
+
+            TaskListScreen(
+                viewModel = viewModel,
+                navigateToTaskDetail = { taskId ->
+                    navController.navigate(Screen.TaskDetail.createRoute(taskId))
+                },
+                navigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Экран детальной информации о задаче
+        composable(
+            route = Screen.TaskDetail.route,
+            arguments = listOf(
+                navArgument("taskId") {
+                    type = NavType.StringType
+                }
+            )
+        ) {
+            val taskId = it.arguments?.getString("taskId") ?: ""
+            val viewModel = remember { screenContainer.createTaskDetailViewModel(taskId) }
+
+            TaskDetailScreen(
+                viewModel = viewModel,
+                navigateBack = {
+                    navController.popBackStack()
+                },
+                navigateToProductsList = {
+                    navController.navigate(Screen.ProductList.createRoute(true))
+                },
+                navController = navController
+            )
+        }
+    }
+}
+
+/**
+ * Функция добавления графа навигации для продуктов
+ */
+fun NavGraphBuilder.productsNavGraph(
+    navController: NavController,
+    screenContainer: ScreenContainer
+) {
+    navigation(
+        startDestination = Screen.ProductList.route,
+        route = "products_graph"
+    ) {
+        // Экран списка продуктов
+        composable(
+            route = Screen.ProductList.route,
+            arguments = listOf(
+                navArgument("isSelectionMode") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                }
+            )
+        ) {
+            val isSelectionMode = it.arguments?.getBoolean("isSelectionMode") ?: false
+            val viewModel = remember { screenContainer.createProductListViewModel(isSelectionMode) }
+
+            ProductListScreen(
+                viewModel = viewModel,
+                navigateToProductDetail = { productId ->
+                    navController.navigate(Screen.ProductDetail.createRoute(productId))
+                },
+                navigateBack = {
+                    navController.popBackStack()
+                },
+                returnProductToTask = { product ->
+                    // Возвращаемся к предыдущему экрану (экрану задания)
+                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                        "selected_product", product
+                    )
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Экран детальной информации о продукте
+        composable(
+            route = Screen.ProductDetail.route,
+            arguments = listOf(
+                navArgument("productId") {
+                    type = NavType.StringType
+                }
+            )
+        ) {
+            val productId = it.arguments?.getString("productId") ?: ""
+            val viewModel = remember { screenContainer.createProductDetailViewModel(productId) }
+
+            ProductDetailScreen(
+                viewModel = viewModel,
+                navigateBack = {
+                    navController.popBackStack()
+                },
+                navigateToProduct = { newProductId ->
+                    navController.navigate(Screen.ProductDetail.createRoute(newProductId)) {
+                        popUpTo(Screen.ProductDetail.route) { inclusive = true }
                     }
                 }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                onDispose {
-                    lifecycleOwner.lifecycle.removeObserver(observer)
-                }
-            }
+            )
+        }
+    }
+}
+
+/**
+ * Функция добавления графа навигации для логов
+ */
+fun NavGraphBuilder.logsNavGraph(
+    navController: NavController,
+    screenContainer: ScreenContainer
+) {
+    navigation(
+        startDestination = Screen.LogList.route,
+        route = "logs_graph"
+    ) {
+        // Экран списка логов
+        composable(Screen.LogList.route) {
+            val viewModel = remember { screenContainer.createLogListViewModel() }
 
             LogListScreen(
-                viewModel = logsGraphContainer.createLogListViewModel(),
+                viewModel = viewModel,
                 navigateToLogDetail = { logId ->
                     navController.navigate(Screen.LogDetail.createRoute(logId))
                 },
@@ -270,6 +368,7 @@ fun AppNavigation(
             )
         }
 
+        // Экран детальной информации о логе
         composable(
             route = Screen.LogDetail.route,
             arguments = listOf(
@@ -277,125 +376,23 @@ fun AppNavigation(
                     type = NavType.IntType
                 }
             )
-        ) { entry ->
-            val logsGraphContainer = remember {
-                navHostContainer.createLogsGraphContainer()
-            }
-
-            val logId = entry.arguments?.getInt("logId") ?: 0
-
-            // Отслеживаем жизненный цикл для очистки ресурсов
-            DisposableEffect(lifecycleOwner, entry) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_DESTROY) {
-                        if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                            Timber.d("LogDetail screen destroyed, clearing container")
-                            logsGraphContainer.clear()
-                        }
-                    }
-                }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                onDispose {
-                    lifecycleOwner.lifecycle.removeObserver(observer)
-                }
-            }
+        ) {
+            val logId = it.arguments?.getInt("logId") ?: 0
+            val viewModel = remember { screenContainer.createLogDetailViewModel(logId) }
 
             LogDetailScreen(
-                viewModel = logsGraphContainer.createLogDetailViewModel(logId),
+                viewModel = viewModel,
                 navigateBack = {
                     navController.popBackStack()
                 }
             )
         }
-
-        // Подключаем граф навигации для заданий
-        tasksNavGraph(
-            navController = navController,
-            tasksGraphContainer = navHostContainer.createTasksGraphContainer(),
-            lifecycleOwner = lifecycleOwner,
-            navigateToProductsList = { isSelectionMode ->
-                navController.navigate(Screen.ProductList.createRoute(isSelectionMode))
-            }
-        )
-
-        productsNavGraph(
-            navController = navController,
-            productsGraphContainer = navHostContainer.createProductsGraphContainer(),
-            lifecycleOwner = lifecycleOwner,
-            returnProductToTask = { product ->
-                // Возвращаемся к предыдущему экрану (экрану задания)
-                navController.previousBackStackEntry?.savedStateHandle?.set(
-                    "selected_product", product
-                )
-                navController.popBackStack()
-            }
-        )
-
-        composable(Screen.SyncHistory.route) { entry ->
-            val settingsScreenContainer = remember {
-                navHostContainer.createSettingsScreenContainer()
-            }
-
-            // Отслеживаем жизненный цикл для очистки ресурсов
-            DisposableEffect(lifecycleOwner, entry) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_DESTROY) {
-                        if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                            Timber.d("SyncHistory screen destroyed, clearing container")
-                            settingsScreenContainer.clear()
-                        }
-                    }
-                }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                onDispose {
-                    lifecycleOwner.lifecycle.removeObserver(observer)
-                }
-            }
-
-            SyncHistoryScreen(
-                viewModel = settingsScreenContainer.createSyncHistoryViewModel(),
-                navigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-
-        // Остальные экраны будут добавлены в следующих этапах реализации
     }
 }
 
 /**
- * Получение контейнера для подграфа серверов с отслеживанием жизненного цикла
+ * Запечатанный класс для определения экранов навигации
  */
-@Composable
-private fun rememberServerListGraphContainer(
-    navHostContainer: NavHostContainer,
-    entry: NavBackStackEntry
-): ServerListGraphContainer {
-    val container = remember(navHostContainer) {
-        navHostContainer.createServerListGraphContainer()
-    }
-
-    // Отслеживаем жизненный цикл для очистки ресурсов
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, entry) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_DESTROY) {
-                if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                    Timber.d("ServerList graph destroyed, clearing container")
-                    container.clear()
-                }
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
-    return container
-}
-
 sealed class Screen(val route: String) {
     object ServerList : Screen("server_list")
     object ServerDetail : Screen("server_detail/{serverId}") {
@@ -423,6 +420,5 @@ sealed class Screen(val route: String) {
     }
 
     object Settings : Screen("settings")
-
     object SyncHistory : Screen("sync_history")
 }

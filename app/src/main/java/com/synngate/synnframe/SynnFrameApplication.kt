@@ -13,7 +13,6 @@ import java.util.Locale
 
 class SynnFrameApplication : Application() {
 
-    // Ручной DI контейнер для всего приложения
     lateinit var appContainer: AppContainer
 
     override fun onCreate() {
@@ -61,5 +60,6 @@ class SynnFrameApplication : Application() {
 
         // Очистка ресурсов при завершении работы приложения
         Timber.i("Cleaning up Application resources")
+        appContainer.dispose()
     }
 }
