@@ -1,22 +1,8 @@
 package com.synngate.synnframe.domain.entity
 
-/**
- * Перечисление для типов логов
- */
 enum class LogType {
-    /**
-     * Информационный лог
-     */
     INFO,
-
-    /**
-     * Предупреждение
-     */
     WARNING,
-
-    /**
-     * Ошибка
-     */
     ERROR;
 
     companion object {

@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
@@ -22,9 +24,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.domain.entity.LogType
 
 /**
  * Тип статуса уведомления
@@ -174,33 +176,36 @@ fun TaskStatusIndicator(
 }
 
 /**
- * Компонент для отображения типа лога
+ * Компонент для отображения типа лога в виде иконки
  */
 @Composable
 fun LogTypeIndicator(
-    type: String,
+    type: LogType,
     modifier: Modifier = Modifier
 ) {
-    // Определяем цвет в зависимости от типа лога
-    val (color, textColor) = when (type.uppercase()) {
-        "INFO" -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
-        "WARNING" -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
-        "ERROR" -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
-        else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
+    // Определяем иконку и цвет в зависимости от типа лога
+    val (icon, color) = when (type) {
+        LogType.INFO -> Icons.Default.Info to MaterialTheme.colorScheme.primary
+        LogType.WARNING -> Icons.Default.Warning to MaterialTheme.colorScheme.tertiary
+        LogType.ERROR -> Icons.Default.Error to MaterialTheme.colorScheme.error
+        else -> Icons.Default.Info to MaterialTheme.colorScheme.onSurfaceVariant
     }
 
+    // Отображаем иконку в круглом контейнере
     Box(
         modifier = modifier
+            .size(36.dp)
             .background(
-                color = color,
-                shape = MaterialTheme.shapes.small
-            )
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+                color = color.copy(alpha = 0.12f),
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = type,
-            style = MaterialTheme.typography.labelMedium,
-            color = textColor
+        Icon(
+            imageVector = icon,
+            contentDescription = type.name,
+            tint = color,
+            modifier = Modifier.size(20.dp)
         )
     }
 }

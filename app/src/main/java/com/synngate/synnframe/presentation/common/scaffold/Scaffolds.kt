@@ -138,7 +138,7 @@ fun AppScaffold(
                         actions = {
                             actions()
 
-                            if (menuItems != null && menuItems.isNotEmpty()) {
+                            if (!menuItems.isNullOrEmpty()) {
                                 IconButton(onClick = { menuExpanded = true }) {
                                     Icon(
                                         imageVector = Icons.Default.MoreVert,

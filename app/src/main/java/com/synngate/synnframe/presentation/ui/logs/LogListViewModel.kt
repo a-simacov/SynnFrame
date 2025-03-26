@@ -46,7 +46,7 @@ class LogListViewModel(
                     Timber.e(e, "Error loading logs")
                     updateState { it.copy(
                         isLoading = false,
-                        error = "Ошибка загрузки логов: ${e.message}"
+                        error = "Error loading logs: ${e.message}"
                     ) }
                 }.collect { logs ->
                     updateState { it.copy(
@@ -59,10 +59,10 @@ class LogListViewModel(
                 Timber.e(e, "Exception during logs loading")
                 updateState { it.copy(
                     isLoading = false,
-                    error = "Ошибка загрузки логов: ${e.message}"
+                    error = "Error loading logs: ${e.message}"
                 ) }
 
-                loggingService.logError("Ошибка загрузки логов: ${e.message}")
+                loggingService.logError("Error loading logs: ${e.message}")
             }
         }
     }

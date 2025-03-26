@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.presentation.common.status.LogTypeIndicator
 import com.synngate.synnframe.presentation.common.status.TaskStatusIndicator
 
@@ -167,7 +168,7 @@ fun ProductListItem(
 @Composable
 fun LogListItem(
     message: String,
-    type: String,
+    type: LogType,
     createdAt: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -175,7 +176,7 @@ fun LogListItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
             .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -187,7 +188,7 @@ fun LogListItem(
         ) {
             LogTypeIndicator(
                 type = type,
-                modifier = Modifier.padding(end = 8.dp)
+                modifier = Modifier.padding(end = 12.dp)
             )
 
             Column(

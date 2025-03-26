@@ -158,7 +158,7 @@ fun LogDetailScreen(
                         ) {
                             state.log?.let { log ->
                                 LogTypeIndicator(
-                                    type = log.type.name,
+                                    type = log.type,
                                     modifier = Modifier.align(Alignment.CenterStart)
                                 )
 

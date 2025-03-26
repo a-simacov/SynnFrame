@@ -5,6 +5,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -253,9 +255,10 @@ fun <T> StatusFilterChips(
     allItem: T? = null,
     allItemText: String = stringResource(id = R.string.task_status_all)
 ) {
+    val scrollState = rememberScrollState()
     Row(
         modifier = modifier
-            .fillMaxWidth()
+            .horizontalScroll(scrollState)
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -293,9 +296,6 @@ fun <T> StatusFilterChips(
     }
 }
 
-/**
- * Отдельный фильтр-чип для статуса
- */
 @Composable
 fun StatusFilterChip(
     text: String,
