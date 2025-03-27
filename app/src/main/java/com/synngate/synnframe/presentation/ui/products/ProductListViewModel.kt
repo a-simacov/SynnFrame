@@ -36,9 +36,6 @@ class ProductListViewModel(
         loadProducts()
     }
 
-    /**
-     * Наблюдает за количеством товаров
-     */
     private fun observeProductsCount() {
         launchIO {
             productUseCases.getProductsCount().collectLatest { count ->
@@ -47,9 +44,6 @@ class ProductListViewModel(
         }
     }
 
-    /**
-     * Загружает и сортирует товары
-     */
     private fun loadProducts() {
         launchIO {
             updateState { it.copy(isLoading = true) }
@@ -80,9 +74,6 @@ class ProductListViewModel(
         }
     }
 
-    /**
-     * Применяет фильтрацию и сортировку к товарам
-     */
     private fun processProducts(products: List<Product>): List<Product> {
         val state = uiState.value
 
@@ -104,9 +95,6 @@ class ProductListViewModel(
         return sortedProducts
     }
 
-    /**
-     * Обновляет поисковый запрос и фильтрует товары
-     */
     @OptIn(FlowPreview::class)
     fun updateSearchQuery(query: String) {
         updateState { it.copy(searchQuery = query) }
@@ -149,9 +137,6 @@ class ProductListViewModel(
         }
     }
 
-    /**
-     * Обрабатывает нажатие на товар
-     */
     fun onProductClick(product: Product) {
         if (uiState.value.isSelectionMode) {
             // В режиме выбора товара выделяем товар и показываем кнопку подтверждения
@@ -162,32 +147,20 @@ class ProductListViewModel(
         }
     }
 
-    /**
-     * Обновляет фильтр по модели учета
-     */
     fun updateAccountingModelFilter(model: AccountingModel?) {
         updateState { it.copy(filterByAccountingModel = model) }
         loadProducts()
     }
 
-    /**
-     * Обновляет порядок сортировки
-     */
     fun updateSortOrder(sortOrder: SortOrder) {
         updateState { it.copy(sortOrder = sortOrder) }
         loadProducts()
     }
 
-    /**
-     * Переключает видимость панели фильтров
-     */
     fun toggleFilterPanel() {
         updateState { it.copy(showFilterPanel = !it.showFilterPanel) }
     }
 
-    /**
-     * Сбрасывает все фильтры
-     */
     fun resetFilters() {
         updateState { it.copy(
             filterByAccountingModel = null,
@@ -196,10 +169,6 @@ class ProductListViewModel(
         loadProducts()
     }
 
-    /**
-     * Синхронизирует товары с сервером
-     */
-    // В ProductListViewModel
     fun syncProducts() {
         launchIO {
             updateState { it.copy(isSyncing = true) }
@@ -240,16 +209,10 @@ class ProductListViewModel(
         }
     }
 
-    /**
-     * Возвращается на предыдущий экран
-     */
     fun navigateBack() {
         sendEvent(ProductListEvent.NavigateBack)
     }
 
-    /**
-     * Поиск товара по штрихкоду
-     */
     fun findProductByBarcode(barcode: String) {
         launchIO {
             updateState { it.copy(isLoading = true) }
@@ -279,23 +242,14 @@ class ProductListViewModel(
         }
     }
 
-    /**
-     * Запускает режим пакетного сканирования
-     */
     fun startBatchScanning() {
         updateState { it.copy(showBatchScannerDialog = true) }
     }
 
-    /**
-     * Завершает режим пакетного сканирования
-     */
     fun finishBatchScanning() {
         updateState { it.copy(showBatchScannerDialog = false) }
     }
 
-    /**
-     * Обрабатывает результаты пакетного сканирования
-     */
     fun processBatchScanResults(results: List<ScanResult>) {
         // Логируем результаты сканирования
         launchIO {
@@ -316,6 +270,14 @@ class ProductListViewModel(
 
         // Закрываем диалог сканирования
         finishBatchScanning()
+    }
+
+    fun startScanning() {
+        updateState { it.copy(showScannerDialog = true) }
+    }
+
+    fun finishScanning() {
+        updateState { it.copy(showScannerDialog = false) }
     }
 
     /**

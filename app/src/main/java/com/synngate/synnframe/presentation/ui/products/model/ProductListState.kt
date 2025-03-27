@@ -27,11 +27,10 @@ data class ProductListState(
 
     val showFilterPanel: Boolean = false,
 
-    // Показывать ли диалог пакетного сканирования
     val showBatchScannerDialog: Boolean = false,
 
-    // Добавим поле в ProductListState
-// Выбранный товар (для режима выбора)
+    val showScannerDialog: Boolean = false,
+
     val selectedProduct: Product? = null
 )
 

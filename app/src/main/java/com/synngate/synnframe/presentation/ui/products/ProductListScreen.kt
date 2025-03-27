@@ -16,7 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -49,6 +48,7 @@ import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.scaffold.LoadingScreenContent
+import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerDialog
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.products.components.BatchScannerDialog
 import com.synngate.synnframe.presentation.ui.products.components.ProductListItem
@@ -63,19 +63,12 @@ fun ProductListScreen(
     returnProductToTask: ((Product) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    // Получаем состояние из ViewModel
     val state by viewModel.uiState.collectAsState()
 
-    // Для отображения Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Состояние диалога сканирования штрихкода
-    var showScannerDialog by remember { mutableStateOf(false) }
-
-    // Состояние меню сортировки
     var showSortMenu by remember { mutableStateOf(false) }
 
-    // Обработка событий
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
@@ -98,17 +91,24 @@ fun ProductListScreen(
         }
     }
 
-    // Фрагмент кода с исправленным вызовом BatchScannerDialog
-// Добавим диалог пакетного сканирования
     if (state.showBatchScannerDialog) {
         BatchScannerDialog(
-            // Теперь функция не должна возвращать значение
             onBarcodeScanned = { barcode ->
-                // Запускаем поиск в ViewModel без попытки возвращать результат
                 viewModel.findProductByBarcode(barcode)
             },
             onClose = { viewModel.finishBatchScanning() },
             onDone = { results -> viewModel.processBatchScanResults(results) }
+        )
+    }
+
+    if (state.showScannerDialog) {
+        BarcodeScannerDialog(
+            onBarcodeScanned = { barcode ->
+                viewModel.findProductByBarcode(barcode)
+                viewModel.finishScanning()
+            },
+            onClose = { viewModel.finishScanning() },
+            productName = null
         )
     }
 
@@ -191,7 +191,7 @@ fun ProductListScreen(
 
                 // Кнопка сканирования одиночного штрихкода
                 ExtendedFloatingActionButton(
-                    onClick = { showScannerDialog = true },
+                    onClick = { viewModel.startScanning() },
                     icon = {
                         Icon(
                             imageVector = Icons.Default.QrCodeScanner,
