@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,7 +48,6 @@ import com.synngate.synnframe.presentation.ui.products.model.ProductDetailEvent
 fun ProductDetailScreen(
     viewModel: ProductDetailViewModel,
     navigateBack: () -> Unit,
-    navigateToProduct: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -85,9 +85,6 @@ fun ProductDetailScreen(
 
     AppScaffold(
         title = stringResource(id = R.string.product_details),
-        subtitle = state.product?.articleNumber?.let {
-            stringResource(id = R.string.product_article_number, it)
-        },
         onNavigateBack = navigateBack,
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {
@@ -189,7 +186,7 @@ private fun ProductDetailsContent(
     ) {
         ProductBasicInfo(product = product)
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         SectionHeader(title = stringResource(id = R.string.units_of_measure))
 
@@ -200,7 +197,7 @@ private fun ProductDetailsContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         SectionHeader(title = stringResource(id = R.string.barcodes))
 
@@ -237,8 +234,12 @@ private fun ProductBasicInfo(
             text = product.name,
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
         )
+
+        HorizontalDivider()
 
         InfoRow(
             label = stringResource(id = R.string.product_id),

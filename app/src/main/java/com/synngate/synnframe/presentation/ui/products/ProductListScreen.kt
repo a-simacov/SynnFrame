@@ -95,8 +95,8 @@ fun ProductListScreen(
     if (state.showScannerDialog) {
         BarcodeScannerDialog(
             onBarcodeScanned = { barcode ->
-                viewModel.findProductByBarcode(barcode)
-                viewModel.finishScanning()
+                // Сначала закрываем диалог и затем обрабатываем штрих-код в одном методе
+                viewModel.handleScannedBarcode(barcode)
             },
             onClose = { viewModel.finishScanning() },
             productName = null

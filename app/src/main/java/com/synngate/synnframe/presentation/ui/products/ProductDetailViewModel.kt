@@ -148,11 +148,12 @@ class ProductDetailViewModel(
 
         val productInfo = """
             Наименование: ${product.name}
+            Идентификатор: ${product.id}
             Артикул: ${product.articleNumber}
             Модель учета: $accountingModelText
             Основная единица измерения: $mainUnit
-            Количество единиц измерения: ${product.units.size}
-            Общее количество штрихкодов: ${product.getAllBarcodes().size}
+            Единицы измерения: ${product.units.joinToString("\n") { it.name }}
+            Штрихкоды: ${product.getAllBarcodes().distinct().joinToString("\n")}
         """.trimIndent()
 
         val isCopied = clipboardService.copyToClipboard(

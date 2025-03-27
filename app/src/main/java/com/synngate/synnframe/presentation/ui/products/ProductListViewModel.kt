@@ -194,11 +194,45 @@ class ProductListViewModel(
         }
     }
 
+    // Полностью перерабатываем метод обработки штрихкода
+    fun handleScannedBarcode(barcode: String) {
+        launchIO {
+            updateState { it.copy(isLoading = true, showScannerDialog = false) }
+
+            try {
+                val product = productUseCases.findProductByBarcode(barcode)
+
+                if (product != null) {
+                    // Если товар найден, посылаем событие навигации
+                    if (uiState.value.isSelectionMode) {
+                        sendEvent(ProductListEvent.ReturnToTaskWithProduct(product))
+                    } else {
+                        sendEvent(ProductListEvent.NavigateToProductDetail(product.id))
+                    }
+                } else {
+                    // Если товар не найден, показываем сообщение
+                    sendEvent(ProductListEvent.ShowSnackbar("Товар со штрихкодом $barcode не найден"))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error finding product by barcode")
+                sendEvent(ProductListEvent.ShowSnackbar("Ошибка поиска по штрихкоду: ${e.message}"))
+            } finally {
+                updateState { it.copy(isLoading = false) }
+            }
+        }
+    }
+
     fun navigateBack() {
         sendEvent(ProductListEvent.NavigateBack)
     }
 
-    fun findProductByBarcode(barcode: String) {
+    // Добавляем новый метод для навигации к деталям товара
+    fun navigateToProductDetail(productId: String) {
+        sendEvent(ProductListEvent.NavigateToProductDetail(productId))
+    }
+
+    // Изменяем метод findProductByBarcode для использования колбэка
+    fun findProductByBarcode(barcode: String, onProductFound: (Product?) -> Unit = {}) {
         launchIO {
             updateState { it.copy(isLoading = true) }
 
@@ -206,13 +240,8 @@ class ProductListViewModel(
                 val product = productUseCases.findProductByBarcode(barcode)
 
                 if (product != null) {
-                    // Если товар найден и находимся в режиме выбора, сразу возвращаем его
-                    if (uiState.value.isSelectionMode) {
-                        sendEvent(ProductListEvent.ReturnToTaskWithProduct(product))
-                    } else {
-                        // Иначе открываем подробную информацию
-                        sendEvent(ProductListEvent.NavigateToProductDetail(product.id))
-                    }
+                    // Если товар найден, вызываем колбэк
+                    launchMain { onProductFound(product) }
                 } else {
                     // Если товар не найден, показываем сообщение
                     sendEvent(ProductListEvent.ShowSnackbar("Товар со штрихкодом $barcode не найден"))

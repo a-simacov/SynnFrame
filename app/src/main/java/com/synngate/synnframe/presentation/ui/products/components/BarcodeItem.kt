@@ -43,7 +43,6 @@ fun BarcodeItem(
                 .fillMaxWidth()
                 .padding(8.dp)
         ) {
-            // Индикатор основного штрихкода
             if (isMainBarcode) {
                 Icon(
                     imageVector = Icons.Default.Star,
@@ -55,7 +54,6 @@ fun BarcodeItem(
                 Spacer(modifier = Modifier.width(32.dp))
             }
 
-            // Штрихкод
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -74,7 +72,6 @@ fun BarcodeItem(
                 }
             }
 
-            // Кнопка копирования
             IconButton(
                 onClick = { onCopyClick(barcode) }
             ) {

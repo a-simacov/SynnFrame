@@ -195,7 +195,19 @@ fun BarcodeScannerDialog(
     productName: String? = null,
     modifier: Modifier = Modifier
 ) {
-    // Используем Dialog с полноэкранными параметрами
+    // Добавляем состояние, которое предотвратит повторную обработку штрихкода
+    var hasProcessedBarcode by remember { mutableStateOf(false) }
+
+    // Используем DisposableEffect для закрытия диалога при размонтировании
+    DisposableEffect(Unit) {
+        onDispose {
+            // Гарантируем закрытие диалога при размонтировании компонента
+            if (!hasProcessedBarcode) {
+                onClose()
+            }
+        }
+    }
+
     Dialog(
         onDismissRequest = onClose,
         properties = DialogProperties(
@@ -256,7 +268,12 @@ fun BarcodeScannerDialog(
                 ) {
                     // Используем BarcodeScannerView для отображения камеры и распознавания
                     BarcodeScannerView(
-                        onBarcodeDetected = onBarcodeScanned,
+                        onBarcodeDetected = { barcode ->
+                            if (!hasProcessedBarcode) {
+                                hasProcessedBarcode = true
+                                onBarcodeScanned(barcode)
+                            }
+                        },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
