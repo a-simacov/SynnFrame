@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -213,7 +214,7 @@ fun BarcodeScannerDialog(
         properties = DialogProperties(
             dismissOnBackPress = true,
             dismissOnClickOutside = false,
-            usePlatformDefaultWidth = false // Важно для полноэкранного диалога
+            usePlatformDefaultWidth = false
         )
     ) {
         Surface(
@@ -225,11 +226,10 @@ fun BarcodeScannerDialog(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                // Заголовок диалога
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp),
+                        .padding(bottom = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -238,7 +238,6 @@ fun BarcodeScannerDialog(
                         modifier = Modifier.weight(1f)
                     )
 
-                    // Кнопка закрытия
                     IconButton(onClick = onClose) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -247,9 +246,8 @@ fun BarcodeScannerDialog(
                     }
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp))
+                HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
 
-                // Отображение имени продукта, если оно передано
                 productName?.let {
                     Text(
                         text = it,
@@ -257,13 +255,13 @@ fun BarcodeScannerDialog(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
-                    HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
                 }
 
                 // Важно! Область превью камеры должна занимать основное пространство
                 Box(
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(0.7f)
                         .fillMaxWidth()
                 ) {
                     // Используем BarcodeScannerView для отображения камеры и распознавания
@@ -278,24 +276,32 @@ fun BarcodeScannerDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Инструкция по сканированию
                 Text(
                     text = stringResource(id = R.string.scan_barcode_instruction),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Кнопка закрытия
                 Button(
                     onClick = onClose,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp) // Фиксированная высота
+                        .padding(vertical = 4.dp), // Добавляем отступ
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
                 ) {
-                    Text(text = stringResource(id = R.string.cancel))
+                    Text(
+                        text = stringResource(id = R.string.close),
+                        style = MaterialTheme.typography.titleMedium
+                    )
                 }
             }
         }

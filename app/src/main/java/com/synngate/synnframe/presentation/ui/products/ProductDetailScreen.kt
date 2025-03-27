@@ -201,7 +201,7 @@ private fun ProductDetailsContent(
 
         SectionHeader(title = stringResource(id = R.string.barcodes))
 
-        val barcodes = product.units.flatMap { it.barcodes }
+        val barcodes = product.getAllBarcodes()//units.flatMap { it.barcodes }
 
         if (barcodes.isEmpty()) {
             Text(
