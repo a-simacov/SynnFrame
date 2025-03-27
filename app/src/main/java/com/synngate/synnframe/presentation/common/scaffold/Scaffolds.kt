@@ -6,20 +6,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -38,7 +39,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,6 +84,7 @@ fun AppScaffold(
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val coroutineScope = rememberCoroutineScope()
     var menuExpanded by remember { mutableStateOf(false) }
+    val windowInsets = WindowInsets.systemBars
 
     val mainContent = @Composable {
         Scaffold(
@@ -183,6 +184,7 @@ fun AppScaffold(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(8.dp)
+                            .navigationBarsPadding()
                     ) {
                         // Информация о пользователе и синхронизации
                         Box(
@@ -218,16 +220,17 @@ fun AppScaffold(
             snackbarHost = {
                 SnackbarHost(hostState = snackbarHostState)
             },
-            floatingActionButton = floatingActionButton
+            floatingActionButton = floatingActionButton,
+            contentWindowInsets = windowInsets
         ) { paddingValues ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    //.navigationBarsPadding()
                     //.padding(paddingValues)
             ) {
                 content(paddingValues)
 
-                // Индикатор загрузки поверх содержимого
                 if (isLoading) {
                     Box(
                         modifier = Modifier

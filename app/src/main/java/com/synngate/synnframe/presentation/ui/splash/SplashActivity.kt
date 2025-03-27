@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -42,6 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.R
 import com.synngate.synnframe.SynnFrameApplication
@@ -66,6 +66,8 @@ class SplashActivity : ComponentActivity() {
 
         // Получение контейнера зависимостей
         val appContainer = (application as SynnFrameApplication).appContainer
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         Timber.d("SplashActivity onCreate")
 
