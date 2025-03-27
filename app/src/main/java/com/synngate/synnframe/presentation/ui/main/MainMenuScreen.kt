@@ -1,6 +1,5 @@
 package com.synngate.synnframe.presentation.ui.main
 
-import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,14 +13,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.automirrored.outlined.ListAlt
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.outlined.Assignment
 import androidx.compose.material.icons.outlined.Inventory
-import androidx.compose.material.icons.outlined.ListAlt
-import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
@@ -33,7 +28,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -89,12 +83,10 @@ fun MainMenuScreen(
         }
     }
 
-    // Обработка нажатия кнопки Назад
     BackHandler {
         viewModel.onExitClick()
     }
 
-    // Диалог подтверждения выхода
     if (state.showExitConfirmation) {
         ConfirmationDialog(
             title = stringResource(id = R.string.exit_confirmation_title),
@@ -104,12 +96,8 @@ fun MainMenuScreen(
         )
     }
 
-    // Основной UI экрана
     AppScaffold(
         title = stringResource(id = R.string.main_menu_title),
-        subtitle = state.currentUser?.name?.let {
-            stringResource(id = R.string.welcome_user, it)
-        },
         snackbarHostState = snackbarHostState,
         currentUser = state.currentUser?.name,
         isSyncing = state.isSyncing,
@@ -130,7 +118,6 @@ fun MainMenuScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // Раздел основной навигации
             Text(
                 text = stringResource(id = R.string.main_functions),
                 style = MaterialTheme.typography.titleMedium,
@@ -138,7 +125,6 @@ fun MainMenuScreen(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            // Кнопка "Задания"
             NavigationButton(
                 text = stringResource(id = R.string.tasks),
                 onClick = { viewModel.onTasksClick() },
@@ -149,7 +135,6 @@ fun MainMenuScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Кнопка "Товары"
             NavigationButton(
                 text = stringResource(id = R.string.products),
                 onClick = { viewModel.onProductsClick() },

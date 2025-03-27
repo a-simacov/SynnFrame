@@ -9,7 +9,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,7 +32,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -48,7 +46,6 @@ import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.common.buttons.ActionButton
-import com.synngate.synnframe.presentation.common.buttons.CyclicThemeButton
 import com.synngate.synnframe.presentation.common.buttons.CyclicValueButton
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.buttons.PropertyToggleButton
@@ -587,11 +584,6 @@ fun InterfaceSettingsSection(
         title = stringResource(id = R.string.interface_settings),
         modifier = modifier
     ) {
-//        CyclicThemeButton(
-//            currentTheme = state.themeMode,
-//            onThemeChange = onThemeModeChange
-//        )
-        // В InterfaceSettingsSection
         Text(
             text = stringResource(id = R.string.theme_selection),
             style = MaterialTheme.typography.bodyMedium,
