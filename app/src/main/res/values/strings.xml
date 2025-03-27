@@ -153,8 +153,8 @@
     <string name="loading_products">Загрузка товаров...</string>
     <string name="product_article">Артикул: %s</string>
     <string name="product_main_unit">Ед.: %s</string>
-    <string name="accounting_model_batch">По партиям и количеству</string>
-    <string name="accounting_model_qty">Только по количеству</string>
+    <string name="accounting_model_batch">По срокам годности</string>
+    <string name="accounting_model_qty">По количеству</string>
     <string name="filter_accounting_model">Фильтр по модели учета</string>
     <string name="all_models">Все модели</string>
     <string name="scan_barcode">Сканировать штрихкод</string>
@@ -498,4 +498,5 @@
     <string name="clear_date_filter">Очистить фильтр по дате</string>
 
     <string name="select_time">Выберите время</string>
+    <string name="product_id">Идентификатор</string>
 </resources>

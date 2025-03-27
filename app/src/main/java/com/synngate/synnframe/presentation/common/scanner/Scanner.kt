@@ -70,14 +70,12 @@ fun BarcodeScannerView(
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     var hasCameraPermission by remember { mutableStateOf(false) }
 
-    // Запрос разрешения для использования камеры
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasCameraPermission = isGranted
     }
 
-    // Проверка разрешений при запуске
     LaunchedEffect(key1 = Unit) {
         hasCameraPermission = ContextCompat.checkSelfPermission(
             context,
@@ -89,7 +87,6 @@ fun BarcodeScannerView(
         }
     }
 
-    // Освобождение ресурсов при уничтожении
     DisposableEffect(lifecycleOwner) {
         onDispose {
             cameraExecutor.shutdown()
@@ -171,7 +168,6 @@ fun BarcodeScannerView(
                     )
             )
         } else {
-            // Отображаем сообщение о необходимости разрешения на использование камеры
             Box(
                 modifier = Modifier
                     .fillMaxSize()

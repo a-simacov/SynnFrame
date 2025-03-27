@@ -1,6 +1,5 @@
 package com.synngate.synnframe.presentation.ui.products
 
-import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
@@ -150,25 +149,8 @@ class ProductListViewModel(
         }
     }
 
-    fun updateAccountingModelFilter(model: AccountingModel?) {
-        updateState { it.copy(filterByAccountingModel = model) }
-        loadProducts()
-    }
-
     fun updateSortOrder(sortOrder: SortOrder) {
         updateState { it.copy(sortOrder = sortOrder) }
-        loadProducts()
-    }
-
-    fun toggleFilterPanel() {
-        updateState { it.copy(showFilterPanel = !it.showFilterPanel) }
-    }
-
-    fun resetFilters() {
-        updateState { it.copy(
-            filterByAccountingModel = null,
-            sortOrder = SortOrder.NAME_ASC
-        ) }
         loadProducts()
     }
 

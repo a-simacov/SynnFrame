@@ -153,7 +153,7 @@
     <string name="loading_products">Loading products...</string>
     <string name="product_article">Article: %s</string>
     <string name="product_main_unit">Unit: %s</string>
-    <string name="accounting_model_batch">By batches and quantity</string>
+    <string name="accounting_model_batch">By expire dates</string>
     <string name="accounting_model_qty">By quantity only</string>
     <string name="filter_accounting_model">Filter by accounting model</string>
     <string name="all_models">All models</string>
@@ -495,4 +495,5 @@
     <string name="choose_time">Choose time</string>
     <string name="clear_date_filter">Clear filter by date</string>
     <string name="select_time">Select time</string>
+    <string name="product_id">Identifier</string>
 </resources>

@@ -48,10 +48,9 @@ interface ProductDao {
     suspend fun findProductUnitByMainBarcode(barcode: String): ProductUnitEntity?
 
     @Query(
-        "SELECT p.* FROM products p " +
-                "INNER JOIN product_units pu ON p.id = pu.productId " +
-                "LEFT JOIN barcodes b ON pu.id = b.productUnitId " +
-                "WHERE pu.mainBarcode = :barcode OR b.code = :barcode LIMIT 1"
+        """SELECT p.* FROM products p
+        WHERE p.id IN ( SELECT b.productId FROM barcodes b WHERE b.code = :barcode)
+        LIMIT 1"""
     )
     suspend fun findProductByBarcode(barcode: String): ProductEntity?
 
