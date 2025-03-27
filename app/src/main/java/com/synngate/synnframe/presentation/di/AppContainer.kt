@@ -5,11 +5,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.synngate.synnframe.data.datastore.AppSettingsDataStore
-import com.synngate.synnframe.data.local.dao.LogDao
-import com.synngate.synnframe.data.local.dao.ProductDao
-import com.synngate.synnframe.data.local.dao.ServerDao
-import com.synngate.synnframe.data.local.dao.TaskDao
-import com.synngate.synnframe.data.local.dao.UserDao
 import com.synngate.synnframe.data.local.database.AppDatabase
 import com.synngate.synnframe.data.remote.api.AppUpdateApi
 import com.synngate.synnframe.data.remote.api.AppUpdateApiImpl
@@ -76,7 +71,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
@@ -171,7 +165,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
 
     val productRepository: ProductRepository by lazy {
         Timber.d("Creating ProductRepository")
-        ProductRepositoryImpl(productDao, productApi)
+        ProductRepositoryImpl(productDao, productApi, database)
     }
 
     val taskRepository: TaskRepository by lazy {

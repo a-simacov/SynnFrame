@@ -32,11 +32,14 @@ interface ProductDao {
     @Query("SELECT * FROM product_units WHERE productId IN (:productIds)")
     suspend fun getProductUnitsForProducts(productIds: List<String>): List<ProductUnitEntity>
 
-    @Query("SELECT * FROM barcodes WHERE productUnitId = :unitId")
-    suspend fun getBarcodesForUnit(unitId: String): List<BarcodeEntity>
+    @Query("SELECT * FROM barcodes WHERE productUnitId = :unitId AND productId = :productId")
+    suspend fun getBarcodesForUnit(productId: String, unitId: String): List<BarcodeEntity>
 
-    @Query("SELECT * FROM barcodes WHERE productUnitId IN (:unitIds)")
-    suspend fun getBarcodesForUnits(unitIds: List<String>): List<BarcodeEntity>
+    @Query("SELECT * FROM barcodes WHERE productUnitId IN (:unitIds) AND productId IN (:productIds)")
+    suspend fun getBarcodesForUnits(
+        productIds: List<String>,
+        unitIds: List<String>
+    ): List<BarcodeEntity>
 
     @Query("SELECT * FROM barcodes WHERE code = :barcode")
     suspend fun findBarcodeEntity(barcode: String): BarcodeEntity?
@@ -44,10 +47,12 @@ interface ProductDao {
     @Query("SELECT * FROM product_units WHERE mainBarcode = :barcode")
     suspend fun findProductUnitByMainBarcode(barcode: String): ProductUnitEntity?
 
-    @Query("SELECT p.* FROM products p " +
-            "INNER JOIN product_units pu ON p.id = pu.productId " +
-            "LEFT JOIN barcodes b ON pu.id = b.productUnitId " +
-            "WHERE pu.mainBarcode = :barcode OR b.code = :barcode LIMIT 1")
+    @Query(
+        "SELECT p.* FROM products p " +
+                "INNER JOIN product_units pu ON p.id = pu.productId " +
+                "LEFT JOIN barcodes b ON pu.id = b.productUnitId " +
+                "WHERE pu.mainBarcode = :barcode OR b.code = :barcode LIMIT 1"
+    )
     suspend fun findProductByBarcode(barcode: String): ProductEntity?
 
     @Query("SELECT COUNT(*) FROM products")
@@ -61,6 +66,15 @@ interface ProductDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBarcode(barcode: BarcodeEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProducts(products: List<ProductEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProductUnits(units: List<ProductUnitEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBarcodes(barcodes: List<BarcodeEntity>)
 
     @Update
     suspend fun updateProduct(product: ProductEntity)
@@ -86,8 +100,8 @@ interface ProductDao {
     @Query("DELETE FROM barcodes WHERE productId = :productId")
     suspend fun deleteBarcodesForProduct(productId: String)
 
-    @Query("DELETE FROM barcodes WHERE productUnitId = :productUnitId")
-    suspend fun deleteBarcodesForProductUnit(productUnitId: String)
+    @Query("DELETE FROM barcodes WHERE productUnitId = :productUnitId AND productId = :productId")
+    suspend fun deleteBarcodesForProductUnit(productId: String, productUnitId: String)
 
     @Query("DELETE FROM products")
     suspend fun deleteAllProducts()

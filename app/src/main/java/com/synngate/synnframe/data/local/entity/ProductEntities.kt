@@ -1,6 +1,7 @@
 package com.synngate.synnframe.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.Product
@@ -97,7 +98,11 @@ data class ProductUnitEntity(
  */
 @Entity(
     tableName = "barcodes",
-    primaryKeys = ["code", "productUnitId"]
+    primaryKeys = ["code", "productUnitId"],
+    indices = [
+        Index(value = ["productId"]),
+        Index(value = ["productUnitId"])
+    ]
 )
 data class BarcodeEntity(
     val code: String,

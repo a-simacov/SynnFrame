@@ -19,9 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material3.Divider
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,7 +44,6 @@ import com.synngate.synnframe.presentation.common.scaffold.ErrorScreenContent
 import com.synngate.synnframe.presentation.common.scaffold.InfoRow
 import com.synngate.synnframe.presentation.common.scaffold.LoadingScreenContent
 import com.synngate.synnframe.presentation.common.scaffold.SectionHeader
-import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerDialog
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.products.components.BarcodeItem
 import com.synngate.synnframe.presentation.ui.products.components.ProductUnitItem
@@ -60,17 +56,14 @@ import com.synngate.synnframe.presentation.ui.products.model.ProductDetailEvent
 fun ProductDetailScreen(
     viewModel: ProductDetailViewModel,
     navigateBack: () -> Unit,
-    navigateToProduct: (String) -> Unit,  // Добавляем новый параметр
+    navigateToProduct: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Получаем состояние из ViewModel
     val state by viewModel.uiState.collectAsState()
 
-    // Для отображения Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Обработка событий
-    LaunchedEffect(viewModel) {
+    LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 is ProductDetailEvent.ShowSnackbar -> {
@@ -99,23 +92,8 @@ fun ProductDetailScreen(
         }
     }
 
-    // Добавим диалог сканирования штрихкода
-    if (state.showBarcodeScanner) {
-        BarcodeScannerDialog(
-            onBarcodeScanned = { barcode ->
-                viewModel.handleScannedBarcode(barcode) { foundProduct ->
-                    // При нахождении товара, перенаправляем на его экран
-                    navigateToProduct(foundProduct.id)
-                }
-            },
-            onClose = { viewModel.closeBarcodeScanner() },
-            productName = null
-        )
-    }
-
-    // Основной интерфейс
     AppScaffold(
-        title = state.product?.name ?: stringResource(id = R.string.product_details),
+        title = stringResource(id = R.string.product_details),
         subtitle = state.product?.articleNumber?.let {
             stringResource(id = R.string.product_article_number, it)
         },
@@ -125,7 +103,6 @@ fun ProductDetailScreen(
             Pair(it, StatusType.ERROR)
         },
         actions = {
-            // Кнопка копирования информации
             IconButton(
                 onClick = { viewModel.copyProductInfoToClipboard() }
             ) {
@@ -134,19 +111,6 @@ fun ProductDetailScreen(
                     contentDescription = stringResource(id = R.string.copy_product_info)
                 )
             }
-        },
-        // Добавим кнопку сканирования в AppScaffold
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { viewModel.openBarcodeScanner() },
-                icon = {
-                    Icon(
-                        imageVector = Icons.Default.QrCodeScanner,
-                        contentDescription = null
-                    )
-                },
-                text = { Text(stringResource(id = R.string.scan_other_product)) }
-            )
         },
         isLoading = state.isLoading
     ) { paddingValues ->
@@ -171,7 +135,6 @@ fun ProductDetailScreen(
                 }
 
                 state.product != null -> {
-                    // Отображаем детали товара
                     ProductDetailsContent(
                         product = state.product!!,
                         selectedUnitId = state.selectedUnitId,
@@ -191,9 +154,6 @@ fun ProductDetailScreen(
     }
 }
 
-/**
- * Содержимое экрана деталей товара
- */
 @Composable
 private fun ProductDetailsContent(
     product: Product,
@@ -245,7 +205,6 @@ private fun ProductDetailsContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Секция единиц измерения
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()

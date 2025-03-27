@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.debounce
 import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import kotlin.coroutines.cancellation.CancellationException
 
 class ProductListViewModel(
     private val productUseCases: ProductUseCases,
@@ -103,12 +104,12 @@ class ProductListViewModel(
         searchJob?.cancel()
 
         searchJob = launchIO {
-            if (query.isEmpty()) {
-                loadProducts()
-            } else {
-                updateState { it.copy(isLoading = true) }
+            try {
+                if (query.isEmpty()) {
+                    loadProducts()
+                } else {
+                    updateState { it.copy(isLoading = true) }
 
-                try {
                     // Используем debounce для предотвращения частых запросов при быстром вводе
                     productUseCases.getProductsByNameFilter(query)
                         .debounce(300)
@@ -124,19 +125,21 @@ class ProductListViewModel(
                                 )
                             }
                         }
-                } catch (e: Exception) {
-                    Timber.e(e, "Error searching products")
-                    updateState { state ->
-                        state.copy(
-                            isLoading = false,
-                            error = e.message ?: "Unknown error occurred"
-                        )
-                    }
+                }
+            } catch (e: CancellationException) {
+                // Игнорируем исключения отмены и сбрасываем статус загрузки
+                updateState { it.copy(isLoading = false) }
+            } catch (e: Exception) {
+                Timber.e(e, "Error searching products")
+                updateState { state ->
+                    state.copy(
+                        isLoading = false,
+                        error = e.message ?: "Unknown error occurred"
+                    )
                 }
             }
         }
     }
-
     fun onProductClick(product: Product) {
         if (uiState.value.isSelectionMode) {
             // В режиме выбора товара выделяем товар и показываем кнопку подтверждения

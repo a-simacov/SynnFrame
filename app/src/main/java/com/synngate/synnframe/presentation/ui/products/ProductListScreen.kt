@@ -1,14 +1,10 @@
 package com.synngate.synnframe.presentation.ui.products
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,13 +16,10 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,9 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
-import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.Product
-import com.synngate.synnframe.presentation.common.filter.FilterPanel
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
@@ -128,7 +119,6 @@ fun ProductListScreen(
         isSyncing = state.isSyncing,
         lastSyncTime = state.lastSyncTime,
         actions = {
-            // Кнопка синхронизации с сервером
             IconButton(
                 onClick = { viewModel.syncProducts() },
                 enabled = !state.isSyncing
@@ -139,7 +129,6 @@ fun ProductListScreen(
                 )
             }
 
-            // Кнопка сортировки
             IconButton(onClick = { showSortMenu = true }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Sort,
@@ -147,7 +136,6 @@ fun ProductListScreen(
                 )
             }
 
-            // Меню сортировки
             DropdownMenu(
                 expanded = showSortMenu,
                 onDismissRequest = { showSortMenu = false }
@@ -171,35 +159,28 @@ fun ProductListScreen(
                 }
             }
         },
-        // Добавим в AppScaffold дополнительную кнопку действия
         floatingActionButton = {
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Кнопка пакетного сканирования
-                ExtendedFloatingActionButton(
+                FloatingActionButton(
                     onClick = { viewModel.startBatchScanning() },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ViewList,
-                            contentDescription = null
-                        )
-                    },
-                    text = { Text(stringResource(id = R.string.batch_scanning)) }
-                )
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ViewList,
+                        contentDescription = null
+                    )
+                }
 
-                // Кнопка сканирования одиночного штрихкода
-                ExtendedFloatingActionButton(
+                FloatingActionButton(
                     onClick = { viewModel.startScanning() },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Default.QrCodeScanner,
-                            contentDescription = null
-                        )
-                    },
-                    text = { Text(stringResource(id = R.string.scan_barcode)) }
-                )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.QrCodeScanner,
+                        contentDescription = null
+                    )
+                }
             }
         },
         isLoading = state.isLoading
@@ -209,7 +190,6 @@ fun ProductListScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Поле поиска
             SearchTextField(
                 value = state.searchQuery,
                 onValueChange = { viewModel.updateSearchQuery(it) },
@@ -220,96 +200,6 @@ fun ProductListScreen(
                 placeholder = stringResource(id = R.string.search_products_hint)
             )
 
-            // Кнопка отображения/скрытия фильтров
-            OutlinedButton(
-                onClick = { viewModel.toggleFilterPanel() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = if (state.showFilterPanel)
-                        stringResource(id = R.string.hide_filters)
-                    else stringResource(id = R.string.show_filters)
-                )
-            }
-
-            // Панель фильтров
-            AnimatedVisibility(visible = state.showFilterPanel) {
-                FilterPanel(
-                    isVisible = true,
-                    onVisibilityChange = { viewModel.toggleFilterPanel() }
-                ) {
-                    // Фильтр по модели учета
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = stringResource(id = R.string.filter_accounting_model),
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-
-                        // Опция "Все модели"
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            RadioButton(
-                                selected = state.filterByAccountingModel == null,
-                                onClick = { viewModel.updateAccountingModelFilter(null) }
-                            )
-                            Text(
-                                text = stringResource(id = R.string.all_models),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-
-                        // Опция "По партиям и количеству"
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            RadioButton(
-                                selected = state.filterByAccountingModel == AccountingModel.BATCH,
-                                onClick = { viewModel.updateAccountingModelFilter(AccountingModel.BATCH) }
-                            )
-                            Text(
-                                text = stringResource(id = R.string.accounting_model_batch),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-
-                        // Опция "Только по количеству"
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            RadioButton(
-                                selected = state.filterByAccountingModel == AccountingModel.QTY,
-                                onClick = { viewModel.updateAccountingModelFilter(AccountingModel.QTY) }
-                            )
-                            Text(
-                                text = stringResource(id = R.string.accounting_model_qty),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Кнопка сброса фильтров
-                        Button(
-                            onClick = { viewModel.resetFilters() },
-                            modifier = Modifier.align(Alignment.End)
-                        ) {
-                            Text(stringResource(id = R.string.reset_filters))
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider()
-
-            // Отображение количества товаров
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -326,7 +216,6 @@ fun ProductListScreen(
                 )
             }
 
-            // Список товаров
             if (state.isLoading) {
                 LoadingScreenContent(message = stringResource(id = R.string.loading_products))
             } else if (state.products.isEmpty()) {

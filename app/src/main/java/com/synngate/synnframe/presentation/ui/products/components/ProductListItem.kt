@@ -1,6 +1,5 @@
 package com.synngate.synnframe.presentation.ui.products.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,7 +19,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
-import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.Product
 
 /**
@@ -37,7 +35,7 @@ fun ProductListItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 8.dp, vertical = 8.dp)
             .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = if (isSelected)
@@ -85,40 +83,6 @@ fun ProductListItem(
                         else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Модель учёта товара
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val accountingModelText = when (product.accountingModel) {
-                    AccountingModel.BATCH -> stringResource(id = R.string.accounting_model_batch)
-                    AccountingModel.QTY -> stringResource(id = R.string.accounting_model_qty)
-                }
-
-                val color = if (product.accountingModel == AccountingModel.BATCH)
-                    MaterialTheme.colorScheme.tertiaryContainer
-                else MaterialTheme.colorScheme.secondaryContainer
-
-                val textColor = if (product.accountingModel == AccountingModel.BATCH)
-                    MaterialTheme.colorScheme.onTertiaryContainer
-                else MaterialTheme.colorScheme.onSecondaryContainer
-
-                // Индикатор модели учёта
-                Text(
-                    text = accountingModelText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = textColor,
-                    modifier = Modifier
-                        .background(
-                            color = color,
-                            shape = MaterialTheme.shapes.small
-                        )
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
             }
         }
     }
