@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.graphics.ImageFormat
 import android.graphics.Rect
 import android.graphics.YuvImage
-import android.hardware.camera2.CameraManager
 import android.media.Image
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -69,37 +68,48 @@ class BarcodeAnalyzer(
             // Получаем изображение для анализа
             val mediaImage = imageProxy.image
             if (mediaImage != null) {
-                // Получаем данные изображения с учетом поворота
+                // Получаем данные изображения
                 val rotationDegrees = imageProxy.imageInfo.rotationDegrees
                 val imageData = mediaImage.toByteArray()
 
-                // Создаем источник изображения для ZXing с учетом поворота
-                val source = PlanarYUVLuminanceSource(
-                    imageData,
-                    mediaImage.width,
-                    mediaImage.height,
-                    0,
-                    0,
-                    mediaImage.width,
-                    mediaImage.height,
-                    false
+                // Определяем размеры изображения
+                val width = mediaImage.width
+                val height = mediaImage.height
+
+                // Создаем hints с поддерживаемыми форматами штрихкодов
+                val hints = EnumMap<DecodeHintType, Any>(DecodeHintType::class.java)
+                val decodeFormats = EnumSet.of(
+                    BarcodeFormat.EAN_13,
+                    BarcodeFormat.EAN_8,
+                    BarcodeFormat.UPC_A,
+                    BarcodeFormat.UPC_E,
+                    BarcodeFormat.CODE_39,
+                    BarcodeFormat.CODE_93,
+                    BarcodeFormat.CODE_128,
+                    BarcodeFormat.ITF,
+                    BarcodeFormat.QR_CODE,
+                    BarcodeFormat.DATA_MATRIX
                 )
+                hints[DecodeHintType.POSSIBLE_FORMATS] = decodeFormats
+                hints[DecodeHintType.TRY_HARDER] = true
 
-                // Создаем бинарное изображение для декодирования
-                val bitmap = BinaryBitmap(HybridBinarizer(source))
+                // Сначала пробуем распознать в исходной ориентации
+                val result = tryDecodeWithOrientation(imageData, width, height, rotationDegrees, hints)
+                if (result != null) {
+                    Timber.d("Barcode detected: ${result.text}")
+                    onBarcodeDetected(result.text)
+                    return
+                }
 
-                try {
-                    // Пытаемся распознать штрихкод
-                    val result = formatReader.decode(bitmap)
-
-                    // Если штрихкод распознан, вызываем обработчик
-                    if (result != null) {
-                        Timber.d("Barcode detected: ${result.text}")
-                        onBarcodeDetected(result.text)
+                // Если не удалось, пробуем другие ориентации
+                for (rotation in listOf(90, 180, 270)) {
+                    val adjustedRotation = (rotationDegrees + rotation) % 360
+                    val rotatedResult = tryDecodeWithOrientation(imageData, width, height, adjustedRotation, hints)
+                    if (rotatedResult != null) {
+                        Timber.d("Barcode detected with rotation $rotation: ${rotatedResult.text}")
+                        onBarcodeDetected(rotatedResult.text)
+                        return
                     }
-                } catch (e: Exception) {
-                    // Ошибка распознавания - не критично, просто логируем
-                    // Timber.v("No barcode found in this frame: ${e.message}")
                 }
             }
         } catch (e: Exception) {
@@ -109,6 +119,95 @@ class BarcodeAnalyzer(
             isAnalyzing = false
             imageProxy.close()
         }
+    }
+
+    // Функция для попытки декодирования с учетом ориентации
+    private fun tryDecodeWithOrientation(
+        imageData: ByteArray,
+        width: Int,
+        height: Int,
+        rotationDegrees: Int,
+        hints: Map<DecodeHintType, *>
+    ): com.google.zxing.Result? {  // Используем полное имя класса
+        try {
+            val rotatedData: ByteArray
+            val finalWidth: Int
+            val finalHeight: Int
+
+            // Применяем поворот данных, если необходимо
+            when (rotationDegrees) {
+                90 -> {
+                    rotatedData = rotateYUV90(imageData, width, height)
+                    finalWidth = height
+                    finalHeight = width
+                }
+                180 -> {
+                    rotatedData = rotateYUV180(imageData, width, height)
+                    finalWidth = width
+                    finalHeight = height
+                }
+                270 -> {
+                    rotatedData = rotateYUV270(imageData, width, height)
+                    finalWidth = height
+                    finalHeight = width
+                }
+                else -> {
+                    rotatedData = imageData
+                    finalWidth = width
+                    finalHeight = height
+                }
+            }
+
+            // Создаем источник изображения для ZXing
+            val source = PlanarYUVLuminanceSource(
+                rotatedData,
+                finalWidth,
+                finalHeight,
+                0,
+                0,
+                finalWidth,
+                finalHeight,
+                false
+            )
+
+            // Создаем бинарное изображение и декодируем
+            val bitmap = BinaryBitmap(HybridBinarizer(source))
+            return formatReader.decode(bitmap, hints)
+        } catch (e: Exception) {
+            // Игнорируем ошибку и возвращаем null
+            return null
+        }
+    }
+
+    // Функции поворота YUV данных остаются без изменений
+    private fun rotateYUV90(data: ByteArray, width: Int, height: Int): ByteArray {
+        val rotatedData = ByteArray(data.size)
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                rotatedData[x * height + (height - y - 1)] = data[y * width + x]
+            }
+        }
+        return rotatedData
+    }
+
+    private fun rotateYUV180(data: ByteArray, width: Int, height: Int): ByteArray {
+        val rotatedData = ByteArray(data.size)
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                rotatedData[(height - y - 1) * width + (width - x - 1)] = data[y * width + x]
+            }
+        }
+        return rotatedData
+    }
+
+    private fun rotateYUV270(data: ByteArray, width: Int, height: Int): ByteArray {
+        val rotatedData = ByteArray(data.size)
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                rotatedData[(width - x - 1) * height + y] = data[y * width + x]
+            }
+        }
+        return rotatedData
     }
 
     /**

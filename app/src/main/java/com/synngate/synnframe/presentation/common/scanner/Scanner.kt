@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +24,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +48,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.synngate.synnframe.R
 import com.synngate.synnframe.presentation.common.inputs.QuantityTextField
@@ -192,65 +197,94 @@ fun BarcodeScannerDialog(
     onBarcodeScanned: (String) -> Unit,
     onClose: () -> Unit,
     productName: String? = null,
-    currentQuantity: Float? = null,
-    onQuantityChanged: ((Float) -> Unit)? = null
+    modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    // Используем Dialog с полноэкранными параметрами
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false // Важно для полноэкранного диалога
+        )
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
+        Surface(
+            modifier = modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
         ) {
-            // Область информации о сканируемом товаре
-            Box(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.3f)
-                    .padding(bottom = 8.dp),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .padding(16.dp)
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                // Заголовок диалога
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = productName ?: stringResource(id = R.string.task_scan_product_not_found, ""),
-                        style = MaterialTheme.typography.headlineSmall,
-                        textAlign = TextAlign.Center
+                        text = stringResource(id = R.string.scan_barcode),
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f)
                     )
 
-                    if (productName != null && currentQuantity != null && onQuantityChanged != null) {
-                        // Отображаем компоненты изменения количества
-                        QuantityInputRow(
-                            currentQuantity = currentQuantity,
-                            onQuantityChanged = onQuantityChanged
+                    // Кнопка закрытия
+                    IconButton(onClick = onClose) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = stringResource(id = R.string.close)
                         )
                     }
                 }
 
-                // Кнопка закрытия в правом верхнем углу
-                IconButton(
-                    onClick = onClose,
+                HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp))
+
+                // Отображение имени продукта, если оно передано
+                productName?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp))
+                }
+
+                // Важно! Область превью камеры должна занимать основное пространство
+                Box(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
+                        .weight(1f)
+                        .fillMaxWidth()
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = stringResource(id = R.string.close)
+                    // Используем BarcodeScannerView для отображения камеры и распознавания
+                    BarcodeScannerView(
+                        onBarcodeDetected = onBarcodeScanned,
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
-            }
 
-            // Превью камеры для сканирования
-            BarcodeScannerView(
-                onBarcodeDetected = onBarcodeScanned,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.7f)
-            )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Инструкция по сканированию
+                Text(
+                    text = stringResource(id = R.string.scan_barcode_instruction),
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Кнопка закрытия
+                Button(
+                    onClick = onClose,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = stringResource(id = R.string.cancel))
+                }
+            }
         }
     }
 }
