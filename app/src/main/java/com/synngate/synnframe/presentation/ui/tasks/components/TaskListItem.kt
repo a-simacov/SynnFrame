@@ -1,25 +1,35 @@
 package com.synngate.synnframe.presentation.ui.tasks.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.MobileFriendly
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
+import com.synngate.synnframe.domain.entity.CreationPlace
 import com.synngate.synnframe.domain.entity.Task
+import com.synngate.synnframe.domain.entity.TaskStatus
+import com.synngate.synnframe.domain.entity.TaskType
 import com.synngate.synnframe.presentation.common.status.TaskStatusIndicator
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -28,7 +38,7 @@ fun TaskListItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+    val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yy HH:mm")
 
     Card(
         modifier = modifier
@@ -40,7 +50,7 @@ fun TaskListItem(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -49,31 +59,37 @@ fun TaskListItem(
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        TaskStatusIndicator(
+                            status = task.status
+                        )
+                        Text(
+                            text = when (task.type) {
+                                TaskType.RECEIPT -> stringResource(R.string.task_type_receipt)
+                                TaskType.PICK -> stringResource(R.string.task_type_pick)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 8.dp)
+                        )
+                        Text(
+                            text = task.barcode,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = task.name,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = when(task.type) {
-                            com.synngate.synnframe.domain.entity.TaskType.RECEIPT -> stringResource(R.string.task_type_receipt)
-                            com.synngate.synnframe.domain.entity.TaskType.PICK -> stringResource(R.string.task_type_pick)
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
-
-                TaskStatusIndicator(
-                    status = when(task.status) {
-                        com.synngate.synnframe.domain.entity.TaskStatus.TO_DO -> stringResource(R.string.task_status_to_do)
-                        com.synngate.synnframe.domain.entity.TaskStatus.IN_PROGRESS -> stringResource(R.string.task_status_in_progress)
-                        com.synngate.synnframe.domain.entity.TaskStatus.COMPLETED -> stringResource(R.string.task_status_completed)
-                    }
-                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -84,32 +100,28 @@ fun TaskListItem(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
+                Icon(
+                    imageVector = if (task.creationPlace == CreationPlace.APP)
+                        Icons.Default.MobileFriendly
+                    else Icons.Default.CloudDownload, contentDescription = null
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = stringResource(R.string.created_at, task.createdAt.format(dateFormatter)),
+                    text = stringResource(
+                        R.string.created_at,
+                        task.createdAt.format(dateFormatter)
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 8.dp)
                 )
-
-                val lastModifiedAt = task.completedAt ?: task.startedAt ?: task.viewedAt ?: task.createdAt
-                Text(
-                    text = stringResource(R.string.last_modified_at, lastModifiedAt.format(dateFormatter)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // Дополнительная информация о выполнении
-            if (task.status == com.synngate.synnframe.domain.entity.TaskStatus.IN_PROGRESS ||
-                task.status == com.synngate.synnframe.domain.entity.TaskStatus.COMPLETED) {
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                if (task.status == TaskStatus.IN_PROGRESS ||
+                    task.status == TaskStatus.COMPLETED
                 ) {
                     val completionPercent = task.getCompletionPercentage()
                     Text(
@@ -130,4 +142,23 @@ fun TaskListItem(
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun TaskListItemPreview() {
+    TaskListItem(
+        task = Task(
+            id = "d052c429-87de-4c1a-a1c5-17af6d7e2ad9",
+            name = "Принять и разместить (Магазин Cricova, Chisinaului 80) 00CB-003125 13.03.25",
+            type = TaskType.RECEIPT,
+            barcode = "Т00000046",
+            createdAt = LocalDateTime.now(),
+            viewedAt = LocalDateTime.now(),
+            startedAt = LocalDateTime.now(),
+            creationPlace = CreationPlace.SERVER,
+            status = TaskStatus.COMPLETED
+        ),
+        onClick = { }
+    )
 }

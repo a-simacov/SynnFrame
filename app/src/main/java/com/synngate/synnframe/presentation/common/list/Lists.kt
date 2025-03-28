@@ -31,7 +31,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.presentation.common.status.LogTypeIndicator
-import com.synngate.synnframe.presentation.common.status.TaskStatusIndicator
 
 /**
  * Элемент списка для задания
@@ -80,7 +79,7 @@ fun TaskListItem(
                     )
                 }
 
-                TaskStatusIndicator(status = status)
+                //TaskStatusIndicator(status = status)
             }
 
             Spacer(modifier = Modifier.height(8.dp))

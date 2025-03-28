@@ -13,9 +13,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -24,9 +27,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.LogType
+import com.synngate.synnframe.domain.entity.TaskStatus
 
 /**
  * Тип статуса уведомления
@@ -135,44 +140,49 @@ fun SyncStatusIndicator(
     }
 }
 
-/**
- * Компонент для отображения статуса задания
- */
 @Composable
 fun TaskStatusIndicator(
-    status: String,
+    status: TaskStatus,
     modifier: Modifier = Modifier
 ) {
-    // Определяем цвет в зависимости от статуса
-    val color = when (status.lowercase()) {
-        "к выполнению" -> MaterialTheme.colorScheme.primaryContainer
-        "выполняется" -> MaterialTheme.colorScheme.tertiaryContainer
-        "выполнено" -> MaterialTheme.colorScheme.secondaryContainer
-        else -> MaterialTheme.colorScheme.surfaceVariant
+    val color = when (status) {
+        TaskStatus.TO_DO -> MaterialTheme.colorScheme.primaryContainer
+        TaskStatus.IN_PROGRESS -> MaterialTheme.colorScheme.tertiaryContainer
+        TaskStatus.COMPLETED -> MaterialTheme.colorScheme.secondaryContainer
     }
 
-    // Определяем цвет текста в зависимости от статуса
-    val textColor = when (status.lowercase()) {
-        "к выполнению" -> MaterialTheme.colorScheme.onPrimaryContainer
-        "выполняется" -> MaterialTheme.colorScheme.onTertiaryContainer
-        "выполнено" -> MaterialTheme.colorScheme.onSecondaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    val textColor = when (status) {
+        TaskStatus.TO_DO -> MaterialTheme.colorScheme.onPrimaryContainer
+        TaskStatus.IN_PROGRESS -> MaterialTheme.colorScheme.onTertiaryContainer
+        TaskStatus.COMPLETED -> MaterialTheme.colorScheme.onSecondaryContainer
     }
 
-    Box(
-        modifier = modifier
-            .background(
-                color = color,
-                shape = MaterialTheme.shapes.small
-            )
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    ) {
-        Text(
-            text = status,
-            style = MaterialTheme.typography.labelMedium,
-            color = textColor
-        )
+    val icon = when (status) {
+        TaskStatus.TO_DO -> Icons.Default.Schedule
+        TaskStatus.IN_PROGRESS -> Icons.Default.SyncAlt
+        TaskStatus.COMPLETED -> Icons.Default.CheckCircle
     }
+
+    val iconTint = when (status) {
+        TaskStatus.TO_DO -> Color.DarkGray
+        TaskStatus.IN_PROGRESS -> Color.Magenta
+        TaskStatus.COMPLETED -> Color.DarkGray
+    }
+
+//    Box(
+//        modifier = modifier
+//            .background(
+//                color = color,
+//                shape = MaterialTheme.shapes.small
+//            )
+//            .padding(horizontal = 8.dp, vertical = 4.dp)
+//    ) {
+    Icon(
+        imageVector = icon,
+        tint = iconTint,
+        contentDescription = status.name
+    )
+//    }
 }
 
 /**
