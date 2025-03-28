@@ -281,7 +281,8 @@ fun BarcodeTextField(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     isError: Boolean = false,
-    errorText: String? = null
+    errorText: String? = null,
+    trailingIcon: @Composable (() -> Unit)
 ) {
     AppTextField(
         value = value,
@@ -311,7 +312,8 @@ fun BarcodeTextField(
                 onBarcodeScanned(value)
                 onValueChange("")
             }
-        }
+        },
+        trailingIcon = trailingIcon
     )
 }
 

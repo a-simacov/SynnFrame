@@ -13,12 +13,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -44,8 +41,6 @@ import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.inputs.BarcodeTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.ErrorScreenContent
-import com.synngate.synnframe.presentation.common.scaffold.InfoRow
-import com.synngate.synnframe.presentation.common.scaffold.LoadingScreenContent
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.tasks.components.ScanBarcodeDialog
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskFactLineDialog
@@ -102,12 +97,10 @@ fun TaskDetailScreen(
         }
     }
 
-    // В TaskDetailScreen сохраняем состояние диалогов
-    var showScanDialog by rememberSaveable { mutableStateOf(state.isScanDialogVisible) }
-    var showFactLineDialog by rememberSaveable { mutableStateOf(state.isFactLineDialogVisible) }
-    var showCompleteConfirmation by rememberSaveable { mutableStateOf(state.isCompleteConfirmationVisible) }
+    val showScanDialog by rememberSaveable { mutableStateOf(state.isScanDialogVisible) }
+    val showFactLineDialog by rememberSaveable { mutableStateOf(state.isFactLineDialogVisible) }
+    val showCompleteConfirmation by rememberSaveable { mutableStateOf(state.isCompleteConfirmationVisible) }
 
-// При изменении обновляем состояние во ViewModel
     LaunchedEffect(showScanDialog, showFactLineDialog, showCompleteConfirmation) {
         if (showScanDialog != state.isScanDialogVisible) {
             if (showScanDialog) viewModel.showScanDialog() else viewModel.closeDialog()
@@ -122,7 +115,6 @@ fun TaskDetailScreen(
         }
     }
 
-    // Диалог сканирования штрихкодов
     if (state.isScanDialogVisible) {
         ScanBarcodeDialog(
             onBarcodeScanned = { barcode -> viewModel.processScanResult(barcode) },
@@ -140,7 +132,6 @@ fun TaskDetailScreen(
         )
     }
 
-    // Диалог редактирования строки факта
     if (state.isFactLineDialogVisible && state.selectedFactLine != null) {
         val product = state.taskLines.find { it.factLine?.id == state.selectedFactLine!!.id }?.product
         TaskFactLineDialog(
@@ -156,7 +147,6 @@ fun TaskDetailScreen(
         )
     }
 
-    // Диалог подтверждения завершения задания
     if (state.isCompleteConfirmationVisible) {
         ConfirmationDialog(
             title = stringResource(id = R.string.complete_task),
@@ -167,14 +157,13 @@ fun TaskDetailScreen(
     }
 
     // Определение заголовка экрана и подзаголовка
-    val screenTitle = task?.name ?: stringResource(id = R.string.task_details)
-    val screenSubtitle = task?.let {
+    val screenTitle = task?.let {
         val taskType = when (it.type) {
             TaskType.RECEIPT -> stringResource(id = R.string.task_type_receipt)
             TaskType.PICK -> stringResource(id = R.string.task_type_pick)
         }
         "$taskType (${it.barcode})"
-    }
+    } ?: ""
 
     // Обработка возвращаемого значения из экрана выбора товара
     LaunchedEffect(Unit) {
@@ -187,10 +176,8 @@ fun TaskDetailScreen(
         }
     }
 
-    // Основной интерфейс
     AppScaffold(
         title = screenTitle,
-        subtitle = screenSubtitle,
         onNavigateBack = navigateBack,
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {
@@ -240,9 +227,7 @@ fun TaskDetailScreen(
         },
         isLoading = state.isLoading || state.isProcessing
     ) { paddingValues ->
-        if (state.isLoading) {
-            LoadingScreenContent(message = stringResource(id = R.string.loading_task))
-        } else if (state.error != null && task == null) {
+        if (state.error != null && task == null) {
             ErrorScreenContent(
                 message = state.error!!,
                 onRetry = { viewModel.loadTask() }
@@ -254,79 +239,6 @@ fun TaskDetailScreen(
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp)
             ) {
-                // Информация о задании
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        // Основные данные задания
-                        InfoRow(
-                            label = stringResource(id = R.string.task_id),
-                            value = task.id
-                        )
-
-                        InfoRow(
-                            label = stringResource(id = R.string.task_status),
-                            value = when (task.status) {
-                                TaskStatus.TO_DO -> stringResource(id = R.string.task_status_to_do)
-                                TaskStatus.IN_PROGRESS -> stringResource(id = R.string.task_status_in_progress)
-                                TaskStatus.COMPLETED -> stringResource(id = R.string.task_status_completed)
-                            }
-                        )
-
-                        InfoRow(
-                            label = stringResource(id = R.string.task_created_at),
-                            value = task.createdAt.format(dateFormatter)
-                        )
-
-                        task.executorId?.let {
-                            InfoRow(
-                                label = stringResource(id = R.string.task_executor),
-                                value = it
-                            )
-                        }
-
-                        // Дополнительная информация о выполнении
-                        if (task.status != TaskStatus.TO_DO) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            HorizontalDivider()
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            task.startedAt?.let {
-                                InfoRow(
-                                    label = stringResource(id = R.string.task_started_at),
-                                    value = it.format(dateFormatter)
-                                )
-                            }
-
-                            task.completedAt?.let {
-                                InfoRow(
-                                    label = stringResource(id = R.string.task_completed_at),
-                                    value = it.format(dateFormatter)
-                                )
-                            }
-
-                            if (task.uploaded) {
-                                task.uploadedAt?.let {
-                                    InfoRow(
-                                        label = stringResource(id = R.string.task_uploaded_at),
-                                        value = it.format(dateFormatter)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
                 // Поле для ввода штрихкода товара (активно только если задание в процессе выполнения)
                 BarcodeTextField(
                     value = state.searchQuery,
@@ -334,26 +246,22 @@ fun TaskDetailScreen(
                     onBarcodeScanned = { viewModel.processScanResult(it) },
                     label = stringResource(id = R.string.scan_or_enter_barcode),
                     enabled = state.isEditable,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(
+                            onClick = { viewModel.showScanDialog() }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.QrCodeScanner,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
+                        }
+                    }
                 )
-
-                // Кнопка для сканирования штрихкода с камеры
-                OutlinedButton(
-                    onClick = { viewModel.showScanDialog() },
-                    enabled = state.isEditable,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.QrCodeScanner,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                    Text(stringResource(id = R.string.scan_barcode))
-                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Заголовок таблицы строк плана и факта
                 Row(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -383,7 +291,6 @@ fun TaskDetailScreen(
                     color = MaterialTheme.colorScheme.primary
                 )
 
-                // Список строк плана и факта
                 if (state.taskLines.isEmpty()) {
                     Box(
                         modifier = Modifier
@@ -420,7 +327,6 @@ fun TaskDetailScreen(
                     }
                 }
 
-                // Итоговая информация
                 if (state.taskLines.isNotEmpty()) {
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
