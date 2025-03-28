@@ -10,104 +10,53 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.LocalDateTime
 
-/**
- * DTO для задания
- */
 @Serializable
 data class TaskDto(
-    /**
-     * Идентификатор задания
-     */
     @SerialName("id")
     val id: String,
 
-    /**
-     * Наименование задания
-     */
     @SerialName("name")
     val name: String,
 
-    /**
-     * Тип задания
-     */
     @SerialName("type")
     val type: String,
 
-    /**
-     * Штрихкод задания
-     */
     @SerialName("barcode")
     val barcode: String,
 
-    /**
-     * Дата создания
-     */
     @SerialName("createdAt")
     val createdAt: String,
 
-    /**
-     * Дата просмотра
-     */
     @SerialName("viewedAt")
     val viewedAt: String? = null,
 
-    /**
-     * Дата начала работы
-     */
     @SerialName("startedAt")
     val startedAt: String? = null,
 
-    /**
-     * Дата завершения
-     */
     @SerialName("completedAt")
     val completedAt: String? = null,
 
-    /**
-     * Место создания
-     */
     @SerialName("creationPlace")
     val creationPlace: String,
 
-    /**
-     * Идентификатор исполнителя
-     */
     @SerialName("executorId")
     val executorId: String? = null,
 
-    /**
-     * Статус задания
-     */
     @SerialName("status")
     val status: String,
 
-    /**
-     * Признак выгрузки
-     */
     @SerialName("uploaded")
     val uploaded: Boolean = false,
 
-    /**
-     * Дата выгрузки
-     */
     @SerialName("uploadedAt")
     val uploadedAt: String? = null,
 
-    /**
-     * Строки плана задания
-     */
     @SerialName("planLines")
     val planLines: List<TaskPlanLineDto> = emptyList(),
 
-    /**
-     * Строки факта задания
-     */
     @SerialName("factLines")
     val factLines: List<TaskFactLineDto> = emptyList()
 ) {
-    /**
-     * Преобразование DTO в доменную модель
-     */
     fun toDomainModel(): Task {
         return Task(
             id = id,
@@ -129,9 +78,6 @@ data class TaskDto(
     }
 
     companion object {
-        /**
-         * Создание DTO из доменной модели
-         */
         fun fromDomainModel(task: Task): TaskDto {
             return TaskDto(
                 id = task.id,

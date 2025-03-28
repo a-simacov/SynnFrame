@@ -175,12 +175,12 @@ fun LogDetailScreen(
                         // Текст сообщения лога на весь экран
                         Card(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .fillMaxSize()
                                 .weight(1f, fill = false)
                         ) {
                             Column(
                                 modifier = Modifier
-                                    .fillMaxWidth()
+                                    .fillMaxSize()
                                     .padding(16.dp)
                             ) {
                                 Text(
@@ -196,7 +196,7 @@ fun LogDetailScreen(
                                 Text(
                                     text = state.log?.message ?: "",
                                     style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxSize()
                                 )
                             }
                         }

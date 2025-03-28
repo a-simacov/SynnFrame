@@ -1,6 +1,7 @@
 package com.synngate.synnframe.data.remote.api
 
 import com.synngate.synnframe.data.remote.dto.TaskAvailabilityResponseDto
+import com.synngate.synnframe.data.remote.dto.TaskDto
 import com.synngate.synnframe.data.remote.service.ApiService
 import com.synngate.synnframe.data.remote.service.ServerProvider
 import com.synngate.synnframe.domain.entity.Task
@@ -9,6 +10,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import timber.log.Timber
@@ -31,19 +33,28 @@ class TaskApiImpl(
         return try {
             val url = "${server.apiUrl}/tasks"
             val response = client.get(url) {
-                // Basic аутентификация
                 header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
-                // Заголовок с ID текущего пользователя
                 header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
             }
 
             if (response.status.isSuccess()) {
-                val tasks = response.body<List<Task>>()
-                ApiResult.Success(tasks)
+                try {
+                    val taskDtos = response.body<List<TaskDto>>()
+                    val tasks = taskDtos.map { it.toDomainModel() }
+                    ApiResult.Success(tasks)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error parsing tasks JSON: ${e.message}")
+                    val bodyText = response.bodyAsText()
+                    Timber.d("Response body: ${bodyText.take(500)}...")
+                    ApiResult.Error(
+                        HttpStatusCode.InternalServerError.value,
+                        "Error parsing tasks: ${e.message}"
+                    )
+                }
             } else {
                 ApiResult.Error(
                     response.status.value,
-                    "Server returned status: ${response.status}"
+                    "Server returned status code: ${response.status.value}"
                 )
             }
         } catch (e: Exception) {

@@ -10,7 +10,6 @@ import com.synngate.synnframe.domain.usecase.BaseUseCase
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
 import java.time.LocalDateTime
-import java.util.UUID
 
 /**
  * Use Case класс для операций с заданиями
@@ -28,7 +27,7 @@ class TaskUseCases(
     fun getFilteredTasks(
         nameFilter: String? = null,
         statusFilter: List<TaskStatus>? = null,
-        typeFilter: TaskType? = null,
+        typeFilter: List<TaskType>? = null,
         dateFromFilter: LocalDateTime? = null,
         dateToFilter: LocalDateTime? = null,
         executorIdFilter: String? = null

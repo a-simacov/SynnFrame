@@ -36,7 +36,7 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE " +
             "(name LIKE '%' || :nameFilter || '%' OR barcode LIKE '%' || :nameFilter || '%') " +
             "AND (:hasStatusFilter = 0 OR status IN (:statuses)) " +
-            "AND (:hasTypeFilter = 0 OR type = :type) " +
+            "AND (:hasTypeFilter = 0 OR type IN (:types)) " +
             "AND (:hasDateFilter = 0 OR createdAt BETWEEN :dateFrom AND :dateTo) " +
             "AND (:hasExecutorFilter = 0 OR executorId = :executorId) " +
             "ORDER BY createdAt DESC")
@@ -45,7 +45,7 @@ interface TaskDao {
         hasStatusFilter: Boolean,
         statuses: List<String>,
         hasTypeFilter: Boolean,
-        type: String,
+        types: List<String>,
         hasDateFilter: Boolean,
         dateFrom: LocalDateTime,
         dateTo: LocalDateTime,

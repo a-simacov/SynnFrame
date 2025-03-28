@@ -393,6 +393,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
             TaskListViewModel(
                 taskUseCases = appContainer.taskUseCases,
                 userUseCases = appContainer.userUseCases,
+                loggingService = appContainer.loggingService,
                 ioDispatcher = Dispatchers.IO
             )
         }

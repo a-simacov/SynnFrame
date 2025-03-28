@@ -29,7 +29,7 @@ class TaskRepositoryImpl(
     override fun getFilteredTasks(
         nameFilter: String?,
         statusFilter: List<TaskStatus>?,
-        typeFilter: TaskType?,
+        typeFilter: List<TaskType>?,
         dateFromFilter: LocalDateTime?,
         dateToFilter: LocalDateTime?,
         executorIdFilter: String?
@@ -37,12 +37,13 @@ class TaskRepositoryImpl(
         // Преобразуем фильтры в необходимый формат для DAO
         val hasNameFilter = !nameFilter.isNullOrEmpty()
         val hasStatusFilter = !statusFilter.isNullOrEmpty()
-        val hasTypeFilter = typeFilter != null
+        val hasTypeFilter = !typeFilter.isNullOrEmpty()
         val hasDateFilter = dateFromFilter != null && dateToFilter != null
         val hasExecutorFilter = !executorIdFilter.isNullOrEmpty()
 
         // Преобразуем статусы в строки
         val statusStrings = statusFilter?.map { it.name } ?: emptyList()
+        val typesStrings = typeFilter?.map { it.name } ?: emptyList()
 
         // Получаем отфильтрованные задания
         return taskDao.getFilteredTasks(
@@ -50,7 +51,7 @@ class TaskRepositoryImpl(
             hasStatusFilter = hasStatusFilter,
             statuses = statusStrings,
             hasTypeFilter = hasTypeFilter,
-            type = typeFilter?.name ?: "",
+            types = typesStrings,
             hasDateFilter = hasDateFilter,
             dateFrom = dateFromFilter ?: LocalDateTime.MIN,
             dateTo = dateToFilter ?: LocalDateTime.MAX,

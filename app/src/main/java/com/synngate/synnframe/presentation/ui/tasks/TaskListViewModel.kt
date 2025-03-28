@@ -4,6 +4,7 @@ import com.synngate.synnframe.domain.entity.CreationPlace
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.entity.TaskType
+import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskListEvent
@@ -11,7 +12,7 @@ import com.synngate.synnframe.presentation.ui.tasks.model.TaskListState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
@@ -22,10 +23,10 @@ import java.util.UUID
 class TaskListViewModel(
     private val taskUseCases: TaskUseCases,
     private val userUseCases: UserUseCases,
+    private val loggingService: LoggingService,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<TaskListState, TaskListEvent>(TaskListState()) {
 
-    private var filterJob: Job? = null
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
 
     init {
@@ -33,9 +34,6 @@ class TaskListViewModel(
         loadTasks()
     }
 
-    /**
-     * Наблюдает за количеством заданий для текущего пользователя
-     */
     private fun observeTasksCount() {
         launchIO {
             taskUseCases.getTasksCountForCurrentUser().collectLatest { count ->
@@ -44,31 +42,30 @@ class TaskListViewModel(
         }
     }
 
-    /**
-     * Загружает и фильтрует задания
-     */
     private fun loadTasks() {
-        // Отменяем предыдущую загрузку, если она выполняется
-        filterJob?.cancel()
-
-        filterJob = launchIO {
-            val state = uiState.value
-
+        launchIO {
             updateState { it.copy(isLoading = true) }
 
             try {
-                // Получаем текущего пользователя
+                val state = uiState.value
                 val currentUser = userUseCases.getCurrentUser().first()
 
-                // Фильтрация заданий
+                val nameFilter = state.searchQuery.takeIf { it.isNotEmpty() }
+
                 taskUseCases.getFilteredTasks(
-                    nameFilter = state.searchQuery.takeIf { it.isNotEmpty() },
+                    nameFilter = nameFilter,
                     statusFilter = state.selectedStatusFilters.takeIf { it.isNotEmpty() }?.toList(),
-                    typeFilter = state.selectedTypeFilter,
+                    typeFilter = state.selectedTypeFilters.takeIf { it.isNotEmpty() }?.toList(),
                     dateFromFilter = state.dateFromFilter,
                     dateToFilter = state.dateToFilter,
                     executorIdFilter = currentUser?.id
-                ).collectLatest { tasks ->
+                ).catch { e ->
+                    Timber.e(e, "Error loading tasks")
+                    updateState { it.copy(
+                        isLoading = false,
+                        error = "Unknown error occurred: ${e.message}"
+                    ) }
+                }.collect { tasks ->
                     updateState { it.copy(
                         tasks = tasks,
                         isLoading = false,
@@ -79,114 +76,51 @@ class TaskListViewModel(
                 Timber.e(e, "Error loading tasks")
                 updateState { it.copy(
                     isLoading = false,
-                    error = e.message ?: "Unknown error occurred"
+                    error = "Unknown error occurred: ${e.message}"
                 ) }
-                sendEvent(TaskListEvent.ShowSnackbar("Ошибка загрузки заданий: ${e.message}"))
+                loggingService.logError("Error loading logs: ${e.message}")
             }
         }
     }
 
-    /**
-     * Обновляет поисковый запрос и перезагружает задания
-     */
     fun updateSearchQuery(query: String) {
         updateState { it.copy(searchQuery = query) }
         loadTasks()
     }
 
-    /**
-     * Обрабатывает изменение фильтра по статусу
-     */
-    fun toggleStatusFilter(status: TaskStatus) {
-        val currentFilters = uiState.value.selectedStatusFilters
-        val newFilters = if (currentFilters.contains(status)) {
-            currentFilters - status
-        } else {
-            currentFilters + status
+    fun formatTaskType(type: TaskType): String {
+        return when (type) {
+            TaskType.RECEIPT -> "Приемка"
+            TaskType.PICK -> "Отбор"
         }
+    }
 
-        updateState { it.copy(selectedStatusFilters = newFilters) }
+    fun formatStatusType(status: TaskStatus): String {
+        return when (status) {
+            TaskStatus.TO_DO -> "К выполнению"
+            TaskStatus.IN_PROGRESS -> "Выполняется"
+            TaskStatus.COMPLETED -> "Выполнено"
+        }
+    }
+
+    fun updateTypeFilter(types: Set<TaskType>) {
+        updateState { it.copy(selectedTypeFilters = types) }
         loadTasks()
     }
 
-    /**
-     * Очищает все фильтры по статусу
-     */
-    fun clearStatusFilters() {
-        updateState { it.copy(selectedStatusFilters = emptySet()) }
+    fun updateStatusFilter(statuses: Set<TaskStatus>) {
+        updateState { it.copy(selectedStatusFilters = statuses) }
         loadTasks()
     }
 
-    /**
-     * Обновляет фильтр по типу задания
-     */
-    fun updateTypeFilter(type: TaskType?) {
-        updateState { it.copy(selectedTypeFilter = type) }
-        loadTasks()
-    }
-
-    /**
-     * Показывает диалог выбора даты для фильтра
-     */
-    fun showDatePicker(isFromDate: Boolean) {
-        val state = uiState.value
-        val currentDate = if (isFromDate) state.dateFromFilter else state.dateToFilter
-
-        sendEvent(TaskListEvent.ShowDatePicker(isFromDate, currentDate))
-    }
-
-    /**
-     * Обновляет дату начала периода для фильтрации
-     */
-    fun updateDateFromFilter(date: LocalDateTime?) {
-        updateState { it.copy(dateFromFilter = date) }
-        loadTasks()
-    }
-
-    /**
-     * Обновляет дату окончания периода для фильтрации
-     */
-    fun updateDateToFilter(date: LocalDateTime?) {
-        updateState { it.copy(dateToFilter = date) }
-        loadTasks()
-    }
-
-    /**
-     * Очищает фильтр по дате
-     */
-    fun clearDateFilter() {
-        updateState { it.copy(
-            dateFromFilter = null,
-            dateToFilter = null
-        ) }
-        loadTasks()
-    }
-
-    /**
-     * Переключает видимость панели фильтров
-     */
     fun toggleFilterPanel() {
         updateState { it.copy(isFilterPanelVisible = !it.isFilterPanelVisible) }
     }
 
-    fun toggleTypeMenu() {
-        updateState { it.copy(showTypeMenu = !it.showTypeMenu) }
-    }
-
-    fun closeTypeMenu() {
-        updateState { it.copy(showTypeMenu = false) }
-    }
-
-    /**
-     * Обрабатывает нажатие на задание
-     */
     fun onTaskClick(taskId: String) {
         sendEvent(TaskListEvent.NavigateToTaskDetail(taskId))
     }
 
-    /**
-     * Синхронизирует задания с сервером
-     */
     fun syncTasks() {
         launchIO {
             updateState { it.copy(isSyncing = true) }
@@ -209,19 +143,18 @@ class TaskListViewModel(
 
                     updateState { it.copy(isSyncing = false) }
                     sendEvent(TaskListEvent.ShowSnackbar("Ошибка синхронизации: $error"))
+                    loggingService.logError("Ошибка синхронизации: $error")
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error syncing tasks")
 
                 updateState { it.copy(isSyncing = false) }
                 sendEvent(TaskListEvent.ShowSnackbar("Ошибка синхронизации: ${e.message}"))
+                loggingService.logError("Ошибка синхронизации: ${e.message}")
             }
         }
     }
 
-    /**
-     * Создает новое задание
-     */
     fun createNewTask() {
         launchIO {
             updateState { it.copy(isProcessing = true) }
