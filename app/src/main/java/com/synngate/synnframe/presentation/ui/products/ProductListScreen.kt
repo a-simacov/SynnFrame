@@ -84,8 +84,8 @@ fun ProductListScreen(
 
     if (state.showBatchScannerDialog) {
         BatchScannerDialog(
-            onBarcodeScanned = { barcode ->
-                viewModel.findProductByBarcode(barcode)
+            onBarcodeScanned = { barcode, onProductFound ->
+                viewModel.findProductByBarcode(barcode, onProductFound)
             },
             onClose = { viewModel.finishBatchScanning() },
             onDone = { results -> viewModel.processBatchScanResults(results) }

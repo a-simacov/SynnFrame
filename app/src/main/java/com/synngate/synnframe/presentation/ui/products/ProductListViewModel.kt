@@ -231,25 +231,26 @@ class ProductListViewModel(
         sendEvent(ProductListEvent.NavigateToProductDetail(productId))
     }
 
-    // Изменяем метод findProductByBarcode для использования колбэка
+    /**
+     * Поиск товара по штрихкоду с обратным вызовом при нахождении
+     *
+     * @param barcode Штрихкод для поиска
+     * @param onProductFound Колбэк, вызываемый при нахождении товара (может быть null)
+     */
     fun findProductByBarcode(barcode: String, onProductFound: (Product?) -> Unit = {}) {
         launchIO {
             updateState { it.copy(isLoading = true) }
 
             try {
                 val product = productUseCases.findProductByBarcode(barcode)
-
-                if (product != null) {
-                    launchMain { onProductFound(product) }
-                } else {
-                    sendEvent(ProductListEvent.ShowSnackbar("Товар со штрихкодом $barcode не найден"))
-                }
-
+                launchMain { onProductFound(product) }
                 updateState { it.copy(isLoading = false) }
             } catch (e: Exception) {
                 Timber.e(e, "Error finding product by barcode")
                 updateState { it.copy(isLoading = false) }
-                sendEvent(ProductListEvent.ShowSnackbar("Ошибка поиска по штрихкоду: ${e.message}"))
+                loggingService.logError("Ошибка поиска по штрихкоду: ${e.message}")
+                // Вызываем колбэк с null в случае ошибки
+                launchMain { onProductFound(null) }
             }
         }
     }

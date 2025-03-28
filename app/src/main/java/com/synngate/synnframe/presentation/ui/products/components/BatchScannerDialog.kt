@@ -41,22 +41,28 @@ import androidx.compose.ui.window.DialogProperties
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 data class ScanResult(
     val barcode: String,
     val product: Product?,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val scanCount: Int = 1 // Количество сканирований
 )
 
 /**
- * Диалог для пакетного сканирования товаров
+ * Диалог для пакетного сканирования товаров с поддержкой счетчика повторных сканирований
  *
- * @param onBarcodeScanned Функция, вызываемая при сканировании штрихкода. Она запускает асинхронный поиск
- *                         товара и не возвращает результат. Результат будет обработан внутри
+ * @param onBarcodeScanned Функция, вызываемая при сканировании штрихкода.
+ *                         Принимает штрихкод и функцию обратного вызова для обновления найденного товара
+ * @param onClose Функция для закрытия диалога
+ * @param onDone Функция обратного вызова при завершении сканирования, возвращает список результатов
  */
 @Composable
 fun BatchScannerDialog(
-    onBarcodeScanned: (String) -> Unit,
+    onBarcodeScanned: (String, (Product?) -> Unit) -> Unit,
     onClose: () -> Unit,
     onDone: (List<ScanResult>) -> Unit,
     modifier: Modifier = Modifier
@@ -115,16 +121,40 @@ fun BatchScannerDialog(
                                     isSearching = true
                                     lastScannedBarcode = barcode
 
-                                    // Вызываем обработчик сканирования, который запустит асинхронный поиск
-                                    onBarcodeScanned(barcode)
+                                    // Проверяем, есть ли уже такой штрихкод в списке
+                                    val existingIndex = scanResults.indexOfFirst { it.barcode == barcode }
 
-                                    // Добавляем запись в список пока без информации о товаре
-                                    // Продукт будет null, пока не получим результат поиска
-                                    scanResults.add(ScanResult(barcode, null))
+                                    if (existingIndex >= 0) {
+                                        // Если штрихкод уже есть, увеличиваем счетчик и обновляем timestamp
+                                        val existingResult = scanResults[existingIndex]
+                                        val updatedResult = existingResult.copy(
+                                            scanCount = existingResult.scanCount + 1,
+                                            timestamp = System.currentTimeMillis()
+                                        )
 
-                                    // Сбрасываем состояние
-                                    isSearching = false
-                                    lastScannedBarcode = null
+                                        // Обновляем запись в списке
+                                        scanResults[existingIndex] = updatedResult
+
+                                        // Сбрасываем состояние поиска
+                                        isSearching = false
+                                        lastScannedBarcode = null
+                                    } else {
+                                        // Если штрихкода еще нет, добавляем новую запись
+                                        val resultIndex = scanResults.size
+                                        scanResults.add(ScanResult(barcode, null))
+
+                                        // Вызываем обработчик сканирования с колбеком для обновления товара
+                                        onBarcodeScanned(barcode) { product ->
+                                            if (resultIndex < scanResults.size) {
+                                                val updatedResult = scanResults[resultIndex].copy(product = product)
+                                                scanResults[resultIndex] = updatedResult
+                                            }
+                                        }
+
+                                        // Сбрасываем состояние поиска
+                                        isSearching = false
+                                        lastScannedBarcode = null
+                                    }
                                 }
                             },
                             modifier = Modifier.fillMaxSize()
@@ -207,6 +237,13 @@ fun BatchScannerDialog(
                                             color = MaterialTheme.colorScheme.error
                                         )
                                     }
+
+                                    // Добавляем отображение количества сканирований и времени
+                                    Text(
+                                        text = "Сканировано: ${result.scanCount} раз (${formatTimestamp(result.timestamp)})",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
 
                                 IconButton(
@@ -280,4 +317,12 @@ fun BatchScannerDialog(
             }
         }
     }
+}
+
+/**
+ * Форматирует временную метку в читаемый вид (часы:минуты:секунды)
+ */
+private fun formatTimestamp(timestamp: Long): String {
+    val dateFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+    return dateFormat.format(Date(timestamp))
 }
