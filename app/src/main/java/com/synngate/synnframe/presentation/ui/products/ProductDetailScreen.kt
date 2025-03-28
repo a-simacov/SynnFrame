@@ -41,9 +41,6 @@ import com.synngate.synnframe.presentation.ui.products.components.BarcodeItem
 import com.synngate.synnframe.presentation.ui.products.components.ProductUnitItem
 import com.synngate.synnframe.presentation.ui.products.model.ProductDetailEvent
 
-/**
- * Экран деталей товара
- */
 @Composable
 fun ProductDetailScreen(
     viewModel: ProductDetailViewModel,

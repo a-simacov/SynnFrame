@@ -239,7 +239,6 @@ fun TaskDetailScreen(
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp)
             ) {
-                // Поле для ввода штрихкода товара (активно только если задание в процессе выполнения)
                 BarcodeTextField(
                     value = state.searchQuery,
                     onValueChange = { viewModel.onSearchQueryChanged(it) },

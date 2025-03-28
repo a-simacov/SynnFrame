@@ -499,4 +499,5 @@
 
     <string name="select_time">Выберите время</string>
     <string name="product_id">Идентификатор</string>
+    <string name="quantity">К-во</string>
 </resources>

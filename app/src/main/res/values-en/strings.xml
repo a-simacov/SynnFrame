@@ -496,4 +496,5 @@
     <string name="clear_date_filter">Clear filter by date</string>
     <string name="select_time">Select time</string>
     <string name="product_id">Identifier</string>
+    <string name="quantity">Qty</string>
 </resources>
