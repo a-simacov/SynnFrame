@@ -1,10 +1,5 @@
 package com.synngate.synnframe.presentation.ui.logs
 
-/*
- * Обратите внимание: для применения этого файла замените существующий файл LogListViewModel.kt
- * Этот файл содержит обновленный ViewModel с поддержкой диалога выбора периода фильтрации
- */
-
 import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.log.LogUseCases

@@ -2,6 +2,7 @@ package com.synngate.synnframe.presentation.ui.products
 
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.service.LoggingService
+import com.synngate.synnframe.domain.service.SoundService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.ui.products.components.ScanResult
 import com.synngate.synnframe.presentation.ui.products.model.ProductListEvent
@@ -17,12 +18,14 @@ import kotlinx.coroutines.flow.debounce
 import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.cancellation.CancellationException
 
 class ProductListViewModel(
     private val productUseCases: ProductUseCases,
     private val isSelectionMode: Boolean = false,
     private val loggingService: LoggingService,
+    private val soundService: SoundService,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<ProductListState, ProductListEvent>(
     ProductListState(isSelectionMode = isSelectionMode)
@@ -30,6 +33,11 @@ class ProductListViewModel(
 
     private var searchJob: Job? = null
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+
+    // Кэш для избежания повторного воспроизведения звуков для одинаковых штрихкодов
+    private val soundPlayedCache = ConcurrentHashMap<String, Long>()
+    // Тайм-аут для предотвращения повторного воспроизведения звуков (мс)
+    private val SOUND_DEBOUNCE_TIMEOUT = 1500L // 2 секунды
 
     init {
         observeProductsCount()
@@ -139,6 +147,7 @@ class ProductListViewModel(
             }
         }
     }
+
     fun onProductClick(product: Product) {
         if (uiState.value.isSelectionMode) {
             // В режиме выбора товара выделяем товар и показываем кнопку подтверждения
@@ -194,7 +203,6 @@ class ProductListViewModel(
         }
     }
 
-    // Полностью перерабатываем метод обработки штрихкода
     fun handleScannedBarcode(barcode: String) {
         launchIO {
             updateState { it.copy(isLoading = true, showScannerDialog = false) }
@@ -203,6 +211,9 @@ class ProductListViewModel(
                 val product = productUseCases.findProductByBarcode(barcode)
 
                 if (product != null) {
+                    // Воспроизводим звук успешного сканирования с дебаунсингом
+                    playSuccessSound(barcode)
+
                     // Если товар найден, посылаем событие навигации
                     if (uiState.value.isSelectionMode) {
                         sendEvent(ProductListEvent.ReturnToTaskWithProduct(product))
@@ -210,11 +221,18 @@ class ProductListViewModel(
                         sendEvent(ProductListEvent.NavigateToProductDetail(product.id))
                     }
                 } else {
+                    // Воспроизводим звук неуспешного сканирования с дебаунсингом
+                    playErrorSound(barcode)
+
                     // Если товар не найден, показываем сообщение
                     sendEvent(ProductListEvent.ShowSnackbar("Товар со штрихкодом $barcode не найден"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error finding product by barcode")
+
+                // Воспроизводим звук неуспешного сканирования с дебаунсингом
+                playErrorSound(barcode)
+
                 sendEvent(ProductListEvent.ShowSnackbar("Ошибка поиска по штрихкоду: ${e.message}"))
             } finally {
                 updateState { it.copy(isLoading = false) }
@@ -226,32 +244,78 @@ class ProductListViewModel(
         sendEvent(ProductListEvent.NavigateBack)
     }
 
-    // Добавляем новый метод для навигации к деталям товара
     fun navigateToProductDetail(productId: String) {
         sendEvent(ProductListEvent.NavigateToProductDetail(productId))
     }
 
-    /**
-     * Поиск товара по штрихкоду с обратным вызовом при нахождении
-     *
-     * @param barcode Штрихкод для поиска
-     * @param onProductFound Колбэк, вызываемый при нахождении товара (может быть null)
-     */
     fun findProductByBarcode(barcode: String, onProductFound: (Product?) -> Unit = {}) {
         launchIO {
             updateState { it.copy(isLoading = true) }
 
             try {
                 val product = productUseCases.findProductByBarcode(barcode)
-                launchMain { onProductFound(product) }
+
+                if (product != null) {
+                    playSuccessSound(barcode)
+                    launchMain { onProductFound(product) }
+                } else {
+                    playErrorSound(barcode)
+                }
+
                 updateState { it.copy(isLoading = false) }
             } catch (e: Exception) {
                 Timber.e(e, "Error finding product by barcode")
+
+                // Воспроизводим звук неуспешного сканирования с дебаунсингом
+                playErrorSound(barcode)
+
                 updateState { it.copy(isLoading = false) }
                 loggingService.logError("Ошибка поиска по штрихкоду: ${e.message}")
                 // Вызываем колбэк с null в случае ошибки
                 launchMain { onProductFound(null) }
             }
+        }
+    }
+
+    // Метод для воспроизведения звука успешного сканирования с дебаунсингом
+    private fun playSuccessSound(barcode: String) {
+        playSound(barcode, true)
+    }
+
+    // Метод для воспроизведения звука неуспешного сканирования с дебаунсингом
+    private fun playErrorSound(barcode: String) {
+        playSound(barcode, false)
+    }
+
+    // Обновленный метод для воспроизведения звука с дебаунсингом
+    private fun playSound(barcode: String, success: Boolean) {
+        val currentTime = System.currentTimeMillis()
+        val lastSoundTime = soundPlayedCache[barcode]
+
+        // Проверяем, был ли звук недавно воспроизведен для этого штрихкода
+        if (lastSoundTime == null || (currentTime - lastSoundTime > SOUND_DEBOUNCE_TIMEOUT)) {
+            // Обновляем время последнего воспроизведения звука
+            soundPlayedCache[barcode] = currentTime
+
+            // Воспроизводим звук
+            if (success) {
+                soundService.playSuccessSound()
+            } else {
+                soundService.playErrorSound()
+            }
+
+            // Активно очищаем кэш для всех штрихкодов, у которых прошло более
+            // SOUND_DEBOUNCE_TIMEOUT мс после последнего воспроизведения
+            cleanExpiredSoundCache(currentTime)
+        } else {
+            Timber.d("Sound for barcode $barcode debounced. Last sound was ${currentTime - lastSoundTime}ms ago")
+        }
+    }
+
+    // Новый метод для очистки устаревших записей в кэше звуков
+    private fun cleanExpiredSoundCache(currentTime: Long) {
+        soundPlayedCache.entries.removeIf { (_, timestamp) ->
+            currentTime - timestamp > SOUND_DEBOUNCE_TIMEOUT
         }
     }
 

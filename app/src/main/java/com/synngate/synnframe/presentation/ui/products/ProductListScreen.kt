@@ -38,7 +38,6 @@ import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
-import com.synngate.synnframe.presentation.common.scaffold.LoadingScreenContent
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerDialog
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.products.components.BatchScannerDialog
@@ -215,9 +214,7 @@ fun ProductListScreen(
                 )
             }
 
-            if (state.isLoading) {
-                LoadingScreenContent(message = stringResource(id = R.string.loading_products))
-            } else if (state.products.isEmpty()) {
+            if (state.products.isEmpty()) {
                 EmptyScreenContent(
                     message = if (state.searchQuery.isNotEmpty() || state.filterByAccountingModel != null)
                         stringResource(id = R.string.no_products_with_filter)

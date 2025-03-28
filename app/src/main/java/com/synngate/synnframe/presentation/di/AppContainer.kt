@@ -417,6 +417,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
             ProductListViewModel(
                 productUseCases = appContainer.productUseCases,
                 loggingService = appContainer.loggingService,
+                soundService = appContainer.soundService,
                 ioDispatcher = Dispatchers.IO,
                 isSelectionMode = isSelectionMode
             )

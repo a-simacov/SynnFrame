@@ -217,7 +217,10 @@ fun LogListScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(state.logs) { log ->
+                    items(
+                        items = state.logs,
+                        key = { it.id }
+                    ) { log ->
                         LogListItem(
                             message = log.getShortMessage(),
                             type = log.type,

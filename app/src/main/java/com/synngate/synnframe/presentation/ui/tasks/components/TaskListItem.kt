@@ -22,9 +22,6 @@ import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.presentation.common.status.TaskStatusIndicator
 import java.time.format.DateTimeFormatter
 
-/**
- * Элемент списка для отображения задания
- */
 @Composable
 fun TaskListItem(
     task: Task,

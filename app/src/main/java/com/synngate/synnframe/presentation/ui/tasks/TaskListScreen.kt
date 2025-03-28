@@ -3,10 +3,8 @@ package com.synngate.synnframe.presentation.ui.tasks
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -38,7 +36,6 @@ import com.synngate.synnframe.presentation.common.filter.StatusFilterChips
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
-import com.synngate.synnframe.presentation.common.scaffold.LoadingScreenContent
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskListItem
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskListEvent
@@ -119,7 +116,8 @@ fun TaskListScreen(
                 },
                 text = { Text(stringResource(id = R.string.create_task)) }
             )
-        }
+        },
+        isLoading = state.isLoading
     ) { paddingValues ->
         Column(
             modifier = modifier
@@ -160,10 +158,8 @@ fun TaskListScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider()
 
-            // Отображение количества заданий и результатов фильтрации
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -179,9 +175,7 @@ fun TaskListScreen(
                 )
             }
 
-            if (state.isLoading) {
-                LoadingScreenContent(message = stringResource(id = R.string.loading_tasks))
-            } else if (state.tasks.isEmpty()) {
+            if (state.tasks.isEmpty()) {
                 EmptyScreenContent(
                     message = if (state.searchQuery.isNotEmpty() ||
                         state.selectedStatusFilters.isNotEmpty() ||
@@ -197,7 +191,7 @@ fun TaskListScreen(
                 ) {
                     items(
                         items = state.tasks,
-                        key = { it.id } // Используем ключ для оптимизации
+                        key = { it.id }
                     ) { task ->
                         TaskListItem(
                             task = task,
