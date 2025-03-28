@@ -240,10 +240,8 @@ class ProductListViewModel(
                 val product = productUseCases.findProductByBarcode(barcode)
 
                 if (product != null) {
-                    // Если товар найден, вызываем колбэк
                     launchMain { onProductFound(product) }
                 } else {
-                    // Если товар не найден, показываем сообщение
                     sendEvent(ProductListEvent.ShowSnackbar("Товар со штрихкодом $barcode не найден"))
                 }
 

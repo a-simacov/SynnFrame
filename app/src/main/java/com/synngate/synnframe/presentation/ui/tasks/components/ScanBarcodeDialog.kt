@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
@@ -21,10 +20,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -40,9 +35,6 @@ import com.synngate.synnframe.presentation.ui.tasks.model.ScanBarcodeDialogState
 import com.synngate.synnframe.presentation.util.formatQuantity
 import kotlinx.coroutines.delay
 
-/**
- * Диалог сканирования штрихкодов для заданий
- */
 @Composable
 fun ScanBarcodeDialog(
     onBarcodeScanned: (String) -> Unit,
@@ -57,7 +49,6 @@ fun ScanBarcodeDialog(
     onScannerActiveChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Используем состояние из ViewModel вместо remember
     val additionalQuantity = dialogState.additionalQuantity
     val isError = dialogState.isError
     val isScannerActive = dialogState.isScannerActive

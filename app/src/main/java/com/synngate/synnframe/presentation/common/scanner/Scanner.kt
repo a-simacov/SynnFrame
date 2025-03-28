@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -253,13 +255,11 @@ fun BarcodeScannerDialog(
                     HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
                 }
 
-                // Важно! Область превью камеры должна занимать основное пространство
                 Box(
                     modifier = Modifier
-                        //.weight(0.7f)
+                        .weight(0.5f)
                         .fillMaxWidth()
                 ) {
-                    // Используем BarcodeScannerView для отображения камеры и распознавания
                     BarcodeScannerView(
                         onBarcodeDetected = { barcode ->
                             if (!hasProcessedBarcode) {
@@ -273,7 +273,6 @@ fun BarcodeScannerDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Инструкция по сканированию
                 Text(
                     text = stringResource(id = R.string.scan_barcode_instruction),
                     style = MaterialTheme.typography.bodySmall,
@@ -282,22 +281,23 @@ fun BarcodeScannerDialog(
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
-//
-//                Button(
-//                    onClick = onClose,
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .height(56.dp) // Фиксированная высота
-//                        .padding(vertical = 4.dp), // Добавляем отступ
-//                    colors = ButtonDefaults.buttonColors(
-//                        containerColor = MaterialTheme.colorScheme.primary
-//                    )
-//                ) {
-//                    Text(
-//                        text = stringResource(id = R.string.close),
-//                        style = MaterialTheme.typography.titleMedium
-//                    )
-//                }
+
+                Button(
+                    onClick = onClose,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.close),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(0.05f).height(8.dp))
             }
         }
     }

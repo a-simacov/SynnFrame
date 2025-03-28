@@ -140,7 +140,6 @@ fun LogDetailScreen(
                             .padding(16.dp)
                             .verticalScroll(rememberScrollState())
                     ) {
-                        // Заголовок с информацией о логе
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -148,17 +147,16 @@ fun LogDetailScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             state.log?.let { log ->
-                                // ID лога рядом с иконкой типа
+                                LogTypeIndicator(
+                                    type = log.type,
+                                    modifier = Modifier
+                                )
+
                                 Text(
                                     text = "ID: ${log.id}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(end = 8.dp)
-                                )
-
-                                LogTypeIndicator(
-                                    type = log.type,
-                                    modifier = Modifier
                                 )
 
                                 Spacer(modifier = Modifier.weight(1f))
@@ -172,7 +170,6 @@ fun LogDetailScreen(
                             }
                         }
 
-                        // Текст сообщения лога на весь экран
                         Card(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -192,7 +189,6 @@ fun LogDetailScreen(
 
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                // Текст лога занимает всё доступное место
                                 Text(
                                     text = state.log?.message ?: "",
                                     style = MaterialTheme.typography.bodyLarge,
@@ -200,8 +196,6 @@ fun LogDetailScreen(
                                 )
                             }
                         }
-
-                        // Удалены дублирующиеся кнопки
                     }
                 }
             }

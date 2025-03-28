@@ -195,7 +195,7 @@
     <string name="searching_product">Поиск товара по штрихкоду %s...</string>
     <string name="scan_barcode_instruction">Отсканируйте штрихкод товара для добавления в список</string>
     <string name="clear_all">Очистить все</string>
-    <string name="finish_scanning">Завершить сканирование</string>
+    <string name="finish_scanning">Завершить</string>
     <string name="remove">Удалить</string>
     <string name="scan_other_product">Сканировать другой товар</string>
 

@@ -103,7 +103,6 @@ fun ProductListScreen(
         )
     }
 
-    // Основной интерфейс
     AppScaffold(
         title = if (state.isSelectionMode)
             stringResource(id = R.string.select_product)
