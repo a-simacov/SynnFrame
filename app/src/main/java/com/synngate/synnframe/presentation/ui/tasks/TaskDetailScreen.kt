@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -29,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -45,6 +47,8 @@ import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.tasks.components.ScanBarcodeDialog
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskFactLineDialog
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskLineItemRow
+import com.synngate.synnframe.presentation.ui.tasks.model.ProductDisplayProperty
+import com.synngate.synnframe.presentation.ui.tasks.model.ProductPropertyType
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailEvent
 import com.synngate.synnframe.presentation.util.formatQuantity
 import java.time.format.DateTimeFormatter
@@ -261,21 +265,21 @@ fun TaskDetailScreen(
                     Text(
                         text = stringResource(id = R.string.product),
                         style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.weight(0.4f)
+                        modifier = Modifier.weight(0.6f)
                     )
 
                     Text(
                         text = stringResource(id = R.string.plan_quantity),
                         style = MaterialTheme.typography.titleSmall,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.weight(0.3f)
+                        modifier = Modifier.weight(0.2f)
                     )
 
                     Text(
                         text = stringResource(id = R.string.fact_quantity),
                         style = MaterialTheme.typography.titleSmall,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.weight(0.3f)
+                        modifier = Modifier.weight(0.2f)
                     )
                 }
 
@@ -298,6 +302,19 @@ fun TaskDetailScreen(
                         )
                     }
                 } else {
+                    // Список настраиваемых свойств товара для отображения
+                    val productProperties = listOf(
+                        ProductDisplayProperty(ProductPropertyType.NAME), // Наименование товара
+                        ProductDisplayProperty(
+                            type = ProductPropertyType.ID,
+                            label = "ID"
+                        ),
+                        ProductDisplayProperty(
+                            type = ProductPropertyType.ARTICLE,
+                            label = "Артикул"
+                        )
+                    )
+
                     LazyColumn(
                         modifier = Modifier.weight(1f)
                     ) {
@@ -314,7 +331,8 @@ fun TaskDetailScreen(
                                             viewModel.showFactLineDialog(it.productId)
                                         } ?: viewModel.showFactLineDialog(lineItem.planLine.productId)
                                     }
-                                }
+                                },
+                                productProperties = productProperties
                             )
                         }
                     }
@@ -332,44 +350,63 @@ fun TaskDetailScreen(
                         Text(
                             text = stringResource(id = R.string.total),
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            modifier = Modifier.weight(0.4f)
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(0.6f) // Увеличили с 0.4f до 0.6f
                         )
 
                         val totalPlan = task.getTotalPlanQuantity()
                         Text(
                             text = formatQuantity(totalPlan),
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.weight(0.3f)
+                            modifier = Modifier.weight(0.2f) // Уменьшили с 0.3f до 0.2f
                         )
 
                         val totalFact = task.getTotalFactQuantity()
                         Text(
                             text = formatQuantity(totalFact),
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
                             color = if (totalFact >= totalPlan)
                                 MaterialTheme.colorScheme.primary
                             else
                                 MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(0.3f)
+                            modifier = Modifier.weight(0.2f) // Уменьшили с 0.3f до 0.2f
                         )
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Text(
-                        text = stringResource(
-                            id = R.string.task_completion_percentage,
-                            task.getCompletionPercentage()
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                    // Рассчитываем количество строк с совпадающим планом и фактом
+                    val matchingLinesCount = state.taskLines.count {
+                        it.factLine != null && it.factLine.quantity == it.planLine.quantity && it.factLine.quantity > 0f
+                    }
+                    val totalLinesCount = state.taskLines.size
+
+                    Row(
                         modifier = Modifier.align(Alignment.End)
-                    )
+                    ) {
+                        Text(
+                            text = stringResource(
+                                id = R.string.task_completion_percentage,
+                                task.getCompletionPercentage()
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(
+                                id = R.string.matching_lines_count,
+                                matchingLinesCount,
+                                totalLinesCount
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

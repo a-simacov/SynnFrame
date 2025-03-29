@@ -495,7 +495,6 @@
     <string name="choose_time">Choose time</string>
     <string name="clear_date_filter">Clear filter by date</string>
     <string name="select_time">Select time</string>
-    <string name="product_id">Identifier</string>
     <string name="quantity">Qty</string>
     <string name="product_not_in_plan">Found product is not in the plan</string>
     <string name="edit_quantity">Modifying qty</string>
@@ -504,4 +503,8 @@
     <string name="product_id_fmt">ID: %1$s</string>
     <string name="unit_fmt">Unit: %1$s</string>
     <string name="barcode_fmt">Barcode: %1$s</string>
+
+    <string name="matching_lines_count">Matching lines: %1$d of %2$d</string>
+    <string name="product_id">ID: %s</string>
+    <string name="product_unit">Unit: %s</string>
 </resources>
