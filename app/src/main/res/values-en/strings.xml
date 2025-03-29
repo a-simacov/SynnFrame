@@ -497,4 +497,11 @@
     <string name="select_time">Select time</string>
     <string name="product_id">Identifier</string>
     <string name="quantity">Qty</string>
+    <string name="product_not_in_plan">Found product is not in the plan</string>
+    <string name="edit_quantity">Modifying qty</string>
+    <string name="result_quantity_label">Total qty</string>
+    <string name="percentage_of_plan">%1$.1f%% from plan</string>
+    <string name="product_id_fmt">ID: %1$s</string>
+    <string name="unit_fmt">Unit: %1$s</string>
+    <string name="barcode_fmt">Barcode: %1$s</string>
 </resources>

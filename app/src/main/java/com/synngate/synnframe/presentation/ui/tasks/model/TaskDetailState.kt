@@ -4,7 +4,6 @@ import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskFactLine
 import com.synngate.synnframe.domain.entity.TaskPlanLine
-import com.synngate.synnframe.domain.entity.TaskStatus
 
 /**
  * Комбинированные данные строки плана и факта задания
@@ -40,8 +39,8 @@ data class TaskDetailState(
     // Выбранная строка факта для редактирования
     val selectedFactLine: TaskFactLine? = null,
 
-    // Дополнительное количество для строки факта
-    val additionalQuantity: String = "",
+    // Выбранное плановое количество для отображения
+    val selectedPlanQuantity: Float = 0f,
 
     // Видимость диалога сканирования
     val isScanDialogVisible: Boolean = false,
@@ -64,7 +63,9 @@ data class TaskDetailState(
     // Признак доступности изменения задания
     val isEditable: Boolean = false,
 
+    // Состояние диалога ввода количества
     val factLineDialogState: FactLineDialogState = FactLineDialogState(),
 
-    val scanBarcodeDialogState: ScanBarcodeDialogState = ScanBarcodeDialogState(),
+    // Состояние диалога сканирования
+    val scanBarcodeDialogState: ScanBarcodeDialogState = ScanBarcodeDialogState()
 )

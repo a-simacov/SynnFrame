@@ -118,25 +118,19 @@ fun TaskDetailScreen(
     if (state.isScanDialogVisible) {
         ScanBarcodeDialog(
             onBarcodeScanned = { barcode -> viewModel.processScanResult(barcode) },
-            onQuantityChange = { factLine, additionalQuantity ->
-                viewModel.applyQuantityChange(factLine, additionalQuantity)
-            },
             onClose = { viewModel.closeDialog() },
-            scannedProduct = state.scannedProduct,
-            selectedFactLine = state.selectedFactLine,
-            scannedBarcode = state.scannedBarcode,
-            dialogState = state.scanBarcodeDialogState,
-            onQuantityInputChange = { viewModel.updateScanDialogAdditionalQuantity(it) },
-            onQuantityError = { viewModel.setScanDialogInputError(it) },
+            scannerMessage = state.scanBarcodeDialogState.scannerMessage,
+            isScannerActive = state.scanBarcodeDialogState.isScannerActive,
             onScannerActiveChange = { viewModel.toggleScannerActive(it) }
         )
     }
 
     if (state.isFactLineDialogVisible && state.selectedFactLine != null) {
-        val product = state.taskLines.find { it.factLine?.id == state.selectedFactLine!!.id }?.product
+        val product = state.taskLines.find { it.planLine.productId == state.selectedFactLine!!.productId }?.product
         TaskFactLineDialog(
             factLine = state.selectedFactLine!!,
             product = product,
+            planQuantity = state.selectedPlanQuantity,
             dialogState = state.factLineDialogState,
             onQuantityChange = { viewModel.updateFactLineAdditionalQuantity(it) },
             onError = { viewModel.setFactLineInputError(it) },
