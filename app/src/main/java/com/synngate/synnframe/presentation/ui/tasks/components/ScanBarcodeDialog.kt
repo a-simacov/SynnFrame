@@ -41,7 +41,6 @@ fun ScanBarcodeDialog(
     onScannerActiveChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // Автоматически активируем сканер через некоторое время, если он не активен
     LaunchedEffect(isScannerActive) {
         if (!isScannerActive) {
             delay(1000)
@@ -87,11 +86,10 @@ fun ScanBarcodeDialog(
                     }
                 }
 
-                // Область сканирования/превью камеры
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .weight(0.75f),
                     contentAlignment = Alignment.Center
                 ) {
                     if (isScannerActive) {
@@ -124,6 +122,8 @@ fun ScanBarcodeDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+
+                Spacer(modifier = Modifier.weight(0.1f).height(8.dp))
             }
         }
     }
