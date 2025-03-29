@@ -630,6 +630,9 @@ class TaskDetailViewModel(
             val updatedQuantity = factLine.quantity + addValue
             val updatedFactLine = factLine.copy(quantity = updatedQuantity)
 
+            // Сразу закрываем диалог, не дожидаясь результата асинхронной операции
+            closeDialog()
+
             launchIO {
                 try {
                     taskUseCases.updateTaskFactLine(updatedFactLine)
@@ -638,7 +641,6 @@ class TaskDetailViewModel(
                     loadTask()
 
                     sendEvent(TaskDetailEvent.UpdateSuccess)
-                    sendEvent(TaskDetailEvent.CloseDialog)
                 } catch (e: Exception) {
                     Timber.e(e, "Error updating task fact line")
                     sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка обновления: ${e.message}"))
