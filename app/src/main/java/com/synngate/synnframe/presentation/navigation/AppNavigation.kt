@@ -340,13 +340,8 @@ fun NavGraphBuilder.productsNavGraph(
                 navigateBack = {
                     navController.popBackStack()
                 },
-                returnProductToTask = { product ->
-                    // Возвращаемся к предыдущему экрану (экрану задания)
-                    navController.previousBackStackEntry?.savedStateHandle?.set(
-                        "selected_product", product
-                    )
-                    navController.popBackStack()
-                }
+                navController = navController, // Передаем NavController в экран
+                returnProductToTask = null // Удаляем этот колбэк, так как мы теперь используем savedStateHandle
             )
         }
 

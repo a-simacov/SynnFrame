@@ -257,19 +257,60 @@ class TaskDetailViewModel(
                         quantity = 0f
                     )
 
-                // Показываем диалог редактирования строки факта
+                // Находим плановое количество для этого товара
+                val planLine = task.planLines.find { it.productId == product.id }
+                val planQuantity = planLine?.quantity ?: 0f
+
+                // Обновляем состояние и открываем диалог ввода количества
                 updateState { state ->
                     state.copy(
                         scannedProduct = product,
                         selectedFactLine = factLine,
-                        isFactLineDialogVisible = true
+                        isFactLineDialogVisible = true,
+                        selectedPlanQuantity = planQuantity
                     )
                 }
+
+                // Воспроизводим звук успешного сканирования
+                soundService.playSuccessSound()
+
             } else {
                 // Если товара нет в плане задания, показываем сообщение
                 sendEvent(TaskDetailEvent.ShowSnackbar(
                     "Товар '${product.name}' не входит в план задания"
                 ))
+
+                // Воспроизводим звук ошибки
+                soundService.playErrorSound()
+            }
+        }
+    }
+
+    /**
+     * Обрабатывает выбранный товар по ID со страницы выбора товаров
+     */
+    fun handleSelectedProductById(productId: String) {
+        launchIO {
+            try {
+                // Загружаем продукт по ID
+                val product = productUseCases.getProductById(productId)
+
+                if (product != null) {
+                    // Обрабатываем найденный продукт
+                    handleSelectedProduct(product)
+                } else {
+                    // Если продукт не найден, показываем сообщение
+                    sendEvent(TaskDetailEvent.ShowSnackbar("Товар с ID $productId не найден"))
+
+                    // Воспроизводим звук ошибки
+                    soundService.playErrorSound()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error loading product by ID $productId")
+                sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка загрузки товара: ${e.message}"))
+
+                // Воспроизводим звук ошибки
+                soundService.playErrorSound()
             }
         }
     }

@@ -507,4 +507,6 @@
     <string name="matching_lines_count">Matching lines: %1$d of %2$d</string>
     <string name="product_id">ID: %s</string>
     <string name="product_unit">Unit: %s</string>
+
+    <string name="select_product_first">Select product</string>
 </resources>

@@ -216,7 +216,7 @@ class ProductListViewModel(
 
                     // Если товар найден, посылаем событие навигации
                     if (uiState.value.isSelectionMode) {
-                        sendEvent(ProductListEvent.ReturnToTaskWithProduct(product))
+                        sendEvent(ProductListEvent.ReturnSelectedProductId(product.id))
                     } else {
                         sendEvent(ProductListEvent.NavigateToProductDetail(product.id))
                     }
@@ -357,13 +357,11 @@ class ProductListViewModel(
         updateState { it.copy(showScannerDialog = false) }
     }
 
-    /**
-     * Подтверждает выбор товара и возвращается к заданию
-     */
     fun confirmProductSelection() {
         val selectedProduct = uiState.value.selectedProduct
         if (selectedProduct != null) {
-            sendEvent(ProductListEvent.ReturnToTaskWithProduct(selectedProduct))
+            // Отправляем только ID продукта вместо целого объекта
+            sendEvent(ProductListEvent.ReturnSelectedProductId(selectedProduct.id))
         }
     }
 }

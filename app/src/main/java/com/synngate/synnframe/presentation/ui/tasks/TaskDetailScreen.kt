@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.synngate.synnframe.R
-import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.entity.TaskType
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
@@ -164,13 +163,13 @@ fun TaskDetailScreen(
     } ?: ""
 
     // Обработка возвращаемого значения из экрана выбора товара
-    LaunchedEffect(Unit) {
+    LaunchedEffect(navBackStackEntry) {
         val savedStateHandle = navBackStackEntry?.savedStateHandle
-        savedStateHandle?.get<Product>("selected_product")?.let { product ->
-            // Обрабатываем выбранный товар
-            viewModel.handleSelectedProduct(product)
+        savedStateHandle?.get<String>("selected_product_id")?.let { productId ->
+            // Загружаем продукт по ID и обрабатываем его
+            viewModel.handleSelectedProductById(productId)
             // Удаляем данные, чтобы избежать повторной обработки
-            savedStateHandle.remove<Product>("selected_product")
+            savedStateHandle.remove<String>("selected_product_id")
         }
     }
 

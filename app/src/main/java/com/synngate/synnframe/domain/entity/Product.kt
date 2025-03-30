@@ -1,6 +1,8 @@
 package com.synngate.synnframe.domain.entity
 
-// Доменная модель товара
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Product(
     val id: String,
     val name: String,
@@ -19,6 +21,7 @@ data class Product(
     }
 }
 
+@Serializable
 data class ProductUnit(
     val id: String,
     val productId: String,

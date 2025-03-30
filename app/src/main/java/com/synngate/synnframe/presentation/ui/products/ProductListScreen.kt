@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
@@ -51,6 +52,7 @@ fun ProductListScreen(
     navigateToProductDetail: (String) -> Unit,
     navigateBack: () -> Unit,
     returnProductToTask: ((Product) -> Unit)? = null,
+    navController: NavController, // Добавляем параметр NavController
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -74,8 +76,12 @@ fun ProductListScreen(
                     navigateBack()
                 }
 
-                is ProductListEvent.ReturnToTaskWithProduct -> {
-                    returnProductToTask?.invoke(event.product)
+                is ProductListEvent.ReturnSelectedProductId -> {
+                    // Передаем только идентификатор товара через savedStateHandle
+                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                        "selected_product_id", event.productId
+                    )
+                    navigateBack()
                 }
             }
         }
@@ -94,7 +100,6 @@ fun ProductListScreen(
     if (state.showScannerDialog) {
         BarcodeScannerDialog(
             onBarcodeScanned = { barcode ->
-                // Сначала закрываем диалог и затем обрабатываем штрих-код в одном методе
                 viewModel.handleScannedBarcode(barcode)
             },
             onClose = { viewModel.finishScanning() },
@@ -181,7 +186,19 @@ fun ProductListScreen(
                 }
             }
         },
-        isLoading = state.isLoading
+        isLoading = state.isLoading,
+        bottomBar = {
+            if (state.isSelectionMode && state.selectedProduct != null) {
+                Button(
+                    onClick = { viewModel.confirmProductSelection() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(stringResource(id = R.string.confirm_selection))
+                }
+            }
+        }
     ) { paddingValues ->
         Column(
             modifier = modifier
@@ -236,22 +253,6 @@ fun ProductListScreen(
                             isSelectionMode = state.isSelectionMode
                         )
                     }
-
-                }
-            }
-        }
-        if (state.isSelectionMode && state.selectedProduct != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Button(
-                    onClick = { viewModel.confirmProductSelection() },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(id = R.string.confirm_selection))
                 }
             }
         }

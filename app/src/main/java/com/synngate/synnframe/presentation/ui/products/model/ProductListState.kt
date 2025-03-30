@@ -40,7 +40,7 @@ sealed class ProductListEvent {
 
     data class ShowSnackbar(val message: String) : ProductListEvent()
 
-    data class ReturnToTaskWithProduct(val product: Product) : ProductListEvent()
+    data class ReturnSelectedProductId(val productId: String) : ProductListEvent()
 
     data object NavigateBack : ProductListEvent()
 }
