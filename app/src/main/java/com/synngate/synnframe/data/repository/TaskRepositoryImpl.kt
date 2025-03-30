@@ -13,6 +13,7 @@ import com.synngate.synnframe.domain.entity.TaskType
 import com.synngate.synnframe.domain.repository.TaskRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 import java.time.LocalDateTime
 
 class TaskRepositoryImpl(
@@ -178,6 +179,7 @@ class TaskRepositoryImpl(
         }
     }
 
+    // в com.synngate.synnframe.data.repository.TaskRepositoryImpl
     override suspend fun uploadTaskToServer(id: String): Result<Boolean> {
         try {
             val taskEntity = taskDao.getTaskById(id) ?:
@@ -202,10 +204,14 @@ class TaskRepositoryImpl(
                     return Result.success(true)
                 }
 
-                is ApiResult.Error ->
+                is ApiResult.Error -> {
+                    // Более детальное логирование ошибки
+                    Timber.e("Failed to upload task: Code=${response.code}, Message=${response.message}")
                     return Result.failure(Exception(response.message))
+                }
             }
         } catch (e: Exception) {
+            Timber.e(e, "Exception during task upload: $id")
             return Result.failure(e)
         }
     }

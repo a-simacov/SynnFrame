@@ -1,7 +1,10 @@
 package com.synngate.synnframe.domain.entity
 
+import com.synngate.synnframe.util.serialization.LocalDateTimeSerializer
+import kotlinx.serialization.Serializable
 import java.time.LocalDateTime
 
+@Serializable
 data class Task(
     val id: String,
 
@@ -11,12 +14,16 @@ data class Task(
 
     val barcode: String,
 
+    @Serializable(with = LocalDateTimeSerializer::class)
     val createdAt: LocalDateTime,
 
+    @Serializable(with = LocalDateTimeSerializer::class)
     val viewedAt: LocalDateTime? = null,
 
+    @Serializable(with = LocalDateTimeSerializer::class)
     val startedAt: LocalDateTime? = null,
 
+    @Serializable(with = LocalDateTimeSerializer::class)
     val completedAt: LocalDateTime? = null,
 
     val creationPlace: CreationPlace,
@@ -27,6 +34,7 @@ data class Task(
 
     val uploaded: Boolean = false,
 
+    @Serializable(with = LocalDateTimeSerializer::class)
     val uploadedAt: LocalDateTime? = null,
 
     val allowProductsNotInPlan: Boolean = false,
@@ -61,6 +69,7 @@ data class Task(
         planLines.any { it.productId == productId }
 }
 
+@Serializable
 data class TaskPlanLine(
     val id: String,
 
@@ -71,6 +80,7 @@ data class TaskPlanLine(
     val quantity: Float
 )
 
+@Serializable
 data class TaskFactLine(
     val id: String,
 

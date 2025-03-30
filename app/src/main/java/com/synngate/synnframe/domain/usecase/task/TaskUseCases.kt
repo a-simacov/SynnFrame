@@ -164,6 +164,7 @@ class TaskUseCases(
         }
     }
 
+    // в com.synngate.synnframe.domain.usecase.task.TaskUseCases
     suspend fun uploadTask(id: String): Result<Boolean> {
         return try {
             // Получаем задание
@@ -183,13 +184,20 @@ class TaskUseCases(
             if (result.isSuccess) {
                 loggingService.logInfo("Задание успешно выгружено: ${task.name}")
             } else {
-                loggingService.logWarning("Ошибка выгрузки задания: ${result.exceptionOrNull()?.message}")
+                val error = result.exceptionOrNull()
+                loggingService.logWarning("Ошибка выгрузки задания: ${task.name}, причина: ${error?.message}")
+
+                // Для лучшей диагностики добавим стек трейс
+                if (error != null) {
+                    val stackTrace = error.stackTraceToString()
+                    loggingService.logError("Стек вызовов ошибки: $stackTrace")
+                }
             }
 
             result
         } catch (e: Exception) {
             Timber.e(e, "Exception during task upload")
-            loggingService.logError("Исключение при выгрузке задания: ${e.message}")
+            loggingService.logError("Исключение при выгрузке задания: ${e.message}, стек: ${e.stackTraceToString()}")
             Result.failure(e)
         }
     }

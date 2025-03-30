@@ -122,6 +122,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
                     useArrayPolymorphism = true
                     explicitNulls = false
                     coerceInputValues = true
+                    encodeDefaults = true
                 })
             }
             install(HttpTimeout) {
@@ -133,7 +134,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
                         Timber.tag("HttpClient").d(message)
                     }
                 }
-                level = LogLevel.BODY
+                level = LogLevel.ALL
             }
         }
     }

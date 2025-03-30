@@ -10,8 +10,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import timber.log.Timber
 
@@ -70,7 +74,47 @@ class TaskApiImpl(
         return apiService.checkTaskAvailability(taskId)
     }
 
+    // в com.synngate.synnframe.data.remote.api.TaskApiImpl
     override suspend fun uploadTask(taskId: String, task: Task): ApiResult<Unit> {
-        return apiService.uploadTask(taskId, task)
+        val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
+            HttpStatusCode.InternalServerError.value,
+            "No active server configured"
+        )
+
+        return try {
+            val url = "${server.apiUrl}/tasks/$taskId"
+            Timber.d("Выгрузка задания на сервер: $url")
+
+            // Логирование запроса
+            Timber.d("Задание для выгрузки: ${task.id}, статус: ${task.status}, факт строк: ${task.factLines.size}")
+
+            val response = client.post(url) {
+                header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
+                header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
+                contentType(ContentType.Application.Json)
+                setBody(task)
+            }
+
+            if (response.status.isSuccess()) {
+                Timber.i("Задание $taskId успешно выгружено на сервер")
+                ApiResult.Success(Unit)
+            } else {
+                // Логирование детальной информации об ошибке
+                val responseText = response.bodyAsText()
+                Timber.e("Ошибка выгрузки задания $taskId. Код: ${response.status.value}, Ответ: $responseText")
+
+                ApiResult.Error(
+                    response.status.value,
+                    "Failed to upload task: ${response.status.description}. Response: $responseText"
+                )
+            }
+        } catch (e: Exception) {
+            // Подробное логирование исключения
+            Timber.e(e, "Exception during task upload: $taskId")
+            ApiResult.Error(
+                HttpStatusCode.InternalServerError.value,
+                "Task upload failed: ${e.message ?: "Unknown error"}"
+            )
+        }
     }
 }

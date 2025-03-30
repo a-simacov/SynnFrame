@@ -189,11 +189,19 @@ fun LogDetailScreen(
 
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                Text(
-                                    text = state.log?.message ?: "",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.fillMaxSize()
-                                )
+                                val scrollState = rememberScrollState()
+
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .verticalScroll(scrollState)
+                                        .padding(16.dp)
+                                ) {
+                                    Text(
+                                        text = state.log?.message ?: "",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                }
                             }
                         }
                     }

@@ -222,6 +222,7 @@ class TaskDetailViewModel(
         }
     }
 
+    // в com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModel
     fun uploadTask() {
         val task = uiState.value.task ?: return
 
@@ -235,8 +236,23 @@ class TaskDetailViewModel(
                     loadTask()
                     sendEvent(TaskDetailEvent.ShowSnackbar("Задание успешно выгружено"))
                 } else {
-                    val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
-                    sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка выгрузки: $error"))
+                    val error = result.exceptionOrNull()
+                    val errorMsg = error?.message ?: "Неизвестная ошибка"
+
+                    // Логируем более подробную информацию, включая стек вызовов
+                    Timber.e(error, "Detailed error during task upload")
+
+                    // Показываем пользователю сокращенное, но более информативное сообщение
+                    val userErrorMsg = when {
+                        errorMsg.contains("Connection refused") -> "Ошибка соединения с сервером"
+                        errorMsg.contains("timeout") -> "Превышено время ожидания ответа от сервера"
+                        errorMsg.contains("404") -> "Сервер не нашел указанный ресурс (404)"
+                        errorMsg.contains("401") || errorMsg.contains("403") -> "Ошибка авторизации (401/403)"
+                        errorMsg.contains("500") -> "Внутренняя ошибка сервера (500)"
+                        else -> "Ошибка выгрузки: $errorMsg"
+                    }
+
+                    sendEvent(TaskDetailEvent.ShowSnackbar(userErrorMsg))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error uploading task")
