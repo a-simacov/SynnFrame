@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.synngate.synnframe.R
+import com.synngate.synnframe.domain.entity.CreationPlace
+import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.entity.TaskType
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
@@ -50,7 +52,6 @@ import com.synngate.synnframe.presentation.ui.tasks.model.ProductDisplayProperty
 import com.synngate.synnframe.presentation.ui.tasks.model.ProductPropertyType
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailEvent
 import com.synngate.synnframe.presentation.util.formatQuantity
-import java.time.format.DateTimeFormatter
 
 @Composable
 fun TaskDetailScreen(
@@ -66,8 +67,6 @@ fun TaskDetailScreen(
     val task = state.task
 
     val snackbarHostState = remember { SnackbarHostState() }
-
-    val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
 
     val updateSuccessMessage = stringResource(id = R.string.update_success)
 
@@ -154,13 +153,7 @@ fun TaskDetailScreen(
     }
 
     // Определение заголовка экрана и подзаголовка
-    val screenTitle = task?.let {
-        val taskType = when (it.type) {
-            TaskType.RECEIPT -> stringResource(id = R.string.task_type_receipt)
-            TaskType.PICK -> stringResource(id = R.string.task_type_pick)
-        }
-        "$taskType (${it.barcode})"
-    } ?: ""
+    val screenTitle = task?.getDisplayHeader() ?: ""
 
     // Обработка возвращаемого значения из экрана выбора товара
     LaunchedEffect(navBackStackEntry) {
@@ -414,4 +407,16 @@ fun TaskDetailScreen(
             }
         }
     }
+}
+
+@Composable
+fun Task.getDisplayHeader(): String {
+    val taskType = when (type) {
+        TaskType.RECEIPT -> stringResource(id = R.string.task_type_receipt)
+        TaskType.PICK -> stringResource(id = R.string.task_type_pick)
+    }
+    val taskBarcode = if (this.creationPlace == CreationPlace.APP) {
+        "${this.barcode.take(5)}...${this.barcode.takeLast(10)}"
+    } else this.barcode
+    return "$taskType ($taskBarcode)"
 }

@@ -36,9 +36,6 @@ class TaskDetailViewModel(
         loadTask()
     }
 
-    /**
-     * Загружает задание и его детали
-     */
     fun loadTask() {
         scannedBarcodeCache.clear()
         launchIO {
@@ -158,16 +155,6 @@ class TaskDetailViewModel(
         private const val MIN_BARCODE_LENGTH = 8 // Минимальная длина штрихкода для автоматического поиска
     }
 
-    /**
-     * Обновляет дополнительное количество для строки факта
-     */
-//    fun updateAdditionalQuantity(quantity: String) {
-//        updateState { it.copy(additionalQuantity = quantity) }
-//    }
-
-    /**
-     * Начинает выполнение задания
-     */
     fun startTask() {
         val task = uiState.value.task ?: return
 
@@ -200,16 +187,10 @@ class TaskDetailViewModel(
         }
     }
 
-    /**
-     * Показывает диалог подтверждения завершения задания
-     */
     fun showCompleteConfirmation() {
         updateState { it.copy(isCompleteConfirmationVisible = true) }
     }
 
-    /**
-     * Завершает выполнение задания
-     */
     fun completeTask() {
         val task = uiState.value.task ?: return
 
@@ -241,9 +222,6 @@ class TaskDetailViewModel(
         }
     }
 
-    /**
-     * Выгружает задание на сервер
-     */
     fun uploadTask() {
         val task = uiState.value.task ?: return
 
@@ -269,9 +247,6 @@ class TaskDetailViewModel(
         }
     }
 
-    /**
-     * Обрабатывает выбранный товар со страницы выбора товаров
-     */
     fun handleSelectedProduct(product: Product) {
         launchIO {
             val task = uiState.value.task ?: return@launchIO

@@ -21,6 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
@@ -81,6 +83,12 @@ fun TaskListItem(
                             text = task.barcode,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.End,
+                            modifier = Modifier
+                                .weight(2f)
+                                .padding(start = 8.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     Spacer(modifier = Modifier.height(4.dp))
@@ -152,7 +160,7 @@ private fun TaskListItemPreview() {
             id = "d052c429-87de-4c1a-a1c5-17af6d7e2ad9",
             name = "Принять и разместить (Магазин Cricova, Chisinaului 80) 00CB-003125 13.03.25",
             type = TaskType.RECEIPT,
-            barcode = "Т00000046",
+            barcode = "Т00000046",//"Т00000046",
             createdAt = LocalDateTime.now(),
             viewedAt = LocalDateTime.now(),
             startedAt = LocalDateTime.now(),

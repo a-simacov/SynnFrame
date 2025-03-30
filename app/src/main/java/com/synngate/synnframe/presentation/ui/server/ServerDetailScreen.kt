@@ -130,7 +130,7 @@ fun ServerDetailScreen(
             onTestConnection = viewModel::testConnection,
             onSave = viewModel::saveServer,
             onBack = viewModel::navigateBack,
-            //modifier = Modifier.padding(paddingValues)
+            modifier = Modifier.padding(paddingValues)
         )
     }
 }
@@ -301,5 +301,7 @@ private fun ServerDetailContent(
             icon = Icons.AutoMirrored.Filled.ArrowBack,
             modifier = Modifier.fillMaxWidth()
         )
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }

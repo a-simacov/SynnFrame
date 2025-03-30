@@ -1,6 +1,7 @@
 package com.synngate.synnframe.presentation.ui.tasks.model
 
 import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.ProductUnit
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskFactLine
 import com.synngate.synnframe.domain.entity.TaskPlanLine
@@ -44,5 +45,9 @@ data class TaskDetailState(
 
     val factLineDialogState: FactLineDialogState = FactLineDialogState(),
 
-    val scanBarcodeDialogState: ScanBarcodeDialogState = ScanBarcodeDialogState()
+    val scanBarcodeDialogState: ScanBarcodeDialogState = ScanBarcodeDialogState(),
+
+    val scannedUnit: ProductUnit? = null,
+
+    val unitCoefficient: Float = 1f
 )
