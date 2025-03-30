@@ -1,11 +1,16 @@
 package com.synngate.synnframe.presentation.ui.products
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -14,6 +19,8 @@ import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
@@ -32,18 +39,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.synngate.synnframe.R
-import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerDialog
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.products.components.BatchScannerDialog
-import com.synngate.synnframe.presentation.ui.products.components.ProductListItem
 import com.synngate.synnframe.presentation.ui.products.model.ProductListEvent
+import com.synngate.synnframe.presentation.ui.products.model.ProductListItemUiModel
 import com.synngate.synnframe.presentation.ui.products.model.SortOrder
 
 @Composable
@@ -51,14 +58,13 @@ fun ProductListScreen(
     viewModel: ProductListViewModel,
     navigateToProductDetail: (String) -> Unit,
     navigateBack: () -> Unit,
-    returnProductToTask: ((Product) -> Unit)? = null,
-    navController: NavController, // Добавляем параметр NavController
+    navController: NavController,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
+    val uiPresentation = viewModel.getUiPresentation() // Получаем готовые UI-данные
 
     val snackbarHostState = remember { SnackbarHostState() }
-
     var showSortMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = viewModel) {
@@ -67,17 +73,13 @@ fun ProductListScreen(
                 is ProductListEvent.NavigateToProductDetail -> {
                     navigateToProductDetail(event.productId)
                 }
-
                 is ProductListEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(event.message)
                 }
-
                 is ProductListEvent.NavigateBack -> {
                     navigateBack()
                 }
-
                 is ProductListEvent.ReturnSelectedProductId -> {
-                    // Передаем только идентификатор товара через savedStateHandle
                     navController.previousBackStackEntry?.savedStateHandle?.set(
                         "selected_product_id", event.productId
                     )
@@ -87,6 +89,7 @@ fun ProductListScreen(
         }
     }
 
+    // Диалоги без изменений
     if (state.showBatchScannerDialog) {
         BatchScannerDialog(
             onBarcodeScanned = { barcode, onProductFound ->
@@ -108,23 +111,21 @@ fun ProductListScreen(
     }
 
     AppScaffold(
-        title = if (state.isSelectionMode)
+        title = if (uiPresentation.isSelectionMode)
             stringResource(id = R.string.select_product)
         else stringResource(id = R.string.products),
-        subtitle = if (state.isSelectionMode)
+        subtitle = if (uiPresentation.isSelectionMode)
             stringResource(id = R.string.select_product_for_task)
         else null,
         onNavigateBack = navigateBack,
         snackbarHostState = snackbarHostState,
-        notification = state.error?.let {
+        notification = uiPresentation.errorMessage?.let {
             Pair(it, StatusType.ERROR)
         },
-        isSyncing = state.isSyncing,
-        lastSyncTime = state.lastSyncTime,
         actions = {
             IconButton(
                 onClick = { viewModel.syncProducts() },
-                enabled = !state.isSyncing
+                enabled = !uiPresentation.isLoading // Отключаем во время загрузки
             ) {
                 Icon(
                     imageVector = Icons.Default.Sync,
@@ -149,46 +150,20 @@ fun ProductListScreen(
                         onClick = {
                             viewModel.updateSortOrder(sortOption)
                             showSortMenu = false
-                        },
-                        leadingIcon = {
-                            if (state.sortOrder == sortOption) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Sort,
-                                    contentDescription = null
-                                )
-                            }
                         }
                     )
                 }
             }
         },
         floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                FloatingActionButton(
-                    onClick = { viewModel.startBatchScanning() },
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ViewList,
-                        contentDescription = null
-                    )
-                }
-
-                FloatingActionButton(
-                    onClick = { viewModel.startScanning() },
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.QrCodeScanner,
-                        contentDescription = null
-                    )
-                }
-            }
+            ProductListFloatingActions(
+                onBatchScanClick = { viewModel.startBatchScanning() },
+                onScanClick = { viewModel.startScanning() }
+            )
         },
-        isLoading = state.isLoading,
+        isLoading = uiPresentation.isLoading,
         bottomBar = {
-            if (state.isSelectionMode && state.selectedProduct != null) {
+            if (uiPresentation.showConfirmButton) {
                 Button(
                     onClick = { viewModel.confirmProductSelection() },
                     modifier = Modifier
@@ -206,7 +181,7 @@ fun ProductListScreen(
                 .padding(paddingValues)
         ) {
             SearchTextField(
-                value = state.searchQuery,
+                value = uiPresentation.searchQuery,
                 onValueChange = { viewModel.updateSearchQuery(it) },
                 label = stringResource(id = R.string.search_products),
                 modifier = Modifier
@@ -215,45 +190,176 @@ fun ProductListScreen(
                 placeholder = stringResource(id = R.string.search_products_hint)
             )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = stringResource(
-                        id = R.string.products_count,
-                        state.products.size,
-                        state.productsCount
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            ProductsCountHeader(
+                totalCount = uiPresentation.totalCount,
+                filteredCount = uiPresentation.filteredCount
+            )
 
-            if (state.products.isEmpty()) {
-                EmptyScreenContent(
-                    message = if (state.searchQuery.isNotEmpty() || state.filterByAccountingModel != null)
-                        stringResource(id = R.string.no_products_with_filter)
-                    else
-                        stringResource(id = R.string.no_products)
+            if (uiPresentation.products.isEmpty()) {
+                EmptyProductsList(
+                    hasSearchQuery = uiPresentation.searchQuery.isNotEmpty()
                 )
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(
-                        items = state.products,
-                        key = { it.id } // Добавляем ключ для оптимизации
-                    ) { product ->
-                        ProductListItem(
-                            product = product,
-                            onClick = { viewModel.onProductClick(product) },
-                            isSelected = state.selectedProduct?.id == product.id && state.isSelectionMode,
-                            isSelectionMode = state.isSelectionMode
-                        )
+                ProductsList(
+                    products = uiPresentation.products,
+                    onProductClick = { productId ->
+                        viewModel.onProductClick(state.products.first { it.id == productId })
                     }
-                }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ProductListFloatingActions(
+    onBatchScanClick: () -> Unit,
+    onScanClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = modifier
+    ) {
+        // Кнопка для пакетного сканирования
+        FloatingActionButton(
+            onClick = onBatchScanClick
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ViewList,
+                contentDescription = stringResource(id = R.string.batch_scanning)
+            )
+        }
+
+        // Кнопка для обычного сканирования
+        FloatingActionButton(
+            onClick = onScanClick
+        ) {
+            Icon(
+                imageVector = Icons.Default.QrCodeScanner,
+                contentDescription = stringResource(id = R.string.scan_barcode)
+            )
+        }
+    }
+}
+
+@Composable
+fun ProductsCountHeader(
+    totalCount: Int,
+    filteredCount: Int,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = stringResource(
+                id = R.string.products_count,
+                filteredCount,
+                totalCount
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun EmptyProductsList(
+    hasSearchQuery: Boolean,
+    modifier: Modifier = Modifier
+) {
+    EmptyScreenContent(
+        message = if (hasSearchQuery)
+            stringResource(id = R.string.no_products_with_filter)
+        else
+            stringResource(id = R.string.no_products),
+        modifier = modifier
+    )
+}
+
+@Composable
+fun ProductsList(
+    products: List<ProductListItemUiModel>,
+    onProductClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize()
+    ) {
+        items(
+            items = products,
+            key = { it.id }
+        ) { product ->
+            ProductListItem(
+                name = product.name,
+                articleText = product.articleText,
+                mainUnitText = product.mainUnitText,
+                isSelected = product.isSelected,
+                onClick = { onProductClick(product.id) }
+            )
+        }
+    }
+}
+
+@Composable
+fun ProductListItem(
+    name: String,
+    articleText: String,
+    mainUnitText: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 8.dp)
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = if (isSelected)
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        else CardDefaults.cardColors()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.titleMedium,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = articleText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Text(
+                    text = mainUnitText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

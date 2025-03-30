@@ -1,6 +1,7 @@
 package com.synngate.synnframe.presentation.ui.products.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,19 +19,23 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
-import com.synngate.synnframe.domain.entity.ProductUnit
+import com.synngate.synnframe.presentation.ui.products.model.ProductUnitUiModel
 
 @Composable
 fun ProductUnitItem(
-    unit: ProductUnit,
-    isMainUnit: Boolean,
+    unit: ProductUnitUiModel,
+    isSelected: Boolean,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(),
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onClick),
+        colors = if (isSelected)
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        else CardDefaults.cardColors(),
         elevation = CardDefaults.cardElevation(1.dp)
     ) {
         Column(
@@ -43,15 +48,16 @@ fun ProductUnitItem(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "${unit.name} (коэф. ${unit.quantity})",
+                    text = "${unit.name} (коэф. ${unit.quantityText})",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = if (isMainUnit) FontWeight.Bold else FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onSurface
+                    fontWeight = if (unit.isMainUnit) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                if (isMainUnit) {
+                if (unit.isMainUnit) {
                     Text(
                         text = stringResource(id = R.string.main_unit),
                         style = MaterialTheme.typography.bodySmall,
@@ -71,18 +77,20 @@ fun ProductUnitItem(
             Text(
                 text = stringResource(id = R.string.main_barcode, unit.mainBarcode),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            if (unit.barcodes.isNotEmpty() && unit.barcodes.size > 1) {
+            if (unit.additionalBarcodesCount > 0) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = stringResource(
                         id = R.string.additional_barcodes_count,
-                        unit.barcodes.size - 1
+                        unit.additionalBarcodesCount
                     ),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
             }
         }

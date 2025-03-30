@@ -515,8 +515,14 @@
 
     <string name="matching_lines_count">Строк совпало: %1$d из %2$d</string>
     <string name="product_id">ID: %s</string>
+    <string name="product_id_title">Идентифтикатор</string>
     <string name="product_unit">Ед. изм.: %s</string>
 
     <string name="select_product_first">Выберите товар</string>
     <string name="allow_products_not_in_plan">Разрешены товары не из плана</string>
+
+    <string name="sort_by_name_asc">По наименованию (А-Я)</string>
+    <string name="sort_by_name_desc">По наименованию (Я-А)</string>
+    <string name="sort_by_article_asc">По артикулу (возр.)</string>
+    <string name="sort_by_article_desc">По артикулу (убыв.)</string>
 </resources>

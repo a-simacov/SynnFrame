@@ -1,41 +1,45 @@
 package com.synngate.synnframe.presentation.ui.products
 
 import androidx.lifecycle.viewModelScope
+import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.AccountingModel
-import com.synngate.synnframe.domain.entity.Product
-import com.synngate.synnframe.domain.entity.ProductUnit
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
+import com.synngate.synnframe.presentation.ui.products.mapper.ProductUiMapper
+import com.synngate.synnframe.presentation.ui.products.model.BarcodeUiModel
 import com.synngate.synnframe.presentation.ui.products.model.ProductDetailEvent
 import com.synngate.synnframe.presentation.ui.products.model.ProductDetailState
+import com.synngate.synnframe.presentation.ui.products.model.ProductDetailUiModel
+import com.synngate.synnframe.presentation.ui.products.model.ProductUnitUiModel
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
+import com.synngate.synnframe.util.resources.ResourceProvider
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * ViewModel для экрана деталей товара
- */
 class ProductDetailViewModel(
     private val productId: String,
     private val productUseCases: ProductUseCases,
     private val loggingService: LoggingService,
     private val clipboardService: ClipboardService,
+    private val productUiMapper: ProductUiMapper,
+    private val resourceProvider: ResourceProvider,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<ProductDetailState, ProductDetailEvent>(
     ProductDetailState()
 ) {
 
+    private var productUiModel: ProductDetailUiModel? = null
+    private var selectedUnitUiModels: List<ProductUnitUiModel> = emptyList()
+    private var selectedUnitBarcodes: List<BarcodeUiModel> = emptyList()
+
     init {
         loadProduct()
     }
 
-    /**
-     * Загрузка данных товара
-     */
     fun loadProduct() {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
@@ -44,13 +48,15 @@ class ProductDetailViewModel(
                 val product = productUseCases.getProductById(productId)
 
                 if (product != null) {
-                    // Выбираем основную единицу измерения по умолчанию
-                    val mainUnitId = product.mainUnitId
+                    // Маппинг доменной модели в UI-модель
+                    productUiModel = productUiMapper.mapToDetailModel(product)
+
+                    updateSelectedUnit(product.mainUnitId)
 
                     updateState {
                         it.copy(
                             product = product,
-                            selectedUnitId = mainUnitId,
+                            selectedUnitId = product.mainUnitId,
                             isLoading = false,
                             error = null
                         )
@@ -61,7 +67,7 @@ class ProductDetailViewModel(
                     updateState {
                         it.copy(
                             isLoading = false,
-                            error = "Товар с ID $productId не найден"
+                            error = resourceProvider.getString(R.string.product_not_found, productId)
                         )
                     }
 
@@ -72,7 +78,7 @@ class ProductDetailViewModel(
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка загрузки товара: ${e.message}"
+                        error = resourceProvider.getString(R.string.error_loading_product, e.message ?: "")
                     )
                 }
 
@@ -81,31 +87,26 @@ class ProductDetailViewModel(
         }
     }
 
-    /**
-     * Выбор единицы измерения
-     */
     fun selectUnit(unitId: String) {
+        updateSelectedUnit(unitId)
         updateState { it.copy(selectedUnitId = unitId) }
     }
 
-    /**
-     * Переключение отображения панели штрихкодов
-     */
-    fun toggleBarcodesPanel() {
-        updateState { it.copy(showBarcodes = !it.showBarcodes) }
-        sendEvent(ProductDetailEvent.ToggleBarcodesPanel)
+    private fun updateSelectedUnit(unitId: String) {
+        val product = uiState.value.product ?: return
+
+        // Фильтруем UI-модели единиц измерения для выбранной
+        selectedUnitUiModels = productUiModel?.units?.filter { it.id == unitId } ?: emptyList()
+
+        // Получаем штрихкоды для выбранной единицы измерения
+        val selectedUnit = product.units.find { it.id == unitId }
+        selectedUnitBarcodes = selectedUnit?.let { unit ->
+            unit.allBarcodes.map { barcode ->
+                BarcodeUiModel(barcode, isMainBarcode = barcode == unit.mainBarcode)
+            }
+        } ?: emptyList()
     }
 
-    /**
-     * Переключение отображения расширенной информации о единицах измерения
-     */
-    fun toggleExtendedUnitInfo() {
-        updateState { it.copy(showExtendedUnitInfo = !it.showExtendedUnitInfo) }
-    }
-
-    /**
-     * Копирование штрихкода в буфер обмена
-     */
     fun copyBarcodeToClipboard(barcode: String) {
         val isCopied = clipboardService.copyToClipboard(
             text = barcode,
@@ -133,9 +134,6 @@ class ProductDetailViewModel(
         }
     }
 
-    /**
-     * Копирование информации о товаре в буфер обмена
-     */
     fun copyProductInfoToClipboard() {
         val product = uiState.value.product ?: return
 
@@ -179,133 +177,13 @@ class ProductDetailViewModel(
         }
     }
 
-    /**
-     * Получение текущей выбранной единицы измерения
-     */
-    fun getSelectedUnit(): ProductUnit? {
-        val currentState = uiState.value
-        val product = currentState.product ?: return null
-        val selectedUnitId = currentState.selectedUnitId ?: return null
+    fun getProductUiModel(): ProductDetailUiModel? = productUiModel
 
-        return product.units.find { it.id == selectedUnitId }
-    }
+    fun getSelectedUnitUiModels(): List<ProductUnitUiModel> = selectedUnitUiModels
 
-    /**
-     * Получение основной единицы измерения
-     */
-    fun getMainUnit(): ProductUnit? {
-        val product = uiState.value.product ?: return null
-        return product.getMainUnit()
-    }
+    fun getAllBarcodesUiModels(): List<BarcodeUiModel> = productUiModel?.barcodes ?: emptyList()
 
-    /**
-     * Проверка, является ли указанная единица измерения основной
-     */
-    fun isMainUnit(unitId: String): Boolean {
-        val product = uiState.value.product ?: return false
-        return product.mainUnitId == unitId
-    }
-
-    /**
-     * Получение наименования модели учета для отображения
-     */
-    fun getAccountingModelName(accountingModel: AccountingModel): String {
-        return when (accountingModel) {
-            AccountingModel.BATCH -> "По партиям и количеству"
-            AccountingModel.QTY -> "Только по количеству"
-        }
-    }
-
-    /**
-     * Получение всех штрихкодов товара (из всех единиц измерения)
-     */
-    fun getAllBarcodes(): List<String> {
-        val product = uiState.value.product ?: return emptyList()
-        return product.getAllBarcodes()
-    }
-
-    /**
-     * Получение штрихкодов для выбранной единицы измерения
-     */
-    fun getSelectedUnitBarcodes(): List<String> {
-        val selectedUnit = getSelectedUnit() ?: return emptyList()
-        return selectedUnit.allBarcodes
-    }
-
-    /**
-     * Проверка на основной штрихкод
-     */
-    fun isMainBarcode(barcode: String): Boolean {
-        val selectedUnit = getSelectedUnit() ?: return false
-        return selectedUnit.mainBarcode == barcode
-    }
-
-    /**
-     * Возврат к списку товаров
-     */
     fun navigateBack() {
         sendEvent(ProductDetailEvent.NavigateBack)
-    }
-
-    /**
-     * Выполняет поиск товара по штрихкоду
-     * @return Найденный товар или null, если товар не найден
-     */
-    suspend fun findProductByBarcode(barcode: String): Product? {
-        return try {
-            val product = productUseCases.findProductByBarcode(barcode)
-
-            if (product != null) {
-                loggingService.logInfo("Найден товар по штрихкоду $barcode: ${product.name}")
-            } else {
-                loggingService.logWarning("Товар по штрихкоду $barcode не найден")
-            }
-
-            product
-        } catch (e: Exception) {
-            Timber.e(e, "Error finding product by barcode $barcode")
-            loggingService.logError("Ошибка поиска товара по штрихкоду $barcode: ${e.message}")
-            null
-        }
-    }
-
-    /**
-     * Открывает экран для сканирования штрихкода
-     */
-    fun openBarcodeScanner() {
-        updateState { it.copy(showBarcodeScanner = true) }
-    }
-
-    /**
-     * Закрывает экран для сканирования штрихкода
-     */
-    fun closeBarcodeScanner() {
-        updateState { it.copy(showBarcodeScanner = false) }
-    }
-
-    /**
-     * Обрабатывает результат сканирования штрихкода
-     */
-    fun handleScannedBarcode(barcode: String, onProductFound: (Product) -> Unit) {
-        launchIO {
-            updateState { it.copy(isLoading = true) }
-
-            val product = findProductByBarcode(barcode)
-
-            if (product != null) {
-                // Если товар найден, вызываем колбэк
-                launchMain { onProductFound(product) }
-            } else {
-                // Если товар не найден, просто показываем сообщение
-                sendEvent(ProductDetailEvent.ShowSnackbar(
-                    "Товар по штрихкоду $barcode не найден"
-                ))
-            }
-
-            updateState { it.copy(
-                isLoading = false,
-                showBarcodeScanner = false
-            ) }
-        }
     }
 }

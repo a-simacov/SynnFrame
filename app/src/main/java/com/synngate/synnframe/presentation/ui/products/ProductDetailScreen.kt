@@ -25,12 +25,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
-import com.synngate.synnframe.domain.entity.AccountingModel
-import com.synngate.synnframe.domain.entity.Product
-import com.synngate.synnframe.domain.entity.ProductUnit
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.ErrorScreenContent
 import com.synngate.synnframe.presentation.common.scaffold.InfoRow
@@ -39,7 +35,10 @@ import com.synngate.synnframe.presentation.common.scaffold.SectionHeader
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.products.components.BarcodeItem
 import com.synngate.synnframe.presentation.ui.products.components.ProductUnitItem
+import com.synngate.synnframe.presentation.ui.products.model.BarcodeUiModel
 import com.synngate.synnframe.presentation.ui.products.model.ProductDetailEvent
+import com.synngate.synnframe.presentation.ui.products.model.ProductDetailUiModel
+import com.synngate.synnframe.presentation.ui.products.model.ProductUnitUiModel
 
 @Composable
 fun ProductDetailScreen(
@@ -48,7 +47,6 @@ fun ProductDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
-
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(key1 = viewModel) {
@@ -65,16 +63,7 @@ fun ProductDetailScreen(
                     navigateBack()
                 }
 
-                is ProductDetailEvent.CopyBarcodeToClipboard -> {
-                    // Обработано через Snackbar
-                }
-
-                is ProductDetailEvent.CopyProductInfoToClipboard -> {
-                    // Обработано через Snackbar
-                }
-
-                is ProductDetailEvent.ToggleBarcodesPanel -> {
-                    // Обработано через состояние
+                else -> { /* обработка других событий */
                 }
             }
         }
@@ -119,60 +108,30 @@ fun ProductDetailScreen(
                     )
                 }
 
-                state.product != null -> {
-                    ProductDetailsContent(
-                        product = state.product!!,
-                        isMainUnit = { viewModel.isMainUnit(it) },
-                        onCopyBarcode = { viewModel.copyBarcodeToClipboard(it) },
-                        isMainBarcode = { viewModel.isMainBarcode(it) }
-                    )
+                else -> {
+                    val productUiModel = viewModel.getProductUiModel()
+                    if (productUiModel != null) {
+                        ProductDetailsContent(
+                            productUiModel = productUiModel,
+                            selectedUnitUiModels = viewModel.getSelectedUnitUiModels(),
+                            unitBarcodes = viewModel.getAllBarcodesUiModels(),
+                            onUnitSelected = { viewModel.selectUnit(it) },
+                            onCopyBarcode = { viewModel.copyBarcodeToClipboard(it) }
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun ProductDetailPreview() {
-    ProductDetailsContent(
-        product = Product(
-            "0000000003309",
-            "Promo Мыло жидкое Clea Ocena 400 гр + Влажная салфетка 15 buc Antibacterial",
-            AccountingModel.QTY,
-            "Promo5",
-            "000000001",
-            listOf(
-                ProductUnit(
-                    "000000001",
-                    "0000000003309",
-                    "шт",
-                    1.0f,
-                    mainBarcode = "2009010005966",
-                    barcodes = listOf("2009010005966", "2009010005966")
-                ),
-                ProductUnit(
-                    "000000002",
-                    "0000000003309",
-                    "кор",
-                    10f,
-                    mainBarcode = "2009010005967",
-                    barcodes = listOf("2009010005967")
-                )
-            )
-        ),
-        isMainUnit = { it == "000000001" },
-        onCopyBarcode = {},
-        isMainBarcode = { true }
-    )
-}
-
 @Composable
 private fun ProductDetailsContent(
-    product: Product,
-    isMainUnit: (String) -> Boolean,
+    productUiModel: ProductDetailUiModel,
+    selectedUnitUiModels: List<ProductUnitUiModel>,
+    unitBarcodes: List<BarcodeUiModel>,
+    onUnitSelected: (String) -> Unit,
     onCopyBarcode: (String) -> Unit,
-    isMainBarcode: (String) -> Boolean,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -181,16 +140,17 @@ private fun ProductDetailsContent(
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        ProductBasicInfo(product = product)
+        ProductBasicInfoSection(product = productUiModel)
 
         Spacer(modifier = Modifier.height(8.dp))
 
         SectionHeader(title = stringResource(id = R.string.units_of_measure))
 
-        product.units.forEach { unit ->
+        productUiModel.units.forEach { unit ->
             ProductUnitItem(
                 unit = unit,
-                isMainUnit = isMainUnit(unit.id)
+                isSelected = selectedUnitUiModels.any { it.id == unit.id },
+                onClick = { onUnitSelected(unit.id) }
             )
         }
 
@@ -198,30 +158,16 @@ private fun ProductDetailsContent(
 
         SectionHeader(title = stringResource(id = R.string.barcodes))
 
-        val barcodes = product.getAllBarcodes()//units.flatMap { it.barcodes }
-
-        if (barcodes.isEmpty()) {
-            Text(
-                text = stringResource(id = R.string.no_barcodes),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-        } else {
-            barcodes.forEach { barcode ->
-                BarcodeItem(
-                    barcode = barcode,
-                    isMainBarcode = isMainBarcode(barcode),
-                    onCopyClick = onCopyBarcode
-                )
-            }
-        }
+        BarcodesList(
+            barcodes = unitBarcodes,
+            onCopyBarcode = onCopyBarcode
+        )
     }
 }
 
 @Composable
-private fun ProductBasicInfo(
-    product: Product,
+private fun ProductBasicInfoSection(
+    product: ProductDetailUiModel,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -239,33 +185,25 @@ private fun ProductBasicInfo(
         HorizontalDivider()
 
         InfoRow(
-            label = stringResource(id = R.string.product_id),
+            label = stringResource(id = R.string.product_id_title),
             value = product.id
         )
 
         InfoRow(
             label = stringResource(id = R.string.article_number),
-            value = product.articleNumber
+            value = product.articleText
         )
 
-        val accountingModelText = when (product.accountingModel) {
-            com.synngate.synnframe.domain.entity.AccountingModel.BATCH ->
-                stringResource(id = R.string.accounting_model_batch)
-
-            com.synngate.synnframe.domain.entity.AccountingModel.QTY ->
-                stringResource(id = R.string.accounting_model_qty)
-        }
         InfoRow(
             label = stringResource(id = R.string.accounting_model),
-            value = accountingModelText
+            value = product.accountingModelText
         )
     }
 }
 
 @Composable
 private fun BarcodesList(
-    barcodes: List<String>,
-    isMainBarcode: (String) -> Boolean,
+    barcodes: List<BarcodeUiModel>,
     onCopyBarcode: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -278,10 +216,10 @@ private fun BarcodesList(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         } else {
-            barcodes.forEach { barcode ->
+            barcodes.forEach { barcodeModel ->
                 BarcodeItem(
-                    barcode = barcode,
-                    isMainBarcode = isMainBarcode(barcode),
+                    barcode = barcodeModel.barcode,
+                    isMainBarcode = barcodeModel.isMainBarcode,
                     onCopyClick = onCopyBarcode
                 )
             }

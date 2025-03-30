@@ -1,14 +1,18 @@
 package com.synngate.synnframe.presentation.ui.products
 
+import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.SoundService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.ui.products.components.ScanResult
+import com.synngate.synnframe.presentation.ui.products.mapper.ProductUiMapper
 import com.synngate.synnframe.presentation.ui.products.model.ProductListEvent
+import com.synngate.synnframe.presentation.ui.products.model.ProductListItemUiModel
 import com.synngate.synnframe.presentation.ui.products.model.ProductListState
 import com.synngate.synnframe.presentation.ui.products.model.SortOrder
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
+import com.synngate.synnframe.util.resources.ResourceProvider
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -23,25 +27,70 @@ import kotlin.coroutines.cancellation.CancellationException
 
 class ProductListViewModel(
     private val productUseCases: ProductUseCases,
-    private val isSelectionMode: Boolean = false,
     private val loggingService: LoggingService,
     private val soundService: SoundService,
+    private val productUiMapper: ProductUiMapper,
+    private val resourceProvider: ResourceProvider,
+    private val isSelectionMode: Boolean = false,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<ProductListState, ProductListEvent>(
     ProductListState(isSelectionMode = isSelectionMode)
 ) {
 
     private var searchJob: Job? = null
-    private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
-
-    // Кэш для избежания повторного воспроизведения звуков для одинаковых штрихкодов
     private val soundPlayedCache = ConcurrentHashMap<String, Long>()
-    // Тайм-аут для предотвращения повторного воспроизведения звуков (мс)
-    private val SOUND_DEBOUNCE_TIMEOUT = 1500L // 2 секунды
+    private val SOUND_DEBOUNCE_TIMEOUT = 1500L
+    private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
 
     init {
         observeProductsCount()
         loadProducts()
+    }
+
+    // Внутренний класс для UI-представления списка товаров
+    data class ProductListUiPresentation(
+        val products: List<ProductListItemUiModel>,
+        val totalCount: Int,
+        val filteredCount: Int,
+        val isLoading: Boolean,
+        val errorMessage: String?,
+        val searchQuery: String,
+        val sortLabel: String,
+        val isSelectionMode: Boolean,
+        val selectedProductId: String?,
+        val showConfirmButton: Boolean
+    )
+
+    // Метод для получения UI-состояния для отображения
+    fun getUiPresentation(): ProductListUiPresentation {
+        val currentState = uiState.value
+
+        return ProductListUiPresentation(
+            products = currentState.products.map { product ->
+                productUiMapper.mapToListItem(
+                    product = product,
+                    isSelected = product.id == currentState.selectedProduct?.id
+                )
+            },
+            totalCount = currentState.productsCount,
+            filteredCount = currentState.products.size,
+            isLoading = currentState.isLoading,
+            errorMessage = currentState.error,
+            searchQuery = currentState.searchQuery,
+            sortLabel = getSortOrderLabel(currentState.sortOrder),
+            isSelectionMode = currentState.isSelectionMode,
+            selectedProductId = currentState.selectedProduct?.id,
+            showConfirmButton = currentState.isSelectionMode && currentState.selectedProduct != null
+        )
+    }
+
+    private fun getSortOrderLabel(sortOrder: SortOrder): String {
+        return when (sortOrder) {
+            SortOrder.NAME_ASC -> resourceProvider.getString(R.string.sort_by_name_asc)
+            SortOrder.NAME_DESC -> resourceProvider.getString(R.string.sort_by_name_desc)
+            SortOrder.ARTICLE_ASC -> resourceProvider.getString(R.string.sort_by_article_asc)
+            SortOrder.ARTICLE_DESC -> resourceProvider.getString(R.string.sort_by_article_desc)
+        }
     }
 
     private fun observeProductsCount() {

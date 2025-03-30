@@ -61,12 +61,15 @@ import com.synngate.synnframe.presentation.ui.logs.LogListViewModel
 import com.synngate.synnframe.presentation.ui.main.MainMenuViewModel
 import com.synngate.synnframe.presentation.ui.products.ProductDetailViewModel
 import com.synngate.synnframe.presentation.ui.products.ProductListViewModel
+import com.synngate.synnframe.presentation.ui.products.mapper.ProductUiMapper
 import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerListViewModel
 import com.synngate.synnframe.presentation.ui.settings.SettingsViewModel
 import com.synngate.synnframe.presentation.ui.sync.SyncHistoryViewModel
 import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModel
 import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModel
+import com.synngate.synnframe.util.resources.ResourceProvider
+import com.synngate.synnframe.util.resources.ResourceProviderImpl
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.plugins.HttpTimeout
@@ -137,6 +140,18 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
                 level = LogLevel.ALL
             }
         }
+    }
+
+    // Добавляем ResourceProvider
+    val resourceProvider: ResourceProvider by lazy {
+        Timber.d("Creating ResourceProvider")
+        ResourceProviderImpl(applicationContext)
+    }
+
+    // Добавляем UI-мапперы
+    val productUiMapper: ProductUiMapper by lazy {
+        Timber.d("Creating ProductUiMapper")
+        ProductUiMapper(resourceProvider)
     }
 
     // Сервисы
@@ -419,6 +434,8 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 productUseCases = appContainer.productUseCases,
                 loggingService = appContainer.loggingService,
                 soundService = appContainer.soundService,
+                productUiMapper = appContainer.productUiMapper, // Добавляем маппер
+                resourceProvider = appContainer.resourceProvider, // Добавляем providerResources
                 ioDispatcher = Dispatchers.IO,
                 isSelectionMode = isSelectionMode
             )
@@ -432,6 +449,8 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 productUseCases = appContainer.productUseCases,
                 loggingService = appContainer.loggingService,
                 clipboardService = appContainer.clipboardService,
+                productUiMapper = appContainer.productUiMapper, // Добавляем маппер
+                resourceProvider = appContainer.resourceProvider, // Добавляем providerResources
                 ioDispatcher = Dispatchers.IO
             )
         }

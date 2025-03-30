@@ -510,4 +510,9 @@
 
     <string name="select_product_first">Select product</string>
     <string name="allow_products_not_in_plan">Allowed products not in plan</string>
+    <string name="sort_by_name_asc">By description (A-Z)</string>
+    <string name="sort_by_name_desc">By description (Z-A)</string>
+    <string name="sort_by_article_asc">By article (asc.)</string>
+    <string name="sort_by_article_desc">By article (desc.)</string>
+    <string name="product_id_title">Identifier</string>
 </resources>

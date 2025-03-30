@@ -341,7 +341,7 @@ fun NavGraphBuilder.productsNavGraph(
                     navController.popBackStack()
                 },
                 navController = navController, // Передаем NavController в экран
-                returnProductToTask = null // Удаляем этот колбэк, так как мы теперь используем savedStateHandle
+                //returnProductToTask = null // Удаляем этот колбэк, так как мы теперь используем savedStateHandle
             )
         }
 
