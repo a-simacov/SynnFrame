@@ -509,4 +509,5 @@
     <string name="product_unit">Unit: %s</string>
 
     <string name="select_product_first">Select product</string>
+    <string name="allow_products_not_in_plan">Allowed products not in plan</string>
 </resources>

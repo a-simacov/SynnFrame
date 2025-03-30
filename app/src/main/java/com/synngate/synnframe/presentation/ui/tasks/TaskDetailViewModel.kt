@@ -2,6 +2,7 @@ package com.synngate.synnframe.presentation.ui.tasks
 
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.TaskFactLine
+import com.synngate.synnframe.domain.entity.TaskPlanLine
 import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.service.SoundService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
@@ -48,20 +49,51 @@ class TaskDetailViewModel(
 
                 if (task != null) {
                     // Получаем информацию о продуктах для строк плана и факта
-                    val productIds = task.planLines.map { it.productId }.toSet()
+                    val productIds = (task.planLines.map { it.productId } +
+                            task.factLines.map { it.productId }).toSet()
                     val productsList = productUseCases.getProductsByIds(productIds)
                     val products = productsList.associateBy { it.id }
 
                     // Комбинируем строки плана и факта
-                    val taskLines = task.planLines.map { planLine ->
+                    val taskLines = mutableListOf<TaskLineItem>()
+
+                    // Добавляем все строки из плана
+                    task.planLines.forEach { planLine ->
                         val factLine = task.factLines.find { it.productId == planLine.productId }
                         val product = products[planLine.productId]
 
-                        TaskLineItem(
-                            planLine = planLine,
-                            factLine = factLine,
-                            product = product
+                        taskLines.add(
+                            TaskLineItem(
+                                planLine = planLine,
+                                factLine = factLine,
+                                product = product
+                            )
                         )
+                    }
+
+                    // Если разрешены товары не из плана, добавляем строки факта, которых нет в плане
+                    if (task.allowProductsNotInPlan) {
+                        task.factLines
+                            .filter { factLine -> task.planLines.none { it.productId == factLine.productId } }
+                            .forEach { factLine ->
+                                val product = products[factLine.productId]
+
+                                // Создаем фиктивную строку плана для отображения
+                                val dummyPlanLine = TaskPlanLine(
+                                    id = "dummy-${factLine.id}",
+                                    taskId = factLine.taskId,
+                                    productId = factLine.productId,
+                                    quantity = 0f  // Нулевое плановое количество
+                                )
+
+                                taskLines.add(
+                                    TaskLineItem(
+                                        planLine = dummyPlanLine,
+                                        factLine = factLine,
+                                        product = product
+                                    )
+                                )
+                            }
                     }
 
                     // Проверяем, доступно ли редактирование задания
@@ -244,10 +276,11 @@ class TaskDetailViewModel(
         launchIO {
             val task = uiState.value.task ?: return@launchIO
 
-            // Проверяем, есть ли товар в плане задания
+            // Проверяем, есть ли товар в плане задания, или разрешено использовать товары не из плана
             val isInPlan = task.planLines.any { it.productId == product.id }
+            val canUseProductNotInPlan = task.allowProductsNotInPlan
 
-            if (isInPlan) {
+            if (isInPlan || canUseProductNotInPlan) {
                 // Находим или создаем строку факта
                 val factLine = task.factLines.find { it.productId == product.id }
                     ?: TaskFactLine(
@@ -273,9 +306,8 @@ class TaskDetailViewModel(
 
                 // Воспроизводим звук успешного сканирования
                 soundService.playSuccessSound()
-
             } else {
-                // Если товара нет в плане задания, показываем сообщение
+                // Если товара нет в плане и не разрешено использовать товары не из плана, показываем сообщение
                 sendEvent(TaskDetailEvent.ShowSnackbar(
                     "Товар '${product.name}' не входит в план задания"
                 ))
@@ -478,10 +510,11 @@ class TaskDetailViewModel(
                         return@launchIO
                     }
 
-                    // Проверяем, есть ли товар в плане задания
+                    // Проверяем, есть ли товар в плане задания, или разрешено использовать товары не из плана
                     val isInPlan = task.isProductInPlan(product.id)
+                    val canUseProductNotInPlan = task.allowProductsNotInPlan
 
-                    if (isInPlan) {
+                    if (isInPlan || canUseProductNotInPlan) {
                         // Находим или создаем строку факта
                         val factLine = task.getFactLineByProductId(product.id)
                             ?: TaskFactLine(
@@ -516,7 +549,8 @@ class TaskDetailViewModel(
                         // Звуковое оповещение об успешном сканировании
                         soundService.playSuccessSound()
                     } else {
-                        // Если товара нет в плане, показываем сообщение в диалоге сканирования
+                        // Если товара нет в плане и не разрешено использовать товары не из плана,
+                        // показываем сообщение в диалоге сканирования
                         updateState { state ->
                             state.copy(
                                 scanBarcodeDialogState = state.scanBarcodeDialogState.copy(

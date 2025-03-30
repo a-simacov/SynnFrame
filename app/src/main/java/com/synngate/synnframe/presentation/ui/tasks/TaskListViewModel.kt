@@ -179,7 +179,8 @@ class TaskListViewModel(
                     createdAt = LocalDateTime.now(),
                     creationPlace = CreationPlace.APP,
                     executorId = currentUser.id,
-                    status = TaskStatus.TO_DO
+                    status = TaskStatus.TO_DO,
+                    allowProductsNotInPlan = true  // Устанавливаем признак для новых заданий
                 )
 
                 // Добавляем задание

@@ -51,6 +51,9 @@ data class TaskDto(
     @SerialName("uploadedAt")
     val uploadedAt: String? = null,
 
+    @SerialName("allowProductsNotInPlan")
+    val allowProductsNotInPlan: Boolean = false,
+
     @SerialName("planLines")
     val planLines: List<TaskPlanLineDto> = emptyList(),
 
@@ -93,6 +96,7 @@ data class TaskDto(
                 status = task.status.name,
                 uploaded = task.uploaded,
                 uploadedAt = task.uploadedAt?.toString(),
+                allowProductsNotInPlan = task.allowProductsNotInPlan,
                 planLines = task.planLines.map { TaskPlanLineDto.fromDomainModel(it) },
                 factLines = task.factLines.map { TaskFactLineDto.fromDomainModel(it) }
             )

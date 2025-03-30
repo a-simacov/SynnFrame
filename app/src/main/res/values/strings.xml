@@ -518,4 +518,5 @@
     <string name="product_unit">Ед. изм.: %s</string>
 
     <string name="select_product_first">Выберите товар</string>
+    <string name="allow_products_not_in_plan">Разрешены товары не из плана</string>
 </resources>

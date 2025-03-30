@@ -10,9 +10,6 @@ import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.entity.TaskType
 import java.time.LocalDateTime
 
-/**
- * Entity класс для хранения заданий в Room
- */
 @Entity(tableName = "tasks")
 data class TaskEntity(
     @PrimaryKey
@@ -28,11 +25,9 @@ data class TaskEntity(
     val executorId: String?,
     val status: String,
     val uploaded: Boolean,
-    val uploadedAt: LocalDateTime?
+    val uploadedAt: LocalDateTime?,
+    val allowProductsNotInPlan: Boolean = false
 ) {
-    /**
-     * Преобразование в доменную модель (без строк плана и факта)
-     */
     fun toDomainModel(
         planLines: List<TaskPlanLine> = emptyList(),
         factLines: List<TaskFactLine> = emptyList()
@@ -51,15 +46,13 @@ data class TaskEntity(
             status = TaskStatus.fromString(status),
             uploaded = uploaded,
             uploadedAt = uploadedAt,
+            allowProductsNotInPlan = allowProductsNotInPlan,
             planLines = planLines,
             factLines = factLines
         )
     }
 
     companion object {
-        /**
-         * Создание Entity из доменной модели
-         */
         fun fromDomainModel(task: Task): TaskEntity {
             return TaskEntity(
                 id = task.id,
@@ -74,15 +67,13 @@ data class TaskEntity(
                 executorId = task.executorId,
                 status = task.status.name,
                 uploaded = task.uploaded,
-                uploadedAt = task.uploadedAt
+                uploadedAt = task.uploadedAt,
+                allowProductsNotInPlan = task.allowProductsNotInPlan
             )
         }
     }
 }
 
-/**
- * Entity класс для хранения строк плана заданий в Room
- */
 @Entity(
     tableName = "task_plan_lines",
     primaryKeys = ["id", "taskId"]
@@ -93,9 +84,7 @@ data class TaskPlanLineEntity(
     val productId: String,
     val quantity: Float
 ) {
-    /**
-     * Преобразование в доменную модель
-     */
+
     fun toDomainModel(): TaskPlanLine {
         return TaskPlanLine(
             id = id,
@@ -106,9 +95,6 @@ data class TaskPlanLineEntity(
     }
 
     companion object {
-        /**
-         * Создание Entity из доменной модели
-         */
         fun fromDomainModel(planLine: TaskPlanLine): TaskPlanLineEntity {
             return TaskPlanLineEntity(
                 id = planLine.id,
@@ -120,9 +106,6 @@ data class TaskPlanLineEntity(
     }
 }
 
-/**
- * Entity класс для хранения строк факта заданий в Room
- */
 @Entity(
     tableName = "task_fact_lines",
     primaryKeys = ["id", "taskId"]
@@ -133,9 +116,7 @@ data class TaskFactLineEntity(
     val productId: String,
     val quantity: Float
 ) {
-    /**
-     * Преобразование в доменную модель
-     */
+
     fun toDomainModel(): TaskFactLine {
         return TaskFactLine(
             id = id,
@@ -146,9 +127,6 @@ data class TaskFactLineEntity(
     }
 
     companion object {
-        /**
-         * Создание Entity из доменной модели
-         */
         fun fromDomainModel(factLine: TaskFactLine): TaskFactLineEntity {
             return TaskFactLineEntity(
                 id = factLine.id,

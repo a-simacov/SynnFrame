@@ -175,6 +175,8 @@ fun TaskDetailScreen(
 
     AppScaffold(
         title = screenTitle,
+        subtitle = if (task?.allowProductsNotInPlan == true)
+            stringResource(id = R.string.allow_products_not_in_plan) else null,
         onNavigateBack = navigateBack,
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {

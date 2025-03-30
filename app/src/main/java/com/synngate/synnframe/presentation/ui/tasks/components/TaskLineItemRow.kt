@@ -49,10 +49,16 @@ fun TaskLineItemRow(
     productProperties: List<ProductDisplayProperty> = emptyList(),
     modifier: Modifier = Modifier
 ) {
-    val rowBackground = if (lineItem.factLine != null && lineItem.factLine.quantity > 0f) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
-    } else {
-        Color.Transparent
+    val rowBackground = when {
+        // Товар не из плана, но добавлен в факт
+        lineItem.planLine.quantity == 0f && lineItem.factLine != null && lineItem.factLine.quantity > 0f ->
+            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
+        // Обычная строка с заполненными данными
+        lineItem.factLine != null && lineItem.factLine.quantity > 0f ->
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+        // Строка без данных
+        else ->
+            Color.Transparent
     }
 
     val planQuantity = lineItem.planLine.quantity
