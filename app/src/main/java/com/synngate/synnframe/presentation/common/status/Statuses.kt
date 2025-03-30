@@ -17,9 +17,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -118,25 +118,28 @@ fun SyncStatusIndicator(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (isSyncing) {
-            Icon(
-                imageVector = Icons.Default.Sync,
-                contentDescription = "Синхронизация",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(end = 4.dp)
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .size(16.dp)
+                    .padding(end = 4.dp),
+                strokeWidth = 2.dp
+            )
+            Text(
+                text = "Синхронизация...",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        } else {
+            Text(
+                text = if (lastSyncTime != null) {
+                    "Синхр.: $lastSyncTime"
+                } else {
+                    "Нет синхронизации"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-
-        Text(
-            text = if (isSyncing) {
-                "Синхронизация..."
-            } else if (lastSyncTime != null) {
-                "Синхр.: $lastSyncTime"
-            } else {
-                "Нет синхронизации"
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 

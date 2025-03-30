@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
@@ -123,14 +125,24 @@ fun ProductListScreen(
             Pair(it, StatusType.ERROR)
         },
         actions = {
+            // Заменяем простую кнопку на кнопку с индикатором прогресса
             IconButton(
                 onClick = { viewModel.syncProducts() },
-                enabled = !uiPresentation.isLoading // Отключаем во время загрузки
+                enabled = !uiPresentation.isLoading && !state.isSyncing // Отключаем во время загрузки и синхронизации
             ) {
-                Icon(
-                    imageVector = Icons.Default.Sync,
-                    contentDescription = stringResource(id = R.string.sync_products)
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    if (state.isSyncing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Sync,
+                            contentDescription = stringResource(id = R.string.sync_products)
+                        )
+                    }
+                }
             }
 
             IconButton(onClick = { showSortMenu = true }) {
@@ -162,6 +174,8 @@ fun ProductListScreen(
             )
         },
         isLoading = uiPresentation.isLoading,
+        isSyncing = state.isSyncing,  // Передаем флаг синхронизации в AppScaffold
+        lastSyncTime = state.lastSyncTime,  // Передаем время последней синхронизации
         bottomBar = {
             if (uiPresentation.showConfirmButton) {
                 Button(
