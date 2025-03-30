@@ -48,6 +48,7 @@ import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.tasks.components.ScanBarcodeDialog
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskFactLineDialog
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskLineItemRow
+import com.synngate.synnframe.presentation.ui.tasks.components.TaskNoPlannedItemRow
 import com.synngate.synnframe.presentation.ui.tasks.model.ProductDisplayProperty
 import com.synngate.synnframe.presentation.ui.tasks.model.ProductPropertyType
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailEvent
@@ -155,6 +156,9 @@ fun TaskDetailScreen(
     // Определение заголовка экрана и подзаголовка
     val screenTitle = task?.getDisplayHeader() ?: ""
 
+    // Проверяем, является ли задание заданием без плана
+    val hasPlan = task?.planLines?.isNotEmpty() == true && task.getTotalPlanQuantity() > 0
+
     // Обработка возвращаемого значения из экрана выбора товара
     LaunchedEffect(navBackStackEntry) {
         val savedStateHandle = navBackStackEntry?.savedStateHandle
@@ -253,28 +257,50 @@ fun TaskDetailScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.product),
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.weight(0.6f)
-                    )
+                // Отображаем разный заголовок и строки таблицы в зависимости от наличия плана
+                if (hasPlan) {
+                    // Для заданий с планом - полная таблица с тремя колонками
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.product),
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.weight(0.6f)
+                        )
 
-                    Text(
-                        text = stringResource(id = R.string.plan_quantity),
-                        style = MaterialTheme.typography.titleSmall,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.weight(0.2f)
-                    )
+                        Text(
+                            text = stringResource(id = R.string.plan_quantity),
+                            style = MaterialTheme.typography.titleSmall,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.weight(0.2f)
+                        )
 
-                    Text(
-                        text = stringResource(id = R.string.fact_quantity),
-                        style = MaterialTheme.typography.titleSmall,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.weight(0.2f)
-                    )
+                        Text(
+                            text = stringResource(id = R.string.fact_quantity),
+                            style = MaterialTheme.typography.titleSmall,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.weight(0.2f)
+                        )
+                    }
+                } else {
+                    // Для заданий без плана - упрощенная таблица без колонки плана
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.product),
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.weight(0.7f)
+                        )
+
+                        Text(
+                            text = stringResource(id = R.string.quantity),
+                            style = MaterialTheme.typography.titleSmall,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.weight(0.3f)
+                        )
+                    }
                 }
 
                 HorizontalDivider(
@@ -316,18 +342,35 @@ fun TaskDetailScreen(
                             items = state.taskLines,
                             key = { it.planLine.id }
                         ) { lineItem ->
-                            TaskLineItemRow(
-                                lineItem = lineItem,
-                                isEditable = state.isEditable,
-                                onClick = {
-                                    if (state.isEditable) {
-                                        lineItem.factLine?.let {
-                                            viewModel.showFactLineDialog(it.productId)
-                                        } ?: viewModel.showFactLineDialog(lineItem.planLine.productId)
-                                    }
-                                },
-                                productProperties = productProperties
-                            )
+                            if (hasPlan) {
+                                // Для заданий с планом используем стандартную строку
+                                TaskLineItemRow(
+                                    lineItem = lineItem,
+                                    isEditable = state.isEditable,
+                                    onClick = {
+                                        if (state.isEditable) {
+                                            lineItem.factLine?.let {
+                                                viewModel.showFactLineDialog(it.productId)
+                                            } ?: viewModel.showFactLineDialog(lineItem.planLine.productId)
+                                        }
+                                    },
+                                    productProperties = productProperties
+                                )
+                            } else {
+                                // Для заданий без плана используем упрощенную строку
+                                TaskNoPlannedItemRow(
+                                    lineItem = lineItem,
+                                    isEditable = state.isEditable,
+                                    onClick = {
+                                        if (state.isEditable) {
+                                            lineItem.factLine?.let {
+                                                viewModel.showFactLineDialog(it.productId)
+                                            } ?: viewModel.showFactLineDialog(lineItem.planLine.productId)
+                                        }
+                                    },
+                                    productProperties = productProperties
+                                )
+                            }
                         }
                     }
                 }
@@ -338,68 +381,94 @@ fun TaskDetailScreen(
                         color = MaterialTheme.colorScheme.outline
                     )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = stringResource(id = R.string.total),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(0.6f) // Увеличили с 0.4f до 0.6f
-                        )
+                    // Отображаем итоги только для заданий с планом
+                    if (hasPlan) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.total),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(0.6f)
+                            )
 
-                        val totalPlan = task.getTotalPlanQuantity()
-                        Text(
-                            text = formatQuantity(totalPlan),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.weight(0.2f) // Уменьшили с 0.3f до 0.2f
-                        )
+                            val totalPlan = task.getTotalPlanQuantity()
+                            Text(
+                                text = formatQuantity(totalPlan),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(0.2f)
+                            )
 
-                        val totalFact = task.getTotalFactQuantity()
-                        Text(
-                            text = formatQuantity(totalFact),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            color = if (totalFact >= totalPlan)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(0.2f) // Уменьшили с 0.3f до 0.2f
-                        )
-                    }
+                            val totalFact = task.getTotalFactQuantity()
+                            Text(
+                                text = formatQuantity(totalFact),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                color = if (totalFact >= totalPlan)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(0.2f)
+                            )
+                        }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                    // Рассчитываем количество строк с совпадающим планом и фактом
-                    val matchingLinesCount = state.taskLines.count {
-                        it.factLine != null && it.factLine.quantity == it.planLine.quantity && it.factLine.quantity > 0f
-                    }
-                    val totalLinesCount = state.taskLines.size
+                        // Отображаем процент выполнения только для заданий с планом
+                        // Рассчитываем количество строк с совпадающим планом и фактом
+                        val matchingLinesCount = state.taskLines.count {
+                            it.factLine != null && it.factLine.quantity == it.planLine.quantity && it.factLine.quantity > 0f
+                        }
+                        val totalLinesCount = state.taskLines.size
 
-                    Row(
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Text(
-                            text = stringResource(
-                                id = R.string.task_completion_percentage,
-                                task.getCompletionPercentage()
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(
-                                id = R.string.matching_lines_count,
-                                matchingLinesCount,
-                                totalLinesCount
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
+                        Row(
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text(
+                                text = stringResource(
+                                    id = R.string.task_completion_percentage,
+                                    task.getCompletionPercentage()
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(
+                                    id = R.string.matching_lines_count,
+                                    matchingLinesCount,
+                                    totalLinesCount
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    } else {
+                        // Для заданий без плана показываем только общее количество
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.total),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(0.7f)
+                            )
+
+                            val totalFact = task.getTotalFactQuantity()
+                            Text(
+                                text = formatQuantity(totalFact),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(0.3f)
+                            )
+                        }
                     }
                 }
 

@@ -128,8 +128,12 @@ fun TaskListItem(
                         .weight(1f)
                         .padding(start = 8.dp)
                 )
-                if (task.status == TaskStatus.IN_PROGRESS ||
-                    task.status == TaskStatus.COMPLETED
+
+                // Показываем процент выполнения только если задание имеет плановые строки
+                // и общее плановое количество больше нуля
+                if ((task.status == TaskStatus.IN_PROGRESS || task.status == TaskStatus.COMPLETED) &&
+                    task.planLines.isNotEmpty() &&
+                    task.getTotalPlanQuantity() > 0
                 ) {
                     val completionPercent = task.getCompletionPercentage()
                     Text(
@@ -137,15 +141,15 @@ fun TaskListItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
+                }
 
-                    if (task.uploaded) {
-                        Spacer(modifier = Modifier.weight(1f))
-                        Text(
-                            text = stringResource(R.string.task_uploaded),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                    }
+                if (task.uploaded) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = stringResource(R.string.task_uploaded),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
                 }
             }
         }
