@@ -399,6 +399,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 userUseCases = appContainer.userUseCases,
                 taskUseCases = appContainer.taskUseCases,
                 productUseCases = appContainer.productUseCases,
+                synchronizationController = appContainer.synchronizationController,
                 ioDispatcher = Dispatchers.IO
             )
         }
@@ -434,6 +435,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 productUseCases = appContainer.productUseCases,
                 loggingService = appContainer.loggingService,
                 soundService = appContainer.soundService,
+                synchronizationController = appContainer.synchronizationController,
                 productUiMapper = appContainer.productUiMapper, // Добавляем маппер
                 resourceProvider = appContainer.resourceProvider, // Добавляем providerResources
                 ioDispatcher = Dispatchers.IO,

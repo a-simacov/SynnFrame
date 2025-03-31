@@ -4,6 +4,7 @@ import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.SoundService
+import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.ui.products.components.ScanResult
 import com.synngate.synnframe.presentation.ui.products.mapper.ProductUiMapper
@@ -20,7 +21,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import timber.log.Timber
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.cancellation.CancellationException
@@ -29,6 +29,7 @@ class ProductListViewModel(
     private val productUseCases: ProductUseCases,
     private val loggingService: LoggingService,
     private val soundService: SoundService,
+    private val synchronizationController: SynchronizationController,
     private val productUiMapper: ProductUiMapper,
     private val resourceProvider: ResourceProvider,
     private val isSelectionMode: Boolean = false,
@@ -217,37 +218,35 @@ class ProductListViewModel(
             updateState { it.copy(isSyncing = true) }
 
             try {
-                loggingService.logInfo("Начата синхронизация товаров")
-
+                // Используем контроллер для синхронизации только товаров
+                // или создаем специальный метод в synchronizationController
                 val result = productUseCases.syncProductsWithServer()
 
                 if (result.isSuccess) {
                     val count = result.getOrNull() ?: 0
-                    val formattedTime = LocalDateTime.now().format(dateFormatter)
 
-                    updateState { it.copy(
-                        isSyncing = false,
-                        lastSyncTime = formattedTime
-                    ) }
+                    // Обновляем информацию о синхронизации в контроллере
+                    // Это позволит обновить время синхронизации на всех экранах
+                    synchronizationController.updateLastProductsSync(count)
 
-                    loggingService.logInfo("Синхронизация товаров завершена успешно. Обновлено $count товаров.")
-                    sendEvent(ProductListEvent.ShowSnackbar("Синхронизация выполнена. Обновлено $count товаров."))
-
-                    // Перезагружаем список товаров после синхронизации
                     loadProducts()
-                } else {
-                    val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
 
                     updateState { it.copy(isSyncing = false) }
-                    loggingService.logError("Ошибка синхронизации товаров: $error")
-                    sendEvent(ProductListEvent.ShowSnackbar("Ошибка синхронизации: $error"))
+                    sendEvent(ProductListEvent.ShowSnackbar(
+                        "Синхронизация товаров завершена. Обновлено: $count"
+                    ))
+                } else {
+                    updateState { it.copy(isSyncing = false) }
+                    sendEvent(ProductListEvent.ShowSnackbar(
+                        "Ошибка синхронизации: ${result.exceptionOrNull()?.message}"
+                    ))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error syncing products")
-
                 updateState { it.copy(isSyncing = false) }
-                loggingService.logError("Исключение при синхронизации товаров: ${e.message}")
-                sendEvent(ProductListEvent.ShowSnackbar("Ошибка синхронизации: ${e.message}"))
+                sendEvent(ProductListEvent.ShowSnackbar(
+                    "Ошибка синхронизации: ${e.message}"
+                ))
             }
         }
     }

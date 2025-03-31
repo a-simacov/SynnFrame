@@ -326,6 +326,32 @@ class SynchronizationControllerImpl(
         }
     }
 
+    override suspend fun updateLastProductsSync(productsCount: Int) {
+        val now = LocalDateTime.now()
+        val syncInfo = SynchronizationController.SyncInfo(
+            timestamp = now,
+            tasksUploadedCount = 0,
+            tasksDownloadedCount = 0,
+            productsDownloadedCount = productsCount,
+            durationMillis = 0,
+            successful = true
+        )
+
+        _lastSyncInfo.value = syncInfo
+
+        // Сохраняем запись в историю синхронизаций
+        saveSyncHistoryRecord(
+            id = System.currentTimeMillis().toString(),
+            startTime = now.minusSeconds(1), // Предполагаем, что синхронизация длилась 1 секунду
+            endTime = now,
+            duration = 1000, // 1 секунда в миллисекундах
+            tasksUploaded = 0,
+            tasksDownloaded = 0,
+            productsDownloaded = productsCount,
+            successful = true
+        )
+    }
+
     /**
      * Сохраняет информацию о синхронизации
      */

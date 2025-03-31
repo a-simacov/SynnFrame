@@ -2,7 +2,10 @@ package com.synngate.synnframe.presentation.navigation
 
 import android.app.Activity
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -17,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.synngate.synnframe.SynnFrameApplication
+import com.synngate.synnframe.presentation.common.LocalCurrentUser
 import com.synngate.synnframe.presentation.ui.login.LoginScreen
 import com.synngate.synnframe.presentation.ui.logs.LogDetailScreen
 import com.synngate.synnframe.presentation.ui.logs.LogListScreen
@@ -45,6 +49,10 @@ fun AppNavigation(
     // Получаем приложение
     val app = context.applicationContext as SynnFrameApplication
 
+    // Получаем данные о текущем пользователе
+    val userRepository = app.appContainer.userRepository
+    val currentUser by userRepository.getCurrentUser().collectAsState(initial = null)
+
     // Создаем менеджер областей навигации
     val navigationScopeManager = remember {
         NavigationScopeManager(navController) {
@@ -66,171 +74,175 @@ fun AppNavigation(
         }
     }
 
-    NavHost(
-        navController = navController,
-        startDestination = startDestination
+    CompositionLocalProvider(
+        LocalCurrentUser provides currentUser
     ) {
-        // Экран списка серверов
-        composable(Screen.ServerList.route) { entry ->
-            val screenContainer =
-                rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
-            val viewModel = remember { screenContainer.createServerListViewModel() }
-
-            ServerListScreen(
-                viewModel = viewModel,
-                navigateToServerDetail = { serverId ->
-                    navController.navigate(Screen.ServerDetail.createRoute(serverId))
-                },
-                navigateToLogin = {
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.ServerList.route) { inclusive = false }
-                    }
-                }
-            )
-        }
-
-        // Экран детальной информации о сервере
-        composable(
-            route = Screen.ServerDetail.route,
-            arguments = listOf(
-                navArgument("serverId") {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                }
-            )
-        ) { entry ->
-            val serverIdArg = entry.arguments?.getString("serverId")
-            val serverId = serverIdArg?.toIntOrNull()
-
-            val screenContainer =
-                rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
-            val viewModel =
-                remember(serverId) { screenContainer.createServerDetailViewModel(serverId) }
-
-            ServerDetailScreen(
-                viewModel = viewModel,
-                navigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-
-        // Экран логина
-        composable(Screen.Login.route) { entry ->
-            val screenContainer =
-                rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
-            val viewModel = remember { screenContainer.createLoginViewModel() }
-
-            LoginScreen(
-                viewModel = viewModel,
-                navigateToMainMenu = {
-                    navController.navigate(Screen.MainMenu.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
-                    }
-                },
-                navigateToServersList = {
-                    navController.navigate(Screen.ServerList.route) {
-                        popUpTo(Screen.Login.route) { inclusive = false }
-                    }
-                },
-                exitApp = {
-                    (context as? Activity)?.finish()
-                }
-            )
-        }
-
-        // Главное меню
-        composable(Screen.MainMenu.route) { entry ->
-            val screenContainer =
-                rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
-            val viewModel = remember { screenContainer.createMainMenuViewModel() }
-
-            MainMenuScreen(
-                viewModel = viewModel,
-                navigateToTasks = {
-                    navController.navigate(Screen.TaskList.route) {
-                        popUpTo(Screen.MainMenu.route) { inclusive = false }
-                    }
-                },
-                navigateToProducts = {
-                    navController.navigate(Screen.ProductList.route) {
-                        popUpTo(Screen.MainMenu.route) { inclusive = false }
-                    }
-                },
-                navigateToLogs = {
-                    navController.navigate(Screen.LogList.route) {
-                        popUpTo(Screen.MainMenu.route) { inclusive = false }
-                    }
-                },
-                navigateToSettings = {
-                    navController.navigate(Screen.Settings.route) {
-                        popUpTo(Screen.MainMenu.route) { inclusive = false }
-                    }
-                },
-                navigateToLogin = {
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.MainMenu.route) { inclusive = true }
-                    }
-                },
-                exitApp = {
-                    (context as? Activity)?.finish()
-                }
-            )
-        }
-
-        // Экран настроек
-        composable(Screen.Settings.route) { entry ->
-            val screenContainer =
-                rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
-            val viewModel = remember { screenContainer.createSettingsViewModel() }
-
-            SettingsScreen(
-                viewModel = viewModel,
-                navigateToServerList = {
-                    navController.navigate(Screen.ServerList.route) {
-                        popUpTo(Screen.Settings.route) { inclusive = false }
-                    }
-                },
-                navigateToSyncHistory = {
-                    navController.navigate(Screen.SyncHistory.route)
-                },
-                navigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-
-        // Граф навигации для задач
-        tasksNavGraph(
+        NavHost(
             navController = navController,
-            navigationScopeManager = navigationScopeManager
-        )
+            startDestination = startDestination
+        ) {
+            // Экран списка серверов
+            composable(Screen.ServerList.route) { entry ->
+                val screenContainer =
+                    rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
+                val viewModel = remember { screenContainer.createServerListViewModel() }
 
-        // Граф навигации для продуктов
-        productsNavGraph(
-            navController = navController,
-            navigationScopeManager = navigationScopeManager
-        )
+                ServerListScreen(
+                    viewModel = viewModel,
+                    navigateToServerDetail = { serverId ->
+                        navController.navigate(Screen.ServerDetail.createRoute(serverId))
+                    },
+                    navigateToLogin = {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(Screen.ServerList.route) { inclusive = false }
+                        }
+                    }
+                )
+            }
 
-        // Граф навигации для логов
-        logsNavGraph(
-            navController = navController,
-            navigationScopeManager = navigationScopeManager
-        )
+            // Экран детальной информации о сервере
+            composable(
+                route = Screen.ServerDetail.route,
+                arguments = listOf(
+                    navArgument("serverId") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { entry ->
+                val serverIdArg = entry.arguments?.getString("serverId")
+                val serverId = serverIdArg?.toIntOrNull()
 
-        // Экран истории синхронизации
-        composable(Screen.SyncHistory.route) { entry ->
-            val screenContainer =
-                rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
-            val viewModel = remember { screenContainer.createSyncHistoryViewModel() }
+                val screenContainer =
+                    rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
+                val viewModel =
+                    remember(serverId) { screenContainer.createServerDetailViewModel(serverId) }
 
-            SyncHistoryScreen(
-                viewModel = viewModel,
-                navigateBack = {
-                    navController.popBackStack()
-                }
+                ServerDetailScreen(
+                    viewModel = viewModel,
+                    navigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            // Экран логина
+            composable(Screen.Login.route) { entry ->
+                val screenContainer =
+                    rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
+                val viewModel = remember { screenContainer.createLoginViewModel() }
+
+                LoginScreen(
+                    viewModel = viewModel,
+                    navigateToMainMenu = {
+                        navController.navigate(Screen.MainMenu.route) {
+                            popUpTo(Screen.Login.route) { inclusive = true }
+                        }
+                    },
+                    navigateToServersList = {
+                        navController.navigate(Screen.ServerList.route) {
+                            popUpTo(Screen.Login.route) { inclusive = false }
+                        }
+                    },
+                    exitApp = {
+                        (context as? Activity)?.finish()
+                    }
+                )
+            }
+
+            // Главное меню
+            composable(Screen.MainMenu.route) { entry ->
+                val screenContainer =
+                    rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
+                val viewModel = remember { screenContainer.createMainMenuViewModel() }
+
+                MainMenuScreen(
+                    viewModel = viewModel,
+                    navigateToTasks = {
+                        navController.navigate(Screen.TaskList.route) {
+                            popUpTo(Screen.MainMenu.route) { inclusive = false }
+                        }
+                    },
+                    navigateToProducts = {
+                        navController.navigate(Screen.ProductList.route) {
+                            popUpTo(Screen.MainMenu.route) { inclusive = false }
+                        }
+                    },
+                    navigateToLogs = {
+                        navController.navigate(Screen.LogList.route) {
+                            popUpTo(Screen.MainMenu.route) { inclusive = false }
+                        }
+                    },
+                    navigateToSettings = {
+                        navController.navigate(Screen.Settings.route) {
+                            popUpTo(Screen.MainMenu.route) { inclusive = false }
+                        }
+                    },
+                    navigateToLogin = {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(Screen.MainMenu.route) { inclusive = true }
+                        }
+                    },
+                    exitApp = {
+                        (context as? Activity)?.finish()
+                    }
+                )
+            }
+
+            // Экран настроек
+            composable(Screen.Settings.route) { entry ->
+                val screenContainer =
+                    rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
+                val viewModel = remember { screenContainer.createSettingsViewModel() }
+
+                SettingsScreen(
+                    viewModel = viewModel,
+                    navigateToServerList = {
+                        navController.navigate(Screen.ServerList.route) {
+                            popUpTo(Screen.Settings.route) { inclusive = false }
+                        }
+                    },
+                    navigateToSyncHistory = {
+                        navController.navigate(Screen.SyncHistory.route)
+                    },
+                    navigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            // Граф навигации для задач
+            tasksNavGraph(
+                navController = navController,
+                navigationScopeManager = navigationScopeManager
             )
+
+            // Граф навигации для продуктов
+            productsNavGraph(
+                navController = navController,
+                navigationScopeManager = navigationScopeManager
+            )
+
+            // Граф навигации для логов
+            logsNavGraph(
+                navController = navController,
+                navigationScopeManager = navigationScopeManager
+            )
+
+            // Экран истории синхронизации
+            composable(Screen.SyncHistory.route) { entry ->
+                val screenContainer =
+                    rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
+                val viewModel = remember { screenContainer.createSyncHistoryViewModel() }
+
+                SyncHistoryScreen(
+                    viewModel = viewModel,
+                    navigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
         }
     }
 }
@@ -341,7 +353,6 @@ fun NavGraphBuilder.productsNavGraph(
                     navController.popBackStack()
                 },
                 navController = navController, // Передаем NavController в экран
-                //returnProductToTask = null // Удаляем этот колбэк, так как мы теперь используем savedStateHandle
             )
         }
 

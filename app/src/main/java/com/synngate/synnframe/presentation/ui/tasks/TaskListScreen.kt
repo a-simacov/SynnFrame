@@ -91,8 +91,6 @@ fun TaskListScreen(
         notification = state.error?.let {
             Pair(it, StatusType.ERROR)
         },
-        isSyncing = state.isSyncing,
-        lastSyncTime = state.lastSyncTime,
         actions = {
             // Кнопка синхронизации с сервером
             IconButton(

@@ -50,6 +50,8 @@ interface SynchronizationController : ServiceController {
      */
     suspend fun updatePeriodicSync(enabled: Boolean, intervalSeconds: Int? = null): Result<Unit>
 
+    suspend fun updateLastProductsSync(productsCount: Int)
+
     /**
      * Статус синхронизации
      */

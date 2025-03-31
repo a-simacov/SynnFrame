@@ -39,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,15 +49,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
+import com.synngate.synnframe.SynnFrameApplication
+import com.synngate.synnframe.domain.service.SynchronizationController
+import com.synngate.synnframe.presentation.common.LocalCurrentUser
 import com.synngate.synnframe.presentation.common.status.NotificationBar
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.common.status.SyncStatusIndicator
 import kotlinx.coroutines.launch
+import java.time.format.DateTimeFormatter
 
 /**
  * Основной экран приложения с верхней панелью, содержимым и нижней панелью
@@ -85,6 +91,24 @@ fun AppScaffold(
     val coroutineScope = rememberCoroutineScope()
     var menuExpanded by remember { mutableStateOf(false) }
     val windowInsets = WindowInsets.systemBars
+
+    // Получение данных о текущем пользователе через CompositionLocal
+    val localCurrentUser = LocalCurrentUser.current
+    val finalUserName = currentUser ?: localCurrentUser?.name
+
+    // Получаем состояние синхронизации из ApplicationContext
+    val context = LocalContext.current
+    val app = remember { context.applicationContext as SynnFrameApplication }
+
+    // Следим за состоянием синхронизации
+    val syncController = remember { app.appContainer.synchronizationController }
+    val syncStatus by syncController.syncStatus.collectAsState(initial = SynchronizationController.SyncStatus.IDLE)
+    val lastSyncInfo by syncController.lastSyncInfo.collectAsState(initial = null)
+
+    // Определяем, выполняется ли синхронизация и время последней синхронизации
+    val finalIsSyncing = isSyncing ?: (syncStatus == SynchronizationController.SyncStatus.SYNCING)
+    val finalLastSyncTime = lastSyncTime ?:
+    lastSyncInfo?.timestamp?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
 
     val mainContent = @Composable {
         Scaffold(
@@ -190,7 +214,7 @@ fun AppScaffold(
                         Box(
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            currentUser?.let {
+                            finalUserName?.let {
                                 Text(
                                     text = "Пользователь: $it",
                                     style = MaterialTheme.typography.bodySmall,
@@ -200,8 +224,8 @@ fun AppScaffold(
                             }
 
                             SyncStatusIndicator(
-                                isSyncing = isSyncing,
-                                lastSyncTime = lastSyncTime,
+                                isSyncing = finalIsSyncing,
+                                lastSyncTime = finalLastSyncTime,
                                 modifier = Modifier.align(Alignment.CenterEnd)
                             )
                         }

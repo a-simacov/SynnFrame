@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.main
 
+import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
@@ -12,7 +13,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import timber.log.Timber
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
@@ -22,6 +22,7 @@ class MainMenuViewModel(
     private val userUseCases: UserUseCases,
     private val taskUseCases: TaskUseCases,
     private val productUseCases: ProductUseCases,
+    private val synchronizationController: SynchronizationController,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<MainMenuState, MainMenuEvent>(MainMenuState()) {
 
@@ -167,26 +168,31 @@ class MainMenuViewModel(
             updateState { it.copy(isSyncing = true) }
 
             try {
-                // Синхронизация заданий
-                val tasksResult = taskUseCases.syncTasks()
-                // Синхронизация товаров
-                val productsResult = productUseCases.syncProductsWithServer()
+                // Запускаем синхронизацию через контроллер
+                val syncResult = synchronizationController.startManualSync()
 
-                // Формируем сообщение о результатах синхронизации
-                val tasksSyncCount = tasksResult.getOrNull() ?: 0
-                val productsSyncCount = productsResult.getOrNull() ?: 0
+                if (syncResult.isSuccess) {
+                    val result = syncResult.getOrNull()
 
-                val formattedTime = LocalDateTime.now().format(dateFormatter)
+                    // Информация о синхронизации теперь хранится в контроллере
+                    // и будет автоматически доступна всем экранам
 
-                updateState {
-                    it.copy(
-                        isSyncing = false,
-                        lastSyncTime = formattedTime
-                    )
+                    // Обновляем состояние только для UI этого экрана
+                    updateState { state ->
+                        state.copy(
+                            isSyncing = false,
+                            // Больше не храним lastSyncTime в состоянии ViewModel
+                        )
+                    }
+
+                    val message = "Синхронизация выполнена. Обновлено заданий: ${result?.tasksDownloadedCount ?: 0}, " +
+                            "товаров: ${result?.productsDownloadedCount ?: 0}"
+                    sendEvent(MainMenuEvent.ShowSnackbar(message))
+                } else {
+                    updateState { it.copy(isSyncing = false) }
+                    val error = syncResult.exceptionOrNull()?.message ?: "Ошибка синхронизации"
+                    sendEvent(MainMenuEvent.ShowSnackbar(error))
                 }
-
-                val message = "Синхронизация выполнена. Обновлено заданий: $tasksSyncCount, товаров: $productsSyncCount"
-                sendEvent(MainMenuEvent.ShowSnackbar(message))
 
                 // Перезагружаем данные после синхронизации
                 loadData()
