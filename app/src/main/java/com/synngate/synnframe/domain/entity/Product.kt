@@ -15,10 +15,6 @@ data class Product(
     fun getMainUnit(): ProductUnit? = units.find { it.id == mainUnitId }
 
     fun getAllBarcodes(): List<String> = units.flatMap { it.barcodes }
-
-    fun findUnitByBarcode(barcode: String): ProductUnit? = units.find { unit ->
-        unit.allBarcodes.contains(barcode)
-    }
 }
 
 @Serializable

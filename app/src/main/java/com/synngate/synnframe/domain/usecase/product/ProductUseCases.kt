@@ -9,15 +9,11 @@ import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
 import java.io.IOException
 
-/**
- * Use Case класс для операций с товарами
- */
 class ProductUseCases(
     private val productRepository: ProductRepository,
     private val loggingService: LoggingService
 ) : BaseUseCase {
 
-    // Базовые операции
     fun getProducts(): Flow<List<Product>> =
         productRepository.getProducts()
 
@@ -27,9 +23,6 @@ class ProductUseCases(
     suspend fun getProductById(id: String): Product? =
         productRepository.getProductById(id)
 
-    /**
-     * Получение товаров по списку идентификаторов
-     */
     suspend fun getProductsByIds(ids: Set<String>): List<Product> {
         return productRepository.getProductsByIds(ids)
     }
@@ -169,7 +162,6 @@ class ProductUseCases(
         }
     }
 
-    // Вспомогательные методы
     private fun validateProduct(product: Product) {
         if (product.name.isBlank()) {
             throw IllegalArgumentException("Product name cannot be empty")
@@ -178,7 +170,5 @@ class ProductUseCases(
         if (product.mainUnitId.isBlank() && product.units.isNotEmpty()) {
             throw IllegalArgumentException("Main unit ID cannot be empty when units are specified")
         }
-
-        // Дополнительные правила валидации по необходимости
     }
 }

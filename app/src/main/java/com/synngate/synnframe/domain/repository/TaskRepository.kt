@@ -40,10 +40,6 @@ interface TaskRepository {
 
     suspend fun checkTaskAvailability(id: String): Result<Boolean>
 
-    /**
-     * Выгрузка задания на сервер
-     * Только операция с данными без бизнес-логики валидации
-     */
     suspend fun uploadTaskToServer(id: String): Result<Boolean>
 
     suspend fun getCompletedNotUploadedTasks(): List<Task>

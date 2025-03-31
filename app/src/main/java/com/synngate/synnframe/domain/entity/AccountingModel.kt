@@ -1,17 +1,7 @@
 package com.synngate.synnframe.domain.entity
 
-/**
- * Перечисление для моделей учета товара
- */
 enum class AccountingModel {
-    /**
-     * По партиям и количеству
-     */
     BATCH,
-
-    /**
-     * Только по количеству
-     */
     QTY;
 
     companion object {

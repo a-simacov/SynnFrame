@@ -1,10 +1,7 @@
-// Файл: com.synngate.synnframe.domain.usecase.user.UserUseCases.kt
-
 package com.synngate.synnframe.domain.usecase.user
 
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.User
-import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
@@ -12,15 +9,11 @@ import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
 import java.io.IOException
 
-/**
- * Use Case класс для операций с пользователями
- */
 class UserUseCases(
     private val userRepository: UserRepository,
     private val loggingService: LoggingService
 ) : BaseUseCase {
 
-    // Базовые операции
     fun getUsers(): Flow<List<User>> =
         userRepository.getUsers()
 
@@ -33,8 +26,7 @@ class UserUseCases(
     fun getCurrentUser(): Flow<User?> =
         userRepository.getCurrentUser()
 
-    // Операции с бизнес-логикой
-    suspend fun addUser(user: User): Result<User> {
+    private suspend fun addUser(user: User): Result<User> {
         return try {
             userRepository.addUser(user)
             loggingService.logInfo("Добавлен пользователь: ${user.name}")
@@ -46,36 +38,7 @@ class UserUseCases(
         }
     }
 
-    suspend fun updateUser(user: User): Result<User> {
-        return try {
-            userRepository.updateUser(user)
-            loggingService.logInfo("Обновлен пользователь: ${user.name}")
-            Result.success(user)
-        } catch (e: Exception) {
-            Timber.e(e, "Error updating user")
-            loggingService.logError("Ошибка при обновлении пользователя: ${e.message}")
-            Result.failure(e)
-        }
-    }
-
-    suspend fun deleteUser(id: String): Result<Unit> {
-        return try {
-            val user = userRepository.getUserById(id)
-            if (user == null) {
-                return Result.failure(IllegalArgumentException("Пользователь не найден"))
-            }
-
-            userRepository.deleteUser(id)
-            loggingService.logInfo("Удален пользователь: ${user.name}")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Timber.e(e, "Error deleting user")
-            loggingService.logError("Ошибка при удалении пользователя: ${e.message}")
-            Result.failure(e)
-        }
-    }
-
-    suspend fun setCurrentUser(userId: String): Result<Unit> {
+    private suspend fun setCurrentUser(userId: String): Result<Unit> {
         return try {
             val user = userRepository.getUserById(userId)
             if (user == null) {
@@ -92,7 +55,7 @@ class UserUseCases(
         }
     }
 
-    suspend fun clearCurrentUser(): Result<Unit> {
+    private suspend fun clearCurrentUser(): Result<Unit> {
         return try {
             userRepository.clearCurrentUser()
             loggingService.logInfo("Сброшен текущий пользователь")

@@ -1,5 +1,3 @@
-// Файл: com.synngate.synnframe.domain.usecase.log.LogUseCases.kt
-
 package com.synngate.synnframe.domain.usecase.log
 
 import com.synngate.synnframe.domain.entity.Log
@@ -11,17 +9,10 @@ import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
 import java.time.LocalDateTime
 
-/**
- * Use Case класс для операций с логами
- */
 class LogUseCases(
     private val logRepository: LogRepository,
     private val loggingService: LoggingService
 ) : BaseUseCase {
-
-    // Базовые операции
-    fun getLogs(): Flow<List<Log>> =
-        logRepository.getLogs()
 
     fun getFilteredLogs(
         messageFilter: String? = null,
@@ -37,7 +28,6 @@ class LogUseCases(
     suspend fun getLogById(id: Int): Log? =
         logRepository.getLogById(id)
 
-    // Операции с бизнес-логикой
     suspend fun cleanupOldLogs(daysToKeep: Int = 30): Result<Int> {
         return try {
             val cutoffDate = LocalDateTime.now().minusDays(daysToKeep.toLong())
@@ -97,5 +87,4 @@ class LogUseCases(
     suspend fun logError(message: String): Long {
         return loggingService.logError(message)
     }
-
 }

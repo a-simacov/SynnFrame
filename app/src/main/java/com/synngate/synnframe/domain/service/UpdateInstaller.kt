@@ -1,6 +1,5 @@
 package com.synngate.synnframe.domain.service
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -10,21 +9,11 @@ import androidx.core.content.FileProvider
 import timber.log.Timber
 import java.io.File
 
-/**
- * Интерфейс для установки обновлений приложения
- */
 interface UpdateInstaller {
-    /**
-     * Инициирует установку обновления из файла
-     * @param filePath Путь к файлу APK
-     * @return Result с Uri для Intent установки или ошибкой
-     */
+
     suspend fun initiateInstall(filePath: String): Result<Uri>
 }
 
-/**
- * Реализация установщика обновлений с использованием FileProvider
- */
 class UpdateInstallerImpl(
     private val context: Context,
     private val loggingService: LoggingService

@@ -1,17 +1,7 @@
 package com.synngate.synnframe.domain.entity
 
-/**
- * Перечисление для места создания сущности
- */
 enum class CreationPlace {
-    /**
-     * Создано в приложении
-     */
     APP,
-
-    /**
-     * Получено с сервера
-     */
     SERVER;
 
     companion object {

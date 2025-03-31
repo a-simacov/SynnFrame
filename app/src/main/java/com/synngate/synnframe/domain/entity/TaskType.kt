@@ -1,17 +1,7 @@
 package com.synngate.synnframe.domain.entity
 
-/**
- * Перечисление для типов заданий
- */
 enum class TaskType {
-    /**
-     * Приёмка товара
-     */
     RECEIPT,
-
-    /**
-     * Отбор товара
-     */
     PICK;
 
     companion object {

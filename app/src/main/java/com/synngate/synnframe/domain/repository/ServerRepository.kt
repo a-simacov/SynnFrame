@@ -4,9 +4,6 @@ import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.Server
 import kotlinx.coroutines.flow.Flow
 
-/**
- * Интерфейс репозитория для работы с серверами
- */
 interface ServerRepository {
     fun getServers(): Flow<List<Server>>
     suspend fun getServerById(id: Int): Server?

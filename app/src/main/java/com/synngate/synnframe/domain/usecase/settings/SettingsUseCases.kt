@@ -5,23 +5,16 @@ import android.os.StatFs
 import androidx.core.content.FileProvider
 import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.data.remote.api.ApiResult
-import com.synngate.synnframe.data.remote.api.DownloadProgressListener
 import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.domain.service.FileService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import com.synngate.synnframe.presentation.theme.ThemeMode
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
 
-/**
- * Use Case класс для операций с настройками
- */
 class SettingsUseCases(
     private val settingsRepository: SettingsRepository,
     private val loggingService: LoggingService,
@@ -29,7 +22,6 @@ class SettingsUseCases(
     private val applicationContext: Context
 ) : BaseUseCase {
 
-    // Прокси для настроек приложения
     val showServersOnStartup: Flow<Boolean> = settingsRepository.showServersOnStartup
     val periodicUploadEnabled: Flow<Boolean> = settingsRepository.periodicUploadEnabled
     val uploadIntervalSeconds: Flow<Int> = settingsRepository.uploadIntervalSeconds
@@ -37,7 +29,6 @@ class SettingsUseCases(
     val languageCode: Flow<String> = settingsRepository.languageCode
     val navigationButtonHeight: Flow<Float> = settingsRepository.navigationButtonHeight
 
-    // Методы установки настроек с бизнес-логикой
     suspend fun setShowServersOnStartup(show: Boolean): Result<Unit> {
         return try {
             settingsRepository.setShowServersOnStartup(show)
@@ -98,7 +89,6 @@ class SettingsUseCases(
         }
     }
 
-    // Модификация существующего метода для использования сравнения версий
     suspend fun checkForUpdates(): Result<Pair<String?, String?>> {
         return try {
             val response = settingsRepository.getLatestAppVersion()
@@ -207,7 +197,6 @@ class SettingsUseCases(
         }
     }
 
-    // Добавим новый приватный метод для сравнения версий
     private fun isNewVersionAvailable(currentVersion: String, serverVersion: String): Boolean {
         try {
             val current = currentVersion.split(".").map { it.toInt() }

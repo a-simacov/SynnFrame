@@ -68,25 +68,3 @@ data class Task(
     fun isProductInPlan(productId: String): Boolean =
         planLines.any { it.productId == productId }
 }
-
-@Serializable
-data class TaskPlanLine(
-    val id: String,
-
-    val taskId: String,
-
-    val productId: String,
-
-    val quantity: Float
-)
-
-@Serializable
-data class TaskFactLine(
-    val id: String,
-
-    val taskId: String,
-
-    val productId: String,
-
-    val quantity: Float
-)
