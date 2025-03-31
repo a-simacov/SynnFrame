@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.MobileFriendly
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -129,8 +130,6 @@ fun TaskListItem(
                         .padding(start = 8.dp)
                 )
 
-                // Показываем процент выполнения только если задание имеет плановые строки
-                // и общее плановое количество больше нуля
                 if ((task.status == TaskStatus.IN_PROGRESS || task.status == TaskStatus.COMPLETED) &&
                     task.planLines.isNotEmpty() &&
                     task.getTotalPlanQuantity() > 0
@@ -144,12 +143,8 @@ fun TaskListItem(
                 }
 
                 if (task.uploaded) {
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        text = stringResource(R.string.task_uploaded),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
+                    Spacer(modifier = Modifier.weight(0.1f))
+                    Icon(imageVector = Icons.Default.CloudUpload, contentDescription = null)
                 }
             }
         }
@@ -158,7 +153,7 @@ fun TaskListItem(
 
 @Preview(showBackground = true)
 @Composable
-private fun TaskListItemPreview() {
+private fun TaskListItemNotUploadedPreview() {
     TaskListItem(
         task = Task(
             id = "d052c429-87de-4c1a-a1c5-17af6d7e2ad9",
@@ -170,6 +165,26 @@ private fun TaskListItemPreview() {
             startedAt = LocalDateTime.now(),
             creationPlace = CreationPlace.SERVER,
             status = TaskStatus.COMPLETED
+        ),
+        onClick = { }
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun TaskListItemUploadedPreview() {
+    TaskListItem(
+        task = Task(
+            id = "d052c429-87de-4c1a-a1c5-17af6d7e2ad9",
+            name = "Принять и разместить (Магазин Cricova, Chisinaului 80) 00CB-003125 13.03.25",
+            type = TaskType.RECEIPT,
+            barcode = "Т00000046",//"Т00000046",
+            createdAt = LocalDateTime.now(),
+            viewedAt = LocalDateTime.now(),
+            startedAt = LocalDateTime.now(),
+            creationPlace = CreationPlace.SERVER,
+            status = TaskStatus.COMPLETED,
+            uploaded = true
         ),
         onClick = { }
     )

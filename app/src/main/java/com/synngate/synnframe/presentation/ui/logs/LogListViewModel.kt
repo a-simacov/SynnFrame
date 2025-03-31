@@ -68,6 +68,48 @@ class LogListViewModel(
         }
     }
 
+    fun cleanupOldLogs(daysToKeep: Int) {
+        launchIO {
+            updateState { it.copy(isLoading = true, error = null) }
+
+            try {
+                val result = logUseCases.cleanupOldLogs(daysToKeep)
+                if (result.isSuccess) {
+                    val deletedCount = result.getOrNull() ?: 0
+                    updateState { it.copy(isLoading = false, error = null) }
+
+                    // Перезагружаем логи после очистки
+                    loadLogs()
+
+                    // Показываем сообщение об успешной очистке
+                    sendEvent(LogListEvent.ShowSnackbar("Удалено $deletedCount логов старше $daysToKeep дней"))
+                } else {
+                    val exception = result.exceptionOrNull()
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            error = "Ошибка при очистке логов: ${exception?.message}"
+                        )
+                    }
+                    loggingService.logError("Ошибка при очистке логов: ${exception?.message}")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Exception during logs cleanup")
+                updateState {
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка при очистке логов: ${e.message}"
+                    )
+                }
+                loggingService.logError("Ошибка при очистке логов: ${e.message}")
+            }
+        }
+    }
+
+    fun showCleanupDialog() {
+        sendEvent(LogListEvent.ShowCleanupDialog)
+    }
+
     fun updateMessageFilter(filter: String) {
         updateState { it.copy(messageFilter = filter) }
         loadLogs()

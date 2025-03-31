@@ -67,4 +67,6 @@ data class Task(
 
     fun isProductInPlan(productId: String): Boolean =
         planLines.any { it.productId == productId }
+
+    fun canDelete(): Boolean = status == TaskStatus.COMPLETED && uploaded
 }

@@ -6,15 +6,5 @@ sealed class LogListEvent {
     object ShowDeleteAllConfirmation : LogListEvent()
     object ShowDateFilterDialog : LogListEvent()
     object HideDateFilterDialog : LogListEvent()
-}
-
-sealed class LogDetailEvent {
-
-    data class ShowSnackbar(val message: String) : LogDetailEvent()
-
-    data object NavigateBack : LogDetailEvent()
-
-    data object ShowDeleteConfirmation : LogDetailEvent()
-
-    data object HideDeleteConfirmation : LogDetailEvent()
+    object ShowCleanupDialog : LogListEvent()
 }

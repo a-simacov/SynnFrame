@@ -278,4 +278,28 @@ class TaskUseCases(
             Result.failure(e)
         }
     }
+
+    suspend fun deleteTask(id: String): Result<Unit> {
+        return try {
+            // Получаем задание
+            val task = taskRepository.getTaskById(id) ?:
+            return Result.failure(IllegalArgumentException("Task not found"))
+
+            // Проверяем, что задание выгружено
+            if (!task.uploaded) {
+                loggingService.logWarning("Невозможно удалить невыгруженное задание: ${task.name}")
+                return Result.failure(IllegalStateException("Cannot delete non-uploaded task"))
+            }
+
+            // Удаляем задание через репозиторий
+            taskRepository.deleteTask(id)
+            loggingService.logInfo("Удалено задание: ${task.name}")
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Exception during task deletion")
+            loggingService.logError("Исключение при удалении задания: ${e.message}")
+            Result.failure(e)
+        }
+    }
 }

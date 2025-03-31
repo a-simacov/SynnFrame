@@ -263,6 +263,54 @@ class TaskDetailViewModel(
         }
     }
 
+    fun showDeleteConfirmation() {
+        updateState { it.copy(showDeleteConfirmation = true) }
+        sendEvent(TaskDetailEvent.ShowDeleteConfirmation)
+    }
+
+    fun hideDeleteConfirmation() {
+        updateState { it.copy(showDeleteConfirmation = false) }
+        sendEvent(TaskDetailEvent.HideDeleteConfirmation)
+    }
+
+    fun deleteTask() {
+        launchIO {
+            updateState { it.copy(isDeleting = true) }
+
+            val result = taskUseCases.deleteTask(taskId)
+
+            if (result.isSuccess) {
+                sendEvent(TaskDetailEvent.ShowSnackbar("Задание успешно удалено"))
+                // Переходим назад к списку заданий
+                sendEvent(TaskDetailEvent.NavigateBack)
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка удаления: $error"))
+                updateState { it.copy(isDeleting = false, showDeleteConfirmation = false) }
+            }
+        }
+    }
+
+    // Используем существующий метод uploadTask с контекстом повторной выгрузки
+    fun reuploadTask() {
+        launchIO {
+            updateState { it.copy(isReuploading = true) }
+
+            // Используем существующий метод uploadTask
+            val result = taskUseCases.uploadTask(taskId)
+
+            if (result.isSuccess) {
+                loadTask() // Перезагружаем детали задания для обновления UI
+                sendEvent(TaskDetailEvent.ShowSnackbar("Задание успешно выгружено повторно"))
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка выгрузки: $error"))
+            }
+
+            updateState { it.copy(isReuploading = false) }
+        }
+    }
+
     fun handleSelectedProduct(product: Product) {
         launchIO {
             val task = uiState.value.task ?: return@launchIO

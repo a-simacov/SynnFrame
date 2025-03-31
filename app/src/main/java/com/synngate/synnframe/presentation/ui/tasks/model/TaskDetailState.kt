@@ -49,5 +49,11 @@ data class TaskDetailState(
 
     val scannedUnit: ProductUnit? = null,
 
-    val unitCoefficient: Float = 1f
+    val unitCoefficient: Float = 1f,
+
+    val showDeleteConfirmation: Boolean = false,
+
+    val isDeleting: Boolean = false,
+
+    val isReuploading: Boolean = false
 )

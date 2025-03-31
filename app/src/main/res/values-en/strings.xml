@@ -515,4 +515,13 @@
     <string name="sort_by_article_asc">By article (asc.)</string>
     <string name="sort_by_article_desc">By article (desc.)</string>
     <string name="product_id_title">Identifier</string>
+    <string name="cleanup_logs_title">Clean old logs</string>
+    <string name="cleanup_logs_message">Delete logs older than days number specified</string>
+    <string name="days_to_keep">Number of days for storage</string>
+    <string name="invalid_days_value">Input correct value (greater than 0)</string>
+    <string name="cleanup_old_logs">Clear old logs</string>
+    <string name="delete_task">Delete task</string>
+    <string name="delete_task_title">Deletion of task</string>
+    <string name="delete_task_message">Are you sure you want to delete the task? It cannot be canceled</string>
+    <string name="reupload_task">Reupload task</string>
 </resources>

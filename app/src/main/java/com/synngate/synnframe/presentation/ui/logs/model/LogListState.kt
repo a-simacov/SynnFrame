@@ -1,11 +1,5 @@
 package com.synngate.synnframe.presentation.ui.logs.model
 
-/*
- * Обратите внимание: для применения этого файла:
- * 1. Обновите существующий файл LogListState.kt с этим содержимым
- * 2. Обновите существующий файл LogEvents.kt, добавив события ShowDateFilterDialog и HideDateFilterDialog
- */
-
 import com.synngate.synnframe.domain.entity.Log
 import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.presentation.common.dialog.DateFilterPreset

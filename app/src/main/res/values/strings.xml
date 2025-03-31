@@ -525,4 +525,15 @@
     <string name="sort_by_name_desc">По наименованию (Я-А)</string>
     <string name="sort_by_article_asc">По артикулу (возр.)</string>
     <string name="sort_by_article_desc">По артикулу (убыв.)</string>
+
+    <string name="cleanup_logs_title">Очистка старых логов</string>
+    <string name="cleanup_logs_message">Удалить логи старше указанного количества дней</string>
+    <string name="days_to_keep">Количество дней для сохранения</string>
+    <string name="invalid_days_value">Введите корректное значение (больше 0)</string>
+    <string name="cleanup_old_logs">Очистить старые логи</string>
+
+    <string name="delete_task">Удалить задание</string>
+    <string name="delete_task_title">Удаление задания</string>
+    <string name="delete_task_message">Вы уверены, что хотите удалить это задание? Это действие нельзя отменить.</string>
+    <string name="reupload_task">Выгрузить повторно</string>
 </resources>

@@ -9,16 +9,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -32,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.LogType
@@ -55,8 +60,8 @@ fun LogListScreen(
     val state by viewModel.uiState.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
-
     var showDeleteAllConfirmation by remember { mutableStateOf(false) }
+    var showCleanupDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
@@ -78,6 +83,9 @@ fun LogListScreen(
                 }
                 is LogListEvent.HideDateFilterDialog -> {
                     // Обрабатывается через состояние viewModel
+                }
+                is LogListEvent.ShowCleanupDialog -> {
+                    showCleanupDialog = true
                 }
             }
         }
@@ -109,6 +117,17 @@ fun LogListScreen(
         )
     }
 
+    // Диалог очистки старых логов
+    if (showCleanupDialog) {
+        LogCleanupDialog(
+            onDismiss = { showCleanupDialog = false },
+            onConfirm = { days ->
+                showCleanupDialog = false
+                viewModel.cleanupOldLogs(days)
+            }
+        )
+    }
+
     // Диалог фильтра по дате
     if (state.isDateFilterDialogVisible) {
         DateTimeFilterDialog(
@@ -136,6 +155,16 @@ fun LogListScreen(
                 Icon(
                     imageVector = Icons.Default.CalendarMonth,
                     contentDescription = stringResource(R.string.date_filter)
+                )
+            }
+
+            // Кнопка очистки старых логов
+            IconButton(
+                onClick = { viewModel.showCleanupDialog() }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.History,
+                    contentDescription = stringResource(R.string.cleanup_old_logs)
                 )
             }
 
@@ -232,4 +261,65 @@ fun LogListScreen(
             }
         }
     }
+}
+
+@Composable
+fun LogCleanupDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var daysToKeep by remember { mutableStateOf("30") }
+    var isError by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.cleanup_logs_title)) },
+        text = {
+            Column {
+                Text(stringResource(R.string.cleanup_logs_message))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = daysToKeep,
+                    onValueChange = {
+                        daysToKeep = it
+                        isError = it.toIntOrNull() == null || (it.toIntOrNull() ?: 0) <= 0
+                    },
+                    label = { Text(stringResource(R.string.days_to_keep)) },
+                    isError = isError,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (isError) {
+                    Text(
+                        text = stringResource(R.string.invalid_days_value),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val days = daysToKeep.toIntOrNull() ?: 0
+                    if (days > 0) {
+                        onConfirm(days)
+                    } else {
+                        isError = true
+                    }
+                },
+                enabled = !isError && daysToKeep.isNotEmpty()
+            ) {
+                Text(stringResource(R.string.confirm))
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
 }

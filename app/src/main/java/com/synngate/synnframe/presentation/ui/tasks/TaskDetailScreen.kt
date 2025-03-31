@@ -12,8 +12,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -40,6 +44,7 @@ import com.synngate.synnframe.domain.entity.CreationPlace
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.entity.TaskType
+import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.inputs.BarcodeTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
@@ -71,6 +76,8 @@ fun TaskDetailScreen(
 
     val updateSuccessMessage = stringResource(id = R.string.update_success)
 
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     // Обработка событий
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
@@ -78,23 +85,36 @@ fun TaskDetailScreen(
                 is TaskDetailEvent.NavigateBack -> {
                     navigateBack()
                 }
+
                 is TaskDetailEvent.NavigateToProductsList -> {
                     navigateToProductsList()
                 }
+
                 is TaskDetailEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(event.message)
                 }
+
                 is TaskDetailEvent.ShowScanDialog -> {
                     // Диалог отображается через state.isScanDialogVisible
                 }
+
                 is TaskDetailEvent.ShowFactLineDialog -> {
                     // Диалог отображается через state.isFactLineDialogVisible
                 }
+
                 is TaskDetailEvent.CloseDialog -> {
                     // Закрытие диалогов обрабатывается через ViewMоdel
                 }
+
                 is TaskDetailEvent.UpdateSuccess -> {
                     snackbarHostState.showSnackbar(updateSuccessMessage)
+                }
+
+                is TaskDetailEvent.ShowDeleteConfirmation -> {
+                    showDeleteDialog = true
+                }
+                is TaskDetailEvent.HideDeleteConfirmation -> {
+                    showDeleteDialog = false
                 }
             }
         }
@@ -118,6 +138,18 @@ fun TaskDetailScreen(
         }
     }
 
+    // Используем либо состояние из viewModel, либо локальное состояние
+    val showDeleteConfirmationDialog = state.showDeleteConfirmation || showDeleteDialog
+
+    if (showDeleteConfirmationDialog) {
+        ConfirmationDialog(
+            title = stringResource(id = R.string.delete_task_title),
+            message = stringResource(id = R.string.delete_task_message),
+            onConfirm = { viewModel.deleteTask() },
+            onDismiss = { viewModel.hideDeleteConfirmation() }
+        )
+    }
+
     if (state.isScanDialogVisible) {
         ScanBarcodeDialog(
             onBarcodeScanned = { barcode -> viewModel.processScanResult(barcode) },
@@ -129,7 +161,8 @@ fun TaskDetailScreen(
     }
 
     if (state.isFactLineDialogVisible && state.selectedFactLine != null) {
-        val product = state.taskLines.find { it.planLine.productId == state.selectedFactLine!!.productId }?.product
+        val product =
+            state.taskLines.find { it.planLine.productId == state.selectedFactLine!!.productId }?.product
         TaskFactLineDialog(
             factLine = state.selectedFactLine!!,
             product = product,
@@ -193,6 +226,7 @@ fun TaskDetailScreen(
                             Text(stringResource(id = R.string.start_task))
                         }
                     }
+
                     TaskStatus.IN_PROGRESS -> {
                         // Кнопка "Завершить"
                         Button(
@@ -203,20 +237,48 @@ fun TaskDetailScreen(
                             Text(stringResource(id = R.string.complete_task))
                         }
                     }
+
                     TaskStatus.COMPLETED -> {
-                        // Кнопка "Выгрузить"
-                        Button(
-                            onClick = { viewModel.uploadTask() },
-                            enabled = !state.isProcessing && !task.uploaded,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                if (task.uploaded)
-                                    stringResource(id = R.string.task_already_uploaded)
-                                else
-                                    stringResource(id = R.string.upload_task)
+                        if (state.task?.canDelete() == true) {
+                            // Кнопка повторной выгрузки
+                            ActionButton(
+                                text = stringResource(id = R.string.reupload_task),
+                                onClick = { viewModel.reuploadTask() },
+                                enabled = !state.isReuploading,
+                                isLoading = state.isReuploading,
+                                icon = Icons.Default.Sync,
+                                contentDescription = stringResource(id = R.string.reupload_task)
                             )
-                        }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Кнопка удаления
+                            ActionButton(
+                                text = stringResource(id = R.string.delete_task),
+                                onClick = { viewModel.showDeleteConfirmation() },
+                                enabled = !state.isDeleting,
+                                isLoading = state.isDeleting,
+                                icon = Icons.Default.Delete,
+                                contentDescription = stringResource(id = R.string.delete_task),
+                                buttonColors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = MaterialTheme.colorScheme.onError
+                                )
+                            )
+                        } else
+                            // Кнопка "Выгрузить"
+                            Button(
+                                onClick = { viewModel.uploadTask() },
+                                enabled = !state.isProcessing && !task.uploaded,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    if (task.uploaded)
+                                        stringResource(id = R.string.task_already_uploaded)
+                                    else
+                                        stringResource(id = R.string.upload_task)
+                                )
+                            }
                     }
                 }
             }
@@ -351,7 +413,8 @@ fun TaskDetailScreen(
                                         if (state.isEditable) {
                                             lineItem.factLine?.let {
                                                 viewModel.showFactLineDialog(it.productId)
-                                            } ?: viewModel.showFactLineDialog(lineItem.planLine.productId)
+                                            }
+                                                ?: viewModel.showFactLineDialog(lineItem.planLine.productId)
                                         }
                                     },
                                     productProperties = productProperties
@@ -365,7 +428,8 @@ fun TaskDetailScreen(
                                         if (state.isEditable) {
                                             lineItem.factLine?.let {
                                                 viewModel.showFactLineDialog(it.productId)
-                                            } ?: viewModel.showFactLineDialog(lineItem.planLine.productId)
+                                            }
+                                                ?: viewModel.showFactLineDialog(lineItem.planLine.productId)
                                         }
                                     },
                                     productProperties = productProperties
@@ -381,7 +445,6 @@ fun TaskDetailScreen(
                         color = MaterialTheme.colorScheme.outline
                     )
 
-                    // Отображаем итоги только для заданий с планом
                     if (hasPlan) {
                         Row(
                             modifier = Modifier.fillMaxWidth()
@@ -418,8 +481,6 @@ fun TaskDetailScreen(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Отображаем процент выполнения только для заданий с планом
-                        // Рассчитываем количество строк с совпадающим планом и фактом
                         val matchingLinesCount = state.taskLines.count {
                             it.factLine != null && it.factLine.quantity == it.planLine.quantity && it.factLine.quantity > 0f
                         }
