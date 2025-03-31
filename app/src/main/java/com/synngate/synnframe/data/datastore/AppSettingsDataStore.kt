@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.synngate.synnframe.presentation.theme.ThemeMode
+import com.synngate.synnframe.presentation.ui.tasks.model.ScanOrder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
@@ -26,6 +27,9 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
         private val CURRENT_USER_ID = stringPreferencesKey("current_user_id")
         private val ALLOW_MOBILE_UPLOAD = booleanPreferencesKey("allow_mobile_upload")
         private val MOBILE_SIZE_LIMIT = intPreferencesKey("mobile_size_limit")
+        private val BIN_CODE_PATTERN = stringPreferencesKey("bin_code_pattern")
+        private val SCAN_ORDER = stringPreferencesKey("scan_order")
+        const val DEFAULT_BIN_PATTERN = "{Aisle:@[a-zA-Z][0-9]}{Rack:@[0-9]{2}}{Shelf:@[1-9]{1}}{Position:@[1-9]}"
     }
 
     val showServersOnStartup: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -68,6 +72,22 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
 
     val mobileSizeLimit: Flow<Int> = dataStore.data.map { preferences ->
         preferences[MOBILE_SIZE_LIMIT] ?: 500_000
+    }
+
+    // Шаблон кода ячейки
+    val binCodePattern: Flow<String> = dataStore.data.map { preferences ->
+        preferences[BIN_CODE_PATTERN] ?: DEFAULT_BIN_PATTERN
+    }
+
+    // Порядок сканирования
+    val scanOrder: Flow<ScanOrder> = dataStore.data.map { preferences ->
+        val orderString = preferences[SCAN_ORDER] ?: ScanOrder.PRODUCT_FIRST.name
+        try {
+            ScanOrder.valueOf(orderString)
+        } catch (e: IllegalArgumentException) {
+            Timber.e(e, "Invalid scan order: $orderString")
+            ScanOrder.PRODUCT_FIRST
+        }
     }
 
     suspend fun setShowServersOnStartup(show: Boolean) {
@@ -124,6 +144,19 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
             } else {
                 preferences.remove(CURRENT_USER_ID)
             }
+        }
+    }
+
+    // Методы для установки настроек ячеек и порядка сканирования
+    suspend fun setBinCodePattern(pattern: String) {
+        dataStore.edit { preferences ->
+            preferences[BIN_CODE_PATTERN] = pattern
+        }
+    }
+
+    suspend fun setScanOrder(order: ScanOrder) {
+        dataStore.edit { preferences ->
+            preferences[SCAN_ORDER] = order.name
         }
     }
 }

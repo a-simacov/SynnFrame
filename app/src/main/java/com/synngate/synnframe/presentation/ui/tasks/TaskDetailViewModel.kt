@@ -6,17 +6,22 @@ import com.synngate.synnframe.domain.entity.TaskPlanLine
 import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.service.SoundService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
+import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.products.components.ScanResult
 import com.synngate.synnframe.presentation.ui.tasks.model.FactLineDialogState
 import com.synngate.synnframe.presentation.ui.tasks.model.ScanBarcodeDialogState
+import com.synngate.synnframe.presentation.ui.tasks.model.ScanOrder
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailEvent
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailState
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskLineItem
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
+import com.synngate.synnframe.util.bin.BinFormatter
+import com.synngate.synnframe.util.bin.BinValidator
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
 import java.util.UUID
@@ -26,14 +31,19 @@ class TaskDetailViewModel(
     private val taskUseCases: TaskUseCases,
     private val productUseCases: ProductUseCases,
     private val userUseCases: UserUseCases,
+    private val settingsUseCases: SettingsUseCases,
     private val soundService: SoundService,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<TaskDetailState, TaskDetailEvent>(TaskDetailState(taskId = taskId)) {
 
     private val scannedBarcodeCache = mutableMapOf<String, Product?>()
+    private val _scanOrder = MutableStateFlow(ScanOrder.PRODUCT_FIRST)
+    private var binValidator: BinValidator? = null
+    private var binFormatter: BinFormatter? = null
 
     init {
         loadTask()
+        initBinSettings()
     }
 
     fun loadTask() {
@@ -59,11 +69,18 @@ class TaskDetailViewModel(
                         val factLine = task.factLines.find { it.productId == planLine.productId }
                         val product = products[planLine.productId]
 
+                        // Форматируем имя ячейки, если она есть
+                        val binCode = factLine?.binCode ?: planLine.binCode
+                        val binName = if (binCode != null) {
+                            binFormatter?.formatBinName(binCode) ?: binCode
+                        } else null
+
                         taskLines.add(
                             TaskLineItem(
                                 planLine = planLine,
                                 factLine = factLine,
-                                product = product
+                                product = product,
+                                binName = binName
                             )
                         )
                     }
@@ -125,6 +142,20 @@ class TaskDetailViewModel(
                 }
                 sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка загрузки задания: ${e.message}"))
             }
+        }
+    }
+
+    private fun initBinSettings() {
+        launchIO {
+            // Загружаем шаблон ячейки и порядок сканирования из настроек
+            val pattern = settingsUseCases.binCodePattern.first()
+            binValidator = BinValidator(pattern)
+            binFormatter = BinFormatter(pattern)
+
+            _scanOrder.value = settingsUseCases.scanOrder.first()
+
+            // Устанавливаем начальное состояние сканирования в зависимости от порядка
+            resetScanBarcodeDialogState()
         }
     }
 
@@ -509,8 +540,6 @@ class TaskDetailViewModel(
     fun navigateBack() {
         sendEvent(TaskDetailEvent.NavigateBack)
     }
-
-    // Добавьте следующие методы и измените существующие методы в TaskDetailViewModel.kt
 
     /**
      * Обрабатывает результат сканирования штрихкода

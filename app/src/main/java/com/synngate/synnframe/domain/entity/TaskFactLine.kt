@@ -10,5 +10,7 @@ data class TaskFactLine(
 
     val productId: String,
 
-    val quantity: Float
+    val quantity: Float,
+
+    val binCode: String? = null
 )

@@ -536,4 +536,20 @@
     <string name="delete_task_title">Удаление задания</string>
     <string name="delete_task_message">Вы уверены, что хотите удалить это задание? Это действие нельзя отменить.</string>
     <string name="reupload_task">Выгрузить повторно</string>
+
+    <!-- Ячейки -->
+    <string name="bin_settings">Настройки ячеек</string>
+    <string name="bin_code_pattern">Шаблон кода ячейки</string>
+    <string name="scan_order">Порядок сканирования</string>
+    <string name="product_first">Сначала товар</string>
+    <string name="bin_first">Сначала ячейка</string>
+    <string name="scan_product">Сканировать товар</string>
+    <string name="scan_bin">Сканировать ячейку</string>
+    <string name="enter_quantity">Введите количество</string>
+    <string name="scan_product_instruction">Отсканируйте штрихкод товара</string>
+    <string name="scan_bin_instruction">Отсканируйте штрихкод ячейки</string>
+    <string name="enter_quantity_instruction">Введите количество товара</string>
+    <string name="confirm_instruction">Подтвердите ввод</string>
+    <string name="product_scanned">Товар: %s</string>
+    <string name="bin_scanned">Ячейка: %s</string>
 </resources>

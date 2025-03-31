@@ -9,7 +9,8 @@ import com.synngate.synnframe.domain.entity.TaskPlanLine
 data class TaskLineItem(
     val planLine: TaskPlanLine,
     val factLine: TaskFactLine?,
-    val product: Product?
+    val product: Product?,
+    val binName: String? = null
 )
 
 data class TaskDetailState(

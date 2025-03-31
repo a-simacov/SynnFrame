@@ -1,7 +1,5 @@
 package com.synngate.synnframe.presentation.ui.settings
 
-import android.app.Activity
-import android.content.ContextWrapper
 import android.content.Intent
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.service.LoggingService
@@ -14,6 +12,7 @@ import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsEvent
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsState
+import com.synngate.synnframe.presentation.ui.tasks.model.ScanOrder
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -53,6 +52,8 @@ class SettingsViewModel(
                 val languageCode = settingsUseCases.languageCode.first()
                 val buttonHeight = settingsUseCases.navigationButtonHeight.first()
                 val activeServer = serverUseCases.getActiveServer().first()
+                val binCodePattern = settingsUseCases.binCodePattern.first()
+                val scanOrder = settingsUseCases.scanOrder.first()
 
                 // Обновляем состояние с загруженными данными
                 updateState {
@@ -64,7 +65,9 @@ class SettingsViewModel(
                         languageCode = languageCode,
                         navigationButtonHeight = buttonHeight,
                         activeServer = activeServer,
-                        isLoading = false
+                        isLoading = false,
+                        binCodePattern = binCodePattern,
+                        scanOrder = scanOrder
                     )
                 }
 
@@ -801,5 +804,20 @@ class SettingsViewModel(
 
     fun onSyncHistoryClick() {
         sendEvent(SettingsEvent.NavigateToSyncHistory)
+    }
+
+    // Методы для обновления настроек ячеек
+    fun updateBinCodePattern(pattern: String) {
+        updateState { it.copy(binCodePattern = pattern) }
+        launchIO {
+            settingsUseCases.setBinCodePattern(pattern)
+        }
+    }
+
+    fun updateScanOrder(order: ScanOrder) {
+        updateState { it.copy(scanOrder = order) }
+        launchIO {
+            settingsUseCases.setScanOrder(order)
+        }
     }
 }

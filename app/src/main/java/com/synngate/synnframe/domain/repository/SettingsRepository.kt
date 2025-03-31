@@ -3,6 +3,7 @@ package com.synngate.synnframe.domain.repository
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.dto.AppVersionDto
 import com.synngate.synnframe.presentation.theme.ThemeMode
+import com.synngate.synnframe.presentation.ui.tasks.model.ScanOrder
 import kotlinx.coroutines.flow.Flow
 
 interface SettingsRepository {
@@ -23,4 +24,10 @@ interface SettingsRepository {
     // Низкоуровневые операции без бизнес-логики
     suspend fun getLatestAppVersion(): ApiResult<AppVersionDto>
     suspend fun downloadAppUpdate(version: String): ApiResult<ByteArray>
+
+    fun getBinCodePattern(): Flow<String>
+    fun getScanOrder(): Flow<ScanOrder>
+
+    suspend fun setBinCodePattern(pattern: String)
+    suspend fun setScanOrder(order: ScanOrder)
 }

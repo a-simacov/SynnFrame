@@ -16,7 +16,10 @@ data class TaskFactLineDto(
     val productId: String,
 
     @SerialName("quantity")
-    val quantity: Float
+    val quantity: Float,
+
+    @SerialName("binCode")
+    val binCode: String? = null
 ) {
 
     fun toDomainModel(): TaskFactLine {
@@ -24,7 +27,8 @@ data class TaskFactLineDto(
             id = id,
             taskId = taskId,
             productId = productId,
-            quantity = quantity
+            quantity = quantity,
+            binCode = binCode
         )
     }
 
@@ -34,7 +38,8 @@ data class TaskFactLineDto(
                 id = factLine.id,
                 taskId = factLine.taskId,
                 productId = factLine.productId,
-                quantity = factLine.quantity
+                quantity = factLine.quantity,
+                binCode = factLine.binCode
             )
         }
     }

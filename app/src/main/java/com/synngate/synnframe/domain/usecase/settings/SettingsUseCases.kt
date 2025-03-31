@@ -10,6 +10,7 @@ import com.synngate.synnframe.domain.service.FileService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import com.synngate.synnframe.presentation.theme.ThemeMode
+import com.synngate.synnframe.presentation.ui.tasks.model.ScanOrder
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
 import java.io.File
@@ -28,6 +29,9 @@ class SettingsUseCases(
     val themeMode: Flow<ThemeMode> = settingsRepository.themeMode
     val languageCode: Flow<String> = settingsRepository.languageCode
     val navigationButtonHeight: Flow<Float> = settingsRepository.navigationButtonHeight
+
+    val binCodePattern = settingsRepository.getBinCodePattern()
+    val scanOrder = settingsRepository.getScanOrder()
 
     suspend fun setShowServersOnStartup(show: Boolean): Result<Unit> {
         return try {
@@ -212,5 +216,15 @@ class SettingsUseCases(
             Timber.e(e, "Error comparing versions")
             return false
         }
+    }
+
+    suspend fun setBinCodePattern(pattern: String) {
+        settingsRepository.setBinCodePattern(pattern)
+        loggingService.logInfo("Установлен шаблон кода ячейки: $pattern")
+    }
+
+    suspend fun setScanOrder(order: ScanOrder) {
+        settingsRepository.setScanOrder(order)
+        loggingService.logInfo("Установлен порядок сканирования: $order")
     }
 }

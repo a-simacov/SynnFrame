@@ -82,7 +82,8 @@ data class TaskPlanLineEntity(
     val id: String,
     val taskId: String,
     val productId: String,
-    val quantity: Float
+    val quantity: Float,
+    val binCode: String? = null
 ) {
 
     fun toDomainModel(): TaskPlanLine {
@@ -90,7 +91,8 @@ data class TaskPlanLineEntity(
             id = id,
             taskId = taskId,
             productId = productId,
-            quantity = quantity
+            quantity = quantity,
+            binCode = binCode
         )
     }
 
@@ -100,7 +102,8 @@ data class TaskPlanLineEntity(
                 id = planLine.id,
                 taskId = planLine.taskId,
                 productId = planLine.productId,
-                quantity = planLine.quantity
+                quantity = planLine.quantity,
+                binCode = planLine.binCode
             )
         }
     }
@@ -114,7 +117,8 @@ data class TaskFactLineEntity(
     val id: String,
     val taskId: String,
     val productId: String,
-    val quantity: Float
+    val quantity: Float,
+    val binCode: String? = null
 ) {
 
     fun toDomainModel(): TaskFactLine {
@@ -122,7 +126,8 @@ data class TaskFactLineEntity(
             id = id,
             taskId = taskId,
             productId = productId,
-            quantity = quantity
+            quantity = quantity,
+            binCode = binCode
         )
     }
 
@@ -132,7 +137,8 @@ data class TaskFactLineEntity(
                 id = factLine.id,
                 taskId = factLine.taskId,
                 productId = factLine.productId,
-                quantity = factLine.quantity
+                quantity = factLine.quantity,
+                binCode = factLine.binCode
             )
         }
     }

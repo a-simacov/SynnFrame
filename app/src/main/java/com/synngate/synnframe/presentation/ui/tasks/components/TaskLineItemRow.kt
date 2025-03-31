@@ -99,6 +99,21 @@ fun TaskLineItemRow(
                         maxLines = 4,
                     )
                 }
+                // Если есть имя ячейки, выводим его
+                if (lineItem.binName != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, top = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Ячейка: ${lineItem.binName}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
 
             // Колонка план (20%)

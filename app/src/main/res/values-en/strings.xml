@@ -524,4 +524,18 @@
     <string name="delete_task_title">Deletion of task</string>
     <string name="delete_task_message">Are you sure you want to delete the task? It cannot be canceled</string>
     <string name="reupload_task">Reupload task</string>
+    <string name="bin_settings">Bins settings</string>
+    <string name="bin_code_pattern">Bin code template</string>
+    <string name="scan_order">Scan order</string>
+    <string name="product_first">Product first</string>
+    <string name="bin_first">Bin first</string>
+    <string name="scan_product">Scan product</string>
+    <string name="scan_bin">Scan bin</string>
+    <string name="enter_quantity">Input quantity</string>
+    <string name="scan_product_instruction">Scan product barcode</string>
+    <string name="scan_bin_instruction">Scan bin barcode</string>
+    <string name="enter_quantity_instruction">Input product quantity</string>
+    <string name="confirm_instruction">Confirm input</string>
+    <string name="product_scanned">Product: %s</string>
+    <string name="bin_scanned">Bin: %s</string>
 </resources>

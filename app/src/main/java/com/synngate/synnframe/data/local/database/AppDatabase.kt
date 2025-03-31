@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.synngate.synnframe.data.local.dao.LogDao
 import com.synngate.synnframe.data.local.dao.ProductDao
 import com.synngate.synnframe.data.local.dao.ServerDao
@@ -38,7 +40,7 @@ import com.synngate.synnframe.data.sync.SyncHistoryRecord
         SyncOperation::class,
         SyncHistoryRecord::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -71,10 +73,22 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DATABASE_NAME
                 )
+                    .addMigrations(MIGRATION_3_4) // Добавляем миграцию
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance
+            }
+        }
+
+        // Миграция для добавления колонки binCode
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Добавляем колонку binCode в таблицу task_plan_lines
+                database.execSQL("ALTER TABLE task_plan_lines ADD COLUMN binCode TEXT")
+
+                // Добавляем колонку binCode в таблицу task_fact_lines
+                database.execSQL("ALTER TABLE task_fact_lines ADD COLUMN binCode TEXT")
             }
         }
     }

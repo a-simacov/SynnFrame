@@ -16,14 +16,18 @@ data class TaskPlanLineDto(
     val productId: String,
 
     @SerialName("quantity")
-    val quantity: Float
+    val quantity: Float,
+
+    @SerialName("binCode")
+    val binCode: String? = null
 ) {
     fun toDomainModel(): TaskPlanLine {
         return TaskPlanLine(
             id = id,
             taskId = taskId,
             productId = productId,
-            quantity = quantity
+            quantity = quantity,
+            binCode = binCode
         )
     }
 
@@ -33,7 +37,8 @@ data class TaskPlanLineDto(
                 id = planLine.id,
                 taskId = planLine.taskId,
                 productId = planLine.productId,
-                quantity = planLine.quantity
+                quantity = planLine.quantity,
+                binCode = planLine.binCode
             )
         }
     }
