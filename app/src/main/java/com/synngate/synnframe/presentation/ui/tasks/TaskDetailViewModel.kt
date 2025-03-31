@@ -13,6 +13,7 @@ import com.synngate.synnframe.presentation.ui.products.components.ScanResult
 import com.synngate.synnframe.presentation.ui.tasks.model.FactLineDialogState
 import com.synngate.synnframe.presentation.ui.tasks.model.ScanBarcodeDialogState
 import com.synngate.synnframe.presentation.ui.tasks.model.ScanOrder
+import com.synngate.synnframe.presentation.ui.tasks.model.ScanningState
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailEvent
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailState
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskLineItem
@@ -122,6 +123,11 @@ class TaskDetailViewModel(
                             error = null
                         )
                     }
+
+                    if (isEditable) {
+                        // Запускаем цикл сканирования в соответствии с настройками порядка
+                        initScanningCycle()
+                    }
                 } else {
                     updateState { state ->
                         state.copy(
@@ -157,6 +163,54 @@ class TaskDetailViewModel(
             // Устанавливаем начальное состояние сканирования в зависимости от порядка
             resetScanBarcodeDialogState()
         }
+    }
+
+    // Инициализация цикла ввода
+    fun initScanningCycle() {
+        // Определяем начальное состояние в зависимости от настроек порядка
+        val scanOrder = _scanOrder.value
+        val initialState = if (scanOrder == ScanOrder.PRODUCT_FIRST) {
+            ScanningState.SCAN_PRODUCT
+        } else {
+            ScanningState.SCAN_BIN
+        }
+
+        // Обновляем состояние
+        updateState { it.copy(
+            scanningState = initialState,
+            currentScanHint = getHintForState(initialState),
+            temporaryProductId = null,
+            temporaryProduct = null,
+            temporaryBinCode = null,
+            formattedBinName = null,
+            temporaryQuantity = null,
+            isValidProduct = true,
+            isValidBin = true
+        ) }
+    }
+
+    // Получение подсказки для текущего состояния
+    private fun getHintForState(state: ScanningState): String {
+        return when(state) {
+            ScanningState.SCAN_PRODUCT -> "Введите или отсканируйте штрихкод товара"
+            ScanningState.SCAN_BIN -> "Введите или отсканируйте штрихкод ячейки"
+            ScanningState.ENTER_QUANTITY -> "Введите количество товара"
+            ScanningState.CONFIRM -> "Подтвердите введенные данные"
+            else -> ""
+        }
+    }
+
+    // Сброс цикла ввода
+    fun resetScanningCycle() {
+        updateState { it.copy(
+            scanningState = ScanningState.IDLE,
+            currentScanHint = "",
+            temporaryProductId = null,
+            temporaryProduct = null,
+            temporaryBinCode = null,
+            formattedBinName = null,
+            temporaryQuantity = null
+        ) }
     }
 
     /**
@@ -544,124 +598,197 @@ class TaskDetailViewModel(
     /**
      * Обрабатывает результат сканирования штрихкода
      */
+// Обработка результата сканирования или ручного ввода
     fun processScanResult(barcode: String) {
-        // Зафиксируем время начала сканирования для расчета длительности операции
-        val startTime = System.currentTimeMillis()
+        if (barcode.isEmpty()) return
 
-        launchIO {
-            updateState { it.copy(isProcessing = true, scannedBarcode = barcode) }
+        // Определяем действие по текущему состоянию
+        val currentState = uiState.value.scanningState
 
-            try {
-                // Проверяем кэш перед поиском в базе
-                val product = if (scannedBarcodeCache.containsKey(barcode)) {
-                    // Используем кэшированное значение
-                    scannedBarcodeCache[barcode]
-                } else {
-                    // Ищем товар по штрихкоду и кэшируем результат
-                    val foundProduct = productUseCases.findProductByBarcode(barcode)
-                    scannedBarcodeCache[barcode] = foundProduct
-                    foundProduct
-                }
-
-                if (product != null) {
-                    val task = uiState.value.task
-                    if (task == null) {
-                        updateState { state ->
-                            state.copy(
-                                scanBarcodeDialogState = state.scanBarcodeDialogState.copy(
-                                    scannerMessage = "Задание не найдено"
-                                ),
-                                isProcessing = false
-                            )
-                        }
-                        sendEvent(TaskDetailEvent.ShowSnackbar("Задание не найдено"))
-                        return@launchIO
-                    }
-
-                    // Проверяем, есть ли товар в плане задания, или разрешено использовать товары не из плана
-                    val isInPlan = task.isProductInPlan(product.id)
-                    val canUseProductNotInPlan = task.allowProductsNotInPlan
-
-                    if (isInPlan || canUseProductNotInPlan) {
-                        // Находим или создаем строку факта
-                        val factLine = task.getFactLineByProductId(product.id)
-                            ?: TaskFactLine(
-                                id = UUID.randomUUID().toString(),
-                                taskId = task.id,
-                                productId = product.id,
-                                quantity = 0f
-                            )
-
-                        // Находим плановое количество для этого товара
-                        val planLine = task.planLines.find { it.productId == product.id }
-                        val planQuantity = planLine?.quantity ?: 0f
-
-                        // Закрываем диалог сканирования
-                        updateState { state ->
-                            state.copy(
-                                isScanDialogVisible = false,
-                                isProcessing = false
-                            )
-                        }
-
-                        // Открываем диалог ввода количества
-                        updateState { state ->
-                            state.copy(
-                                scannedProduct = product,
-                                selectedFactLine = factLine,
-                                isFactLineDialogVisible = true,
-                                selectedPlanQuantity = planQuantity
-                            )
-                        }
-
-                        // Звуковое оповещение об успешном сканировании
-                        soundService.playSuccessSound()
-                    } else {
-                        // Если товара нет в плане и не разрешено использовать товары не из плана,
-                        // показываем сообщение в диалоге сканирования
-                        updateState { state ->
-                            state.copy(
-                                scanBarcodeDialogState = state.scanBarcodeDialogState.copy(
-                                    scannerMessage = "Товар '${product.name}' не входит в план задания"
-                                ),
-                                isProcessing = false
-                            )
-                        }
-
-                        // Звуковое оповещение об ошибке
-                        soundService.playErrorSound()
-                    }
-                } else {
-                    // Если товар не найден, показываем сообщение в диалоге сканирования
-                    updateState { state ->
-                        state.copy(
-                            scanBarcodeDialogState = state.scanBarcodeDialogState.copy(
-                                scannerMessage = "Товар со штрихкодом '$barcode' не найден"
-                            ),
-                            isProcessing = false
-                        )
-                    }
-
-                    // Звуковое оповещение об ошибке
-                    soundService.playErrorSound()
-                }
-
-                // Логируем длительность операции сканирования для аналитики
-                val duration = System.currentTimeMillis() - startTime
-                Timber.d("Scan processing took $duration ms")
-
-            } catch (e: Exception) {
-                Timber.e(e, "Error processing barcode")
-                updateState { state ->
-                    state.copy(
-                        scanBarcodeDialogState = state.scanBarcodeDialogState.copy(
-                            scannerMessage = "Ошибка: ${e.message}"
-                        ),
-                        isProcessing = false
-                    )
-                }
+        when(currentState) {
+            ScanningState.SCAN_PRODUCT -> processProductBarcode(barcode)
+            ScanningState.SCAN_BIN -> processBinBarcode(barcode)
+            ScanningState.IDLE -> {
+                // Инициализация нового цикла, если еще не начат
+                initScanningCycle()
+                // Повторяем обработку с учетом начального состояния
+                processScanResult(barcode)
+            }
+            else -> {
+                // Для других состояний просто выводим информацию
+                sendEvent(TaskDetailEvent.ShowSnackbar(
+                    "Завершите текущий шаг: ${getHintForState(currentState)}"
+                ))
             }
         }
+    }
+
+    // Обработка штрихкода товара
+    private fun processProductBarcode(barcode: String) {
+        launchIO {
+            updateState { it.copy(isProcessing = true) }
+
+            try {
+                // Ищем товар по штрихкоду
+                val product = productUseCases.findProductByBarcode(barcode)
+
+                if (product != null) {
+                    // Товар найден
+                    val task = uiState.value.task
+
+                    if (task != null) {
+                        // Проверяем, есть ли товар в плане или разрешены товары не из плана
+                        val isInPlan = task.isProductInPlan(product.id)
+                        val canUseProductNotInPlan = task.allowProductsNotInPlan
+
+                        if (isInPlan || canUseProductNotInPlan) {
+                            // Сохраняем данные о товаре
+                            updateState { it.copy(
+                                temporaryProductId = product.id,
+                                temporaryProduct = product,
+                                isValidProduct = true
+                            ) }
+
+                            // Переходим к следующему шагу
+                            prepareQuantityInput(product)
+                        } else {
+                            // Товар не в плане и не разрешен
+                            updateState { it.copy(
+                                temporaryProductId = product.id,
+                                temporaryProduct = product,
+                                isValidProduct = false
+                            ) }
+
+                            sendEvent(TaskDetailEvent.ShowSnackbar("Товар не входит в план задания"))
+                            soundService.playErrorSound()
+                        }
+                    }
+                } else {
+                    // Проверяем, может это штрихкод ячейки
+                    if (binValidator?.isValidBin(barcode) == true) {
+                        // Если это ячейка, перенаправляем на обработку ячейки
+                        processBinBarcode(barcode)
+                    } else {
+                        // Товар не найден и это не ячейка
+                        sendEvent(TaskDetailEvent.ShowSnackbar("Товар не найден"))
+                        soundService.playErrorSound()
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error processing product barcode")
+                sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка: ${e.message}"))
+            } finally {
+                updateState { it.copy(isProcessing = false) }
+            }
+        }
+    }
+
+    // Обработка штрихкода ячейки
+    private fun processBinBarcode(barcode: String) {
+        launchIO {
+            updateState { it.copy(isProcessing = true) }
+
+            try {
+                // Проверяем соответствие штрихкода шаблону ячейки
+                val isValidBin = binValidator?.isValidBin(barcode) ?: false
+
+                if (isValidBin) {
+                    // Форматируем имя ячейки для отображения
+                    val formattedBin = binFormatter?.formatBinName(barcode) ?: barcode
+
+                    // Проверяем соответствие ячейки плану (если применимо)
+                    val task = uiState.value.task
+                    val tempProductId = uiState.value.temporaryProductId
+
+                    var binMatchesPlan = true
+
+                    if (task != null && tempProductId != null) {
+                        // Если есть товар, проверяем соответствие ячейки плану
+                        val planLine = task.planLines.find { it.productId == tempProductId }
+
+                        if (planLine?.binCode != null && planLine.binCode != barcode) {
+                            binMatchesPlan = false
+                        }
+                    }
+
+                    // Сохраняем данные о ячейке
+                    updateState { it.copy(
+                        temporaryBinCode = barcode,
+                        formattedBinName = formattedBin,
+                        isValidBin = binMatchesPlan
+                    ) }
+
+                    // Определяем следующий шаг
+                    if (_scanOrder.value == ScanOrder.BIN_FIRST) {
+                        // Если сначала ячейка, переходим к вводу товара
+                        updateState { it.copy(
+                            scanningState = ScanningState.SCAN_PRODUCT,
+                            currentScanHint = getHintForState(ScanningState.SCAN_PRODUCT)
+                        ) }
+                        soundService.playSuccessSound()
+                    } else {
+                        // Если сначала товар, проверяем наличие товара
+                        if (uiState.value.temporaryProduct != null) {
+                            // Если товар уже введен, переходим к подтверждению
+                            updateState { it.copy(
+                                scanningState = ScanningState.CONFIRM,
+                                currentScanHint = getHintForState(ScanningState.CONFIRM)
+                            ) }
+                            soundService.playSuccessSound()
+                        } else {
+                            // Иначе сообщаем, что нужно сначала ввести товар
+                            sendEvent(TaskDetailEvent.ShowSnackbar("Сначала введите товар"))
+                            soundService.playErrorSound()
+                        }
+                    }
+                } else {
+                    // Если это не ячейка, проверяем не товар ли это
+                    if (_scanOrder.value == ScanOrder.PRODUCT_FIRST) {
+                        // Если сначала товар, пробуем обработать как товар
+                        processProductBarcode(barcode)
+                    } else {
+                        // Если сначала ячейка, сообщаем об ошибке формата
+                        sendEvent(TaskDetailEvent.ShowSnackbar("Неверный формат ячейки"))
+                        soundService.playErrorSound()
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error processing bin barcode")
+                sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка: ${e.message}"))
+            } finally {
+                updateState { it.copy(isProcessing = false) }
+            }
+        }
+    }
+
+    // Подготовка к вводу количества
+    private fun prepareQuantityInput(product: Product) {
+        // Подготавливаем строку факта для диалога
+        val taskId = uiState.value.task?.id ?: ""
+        val factLineId = UUID.randomUUID().toString()
+
+        val newFactLine = TaskFactLine(
+            id = factLineId,
+            taskId = taskId,
+            productId = product.id,
+            quantity = 0f,
+            binCode = uiState.value.temporaryBinCode
+        )
+
+        // Находим плановое количество
+        val planQuantity = uiState.value.task?.planLines
+            ?.find { it.productId == product.id }?.quantity ?: 0f
+
+        // Показываем диалог ввода количества
+        updateState { it.copy(
+            selectedFactLine = newFactLine,
+            isFactLineDialogVisible = true,
+            selectedPlanQuantity = planQuantity,
+            scanningState = ScanningState.ENTER_QUANTITY,
+            currentScanHint = getHintForState(ScanningState.ENTER_QUANTITY)
+        ) }
+
+        soundService.playSuccessSound()
     }
 
     /**
@@ -762,8 +889,6 @@ class TaskDetailViewModel(
      * Применяет изменения количества в строке факта
      */
     fun applyQuantityChange(factLine: TaskFactLine, additionalQuantity: String) {
-        val task = uiState.value.task ?: return
-
         try {
             val addValue = additionalQuantity.toFloatOrNull() ?: 0f
             if (addValue == 0f) {
@@ -771,27 +896,86 @@ class TaskDetailViewModel(
             }
 
             val updatedQuantity = factLine.quantity + addValue
-            val updatedFactLine = factLine.copy(quantity = updatedQuantity)
 
-            // Сразу закрываем диалог, не дожидаясь результата асинхронной операции
+            // Сохраняем временное количество
+            updateState { it.copy(
+                temporaryQuantity = updatedQuantity
+            ) }
+
+            // Закрываем диалог
             closeDialog()
 
-            launchIO {
-                try {
-                    taskUseCases.updateTaskFactLine(updatedFactLine)
-
-                    // Обновляем задание
-                    loadTask()
-
-                    sendEvent(TaskDetailEvent.UpdateSuccess)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error updating task fact line")
-                    sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка обновления: ${e.message}"))
+            // Определяем следующий шаг
+            if (_scanOrder.value == ScanOrder.PRODUCT_FIRST) {
+                if (uiState.value.temporaryBinCode == null) {
+                    // Если сначала товар и ячейка еще не введена, переходим к вводу ячейки
+                    updateState { it.copy(
+                        scanningState = ScanningState.SCAN_BIN,
+                        currentScanHint = getHintForState(ScanningState.SCAN_BIN)
+                    ) }
+                } else {
+                    // Если ячейка уже введена, переходим к подтверждению
+                    updateState { it.copy(
+                        scanningState = ScanningState.CONFIRM,
+                        currentScanHint = getHintForState(ScanningState.CONFIRM)
+                    ) }
                 }
+            } else {
+                // Если сначала ячейка, переходим к подтверждению
+                updateState { it.copy(
+                    scanningState = ScanningState.CONFIRM,
+                    currentScanHint = getHintForState(ScanningState.CONFIRM)
+                ) }
             }
         } catch (e: Exception) {
             Timber.e(e, "Error parsing quantity")
             sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка ввода количества"))
+        }
+    }
+
+    // Завершение строки факта и сохранение
+    fun completeFactLine() {
+        val state = uiState.value
+        val productId = state.temporaryProductId
+        val quantity = state.temporaryQuantity
+        val binCode = state.temporaryBinCode
+
+        if (productId != null && quantity != null && quantity > 0) {
+            // Создаем итоговую строку факта
+            val taskId = state.task?.id ?: ""
+            val factLineId = UUID.randomUUID().toString()
+
+            val factLine = TaskFactLine(
+                id = factLineId,
+                taskId = taskId,
+                productId = productId,
+                quantity = quantity,
+                binCode = binCode
+            )
+
+            // Сохраняем строку факта
+            launchIO {
+                try {
+                    taskUseCases.updateTaskFactLine(factLine)
+
+                    // Обновляем задание
+                    loadTask()
+
+                    // Сбрасываем цикл ввода
+                    resetScanningCycle()
+
+                    sendEvent(TaskDetailEvent.UpdateSuccess)
+                    soundService.playSuccessSound()
+                } catch (e: Exception) {
+                    Timber.e(e, "Error saving fact line")
+                    sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка сохранения: ${e.message}"))
+                    soundService.playErrorSound()
+                }
+            }
+        } else {
+            // Сообщаем об ошибке, если данные неполные
+            sendEvent(TaskDetailEvent.ShowSnackbar("Неполные данные для сохранения"))
+            soundService.playErrorSound()
         }
     }
 

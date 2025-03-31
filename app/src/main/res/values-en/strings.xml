@@ -538,4 +538,12 @@
     <string name="confirm_instruction">Confirm input</string>
     <string name="product_scanned">Product: %s</string>
     <string name="bin_scanned">Bin: %s</string>
+    <string name="scan_or_enter_product">Input product barcode</string>
+    <string name="scan_or_enter_bin">Input bin barcode</string>
+    <string name="bin">Bin</string>
+    <string name="complete">Finish</string>
+    <string name="bin_code_invalid">Wrong bin format</string>
+    <string name="bin_not_matches_plan">Bin is not in the plan</string>
+    <string name="enter_bin_first">Input bin first</string>
+    <string name="enter_product_first">Input product first</string>
 </resources>

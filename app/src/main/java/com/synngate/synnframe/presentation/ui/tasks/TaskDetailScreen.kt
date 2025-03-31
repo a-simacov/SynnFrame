@@ -12,16 +12,21 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -56,7 +62,9 @@ import com.synngate.synnframe.presentation.ui.tasks.components.TaskLineItemRow
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskNoPlannedItemRow
 import com.synngate.synnframe.presentation.ui.tasks.model.ProductDisplayProperty
 import com.synngate.synnframe.presentation.ui.tasks.model.ProductPropertyType
+import com.synngate.synnframe.presentation.ui.tasks.model.ScanningState
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailEvent
+import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailState
 import com.synngate.synnframe.presentation.util.formatQuantity
 
 @Composable
@@ -297,25 +305,73 @@ fun TaskDetailScreen(
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp)
             ) {
+                // Подсказка о текущем ожидаемом вводе
+                if (state.scanningState != ScanningState.IDLE) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = when(state.scanningState) {
+                                ScanningState.SCAN_PRODUCT -> MaterialTheme.colorScheme.primaryContainer
+                                ScanningState.SCAN_BIN -> MaterialTheme.colorScheme.secondaryContainer
+                                else -> MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        )
+                    ) {
+                        Text(
+                            text = state.currentScanHint,
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp)
+                        )
+                    }
+                }
+
                 BarcodeTextField(
                     value = state.searchQuery,
                     onValueChange = { viewModel.onSearchQueryChanged(it) },
                     onBarcodeScanned = { viewModel.processScanResult(it) },
-                    label = stringResource(id = R.string.scan_or_enter_barcode),
+                    label = when(state.scanningState) {
+                        ScanningState.SCAN_PRODUCT -> stringResource(id = R.string.scan_or_enter_product)
+                        ScanningState.SCAN_BIN -> stringResource(id = R.string.scan_or_enter_bin)
+                        else -> stringResource(id = R.string.scan_or_enter_barcode)
+                    },
                     enabled = state.isEditable,
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
-                        IconButton(
-                            onClick = { viewModel.showScanDialog() }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.QrCodeScanner,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 8.dp)
-                            )
+                        Row {
+                            // Кнопка отмены текущего цикла ввода (при активном вводе)
+                            if (state.scanningState != ScanningState.IDLE) {
+                                IconButton(onClick = { viewModel.resetScanningCycle() }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = stringResource(id = R.string.cancel)
+                                    )
+                                }
+                            }
+
+                            // Кнопка сканирования
+                            IconButton(onClick = { viewModel.showScanDialog() }) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCodeScanner,
+                                    contentDescription = null
+                                )
+                            }
                         }
                     }
                 )
+
+                // Информационная панель о текущем процессе ввода
+                if (state.scanningState != ScanningState.IDLE) {
+                    ScanningInfoPanel(
+                        state = state,
+                        onComplete = { viewModel.completeFactLine() },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -537,6 +593,111 @@ fun TaskDetailScreen(
             }
         }
     }
+}
+
+@Composable
+private fun ScanningInfoPanel(
+    state: TaskDetailState,
+    onComplete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            // Отображение введенного товара
+            if (state.temporaryProduct != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(id = R.string.product) + ":",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = state.temporaryProduct.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Индикатор проблемы
+                    if (!state.isValidProduct) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+
+            // Отображение введенной ячейки
+            if (state.temporaryBinCode != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(id = R.string.bin) + ":",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = state.formattedBinName ?: state.temporaryBinCode,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    // Индикатор проблемы
+                    if (!state.isValidBin) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+
+            // Отображение введенного количества
+            if (state.temporaryQuantity != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(id = R.string.quantity) + ":",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = formatQuantity(state.temporaryQuantity),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+
+            // Кнопка завершения, если все данные введены
+            if (canCompleteEntry(state)) {
+                Button(
+                    onClick = onComplete,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Text(stringResource(id = R.string.complete))
+                }
+            }
+        }
+    }
+}
+
+// Вспомогательная функция для проверки возможности завершения ввода
+private fun canCompleteEntry(state: TaskDetailState): Boolean {
+    return (state.temporaryProduct != null || state.temporaryProductId != null) &&
+            (state.temporaryQuantity != null && state.temporaryQuantity > 0f) &&
+            (state.scanningState == ScanningState.CONFIRM || state.scanningState == ScanningState.ENTER_QUANTITY)
 }
 
 @Composable

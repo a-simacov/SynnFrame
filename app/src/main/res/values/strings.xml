@@ -552,4 +552,13 @@
     <string name="confirm_instruction">Подтвердите ввод</string>
     <string name="product_scanned">Товар: %s</string>
     <string name="bin_scanned">Ячейка: %s</string>
+
+    <string name="scan_or_enter_product">Введите штрихкод товара</string>
+    <string name="scan_or_enter_bin">Введите штрихкод ячейки</string>
+    <string name="bin">Ячейка</string>
+    <string name="complete">Завершить</string>
+    <string name="bin_code_invalid">Неверный формат ячейки</string>
+    <string name="bin_not_matches_plan">Ячейка не соответствует плану</string>
+    <string name="enter_bin_first">Сначала введите ячейку</string>
+    <string name="enter_product_first">Сначала введите товар</string>
 </resources>

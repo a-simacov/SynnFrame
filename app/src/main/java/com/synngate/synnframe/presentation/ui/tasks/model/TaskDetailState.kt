@@ -56,5 +56,16 @@ data class TaskDetailState(
 
     val isDeleting: Boolean = false,
 
-    val isReuploading: Boolean = false
+    val isReuploading: Boolean = false,
+
+    // Новые поля для последовательного ввода
+    val scanningState: ScanningState = ScanningState.IDLE,
+    val currentScanHint: String = "",
+    val temporaryProductId: String? = null,
+    val temporaryProduct: Product? = null,
+    val temporaryBinCode: String? = null,
+    val formattedBinName: String? = null, // форматированное имя ячейки для отображения
+    val temporaryQuantity: Float? = null,
+    val isValidProduct: Boolean = true,
+    val isValidBin: Boolean = true
 )

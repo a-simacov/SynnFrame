@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,6 +29,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.synngate.synnframe.R
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView
+import com.synngate.synnframe.presentation.ui.tasks.model.ScanningState
 import kotlinx.coroutines.delay
 
 /**
@@ -37,6 +40,7 @@ fun ScanBarcodeDialog(
     onBarcodeScanned: (String) -> Unit,
     onClose: () -> Unit,
     scannerMessage: String? = null,
+    scanningState: ScanningState = ScanningState.IDLE,
     isScannerActive: Boolean = true,
     onScannerActiveChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
@@ -65,15 +69,17 @@ fun ScanBarcodeDialog(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                // Заголовок и кнопка закрытия
+                // Заголовок зависит от текущего состояния
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = stringResource(R.string.scan_barcode),
+                        text = when(scanningState) {
+                            ScanningState.SCAN_PRODUCT -> stringResource(id = R.string.scan_product)
+                            ScanningState.SCAN_BIN -> stringResource(id = R.string.scan_bin)
+                            else -> stringResource(id = R.string.scan_barcode)
+                        },
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.weight(1f)
                     )
@@ -81,9 +87,36 @@ fun ScanBarcodeDialog(
                     IconButton(onClick = onClose) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = stringResource(R.string.close)
+                            contentDescription = stringResource(id = R.string.close)
                         )
                     }
+                }
+
+                // Визуальное выделение типа сканирования
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = when(scanningState) {
+                            ScanningState.SCAN_PRODUCT -> MaterialTheme.colorScheme.primaryContainer
+                            ScanningState.SCAN_BIN -> MaterialTheme.colorScheme.secondaryContainer
+                            else -> MaterialTheme.colorScheme.surfaceVariant
+                        }
+                    )
+                ) {
+                    Text(
+                        text = when(scanningState) {
+                            ScanningState.SCAN_PRODUCT -> "Сканируйте штрихкод товара"
+                            ScanningState.SCAN_BIN -> "Сканируйте штрихкод ячейки"
+                            else -> "Отсканируйте штрихкод"
+                        },
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    )
                 }
 
                 Box(
@@ -103,23 +136,16 @@ fun ScanBarcodeDialog(
                     }
                 }
 
-                // Сообщение о результате сканирования (если есть)
+                // Сообщение о результате сканирования или ошибке
                 if (!scannerMessage.isNullOrEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = scannerMessage,
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    // Инструкции по сканированию
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = stringResource(id = R.string.scan_barcode_instruction),
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
                     )
                 }
 
