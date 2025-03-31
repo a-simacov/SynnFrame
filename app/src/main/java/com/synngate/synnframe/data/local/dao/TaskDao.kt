@@ -14,7 +14,7 @@ import java.time.LocalDateTime
 
 @Dao
 interface TaskDao {
-    // Методы для работы с основной таблицей заданий
+
     @Query("SELECT * FROM tasks ORDER BY createdAt DESC")
     fun getAllTasks(): Flow<List<TaskEntity>>
 
@@ -33,13 +33,16 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE executorId = :executorId ORDER BY createdAt DESC")
     fun getTasksByExecutor(executorId: String): Flow<List<TaskEntity>>
 
-    @Query("SELECT * FROM tasks WHERE " +
-            "(name LIKE '%' || :nameFilter || '%' OR barcode LIKE '%' || :nameFilter || '%') " +
-            "AND (:hasStatusFilter = 0 OR status IN (:statuses)) " +
-            "AND (:hasTypeFilter = 0 OR type IN (:types)) " +
-            "AND (:hasDateFilter = 0 OR createdAt BETWEEN :dateFrom AND :dateTo) " +
-            "AND (:hasExecutorFilter = 0 OR executorId = :executorId) " +
-            "ORDER BY createdAt DESC")
+    @Query("""SELECT * FROM tasks
+    
+    WHERE (name LIKE '%' || :nameFilter || '%' OR barcode LIKE '%' || :nameFilter || '%')
+    AND (:hasStatusFilter = 0 OR status IN (:statuses))
+    AND (:hasTypeFilter = 0 OR type IN (:types))
+    AND (:hasDateFilter = 0 OR createdAt BETWEEN :dateFrom AND :dateTo)
+    AND (:hasExecutorFilter = 0 OR executorId = :executorId)
+    
+    ORDER BY createdAt DESC
+    """)
     fun getFilteredTasks(
         nameFilter: String,
         hasStatusFilter: Boolean,
@@ -62,21 +65,18 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE status = 'COMPLETED' AND uploaded = 0")
     suspend fun getCompletedNotUploadedTasks(): List<TaskEntity>
 
-    // Методы для работы со строками плана и факта
     @Query("SELECT * FROM task_plan_lines WHERE taskId = :taskId")
     suspend fun getPlanLinesForTask(taskId: String): List<TaskPlanLineEntity>
 
     @Query("SELECT * FROM task_fact_lines WHERE taskId = :taskId")
     suspend fun getFactLinesForTask(taskId: String): List<TaskFactLineEntity>
 
-    // Методы для массовой загрузки связанных данных
     @Query("SELECT * FROM task_plan_lines WHERE taskId IN (:taskIds)")
     suspend fun getPlanLinesForTasks(taskIds: List<String>): List<TaskPlanLineEntity>
 
     @Query("SELECT * FROM task_fact_lines WHERE taskId IN (:taskIds)")
     suspend fun getFactLinesForTasks(taskIds: List<String>): List<TaskFactLineEntity>
 
-    // Существующие методы для вставки, обновления и удаления
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTask(task: TaskEntity)
 

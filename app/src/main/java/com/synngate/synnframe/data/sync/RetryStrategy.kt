@@ -7,9 +7,6 @@ import com.synngate.synnframe.util.network.NetworkState
 import com.synngate.synnframe.util.network.ConnectionType
 import kotlin.math.pow
 
-/**
- * Стратегия повторных попыток для операций синхронизации
- */
 class RetryStrategy(
     val maxAttempts: Int,
     val initialDelaySeconds: Long,
@@ -39,9 +36,6 @@ class RetryStrategy(
             backoffFactor = 3.0
         )
 
-        /**
-         * Получение стратегии по типу операции
-         */
         fun forOperationType(operationType: OperationType): RetryStrategy {
             return when (operationType) {
                 OperationType.UPLOAD_TASK -> AGGRESSIVE
@@ -52,12 +46,6 @@ class RetryStrategy(
         }
     }
 
-    /**
-     * Рассчитать задержку для указанной попытки
-     * @param attemptNumber номер попытки (начиная с 1)
-     * @param networkState текущее состояние сети (если null, состояние сети не учитывается)
-     * @return время задержки в секундах
-     */
     fun calculateDelay(attemptNumber: Int, networkState: NetworkState? = null): Long {
         // Базовая задержка по формуле с экспоненциальным ростом
         val baseDelay = (initialDelaySeconds * backoffFactor.pow(attemptNumber - 1.0)).toLong()

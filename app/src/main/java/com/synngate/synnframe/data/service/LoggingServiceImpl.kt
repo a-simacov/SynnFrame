@@ -9,9 +9,6 @@ import com.synngate.synnframe.domain.service.LoggingService
 import timber.log.Timber
 import java.time.LocalDateTime
 
-/**
- * Реализация сервиса логирования
- */
 class LoggingServiceImpl(private val logRepository: LogRepository) : LoggingService {
 
     override suspend fun logInfo(message: String): Long {

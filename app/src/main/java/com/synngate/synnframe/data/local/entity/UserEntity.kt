@@ -4,9 +4,6 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.synngate.synnframe.domain.entity.User
 
-/**
- * Entity класс для хранения информации о пользователях в Room
- */
 @Entity(tableName = "users")
 data class UserEntity(
     @PrimaryKey
@@ -16,9 +13,7 @@ data class UserEntity(
     val userGroupId: String,
     val isCurrentUser: Boolean = false
 ) {
-    /**
-     * Преобразование в доменную модель
-     */
+
     fun toDomainModel(): User {
         return User(
             id = id,
@@ -29,9 +24,6 @@ data class UserEntity(
     }
 
     companion object {
-        /**
-         * Создание Entity из доменной модели
-         */
         fun fromDomainModel(user: User, isCurrentUser: Boolean = false): UserEntity {
             return UserEntity(
                 id = user.id,

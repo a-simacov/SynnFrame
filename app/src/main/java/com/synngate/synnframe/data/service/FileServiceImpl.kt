@@ -9,11 +9,9 @@ import java.io.FileOutputStream
 import android.os.StatFs
 import timber.log.Timber
 
-// FileServiceImpl.kt
 class FileServiceImpl(private val context: Context) : FileService {
     override suspend fun saveFile(filename: String, data: ByteArray): String? {
         return try {
-            // Создаем директорию updates если не существует
             val dir = File(context.filesDir, "updates")
             if (!dir.exists()) {
                 dir.mkdirs()

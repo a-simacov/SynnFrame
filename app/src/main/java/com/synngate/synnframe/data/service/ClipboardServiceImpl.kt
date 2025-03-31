@@ -8,9 +8,6 @@ import android.content.Context
 import com.synngate.synnframe.domain.service.ClipboardService
 import timber.log.Timber
 
-/**
- * Реализация сервиса для работы с буфером обмена
- */
 class ClipboardServiceImpl(private val context: Context) : ClipboardService {
 
     override fun copyToClipboard(text: String, label: String): Boolean {

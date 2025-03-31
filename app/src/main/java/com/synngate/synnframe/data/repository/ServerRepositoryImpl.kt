@@ -10,10 +10,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 
-/**
- * Имплементация репозитория серверов
- * Отвечает только за операции с данными серверов
- */
 class ServerRepositoryImpl(
     private val serverDao: ServerDao,
     private val apiService: ApiService
@@ -50,14 +46,11 @@ class ServerRepositoryImpl(
     }
 
     override suspend fun setActiveServer(id: Int) {
-        // Сбрасываем активный статус всех серверов
         serverDao.clearActiveStatus()
-        // Устанавливаем активный статус для указанного сервера
         serverDao.setActiveServer(id)
     }
 
     override suspend fun clearActiveStatus() {
-        // Сбрасываем активный статус всех серверов
         serverDao.clearActiveStatus()
     }
 

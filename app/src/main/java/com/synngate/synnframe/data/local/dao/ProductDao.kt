@@ -110,7 +110,4 @@ interface ProductDao {
 
     @Query("DELETE FROM barcodes")
     suspend fun deleteAllBarcodes()
-
-    @Query("SELECT * FROM products WHERE id IN (:productIds)")
-    suspend fun getProductsByIds(productIds: List<String>): List<ProductEntity>
 }

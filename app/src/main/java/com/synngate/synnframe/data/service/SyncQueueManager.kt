@@ -14,9 +14,6 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
 
-/**
- * Менеджер очереди синхронизации с улучшенной системой повторных попыток
- */
 class SyncQueueManager(
     private val syncOperationDao: SyncOperationDao,
     private val networkMonitor: NetworkMonitor,
@@ -26,16 +23,6 @@ class SyncQueueManager(
     // Scope для запуска корутин
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    /**
-     * Получение потока всех незавершенных операций
-     */
-    fun getPendingOperations(): Flow<List<SyncOperation>> {
-        return syncOperationDao.getPendingOperations()
-    }
-
-    /**
-     * Добавление операции в очередь
-     */
     suspend fun enqueueOperation(
         operationType: OperationType,
         targetId: String,
@@ -79,9 +66,6 @@ class SyncQueueManager(
         return id
     }
 
-    /**
-     * Получение приоритета для типа операции
-     */
     private fun getPriorityForType(operationType: OperationType): Int {
         return when (operationType) {
             OperationType.UPLOAD_TASK -> 1     // Наивысший приоритет
@@ -91,22 +75,11 @@ class SyncQueueManager(
         }
     }
 
-    /**
-     * Отметка операции как завершенной
-     */
     suspend fun markOperationCompleted(id: Long) {
         syncOperationDao.markOperationAsCompleted(id)
         loggingService.logInfo("Операция синхронизации $id завершена успешно")
     }
 
-    /**
-     * Обработка неудачной попытки с улучшенным механизмом расчета задержки
-     * @return true, если операция будет повторена позже, false, если превышено максимальное число попыток
-     */
-    /**
-     * Обработка неудачной попытки с улучшенным механизмом расчета задержки
-     * @return true, если операция будет повторена позже, false, если превышено максимальное число попыток
-     */
     suspend fun handleFailedAttempt(id: Long, error: String): Boolean {
         val operation = syncOperationDao.getOperationById(id)
             ?: return false
@@ -152,18 +125,7 @@ class SyncQueueManager(
 
         return true
     }
-    /**
-     * Очистка старых завершенных операций
-     */
-    suspend fun cleanupOldOperations(daysToKeep: Int = 7) {
-        val cutoffTime = LocalDateTime.now().minusDays(daysToKeep.toLong())
-        val deletedCount = syncOperationDao.deleteOldCompletedOperations(cutoffTime)
-        Timber.d("Очищены завершенные операции старше $daysToKeep дней: удалено $deletedCount записей")
-    }
 
-    /**
-     * Получение операций, готовых для выполнения
-     */
     suspend fun getReadyOperations(): List<SyncOperation> {
         return syncOperationDao.getReadyOperations()
     }

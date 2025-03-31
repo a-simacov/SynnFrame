@@ -19,48 +19,17 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import timber.log.Timber
 
-/**
- * Интерфейс сервиса API
- */
 interface ApiService {
-    /**
-     * Тестирование подключения к серверу
-     *
-     * @param server сервер для тестирования
-     * @return ответ сервера
-     */
+
     suspend fun testConnection(server: Server): ApiResult<Unit>
 
-    /**
-     * Аутентификация пользователя
-     *
-     * @param password пароль пользователя
-     * @param deviceInfo информация об устройстве
-     * @return ответ с данными пользователя
-     */
     suspend fun authenticate(password: String, deviceInfo: Map<String, String>): ApiResult<AuthResponseDto>
 
-    /**
-     * Проверка доступности задания
-     *
-     * @param taskId идентификатор задания
-     * @return ответ с информацией о доступности задания
-     */
     suspend fun checkTaskAvailability(taskId: String): ApiResult<TaskAvailabilityResponseDto>
 
-    /**
-     * Выгрузка задания на сервер
-     *
-     * @param taskId идентификатор задания
-     * @param task данные задания
-     * @return ответ с результатом выгрузки
-     */
     suspend fun uploadTask(taskId: String, task: Task): ApiResult<Unit>
 }
 
-/**
- * Реализация сервиса API с использованием Ktor
- */
 class ApiServiceImpl(
     private val client: HttpClient,
     private val serverProvider: ServerProvider
@@ -187,20 +156,4 @@ class ApiServiceImpl(
             )
         }
     }
-}
-
-/**
- * Интерфейс для получения активного сервера и текущего пользователя
- * (этот интерфейс остается без изменений)
- */
-interface ServerProvider {
-    /**
-     * Получение активного сервера
-     */
-    suspend fun getActiveServer(): Server?
-
-    /**
-     * Получение идентификатора текущего пользователя
-     */
-    suspend fun getCurrentUserId(): String?
 }

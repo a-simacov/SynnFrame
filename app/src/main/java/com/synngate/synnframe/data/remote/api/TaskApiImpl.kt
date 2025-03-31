@@ -19,9 +19,6 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import timber.log.Timber
 
-/**
- * Реализация интерфейса TaskApi
- */
 class TaskApiImpl(
     private val client: HttpClient,
     private val serverProvider: ServerProvider,
@@ -74,7 +71,6 @@ class TaskApiImpl(
         return apiService.checkTaskAvailability(taskId)
     }
 
-    // в com.synngate.synnframe.data.remote.api.TaskApiImpl
     override suspend fun uploadTask(taskId: String, task: Task): ApiResult<Unit> {
         val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
             HttpStatusCode.InternalServerError.value,

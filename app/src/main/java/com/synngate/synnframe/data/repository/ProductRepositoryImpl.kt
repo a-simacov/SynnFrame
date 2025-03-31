@@ -15,9 +15,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
-/**
- * Имплементация репозитория товаров
- */
 class ProductRepositoryImpl(
     private val productDao: ProductDao,
     private val productApi: ProductApi,
@@ -73,8 +70,6 @@ class ProductRepositoryImpl(
     }
 
     override suspend fun addProducts(products: List<Product>) {
-        // Используем базу данных для запуска транзакции
-
         // Вся логика вставки товаров внутри транзакции
         val productEntities = products.map { ProductEntity.fromDomainModel(it) }
         val unitEntities = mutableListOf<ProductUnitEntity>()
@@ -127,14 +122,9 @@ class ProductRepositoryImpl(
         return productApi.getProducts()
     }
 
-    /**
-     * Построение доменной модели Product из ProductEntity и связанных данных
-     */
     private suspend fun buildProductWithDetails(productEntity: ProductEntity): Product {
-        // Получаем единицы измерения для товара
         val unitEntities = productDao.getProductUnitsForProduct(productEntity.id)
 
-        // Строим доменные модели единиц измерения с их штрихкодами
         val units = unitEntities.map { unitEntity ->
             val barcodeEntities = productDao.getBarcodesForUnit(productEntity.id, unitEntity.id)
             val barcodes = barcodeEntities.map { it.code }
@@ -142,13 +132,9 @@ class ProductRepositoryImpl(
             unitEntity.toDomainModel(barcodes)
         }
 
-        // Возвращаем полную доменную модель товара
         return productEntity.toDomainModel(units)
     }
 
-    /**
-     * Построение списка доменных моделей Product из списка ProductEntity и связанных данных
-     */
     private suspend fun buildProductsWithDetails(productEntities: List<ProductEntity>): List<Product> {
         if (productEntities.isEmpty()) return emptyList()
 
@@ -160,21 +146,17 @@ class ProductRepositoryImpl(
 
         val allBarcodes = productDao.getBarcodesForUnits(productIds, unitIds)
 
-        // Группируем единицы измерения и штрихкоды для быстрого доступа
         val unitsMap = allUnits.groupBy { it.productId }
         val barcodesMap = allBarcodes.groupBy { "${it.productId}:${it.productUnitId}" }
 
         return productEntities.map { productEntity ->
             val units = unitsMap[productEntity.id]?.map { unitEntity ->
-                // Получаем штрихкоды для текущей единицы измерения
                 val barcodes = barcodesMap["${productEntity.id}:${unitEntity.id}"]?.map { it.code }
                     ?: emptyList()
 
-                // Создаем доменную модель единицы измерения
                 unitEntity.toDomainModel(barcodes)
             } ?: emptyList()
 
-            // Создаем доменную модель товара
             productEntity.toDomainModel(units)
         }
     }

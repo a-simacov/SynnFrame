@@ -12,13 +12,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
 
-/**
- * Класс для работы с настройками приложения через DataStore
- */
 class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
 
     companion object {
-        // Ключи для настроек
         private val SHOW_SERVERS_ON_STARTUP = booleanPreferencesKey("show_servers_on_startup")
         private val ACTIVE_SERVER_ID = intPreferencesKey("active_server_id")
         private val ACTIVE_SERVER_NAME = stringPreferencesKey("active_server_name")
@@ -32,32 +28,22 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
         private val MOBILE_SIZE_LIMIT = intPreferencesKey("mobile_size_limit")
     }
 
-    // Показывать ли экран серверов при запуске
     val showServersOnStartup: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[SHOW_SERVERS_ON_STARTUP] ?: true
     }
 
-    // ID активного сервера
     val activeServerId: Flow<Int?> = dataStore.data.map { preferences ->
         preferences[ACTIVE_SERVER_ID]
     }
 
-    // Имя активного сервера (для отображения)
-    val activeServerName: Flow<String> = dataStore.data.map { preferences ->
-        preferences[ACTIVE_SERVER_NAME] ?: ""
-    }
-
-    // Включена ли периодическая выгрузка заданий
     val periodicUploadEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[PERIODIC_UPLOAD_ENABLED] ?: false
     }
 
-    // Интервал выгрузки в секундах
     val uploadIntervalSeconds: Flow<Int> = dataStore.data.map { preferences ->
-        preferences[UPLOAD_INTERVAL_SECONDS] ?: 300 // 5 минут по умолчанию
+        preferences[UPLOAD_INTERVAL_SECONDS] ?: 300
     }
 
-    // Режим темы
     val themeMode: Flow<ThemeMode> = dataStore.data.map { preferences ->
         val themeModeString = preferences[THEME_MODE] ?: ThemeMode.SYSTEM.name
         try {
@@ -68,31 +54,21 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
         }
     }
 
-    // Код языка (ru или en)
     val languageCode: Flow<String> = dataStore.data.map { preferences ->
-        preferences[LANGUAGE_CODE] ?: "ru" // Русский по умолчанию
+        preferences[LANGUAGE_CODE] ?: "ru"
     }
 
-    // Высота кнопки навигации
     val navigationButtonHeight: Flow<Float> = dataStore.data.map { preferences ->
-        preferences[NAVIGATION_BUTTON_HEIGHT] ?: 72f // 72dp по умолчанию
+        preferences[NAVIGATION_BUTTON_HEIGHT] ?: 72f
     }
 
-    // ID текущего пользователя
-    val currentUserId: Flow<String?> = dataStore.data.map { preferences ->
-        preferences[CURRENT_USER_ID]
-    }
-
-    // Геттеры для новых настроек
     val allowMobileUpload: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[ALLOW_MOBILE_UPLOAD] ?: false  // По умолчанию не разрешаем
+        preferences[ALLOW_MOBILE_UPLOAD] ?: false
     }
 
     val mobileSizeLimit: Flow<Int> = dataStore.data.map { preferences ->
-        preferences[MOBILE_SIZE_LIMIT] ?: 500_000  // По умолчанию 500 KB
+        preferences[MOBILE_SIZE_LIMIT] ?: 500_000
     }
-
-    // Методы для сохранения настроек
 
     suspend fun setShowServersOnStartup(show: Boolean) {
         dataStore.edit { preferences ->
@@ -148,18 +124,6 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
             } else {
                 preferences.remove(CURRENT_USER_ID)
             }
-        }
-    }
-
-    suspend fun setAllowMobileUpload(allow: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[ALLOW_MOBILE_UPLOAD] = allow
-        }
-    }
-
-    suspend fun setMobileSizeLimit(sizeInBytes: Int) {
-        dataStore.edit { preferences ->
-            preferences[MOBILE_SIZE_LIMIT] = sizeInBytes
         }
     }
 }

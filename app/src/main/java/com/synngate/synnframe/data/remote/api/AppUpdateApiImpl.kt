@@ -20,22 +20,11 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.nio.ByteBuffer
 
-/**
- * Интерфейс для отслеживания прогресса загрузки
- */
 interface DownloadProgressListener {
-    /**
-     * Вызывается при обновлении прогресса загрузки
-     *
-     * @param bytesDownloaded Количество загруженных байт
-     * @param totalBytes Общее количество байт для загрузки
-     */
+
     fun onProgressUpdate(bytesDownloaded: Long, totalBytes: Long)
 }
 
-/**
- * Реализация интерфейса AppUpdateApi
- */
 class AppUpdateApiImpl(
     private val client: HttpClient,
     private val serverProvider: ServerProvider
@@ -138,19 +127,6 @@ class AppUpdateApiImpl(
             Timber.e(e, "Error downloading app update: $version")
             ApiResult.Error(HttpStatusCode.InternalServerError.value, e.message ?: "Unknown error")
         }
-    }
-
-    /**
-     * Читает доступные данные из канала в буфер
-     * @return Количество прочитанных байт или -1, если канал закрыт
-     */
-    private suspend fun ByteReadChannel.readAvailable(buffer: ByteArray, offset: Int, length: Int): Int {
-        if (isClosedForRead) return -1
-        val bytesRead = availableForRead.coerceAtMost(length)
-        if (bytesRead == 0) return 0
-
-        readFully(buffer, offset, bytesRead)
-        return bytesRead
     }
 
     companion object {

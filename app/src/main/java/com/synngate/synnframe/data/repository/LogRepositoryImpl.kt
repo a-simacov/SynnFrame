@@ -9,9 +9,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDateTime
 
-/**
- * Имплементация репозитория логов
- */
 class LogRepositoryImpl(
     private val logDao: LogDao
 ) : LogRepository {

@@ -42,9 +42,6 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.cancellation.CancellationException
 
-/**
- * Реализация контроллера синхронизации
- */
 class SynchronizationControllerImpl(
     private val context: Context,
     private val taskUseCases: TaskUseCases,
@@ -65,8 +62,7 @@ class SynchronizationControllerImpl(
     private val _lastSyncInfo = MutableStateFlow<SynchronizationController.SyncInfo?>(null)
     override val lastSyncInfo: Flow<SynchronizationController.SyncInfo?> = _lastSyncInfo
 
-    // Добавляем новое поле для прогресса
-    private val _syncProgressFlow = MutableStateFlow<SyncProgress>(SyncProgress())
+    private val _syncProgressFlow = MutableStateFlow(SyncProgress())
     override val syncProgressFlow: Flow<SyncProgress> = _syncProgressFlow.asStateFlow()
 
     private val _periodicSyncInfo = MutableStateFlow(
@@ -78,9 +74,6 @@ class SynchronizationControllerImpl(
     )
     override val periodicSyncInfo: Flow<SynchronizationController.PeriodicSyncInfo> =
         _periodicSyncInfo
-
-    // Формат даты для отображения в уведомлении
-    private val dateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")
 
     private val retryStrategy = RetryStrategy(
         maxAttempts = 5,
@@ -94,7 +87,6 @@ class SynchronizationControllerImpl(
     private val syncQueueManager: SyncQueueManager
 
     init {
-        // Инициализируем значения из DataStore
         coroutineScope.launch {
             val enabled = appSettingsDataStore.periodicUploadEnabled.first()
             val interval = appSettingsDataStore.uploadIntervalSeconds.first()
@@ -110,11 +102,9 @@ class SynchronizationControllerImpl(
             }
         }
 
-        // Инициализация NetworkMonitor
         networkMonitor = NetworkMonitor(context)
         networkMonitor.initialize()
 
-        // Инициализация SyncQueueManager
         syncQueueManager = SyncQueueManager(
             appDatabase.syncOperationDao(),
             networkMonitor,
@@ -164,7 +154,6 @@ class SynchronizationControllerImpl(
                 try {
                     // Проверяем состояние контроллера
                     val currentStatus = _syncStatus.value
-                    val currentTime = System.currentTimeMillis()
 
                     // Если в состоянии ошибки более 30 секунд - принудительно сбрасываем
                     if (currentStatus == SynchronizationController.SyncStatus.ERROR) {
@@ -225,14 +214,13 @@ class SynchronizationControllerImpl(
         return if (_isRunning.value) {
             stopService().map { false }
         } else {
-            // При запуске сбрасываем состояние
             resetSyncState()
             startService().map { true }
         }
     }
 
     // Добавить метод для сброса состояния синхронизации
-    suspend fun resetSyncState() {
+    private fun resetSyncState() {
         // Сброс состояния контроллера
         _syncStatus.value = SynchronizationController.SyncStatus.IDLE
 
@@ -244,9 +232,6 @@ class SynchronizationControllerImpl(
     }
 
 
-    /**
-     * Модифицированная версия startManualSync, использующая очередь
-     */
     override suspend fun startManualSync(): Result<SynchronizationController.SyncResult> {
         // Если синхронизация уже идет, возвращаем ошибку
         if (_syncStatus.value == SynchronizationController.SyncStatus.SYNCING) {
@@ -281,7 +266,7 @@ class SynchronizationControllerImpl(
 
             // Добавляем операцию повторной синхронизации в очередь если ошибка временная
             if (NetworkErrorClassifier.isRetryable(e)) {
-                val operationId = syncQueueManager.enqueueOperation(
+                syncQueueManager.enqueueOperation(
                     operationType = OperationType.FULL_SYNC,
                     targetId = "retry-sync-${System.currentTimeMillis()}",
                     executeImmediately = false
@@ -296,13 +281,10 @@ class SynchronizationControllerImpl(
 
     override suspend fun updatePeriodicSync(enabled: Boolean, intervalSeconds: Int?): Result<Unit> {
         return try {
-            // Получаем текущий интервал, если новый не указан
             val interval = intervalSeconds ?: _periodicSyncInfo.value.intervalSeconds
 
-            // Сохраняем настройки
             appSettingsDataStore.setPeriodicUpload(enabled, interval)
 
-            // Обновляем состояние
             _periodicSyncInfo.value = SynchronizationController.PeriodicSyncInfo(
                 enabled = enabled,
                 intervalSeconds = interval,
@@ -352,9 +334,6 @@ class SynchronizationControllerImpl(
         )
     }
 
-    /**
-     * Сохраняет информацию о синхронизации
-     */
     private fun saveSyncInfo(syncResult: SynchronizationController.SyncResult) {
         val syncInfo = SynchronizationController.SyncInfo(
             timestamp = LocalDateTime.now(),
@@ -369,9 +348,6 @@ class SynchronizationControllerImpl(
         _lastSyncInfo.value = syncInfo
     }
 
-    /**
-     * Планирует периодическую синхронизацию через WorkManager
-     */
     private fun schedulePeriodicSync(intervalSeconds: Int) {
         // Создаем запрос на периодическую работу без ограничений
         val periodicWorkRequest = PeriodicWorkRequestBuilder<SynchronizationWorker>(
@@ -391,25 +367,16 @@ class SynchronizationControllerImpl(
         Timber.d("Scheduled periodic sync with interval $intervalSeconds seconds")
     }
 
-    /**
-     * Отменяет периодическую синхронизацию
-     */
     private fun cancelPeriodicSync() {
         WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME_PERIODIC_SYNC)
         Timber.d("Canceled periodic sync")
     }
 
-    /**
-     * Рассчитывает время следующей синхронизации
-     */
     private fun calculateNextSyncTime(enabled: Boolean, intervalSeconds: Int): LocalDateTime? {
         if (!enabled) return null
         return LocalDateTime.now().plusSeconds(intervalSeconds.toLong())
     }
 
-    /**
-     * Обработка отложенных операций синхронизации
-     */
     private suspend fun processQueuedOperations() {
         // Если синхронизация уже идет или сервис не запущен, пропускаем
         if (_syncStatus.value == SynchronizationController.SyncStatus.SYNCING ||
@@ -508,7 +475,6 @@ class SynchronizationControllerImpl(
         }
     }
 
-    // Метод для обновления прогресса
     private fun updateProgress(update: (SyncProgress) -> SyncProgress) {
         val currentProgress = _syncProgressFlow.value
         val newProgress = update(currentProgress)
@@ -544,9 +510,6 @@ class SynchronizationControllerImpl(
         }
     }
 
-    /**
-     * Выполнение полной синхронизации с использованием стратегии повторных попыток
-     */
     private suspend fun performFullSync(): SynchronizationController.SyncResult {
         val startTime = System.currentTimeMillis()
         val syncId = System.currentTimeMillis().toString()
@@ -755,7 +718,6 @@ class SynchronizationControllerImpl(
         }
     }
 
-    // Метод для сохранения записи в историю синхронизаций
     private suspend fun saveSyncHistoryRecord(
         id: String,
         startTime: LocalDateTime,
@@ -808,112 +770,6 @@ class SynchronizationControllerImpl(
         return syncHistoryDao.getAllHistory()
     }
 
-    /**
-     * Адаптивная выгрузка задания с учетом типа сети
-     *
-     * @param taskId Идентификатор задания
-     * @param forceUpload Флаг принудительной выгрузки
-     * @return Результат операции (true - выгружено, false - поставлено в очередь)
-     */
-    /**
-     * Адаптивная выгрузка задания с учетом типа сети и стратегии повторных попыток
-     */
-    suspend fun uploadTask(taskId: String, forceUpload: Boolean = false): Result<Boolean> {
-        // Если нет сети, добавляем в очередь и возвращаем результат
-        if (!networkMonitor.isNetworkAvailable() && !forceUpload) {
-            Timber.d("No network, adding operation UPLOAD_TASK in queue for task $taskId")
-            syncQueueManager.enqueueOperation(
-                operationType = OperationType.UPLOAD_TASK,
-                targetId = taskId
-            )
-            return Result.success(false)
-        }
-
-        // Проверка политики выгрузки по типу сети
-        if (!forceUpload && networkMonitor.isCellularAvailable() && networkMonitor.isMeteredConnection()) {
-            // Получаем настройки мобильной выгрузки
-            val allowMobileUpload = appSettingsDataStore.allowMobileUpload.first()
-            val mobileSizeLimit = appSettingsDataStore.mobileSizeLimit.first()
-
-            if (!allowMobileUpload) {
-                Timber.d("Mobile network, sync is forbidden, adding to the queue")
-                syncQueueManager.enqueueOperation(
-                    operationType = OperationType.UPLOAD_TASK,
-                    targetId = taskId
-                )
-                return Result.success(false)
-            }
-
-            // Проверяем размер задания для мобильной сети
-            val taskSize = estimateTaskSize(taskId)
-            if (taskSize > mobileSizeLimit) {
-                Timber.d("The task is too big for mobile network ($taskSize bytes), enqueueing")
-                syncQueueManager.enqueueOperation(
-                    operationType = OperationType.UPLOAD_TASK,
-                    targetId = taskId
-                )
-                return Result.success(false)
-            }
-        }
-
-        // Выполняем выгрузку задания с повторными попытками
-        return try {
-            val result = retryStrategy.executeWithRetry(
-                operation = {
-                    val uploadResult = taskUseCases.uploadTask(taskId)
-                    uploadResult.getOrThrow()
-                },
-                shouldRetry = { e -> NetworkErrorClassifier.isRetryable(e) },
-                onError = { e, attempt, delay ->
-                    loggingService.logWarning(
-                        "Attempt $attempt uploading task $taskId failed. " +
-                                "Повтор через ${delay}мс. Ошибка: ${e.message}"
-                    )
-                },
-                tag = "TaskUpload"
-            )
-
-            loggingService.logInfo("Task $taskId uploaded successfully")
-            Result.success(true)
-        } catch (e: Exception) {
-            Timber.e(e, "Error while uploading task $taskId")
-
-            // Добавляем в очередь, если ошибка временная
-            if (NetworkErrorClassifier.isRetryable(e)) {
-                syncQueueManager.enqueueOperation(
-                    operationType = OperationType.UPLOAD_TASK,
-                    targetId = taskId
-                )
-            }
-
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Приблизительная оценка размера задания в байтах
-     */
-    private suspend fun estimateTaskSize(taskId: String): Int {
-        val task = taskUseCases.getTaskById(taskId) ?: return 0
-
-        // Базовый размер задания
-        var size = 200  // Постоянные поля
-
-        // Добавляем размер строковых полей
-        size += (task.name.length + task.barcode.length) * 2  // UTF-8 ~ 2 байта на символ
-
-        // Добавляем размер для строк плана
-        size += task.planLines.size * 100  // ~100 байт на строку плана
-
-        // Добавляем размер для строк факта
-        size += task.factLines.size * 100  // ~100 байт на строку факта
-
-        return size
-    }
-
-    /**
-     * Специальный класс для исключения "Нет сети"
-     */
     class NoNetworkException(message: String) : Exception(message)
 
     companion object {

@@ -16,22 +16,17 @@ class ServerCoordinatorImpl(
 
     override suspend fun switchActiveServer(id: Int): Result<Unit> {
         return try {
-            // Получаем информацию о сервере
             val server = serverRepository.getServerById(id)
             if (server == null) {
                 loggingService.logWarning("Попытка активации несуществующего сервера: $id")
                 return Result.failure(IllegalArgumentException("Server not found: $id"))
             }
 
-            // Обновляем статус в базе данных
             serverRepository.setActiveServer(id)
 
-            // Обновляем настройки
             appSettingsDataStore.setActiveServer(id, server.name)
 
-            // Логируем изменение
             loggingService.logInfo("Установлен активный сервер: ${server.name} (${server.host}:${server.port})")
-
             Result.success(Unit)
         } catch (e: Exception) {
             loggingService.logError("Ошибка при установке активного сервера: ${e.message}")
@@ -41,15 +36,11 @@ class ServerCoordinatorImpl(
 
     override suspend fun clearActiveServer(): Result<Unit> {
         return try {
-            // Очищаем статус в базе данных
             serverRepository.clearActiveStatus()
 
-            // Очищаем настройки
             appSettingsDataStore.clearActiveServer()
 
-            // Логируем изменение
             loggingService.logInfo("Сброшен активный сервер")
-
             Result.success(Unit)
         } catch (e: Exception) {
             loggingService.logError("Ошибка при сбросе активного сервера: ${e.message}")

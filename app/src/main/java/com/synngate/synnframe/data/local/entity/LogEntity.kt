@@ -6,9 +6,6 @@ import com.synngate.synnframe.domain.entity.Log
 import com.synngate.synnframe.domain.entity.LogType
 import java.time.LocalDateTime
 
-/**
- * Entity класс для хранения логов в Room
- */
 @Entity(tableName = "logs")
 data class LogEntity(
     @PrimaryKey(autoGenerate = true)
@@ -17,9 +14,7 @@ data class LogEntity(
     val type: String,
     val createdAt: LocalDateTime
 ) {
-    /**
-     * Преобразование в доменную модель
-     */
+
     fun toDomainModel(): Log {
         return Log(
             id = id,
@@ -30,9 +25,6 @@ data class LogEntity(
     }
 
     companion object {
-        /**
-         * Создание Entity из доменной модели
-         */
         fun fromDomainModel(log: Log): LogEntity {
             return LogEntity(
                 id = log.id,

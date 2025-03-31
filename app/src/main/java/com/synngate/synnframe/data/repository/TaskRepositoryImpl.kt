@@ -35,18 +35,14 @@ class TaskRepositoryImpl(
         dateToFilter: LocalDateTime?,
         executorIdFilter: String?
     ): Flow<List<Task>> {
-        // Преобразуем фильтры в необходимый формат для DAO
-        val hasNameFilter = !nameFilter.isNullOrEmpty()
         val hasStatusFilter = !statusFilter.isNullOrEmpty()
         val hasTypeFilter = !typeFilter.isNullOrEmpty()
         val hasDateFilter = dateFromFilter != null && dateToFilter != null
         val hasExecutorFilter = !executorIdFilter.isNullOrEmpty()
 
-        // Преобразуем статусы в строки
         val statusStrings = statusFilter?.map { it.name } ?: emptyList()
         val typesStrings = typeFilter?.map { it.name } ?: emptyList()
 
-        // Получаем отфильтрованные задания
         return taskDao.getFilteredTasks(
             nameFilter = nameFilter ?: "",
             hasStatusFilter = hasStatusFilter,
@@ -74,24 +70,20 @@ class TaskRepositoryImpl(
     }
 
     override fun getTasksCountForCurrentUser(): Flow<Int> {
-        // Учитываем только задания, назначенные текущему пользователю
         return taskDao.getTasksCountByStatuses(
             statuses = listOf(TaskStatus.TO_DO.name, TaskStatus.IN_PROGRESS.name)
         )
     }
 
     override suspend fun addTask(task: Task) {
-        // Вставляем основную информацию о задании
         val taskEntity = TaskEntity.fromDomainModel(task)
         taskDao.insertTask(taskEntity)
 
-        // Вставляем строки плана задания
         for (planLine in task.planLines) {
             val planLineEntity = TaskPlanLineEntity.fromDomainModel(planLine)
             taskDao.insertTaskPlanLine(planLineEntity)
         }
 
-        // Вставляем строки факта задания (если есть)
         for (factLine in task.factLines) {
             val factLineEntity = TaskFactLineEntity.fromDomainModel(factLine)
             taskDao.insertTaskFactLine(factLineEntity)
@@ -105,17 +97,14 @@ class TaskRepositoryImpl(
     }
 
     override suspend fun updateTask(task: Task) {
-        // Обновляем основную информацию о задании
         val taskEntity = TaskEntity.fromDomainModel(task)
         taskDao.updateTask(taskEntity)
 
-        // Обновляем строки плана задания
         for (planLine in task.planLines) {
             val planLineEntity = TaskPlanLineEntity.fromDomainModel(planLine)
             taskDao.insertTaskPlanLine(planLineEntity)
         }
 
-        // Обновляем строки факта задания
         for (factLine in task.factLines) {
             val factLineEntity = TaskFactLineEntity.fromDomainModel(factLine)
             taskDao.insertTaskFactLine(factLineEntity)
@@ -129,10 +118,8 @@ class TaskRepositoryImpl(
     override suspend fun setTaskStatus(id: String, status: TaskStatus) {
         val task = taskDao.getTaskById(id)
         if (task != null) {
-            // Обновляем статус задания
             val updatedTask = task.copy(
                 status = status.name,
-                // Обновляем соответствующие даты в зависимости от статуса
                 startedAt = if (status == TaskStatus.IN_PROGRESS && task.startedAt == null) {
                     LocalDateTime.now()
                 } else {
@@ -150,18 +137,15 @@ class TaskRepositoryImpl(
     }
 
     override suspend fun updateTaskFactLine(factLine: TaskFactLine) {
-        // Проверяем, существует ли строка факта для данного товара
         val existingFactLine =
             taskDao.getTaskFactLineByTaskAndProduct(factLine.taskId, factLine.productId)
 
         if (existingFactLine != null) {
-            // Обновляем существующую строку факта
             val updatedFactLine = existingFactLine.copy(
                 quantity = factLine.quantity
             )
             taskDao.updateTaskFactLine(updatedFactLine)
         } else {
-            // Создаем новую строку факта
             val newFactLine = TaskFactLineEntity.fromDomainModel(factLine)
             taskDao.insertTaskFactLine(newFactLine)
         }
@@ -179,21 +163,17 @@ class TaskRepositoryImpl(
         }
     }
 
-    // в com.synngate.synnframe.data.repository.TaskRepositoryImpl
     override suspend fun uploadTaskToServer(id: String): Result<Boolean> {
         try {
             val taskEntity = taskDao.getTaskById(id) ?:
             return Result.failure(Exception("Task not found"))
 
-            // Преобразуем задание в доменную модель
             val task = buildTaskWithDetails(taskEntity)
 
-            // Отправляем задание на сервер
             val response = taskApi.uploadTask(id, task)
 
             when (response) {
                 is ApiResult.Success -> {
-                    // Обновляем статус выгрузки задания в БД
                     val updatedTask = TaskEntity.fromDomainModel(
                         task.copy(
                             uploaded = true,
@@ -205,7 +185,6 @@ class TaskRepositoryImpl(
                 }
 
                 is ApiResult.Error -> {
-                    // Более детальное логирование ошибки
                     Timber.e("Failed to upload task: Code=${response.code}, Message=${response.message}")
                     return Result.failure(Exception(response.message))
                 }
@@ -233,9 +212,6 @@ class TaskRepositoryImpl(
         }
     }
 
-    /**
-     * Построение доменной модели Task из TaskEntity и связанных данных
-     */
     private suspend fun buildTaskWithDetails(taskEntity: TaskEntity): Task {
         val planLines = taskDao.getPlanLinesForTask(taskEntity.id).map { it.toDomainModel() }
         val factLines = taskDao.getFactLinesForTask(taskEntity.id).map { it.toDomainModel() }
@@ -243,24 +219,17 @@ class TaskRepositoryImpl(
         return taskEntity.toDomainModel(planLines, factLines)
     }
 
-    /**
-     * Построение списка доменных моделей Task из списка TaskEntity и связанных данных
-     */
     private suspend fun buildTasksWithDetails(taskEntities: List<TaskEntity>): List<Task> {
         if (taskEntities.isEmpty()) return emptyList()
 
-        // Получаем ID всех заданий
         val taskIds = taskEntities.map { it.id }
 
-        // Загружаем все связанные данные за один запрос
         val allPlanLines = taskDao.getPlanLinesForTasks(taskIds)
         val allFactLines = taskDao.getFactLinesForTasks(taskIds)
 
-        // Группируем данные по ID задания для быстрого доступа
         val planLinesMap = allPlanLines.groupBy { it.taskId }
         val factLinesMap = allFactLines.groupBy { it.taskId }
 
-        // Собираем доменные модели
         return taskEntities.map { taskEntity ->
             val planLines = planLinesMap[taskEntity.id]?.map { it.toDomainModel() } ?: emptyList()
             val factLines = factLinesMap[taskEntity.id]?.map { it.toDomainModel() } ?: emptyList()

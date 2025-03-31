@@ -10,16 +10,10 @@ import timber.log.Timber
 import java.net.NetworkInterface
 import java.util.Collections
 
-/**
- * Реализация сервиса для получения информации об устройстве
- */
 class DeviceInfoServiceImpl(
     private val context: Context
 ) : DeviceInfoService {
 
-    /**
-     * Получение всей информации об устройстве
-     */
     override fun getDeviceInfo(): Map<String, String> {
         return mapOf(
             "deviceIp" to getDeviceIp(),
@@ -28,9 +22,6 @@ class DeviceInfoServiceImpl(
         )
     }
 
-    /**
-     * Получение уникального идентификатора устройства
-     */
     @SuppressLint("HardwareIds")
     override fun getDeviceId(): String {
         return try {
@@ -41,9 +32,6 @@ class DeviceInfoServiceImpl(
         }
     }
 
-    /**
-     * Получение имени устройства
-     */
     override fun getDeviceName(): String {
         val manufacturer = Build.MANUFACTURER
         val model = Build.MODEL
@@ -55,22 +43,13 @@ class DeviceInfoServiceImpl(
         }
     }
 
-    /**
-     * Получение IP-адреса устройства
-     * Пытается получить IP из нескольких источников
-     */
     override fun getDeviceIp(): String {
-        // Попытка получить IP через WiFi Manager
         val wifiIp = getWifiIpAddress()
         if (wifiIp.isNotEmpty()) return wifiIp
 
-        // Если не получилось, пробуем через Network Interfaces
         return getIpFromNetworkInterfaces()
     }
 
-    /**
-     * Получение IP-адреса через WiFi Manager
-     */
     @SuppressLint("WifiManagerPotentialLeak")
     private fun getWifiIpAddress(): String {
         try {
@@ -78,7 +57,6 @@ class DeviceInfoServiceImpl(
             val wifiInfo = wifiManager.connectionInfo
             val ipAddress = wifiInfo.ipAddress
 
-            // Конвертация int в строковый IP-адрес
             return String.format(
                 "%d.%d.%d.%d",
                 ipAddress and 0xff,
@@ -92,9 +70,6 @@ class DeviceInfoServiceImpl(
         }
     }
 
-    /**
-     * Получение IP из сетевых интерфейсов
-     */
     private fun getIpFromNetworkInterfaces(): String {
         try {
             val networkInterfaces = Collections.list(NetworkInterface.getNetworkInterfaces())

@@ -24,9 +24,6 @@ import com.synngate.synnframe.data.local.entity.TaskPlanLineEntity
 import com.synngate.synnframe.data.local.entity.UserEntity
 import com.synngate.synnframe.data.sync.SyncHistoryRecord
 
-/**
- * Основная база данных приложения
- */
 @Database(
     entities = [
         ServerEntity::class,

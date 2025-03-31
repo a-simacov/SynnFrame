@@ -14,9 +14,6 @@ import timber.log.Timber
 import java.net.NetworkInterface
 import java.util.Collections
 
-/**
- * Реализация контроллера локального веб-сервера
- */
 class WebServerControllerImpl(
     private val context: Context,
     private val loggingService: LoggingService
@@ -83,27 +80,18 @@ class WebServerControllerImpl(
         _lastRequests.value = emptyList()
     }
 
-    /**
-     * Добавляет информацию о запросе в лог
-     */
     fun addRequestInfo(requestInfo: WebServerController.RequestInfo) {
         val currentList = _lastRequests.value.toMutableList()
         currentList.add(0, requestInfo) // Добавляем в начало списка
         _lastRequests.value = currentList.take(MAX_REQUEST_LOG_SIZE) // Ограничиваем размер списка
     }
 
-    /**
-     * Проверяет текущий статус сервиса
-     */
     private fun checkServiceStatus() {
         // Проверка статуса сервиса будет реализована позже
         // Это может быть реализовано через биндинг к сервису или через флаг в SharedPreferences
         _isRunning.value = false
     }
 
-    /**
-     * Получает локальный IP-адрес устройства
-     */
     private fun getLocalIpAddress(): String {
         try {
             val networkInterfaces = Collections.list(NetworkInterface.getNetworkInterfaces())

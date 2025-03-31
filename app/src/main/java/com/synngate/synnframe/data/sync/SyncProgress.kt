@@ -2,39 +2,27 @@ package com.synngate.synnframe.data.sync
 
 import java.time.LocalDateTime
 
-/**
- * Модель для отслеживания прогресса синхронизации
- */
 data class SyncProgress(
-    // Общая информация
     val id: String = System.currentTimeMillis().toString(),
     val startTime: LocalDateTime = LocalDateTime.now(),
     val endTime: LocalDateTime? = null,
     val status: SyncStatus = SyncStatus.STARTED,
 
-    // Прогресс выгрузки заданий
     val tasksToUpload: Int = 0,
     val tasksUploaded: Int = 0,
 
-    // Прогресс загрузки заданий
     val tasksDownloaded: Int = 0,
 
-    // Прогресс загрузки товаров
     val productsDownloaded: Int = 0,
 
-    // Текущая операция
     val currentOperation: String = "",
 
-    // Общий прогресс в процентах (0-100)
     val progressPercent: Int = 0,
 
-    // Информация об ошибках
     val errorCount: Int = 0,
     val lastErrorMessage: String? = null
 ) {
-    /**
-     * Вычисление общего прогресса на основе выполненных операций
-     */
+
     fun calculateOverallProgress(): Int {
         // Если синхронизация завершена или в ошибке, возвращаем конечные значения
         if (status == SyncStatus.COMPLETED) return 100
@@ -59,9 +47,6 @@ data class SyncProgress(
         return (uploadProgress + downloadProgress).toInt()
     }
 
-    /**
-     * Получение информативного сообщения о текущем прогрессе
-     */
     fun getProgressMessage(): String {
         return when (status) {
             SyncStatus.STARTED -> "Синхронизация начата"
@@ -73,9 +58,6 @@ data class SyncProgress(
     }
 }
 
-/**
- * Статусы процесса синхронизации
- */
 enum class SyncStatus {
     STARTED,     // Синхронизация начата
     IN_PROGRESS, // Синхронизация в процессе

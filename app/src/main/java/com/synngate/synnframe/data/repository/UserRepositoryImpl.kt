@@ -14,9 +14,6 @@ import kotlinx.coroutines.flow.map
 import timber.log.Timber
 import java.io.IOException
 
-/**
- * Имплементация репозитория пользователей
- */
 class UserRepositoryImpl(
     private val userDao: UserDao,
     private val authApi: AuthApi,
@@ -58,21 +55,13 @@ class UserRepositoryImpl(
     }
 
     override suspend fun setCurrentUser(userId: String) {
-        // Сбрасываем статус текущего пользователя для всех пользователей
         userDao.clearCurrentUserStatus()
-
-        // Устанавливаем статус текущего пользователя для указанного пользователя
         userDao.setCurrentUser(userId)
-
-        // Обновляем информацию о текущем пользователе в DataStore
         appSettingsDataStore.setCurrentUser(userId)
     }
 
     override suspend fun clearCurrentUser() {
-        // Сбрасываем статус текущего пользователя для всех пользователей
         userDao.clearCurrentUserStatus()
-
-        // Очищаем информацию о текущем пользователе в DataStore
         appSettingsDataStore.setCurrentUser(null)
     }
 

@@ -6,9 +6,6 @@ import com.synngate.synnframe.domain.service.WebServerManager
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
 
-/**
- * Реализация менеджера веб-сервера, взаимодействующая с WebServerController
- */
 class WebServerManagerImpl(
     private val webServerController: WebServerController,
     private val loggingService: LoggingService

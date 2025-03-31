@@ -4,9 +4,6 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.synngate.synnframe.domain.entity.Server
 
-/**
- * Entity класс для хранения информации о внешних серверах в Room
- */
 @Entity(tableName = "servers")
 data class ServerEntity(
     @PrimaryKey(autoGenerate = true)
@@ -19,9 +16,7 @@ data class ServerEntity(
     val password: String,
     val isActive: Boolean = false
 ) {
-    /**
-     * Преобразование в доменную модель
-     */
+
     fun toDomainModel(): Server {
         return Server(
             id = id,
@@ -36,9 +31,6 @@ data class ServerEntity(
     }
 
     companion object {
-        /**
-         * Создание Entity из доменной модели
-         */
         fun fromDomainModel(server: Server): ServerEntity {
             return ServerEntity(
                 id = server.id,

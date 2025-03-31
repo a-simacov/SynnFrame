@@ -13,9 +13,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import timber.log.Timber
 
-/**
- * Реализация интерфейса ProductApi
- */
 class ProductApiImpl(
     private val client: HttpClient,
     private val serverProvider: ServerProvider

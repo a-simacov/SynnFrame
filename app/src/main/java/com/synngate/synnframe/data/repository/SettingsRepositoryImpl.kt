@@ -8,15 +8,11 @@ import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
 
-/**
- * Имплементация репозитория настроек
- */
 class SettingsRepositoryImpl(
     private val appSettingsDataStore: AppSettingsDataStore,
     private val appUpdateApi: AppUpdateApi
 ) : SettingsRepository {
 
-    // Реализация геттеров настроек
     override val showServersOnStartup: Flow<Boolean> = appSettingsDataStore.showServersOnStartup
     override val periodicUploadEnabled: Flow<Boolean> = appSettingsDataStore.periodicUploadEnabled
     override val uploadIntervalSeconds: Flow<Int> = appSettingsDataStore.uploadIntervalSeconds
@@ -24,7 +20,6 @@ class SettingsRepositoryImpl(
     override val languageCode: Flow<String> = appSettingsDataStore.languageCode
     override val navigationButtonHeight: Flow<Float> = appSettingsDataStore.navigationButtonHeight
 
-    // Реализация сеттеров настроек
     override suspend fun setShowServersOnStartup(show: Boolean) {
         appSettingsDataStore.setShowServersOnStartup(show)
     }
@@ -45,7 +40,6 @@ class SettingsRepositoryImpl(
         appSettingsDataStore.setNavigationButtonHeight(height)
     }
 
-    // Низкоуровневые операции для работы с API
     override suspend fun getLatestAppVersion(): ApiResult<AppVersionDto> {
         return appUpdateApi.getLastVersion()
     }
