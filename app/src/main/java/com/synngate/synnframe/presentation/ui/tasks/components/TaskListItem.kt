@@ -30,14 +30,13 @@ import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.CreationPlace
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskStatus
-import com.synngate.synnframe.domain.entity.TaskType
 import com.synngate.synnframe.presentation.common.status.TaskStatusIndicator
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 @Composable
 fun TaskListItem(
     task: Task,
+    typeNameGetter: (String) -> String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -70,10 +69,7 @@ fun TaskListItem(
                             status = task.status
                         )
                         Text(
-                            text = when (task.type) {
-                                TaskType.RECEIPT -> stringResource(R.string.task_type_receipt)
-                                TaskType.PICK -> stringResource(R.string.task_type_pick)
-                            },
+                            text =typeNameGetter(task.taskTypeId),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
@@ -154,38 +150,38 @@ fun TaskListItem(
 @Preview(showBackground = true)
 @Composable
 private fun TaskListItemNotUploadedPreview() {
-    TaskListItem(
-        task = Task(
-            id = "d052c429-87de-4c1a-a1c5-17af6d7e2ad9",
-            name = "Принять и разместить (Магазин Cricova, Chisinaului 80) 00CB-003125 13.03.25",
-            type = TaskType.RECEIPT,
-            barcode = "Т00000046",//"Т00000046",
-            createdAt = LocalDateTime.now(),
-            viewedAt = LocalDateTime.now(),
-            startedAt = LocalDateTime.now(),
-            creationPlace = CreationPlace.SERVER,
-            status = TaskStatus.COMPLETED
-        ),
-        onClick = { }
-    )
+//    TaskListItem(
+//        task = Task(
+//            id = "d052c429-87de-4c1a-a1c5-17af6d7e2ad9",
+//            name = "Принять и разместить (Магазин Cricova, Chisinaului 80) 00CB-003125 13.03.25",
+//            type = TaskType.RECEIPT,
+//            barcode = "Т00000046",//"Т00000046",
+//            createdAt = LocalDateTime.now(),
+//            viewedAt = LocalDateTime.now(),
+//            startedAt = LocalDateTime.now(),
+//            creationPlace = CreationPlace.SERVER,
+//            status = TaskStatus.COMPLETED
+//        ),
+//        onClick = { }
+//    )
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun TaskListItemUploadedPreview() {
-    TaskListItem(
-        task = Task(
-            id = "d052c429-87de-4c1a-a1c5-17af6d7e2ad9",
-            name = "Принять и разместить (Магазин Cricova, Chisinaului 80) 00CB-003125 13.03.25",
-            type = TaskType.RECEIPT,
-            barcode = "Т00000046",//"Т00000046",
-            createdAt = LocalDateTime.now(),
-            viewedAt = LocalDateTime.now(),
-            startedAt = LocalDateTime.now(),
-            creationPlace = CreationPlace.SERVER,
-            status = TaskStatus.COMPLETED,
-            uploaded = true
-        ),
-        onClick = { }
-    )
+//    TaskListItem(
+//        task = Task(
+//            id = "d052c429-87de-4c1a-a1c5-17af6d7e2ad9",
+//            name = "Принять и разместить (Магазин Cricova, Chisinaului 80) 00CB-003125 13.03.25",
+//            type = TaskType.RECEIPT,
+//            barcode = "Т00000046",//"Т00000046",
+//            createdAt = LocalDateTime.now(),
+//            viewedAt = LocalDateTime.now(),
+//            startedAt = LocalDateTime.now(),
+//            creationPlace = CreationPlace.SERVER,
+//            status = TaskStatus.COMPLETED,
+//            uploaded = true
+//        ),
+//        onClick = { }
+//    )
 }

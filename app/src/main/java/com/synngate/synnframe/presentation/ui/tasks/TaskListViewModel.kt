@@ -3,9 +3,9 @@ package com.synngate.synnframe.presentation.ui.tasks
 import com.synngate.synnframe.domain.entity.CreationPlace
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskStatus
-import com.synngate.synnframe.domain.entity.TaskType
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
+import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskListEvent
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskListState
@@ -24,6 +24,7 @@ class TaskListViewModel(
     private val taskUseCases: TaskUseCases,
     private val userUseCases: UserUseCases,
     private val loggingService: LoggingService,
+    private val taskTypeUseCases: TaskTypeUseCases,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<TaskListState, TaskListEvent>(TaskListState()) {
 
@@ -31,6 +32,7 @@ class TaskListViewModel(
 
     init {
         observeTasksCount()
+        loadTaskTypes()
         loadTasks()
     }
 
@@ -83,16 +85,17 @@ class TaskListViewModel(
         }
     }
 
+    private fun loadTaskTypes() {
+        launchIO {
+            taskTypeUseCases.getTaskTypes().collectLatest { types ->
+                updateState { it.copy(availableTaskTypes = types) }
+            }
+        }
+    }
+
     fun updateSearchQuery(query: String) {
         updateState { it.copy(searchQuery = query) }
         loadTasks()
-    }
-
-    fun formatTaskType(type: TaskType): String {
-        return when (type) {
-            TaskType.RECEIPT -> "Приемка"
-            TaskType.PICK -> "Отбор"
-        }
     }
 
     fun formatStatusType(status: TaskStatus): String {
@@ -103,9 +106,23 @@ class TaskListViewModel(
         }
     }
 
-    fun updateTypeFilter(types: Set<TaskType>) {
-        updateState { it.copy(selectedTypeFilters = types) }
+    // Обновляем метод для фильтрации
+    fun updateTypeFilter(typeIds: Set<String>) {
+        updateState { it.copy(selectedTypeFilters = typeIds) }
         loadTasks()
+    }
+
+    // Функция получения имени типа по идентификатору
+    fun getTaskTypeName(typeId: String): String {
+        return uiState.value.availableTaskTypes
+            .find { it.id == typeId }?.name ?: typeId
+    }
+
+    // Заменяем старую реализацию
+    fun formatTaskType(typeId: String): String {
+        // Получаем название типа из списка доступных типов
+        val taskType = uiState.value.availableTaskTypes.find { it.id == typeId }
+        return taskType?.name ?: typeId
     }
 
     fun updateStatusFilter(statuses: Set<TaskStatus>) {
@@ -169,12 +186,16 @@ class TaskListViewModel(
                     return@launchIO
                 }
 
-                // Создаем новое задание с базовыми параметрами
+                // Получаем идентификатор типа "Приемка" из доступных типов заданий
+                val receiptTypeId = uiState.value.availableTaskTypes
+                    .find { it.name == "Приемка" || it.id == "RECEIPT" }?.id
+                    ?: "RECEIPT" // Запасной вариант, если тип не найден
+
                 val taskId = UUID.randomUUID().toString()
                 val newTask = Task(
                     id = taskId,
                     name = "Новое задание",
-                    type = TaskType.RECEIPT, // По умолчанию приёмка
+                    taskTypeId = receiptTypeId, // Используем найденный ID типа
                     barcode = "NEW-$taskId",
                     createdAt = LocalDateTime.now(),
                     creationPlace = CreationPlace.APP,

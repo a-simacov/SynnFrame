@@ -16,7 +16,7 @@ data class TaskListState(
 
     val selectedStatusFilters: Set<TaskStatus> = emptySet(),
 
-    val selectedTypeFilters: Set<TaskType> = emptySet(),
+    val selectedTypeFilters: Set<String> = emptySet(),
 
     val dateFromFilter: LocalDateTime? = null,
 
@@ -33,4 +33,6 @@ data class TaskListState(
     val showTypeMenu: Boolean = false,
 
     val isProcessing: Boolean = false,
+
+    val availableTaskTypes: List<TaskType> = emptyList(), // Список всех доступных типов
 )

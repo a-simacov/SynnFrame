@@ -430,6 +430,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 taskUseCases = appContainer.taskUseCases,
                 userUseCases = appContainer.userUseCases,
                 loggingService = appContainer.loggingService,
+                taskTypeUseCases = appContainer.taskTypeUseCases,
                 ioDispatcher = Dispatchers.IO
             )
         }

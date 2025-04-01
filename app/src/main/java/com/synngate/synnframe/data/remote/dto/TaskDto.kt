@@ -3,7 +3,6 @@ package com.synngate.synnframe.data.remote.dto
 import com.synngate.synnframe.domain.entity.CreationPlace
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskStatus
-import com.synngate.synnframe.domain.entity.TaskType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.LocalDateTime
@@ -62,7 +61,7 @@ data class TaskDto(
         return Task(
             id = id,
             name = name,
-            type = TaskType.fromString(type),
+            taskTypeId = type, // Используем поле type из DTO как taskTypeId
             barcode = barcode,
             createdAt = LocalDateTime.parse(createdAt),
             viewedAt = viewedAt?.let { LocalDateTime.parse(it) },
@@ -74,7 +73,8 @@ data class TaskDto(
             uploaded = uploaded,
             uploadedAt = uploadedAt?.let { LocalDateTime.parse(it) },
             planLines = planLines.map { it.toDomainModel() },
-            factLines = factLines.map { it.toDomainModel() }
+            factLines = factLines.map { it.toDomainModel() },
+            allowProductsNotInPlan = allowProductsNotInPlan
         )
     }
 
@@ -83,7 +83,7 @@ data class TaskDto(
             return TaskDto(
                 id = task.id,
                 name = task.name,
-                type = task.type.name,
+                type = task.taskTypeId, // Используем taskTypeId вместо task.type.name
                 barcode = task.barcode,
                 createdAt = task.createdAt.toString(),
                 viewedAt = task.viewedAt?.toString(),

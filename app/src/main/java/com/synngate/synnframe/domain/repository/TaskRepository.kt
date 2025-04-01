@@ -3,7 +3,6 @@ package com.synngate.synnframe.domain.repository
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskFactLine
 import com.synngate.synnframe.domain.entity.TaskStatus
-import com.synngate.synnframe.domain.entity.TaskType
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDateTime
 
@@ -14,7 +13,7 @@ interface TaskRepository {
     fun getFilteredTasks(
         nameFilter: String? = null,
         statusFilter: List<TaskStatus>? = null,
-        typeFilter: List<TaskType>? = null,
+        typeFilter: List<String>? = null,
         dateFromFilter: LocalDateTime? = null,
         dateToFilter: LocalDateTime? = null,
         executorIdFilter: String? = null

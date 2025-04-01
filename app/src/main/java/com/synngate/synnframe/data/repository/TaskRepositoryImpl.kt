@@ -9,7 +9,6 @@ import com.synngate.synnframe.data.remote.api.TaskApi
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskFactLine
 import com.synngate.synnframe.domain.entity.TaskStatus
-import com.synngate.synnframe.domain.entity.TaskType
 import com.synngate.synnframe.domain.repository.TaskRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -30,7 +29,7 @@ class TaskRepositoryImpl(
     override fun getFilteredTasks(
         nameFilter: String?,
         statusFilter: List<TaskStatus>?,
-        typeFilter: List<TaskType>?,
+        typeFilter: List<String>?,
         dateFromFilter: LocalDateTime?,
         dateToFilter: LocalDateTime?,
         executorIdFilter: String?
@@ -41,7 +40,7 @@ class TaskRepositoryImpl(
         val hasExecutorFilter = !executorIdFilter.isNullOrEmpty()
 
         val statusStrings = statusFilter?.map { it.name } ?: emptyList()
-        val typesStrings = typeFilter?.map { it.name } ?: emptyList()
+        val typesStrings = typeFilter ?: emptyList()
 
         return taskDao.getFilteredTasks(
             nameFilter = nameFilter ?: "",

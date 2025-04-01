@@ -24,8 +24,8 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE status IN (:statuses) ORDER BY createdAt DESC")
     fun getTasksByStatuses(statuses: List<String>): Flow<List<TaskEntity>>
 
-    @Query("SELECT * FROM tasks WHERE type = :type ORDER BY createdAt DESC")
-    fun getTasksByType(type: String): Flow<List<TaskEntity>>
+    @Query("SELECT * FROM tasks WHERE taskTypeId = :taskTypeId ORDER BY createdAt DESC")
+    fun getTasksByType(taskTypeId: String): Flow<List<TaskEntity>>
 
     @Query("SELECT * FROM tasks WHERE createdAt BETWEEN :dateFrom AND :dateTo ORDER BY createdAt DESC")
     fun getTasksByDateRange(dateFrom: LocalDateTime, dateTo: LocalDateTime): Flow<List<TaskEntity>>
@@ -37,7 +37,7 @@ interface TaskDao {
     
     WHERE (name LIKE '%' || :nameFilter || '%' OR barcode LIKE '%' || :nameFilter || '%')
     AND (:hasStatusFilter = 0 OR status IN (:statuses))
-    AND (:hasTypeFilter = 0 OR type IN (:types))
+    AND (:hasTypeFilter = 0 OR taskTypeId IN (:types))
     AND (:hasDateFilter = 0 OR createdAt BETWEEN :dateFrom AND :dateTo)
     AND (:hasExecutorFilter = 0 OR executorId = :executorId)
     

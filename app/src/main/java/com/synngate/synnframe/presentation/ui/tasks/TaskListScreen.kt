@@ -31,7 +31,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.TaskStatus
-import com.synngate.synnframe.domain.entity.TaskType
 import com.synngate.synnframe.presentation.common.filter.StatusFilterChips
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
@@ -132,18 +131,20 @@ fun TaskListScreen(
                 placeholder = stringResource(id = R.string.search_tasks_hint)
             )
 
-            val taskTypes = remember { TaskType.entries.toList() }
+            val taskTypes = state.availableTaskTypes
+            val taskTypeIds = state.availableTaskTypes.map { it.id }
             val statusTypes = remember { TaskStatus.entries.toList() }
 
             Row {
                 StatusFilterChips(
-                    items = taskTypes,
+                    items = taskTypeIds,
                     selectedItems = state.selectedTypeFilters,
                     onSelectionChanged = { viewModel.updateTypeFilter(it) },
-                    itemToString = { viewModel.formatTaskType(it) },
-                    modifier = Modifier
-                        //.fillMaxWidth()
-                        .padding(horizontal = 8.dp)
+                    itemToString = { typeId ->
+                        // Ищем имя типа по ID
+                        state.availableTaskTypes.find { it.id == typeId }?.name ?: typeId
+                    },
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 )
                 StatusFilterChips(
                     items = statusTypes,
@@ -193,6 +194,7 @@ fun TaskListScreen(
                     ) { task ->
                         TaskListItem(
                             task = task,
+                            typeNameGetter = { viewModel.getTaskTypeName(it) },
                             onClick = { viewModel.onTaskClick(task.id) }
                         )
                     }
