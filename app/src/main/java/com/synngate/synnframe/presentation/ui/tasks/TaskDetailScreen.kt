@@ -1,5 +1,7 @@
 package com.synngate.synnframe.presentation.ui.tasks
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,12 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -26,7 +23,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,6 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,19 +44,16 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.CreationPlace
-import com.synngate.synnframe.domain.entity.FactLineActionType
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskStatus
-import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.inputs.BarcodeTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.ErrorScreenContent
 import com.synngate.synnframe.presentation.common.status.StatusType
-import com.synngate.synnframe.presentation.ui.tasks.components.ScanBarcodeDialog
-import com.synngate.synnframe.presentation.ui.tasks.components.TaskFactLineDialog
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskLineItemRow
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskNoPlannedItemRow
+import com.synngate.synnframe.presentation.ui.tasks.model.EntryStep
 import com.synngate.synnframe.presentation.ui.tasks.model.ProductDisplayProperty
 import com.synngate.synnframe.presentation.ui.tasks.model.ProductPropertyType
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailEvent
@@ -132,10 +126,6 @@ fun TaskDetailScreen(
     val showCompleteConfirmation by rememberSaveable { mutableStateOf(state.isCompleteConfirmationVisible) }
 
     LaunchedEffect(showScanDialog, showFactLineDialog, showCompleteConfirmation) {
-        if (showScanDialog != state.isScanDialogVisible) {
-            if (showScanDialog) viewModel.showScanDialog() else viewModel.closeDialog()
-        }
-
         if (showFactLineDialog != state.isFactLineDialogVisible) {
             if (!showFactLineDialog) viewModel.closeDialog()
         }
@@ -143,45 +133,6 @@ fun TaskDetailScreen(
         if (showCompleteConfirmation != state.isCompleteConfirmationVisible) {
             if (showCompleteConfirmation) viewModel.showCompleteConfirmation() else viewModel.closeDialog()
         }
-    }
-
-    // Используем либо состояние из viewModel, либо локальное состояние
-    val showDeleteConfirmationDialog = state.showDeleteConfirmation || showDeleteDialog
-
-    if (showDeleteConfirmationDialog) {
-        ConfirmationDialog(
-            title = stringResource(id = R.string.delete_task_title),
-            message = stringResource(id = R.string.delete_task_message),
-            onConfirm = { viewModel.deleteTask() },
-            onDismiss = { viewModel.hideDeleteConfirmation() }
-        )
-    }
-
-    if (state.isScanDialogVisible) {
-        ScanBarcodeDialog(
-            onBarcodeScanned = { barcode -> viewModel.processScanResultForCurrentAction(barcode) },
-            onClose = { viewModel.closeDialog() },
-            scannerMessage = state.scanBarcodeDialogState.scannerMessage,
-            isScannerActive = state.scanBarcodeDialogState.isScannerActive,
-            onScannerActiveChange = { viewModel.toggleScannerActive(it) }
-        )
-    }
-
-    if (state.isFactLineDialogVisible && state.selectedFactLine != null) {
-        val product =
-            state.taskLines.find { it.planLine.productId == state.selectedFactLine!!.productId }?.product
-        TaskFactLineDialog(
-            factLine = state.selectedFactLine!!,
-            product = product,
-            planQuantity = state.selectedPlanQuantity,
-            dialogState = state.factLineDialogState,
-            onQuantityChange = { viewModel.updateFactLineAdditionalQuantity(it) },
-            onError = { viewModel.setFactLineInputError(it) },
-            onApply = { factLine, additionalQuantity ->
-                viewModel.applyQuantityChange(factLine, additionalQuantity)
-            },
-            onDismiss = { viewModel.closeDialog() }
-        )
     }
 
     if (state.isCompleteConfirmationVisible) {
@@ -203,10 +154,14 @@ fun TaskDetailScreen(
     LaunchedEffect(navBackStackEntry) {
         val savedStateHandle = navBackStackEntry?.savedStateHandle
         savedStateHandle?.get<String>("selected_product_id")?.let { productId ->
-            // Загружаем продукт по ID и обрабатываем его
-            viewModel.handleSelectedProductById(productId)
-            // Удаляем данные, чтобы избежать повторной обработки
-            savedStateHandle.remove<String>("selected_product_id")
+            // Только если активен ввод и ожидается ввод товара
+            if (state.isEntryActive && state.entryStep == EntryStep.ENTER_PRODUCT) {
+                // Загружаем продукт по ID
+                viewModel.handleSelectedProductById(productId)
+
+                // Очищаем данные
+                savedStateHandle.remove<String>("selected_product_id")
+            }
         }
     }
 
@@ -247,31 +202,6 @@ fun TaskDetailScreen(
 
                     TaskStatus.COMPLETED -> {
                         if (state.task?.canDelete() == true) {
-                            // Кнопка повторной выгрузки
-                            ActionButton(
-                                text = stringResource(id = R.string.reupload_task),
-                                onClick = { viewModel.reuploadTask() },
-                                enabled = !state.isReuploading,
-                                isLoading = state.isReuploading,
-                                icon = Icons.Default.Sync,
-                                contentDescription = stringResource(id = R.string.reupload_task)
-                            )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            // Кнопка удаления
-                            ActionButton(
-                                text = stringResource(id = R.string.delete_task),
-                                onClick = { viewModel.showDeleteConfirmation() },
-                                enabled = !state.isDeleting,
-                                isLoading = state.isDeleting,
-                                icon = Icons.Default.Delete,
-                                contentDescription = stringResource(id = R.string.delete_task),
-                                buttonColors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error,
-                                    contentColor = MaterialTheme.colorScheme.onError
-                                )
-                            )
                         } else
                             // Кнопка "Выгрузить"
                             Button(
@@ -304,87 +234,50 @@ fun TaskDetailScreen(
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp)
             ) {
-                // Подсказка для текущего действия ввода
-                val currentAction = state.currentFactLineAction
-                if (currentAction != null) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = when(currentAction.type) {
-                                FactLineActionType.ENTER_PRODUCT_ANY,
-                                FactLineActionType.ENTER_PRODUCT_FROM_PLAN -> MaterialTheme.colorScheme.primaryContainer
-
-                                FactLineActionType.ENTER_BIN_ANY,
-                                FactLineActionType.ENTER_BIN_FROM_PLAN -> MaterialTheme.colorScheme.secondaryContainer
-
-                                FactLineActionType.ENTER_QUANTITY -> MaterialTheme.colorScheme.tertiaryContainer
-                            }
-                        )
-                    ) {
-                        Text(
-                            text = currentAction.promptText,
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        )
-                    }
-                }
-
-                // Поле ввода штрихкода
                 BarcodeTextField(
                     value = state.searchQuery,
                     onValueChange = { viewModel.onSearchQueryChanged(it) },
-                    onBarcodeScanned = { viewModel.processScanResultForCurrentAction(it) },
-                    label = when {
-                        currentAction?.type == FactLineActionType.ENTER_PRODUCT_ANY ||
-                                currentAction?.type == FactLineActionType.ENTER_PRODUCT_FROM_PLAN ->
-                            stringResource(id = R.string.scan_or_enter_product)
-
-                        currentAction?.type == FactLineActionType.ENTER_BIN_ANY ||
-                                currentAction?.type == FactLineActionType.ENTER_BIN_FROM_PLAN ->
-                            stringResource(id = R.string.scan_or_enter_bin)
-
-                        else -> stringResource(id = R.string.scan_or_enter_barcode)
+                    onBarcodeScanned = { viewModel.processScanResult(it) },
+                    label = when(state.entryStep) {
+                        EntryStep.ENTER_BIN -> "Введите или отсканируйте ячейку"
+                        EntryStep.ENTER_PRODUCT -> "Введите или отсканируйте товар"
+                        EntryStep.ENTER_QUANTITY -> "Введите количество"
+                        EntryStep.NONE -> "Введите или отсканируйте штрихкод"
                     },
                     enabled = state.isEditable,
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         Row {
-                            // Кнопка отмены текущего ввода, если он активен
-                            if (currentAction != null) {
-                                IconButton(onClick = { viewModel.resetFactLineInputState() }) {
+                            // Кнопка отмены ввода
+                            if (state.isEntryActive) {
+                                IconButton(onClick = { viewModel.cancelFactLineEntry() }) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = stringResource(id = R.string.cancel)
+                                        contentDescription = "Отменить ввод"
                                     )
                                 }
-                            }
-
-                            // Кнопка сканирования
-                            IconButton(onClick = { viewModel.showScanDialog() }) {
-                                Icon(
-                                    imageVector = Icons.Default.QrCodeScanner,
-                                    contentDescription = null
-                                )
                             }
                         }
                     }
                 )
 
-                if (state.isEditable) {
-                    CurrentInputStatus(state = state)
-                }
-
-                if (state.currentFactLineAction != null) {
-                    FactLineActionsPanel(
+                // Отображаем панель процесса ввода только когда активен ввод
+                if (state.isEntryActive) {
+                    FactEntryPanel(
                         state = state,
-                        onComplete = { viewModel.completeFactLineInput() },
+                        onCancel = { viewModel.cancelFactLineEntry() },
                         modifier = Modifier.fillMaxWidth()
                     )
+                } else if (state.isEditable) {
+                    // Кнопка для начала ввода новой строки
+                    Button(
+                        onClick = { viewModel.startFactLineEntry() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Text("Добавить строку факта")
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -480,12 +373,12 @@ fun TaskDetailScreen(
                                     lineItem = lineItem,
                                     isEditable = state.isEditable,
                                     onClick = {
-                                        if (state.isEditable) {
-                                            lineItem.factLine?.let {
-                                                viewModel.showFactLineDialog(it.productId)
-                                            }
-                                                ?: viewModel.showFactLineDialog(lineItem.planLine.productId)
-                                        }
+//                                        if (state.isEditable) {
+//                                            lineItem.factLine?.let {
+//                                                viewModel.showFactLineDialog(it.productId)
+//                                            }
+//                                                ?: viewModel.showFactLineDialog(lineItem.planLine.productId)
+//                                        }
                                     },
                                     productProperties = productProperties
                                 )
@@ -495,12 +388,12 @@ fun TaskDetailScreen(
                                     lineItem = lineItem,
                                     isEditable = state.isEditable,
                                     onClick = {
-                                        if (state.isEditable) {
-                                            lineItem.factLine?.let {
-                                                viewModel.showFactLineDialog(it.productId)
-                                            }
-                                                ?: viewModel.showFactLineDialog(lineItem.planLine.productId)
-                                        }
+//                                        if (state.isEditable) {
+//                                            lineItem.factLine?.let {
+//                                                viewModel.showFactLineDialog(it.productId)
+//                                            }
+//                                                ?: viewModel.showFactLineDialog(lineItem.planLine.productId)
+//                                        }
                                     },
                                     productProperties = productProperties
                                 )
@@ -610,236 +503,113 @@ fun TaskDetailScreen(
 }
 
 @Composable
-fun FactLineActionsPanel(
+fun FactEntryPanel(
     state: TaskDetailState,
-    onComplete: () -> Unit,
+    onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    Card(
+        modifier = modifier.padding(vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
-
-            val actionColor = when(state.currentFactLineAction?.type) {
-                FactLineActionType.ENTER_PRODUCT_ANY,
-                FactLineActionType.ENTER_PRODUCT_FROM_PLAN ->
-                    MaterialTheme.colorScheme.primaryContainer
-
-                FactLineActionType.ENTER_BIN_ANY,
-                FactLineActionType.ENTER_BIN_FROM_PLAN ->
-                    MaterialTheme.colorScheme.secondaryContainer
-
-                FactLineActionType.ENTER_QUANTITY ->
-                    MaterialTheme.colorScheme.tertiaryContainer
-
-                else -> MaterialTheme.colorScheme.surfaceVariant
-            }
-
-            Card(
+            // Заголовок текущего шага
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = actionColor)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = state.currentFactLineAction?.promptText ?: "",
+                    text = when(state.entryStep) {
+                        EntryStep.ENTER_BIN -> "Введите ячейку"
+                        EntryStep.ENTER_PRODUCT -> "Введите товар"
+                        EntryStep.ENTER_QUANTITY -> "Введите количество"
+                        EntryStep.NONE -> "Ввод строки факта"
+                    },
                     style = MaterialTheme.typography.titleMedium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                IconButton(onClick = onCancel) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Отменить"
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Данные введенной ячейки
+            if (state.entryBinCode != null) {
+                EntryDataRow(
+                    label = "Ячейка:",
+                    value = state.entryBinName ?: state.entryBinCode,
+                    isHighlighted = state.entryStep == EntryStep.ENTER_BIN
                 )
             }
 
-            // Отображение текущего действия и подсказки
-            state.currentFactLineAction?.let { action ->
-                Text(
-                    text = action.promptText,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.fillMaxWidth()
+            // Данные выбранного товара
+            if (state.entryProduct != null) {
+                EntryDataRow(
+                    label = "Товар:",
+                    value = state.entryProduct.name,
+                    isHighlighted = state.entryStep == EntryStep.ENTER_PRODUCT
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Отображение введенных данных
-
-            // 1. Товар
-            if (state.temporaryProduct != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(id = R.string.product) + ":",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = state.temporaryProduct.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    // Индикатор проблемы
-                    if (!state.isValidProduct) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
-
-            // 2. Ячейка
-            if (state.temporaryBinCode != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(id = R.string.bin) + ":",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = state.formattedBinName ?: state.temporaryBinCode,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-
-                    // Индикатор проблемы
-                    if (!state.isValidBin) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
-
-            // 3. Количество
-            if (state.temporaryQuantity != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(id = R.string.quantity) + ":",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = formatQuantity(state.temporaryQuantity),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-
-            // Кнопка завершения ввода
-            val canComplete = state.temporaryProductId != null &&
-                    state.temporaryQuantity != null &&
-                    state.temporaryQuantity > 0f
-
-            if (canComplete) {
-                Button(
-                    onClick = onComplete,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp)
-                ) {
-                    Text(stringResource(id = R.string.complete))
-                }
+            // Данные введенного количества
+            if (state.entryQuantity != null) {
+                EntryDataRow(
+                    label = "Количество:",
+                    value = formatQuantity(state.entryQuantity),
+                    isHighlighted = state.entryStep == EntryStep.ENTER_QUANTITY
+                )
             }
         }
     }
 }
 
 @Composable
-fun CurrentInputStatus(
-    state: TaskDetailState,
+fun EntryDataRow(
+    label: String,
+    value: String,
+    isHighlighted: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val hasTemporaryData = state.temporaryBinCode != null || state.temporaryProduct != null
-
-    if (!hasTemporaryData && state.currentScanHint.isEmpty()) {
-        return // Ничего не отображаем, если нет данных и подсказки
-    }
-
-    Card(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-        )
+            .padding(vertical = 4.dp)
+            .background(
+                if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                else Color.Transparent,
+                shape = MaterialTheme.shapes.small
+            )
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // Отображаем подсказку
-            if (state.currentScanHint.isNotEmpty()) {
-                Text(
-                    text = state.currentScanHint,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.fillMaxWidth()
-                )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold
+        )
 
-                if (hasTemporaryData) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            }
+        Spacer(modifier = Modifier.width(8.dp))
 
-            // Отображаем введенные данные
-            if (state.temporaryBinCode != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Ячейка:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = state.formattedBinName ?: state.temporaryBinCode,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-
-            if (state.temporaryProduct != null) {
-                if (state.temporaryBinCode != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Товар:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = state.temporaryProduct.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
