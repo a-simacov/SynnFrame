@@ -35,6 +35,7 @@ data class SyncOperation(
 enum class OperationType {
     UPLOAD_TASK,
     DOWNLOAD_TASKS,
+    DOWNLOAD_TASK_TYPES,
     DOWNLOAD_PRODUCTS,
     FULL_SYNC
 }

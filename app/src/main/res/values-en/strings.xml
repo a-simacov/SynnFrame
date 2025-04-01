@@ -546,4 +546,6 @@
     <string name="bin_not_matches_plan">Bin is not in the plan</string>
     <string name="enter_bin_first">Input bin first</string>
     <string name="enter_product_first">Input product first</string>
+    <string name="sync_task_types">Sync task types</string>
+    <string name="task_types_downloaded">Task types synced: %d</string>
 </resources>

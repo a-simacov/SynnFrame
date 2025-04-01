@@ -9,7 +9,6 @@ import com.synngate.synnframe.util.network.NetworkMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
@@ -70,6 +69,7 @@ class SyncQueueManager(
         return when (operationType) {
             OperationType.UPLOAD_TASK -> 1     // Наивысший приоритет
             OperationType.DOWNLOAD_TASKS -> 2
+            OperationType.DOWNLOAD_TASK_TYPES -> 1
             OperationType.DOWNLOAD_PRODUCTS -> 3
             OperationType.FULL_SYNC -> 4       // Наименьший приоритет
         }

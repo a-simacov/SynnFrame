@@ -294,6 +294,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
             applicationContext,
             taskUseCases,
             productUseCases,
+            taskTypeUseCases,
             appSettingsDataStore,
             loggingService,
             database

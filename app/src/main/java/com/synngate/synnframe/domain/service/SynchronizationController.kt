@@ -23,6 +23,8 @@ interface SynchronizationController : ServiceController {
 
     suspend fun updateLastProductsSync(productsCount: Int)
 
+    suspend fun syncTaskTypes(): Result<Int>
+
     enum class SyncStatus {
         IDLE,         // Синхронизация не выполняется
         SYNCING,      // Синхронизация в процессе
@@ -34,6 +36,7 @@ interface SynchronizationController : ServiceController {
         val tasksUploadedCount: Int,
         val tasksDownloadedCount: Int,
         val productsDownloadedCount: Int,
+        val taskTypesDownloadedCount: Int = 0,
         val durationMillis: Long,
         val successful: Boolean,
         val errorMessage: String? = null
@@ -50,6 +53,7 @@ interface SynchronizationController : ServiceController {
         val tasksUploadedCount: Int,
         val tasksDownloadedCount: Int,
         val productsDownloadedCount: Int,
+        val taskTypesDownloadedCount: Int = 0,
         val durationMillis: Long,
         val errorMessage: String? = null
     )

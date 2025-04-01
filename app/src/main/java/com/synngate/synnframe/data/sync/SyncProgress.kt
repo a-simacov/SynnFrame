@@ -15,6 +15,8 @@ data class SyncProgress(
 
     val productsDownloaded: Int = 0,
 
+    val taskTypesDownloaded: Int = 0,
+
     val currentOperation: String = "",
 
     val progressPercent: Int = 0,

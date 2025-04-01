@@ -19,6 +19,7 @@ import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
+import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.presentation.service.base.BaseForegroundService
 import com.synngate.synnframe.presentation.service.sync.SynchronizationService
 import com.synngate.synnframe.presentation.service.sync.SynchronizationService.Companion.ACTION_RESET_STATE
@@ -38,7 +39,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -46,6 +46,7 @@ class SynchronizationControllerImpl(
     private val context: Context,
     private val taskUseCases: TaskUseCases,
     private val productUseCases: ProductUseCases,
+    private val taskTypeUseCases: TaskTypeUseCases,
     private val appSettingsDataStore: AppSettingsDataStore,
     private val loggingService: LoggingService,
     private val appDatabase: AppDatabase
@@ -330,6 +331,7 @@ class SynchronizationControllerImpl(
             tasksUploaded = 0,
             tasksDownloaded = 0,
             productsDownloaded = productsCount,
+            taskTypesDownloaded = 0,
             successful = true
         )
     }
@@ -459,6 +461,17 @@ class SynchronizationControllerImpl(
                                     operation.id,
                                     syncResult.errorMessage ?: "Sync error"
                                 )
+                            }
+                        }
+
+                        OperationType.DOWNLOAD_TASK_TYPES -> {
+                            // Загрузка типов заданий
+                            val result = taskTypeUseCases.syncTaskTypes()
+                            if (result.isSuccess) {
+                                syncQueueManager.markOperationCompleted(operation.id)
+                            } else {
+                                val error = result.exceptionOrNull()?.message ?: "Unknown error"
+                                syncQueueManager.handleFailedAttempt(operation.id, error)
                             }
                         }
                     }
@@ -621,6 +634,35 @@ class SynchronizationControllerImpl(
                 tag = "ProductsSync"
             )
 
+            updateProgress { progress ->
+                progress.copy(
+                    currentOperation = "Загрузка типов заданий"
+                )
+            }
+
+            // Синхронизация типов заданий
+            val taskTypesDownloadedCount = retryStrategy.executeWithRetry(
+                operation = {
+                    val result = taskTypeUseCases.syncTaskTypes()
+                    result.getOrThrow()
+                },
+                shouldRetry = { e -> NetworkErrorClassifier.isRetryable(e) },
+                onError = { e, attempt, delay ->
+                    updateProgress { progress ->
+                        progress.copy(
+                            errorCount = progress.errorCount + 1,
+                            lastErrorMessage = "Ошибка загрузки типов заданий: ${e.message}"
+                        )
+                    }
+
+                    loggingService.logWarning(
+                        "Attempt $attempt task types sync failed. " +
+                                "Repeat after ${delay}ms. Error: ${e.message}"
+                    )
+                },
+                tag = "TaskTypesSync"
+            )
+
             // Вычисляем время выполнения
             val durationMillis = System.currentTimeMillis() - startTime
 
@@ -632,6 +674,7 @@ class SynchronizationControllerImpl(
                     tasksUploaded = uploadedCount,
                     tasksDownloaded = tasksDownloadedCount,
                     productsDownloaded = productsDownloadedCount,
+                    taskTypesDownloaded = taskTypesDownloadedCount,
                     progressPercent = 100,
                     currentOperation = "Синхронизация завершена"
                 )
@@ -646,6 +689,7 @@ class SynchronizationControllerImpl(
                 tasksUploaded = uploadedCount,
                 tasksDownloaded = tasksDownloadedCount,
                 productsDownloaded = productsDownloadedCount,
+                taskTypesDownloaded = taskTypesDownloadedCount,
                 successful = true
             )
 
@@ -695,6 +739,7 @@ class SynchronizationControllerImpl(
                 tasksUploaded = _syncProgressFlow.value.tasksUploaded,
                 tasksDownloaded = _syncProgressFlow.value.tasksDownloaded,
                 productsDownloaded = _syncProgressFlow.value.productsDownloaded,
+                taskTypesDownloaded = _syncProgressFlow.value.taskTypesDownloaded,
                 successful = false,
                 errorMessage = e.message
             )
@@ -726,6 +771,7 @@ class SynchronizationControllerImpl(
         tasksUploaded: Int,
         tasksDownloaded: Int,
         productsDownloaded: Int,
+        taskTypesDownloaded: Int,
         successful: Boolean,
         errorMessage: String? = null
     ) {
@@ -752,6 +798,7 @@ class SynchronizationControllerImpl(
                 tasksUploaded = tasksUploaded,
                 tasksDownloaded = tasksDownloaded,
                 productsDownloaded = productsDownloaded,
+                taskTypesDownloaded = taskTypesDownloaded,
                 successful = successful,
                 errorMessage = errorMessage,
                 retryAttempts = _syncProgressFlow.value.errorCount,
@@ -768,6 +815,107 @@ class SynchronizationControllerImpl(
     // Добавляем метод для получения истории синхронизаций
     override fun getSyncHistory(): Flow<List<SyncHistoryRecord>> {
         return syncHistoryDao.getAllHistory()
+    }
+
+    // Добавление нового метода для синхронизации только типов заданий
+    override suspend fun syncTaskTypes(): Result<Int> {
+        // Если синхронизация уже идет, возвращаем ошибку
+        if (_syncStatus.value == SynchronizationController.SyncStatus.SYNCING) {
+            return Result.failure(IllegalStateException("Syncing is already in process"))
+        }
+
+        // Если нет сети, добавляем операцию в очередь
+        if (!networkMonitor.isNetworkAvailable()) {
+            Timber.d("No network, adding operation DOWNLOAD_TASK_TYPES to queue")
+            val operationId = syncQueueManager.enqueueOperation(
+                operationType = OperationType.DOWNLOAD_TASK_TYPES,
+                targetId = "task-types-sync-${System.currentTimeMillis()}",
+                executeImmediately = false
+            )
+
+            loggingService.logInfo("Task types sync is enqueued and will proceed when network appears")
+
+            return Result.failure(
+                NoNetworkException("No network connection. Sync will start when network appears.")
+            )
+        }
+
+        _syncStatus.value = SynchronizationController.SyncStatus.SYNCING
+
+        try {
+            // Обновляем прогресс
+            updateProgress { progress ->
+                progress.copy(
+                    currentOperation = "Загрузка типов заданий"
+                )
+            }
+
+            // Синхронизация типов заданий
+            val taskTypesCount = retryStrategy.executeWithRetry(
+                operation = {
+                    val result = taskTypeUseCases.syncTaskTypes()
+                    result.getOrThrow()
+                },
+                shouldRetry = { e -> NetworkErrorClassifier.isRetryable(e) },
+                onError = { e, attempt, delay ->
+                    updateProgress { progress ->
+                        progress.copy(
+                            errorCount = progress.errorCount + 1,
+                            lastErrorMessage = "Ошибка загрузки типов заданий: ${e.message}"
+                        )
+                    }
+
+                    loggingService.logWarning(
+                        "Attempt $attempt task types sync failed. " +
+                                "Repeat after ${delay}ms. Error: ${e.message}"
+                    )
+                },
+                tag = "TaskTypesSync"
+            )
+
+            // Обновляем финальный прогресс
+            updateProgress { progress ->
+                progress.copy(
+                    status = SyncStatus.COMPLETED,
+                    endTime = LocalDateTime.now(),
+                    currentOperation = "Синхронизация типов заданий завершена"
+                )
+            }
+
+            _syncStatus.value = SynchronizationController.SyncStatus.IDLE
+
+            // Подготавливаем результат
+            val syncResult = SynchronizationController.SyncResult(
+                successful = true,
+                taskTypesDownloadedCount = taskTypesCount,
+                tasksUploadedCount = 0,
+                tasksDownloadedCount = 0,
+                productsDownloadedCount = 0,
+                durationMillis = 0,
+                errorMessage = null
+            )
+
+            loggingService.logInfo("Синхронизация типов заданий завершена успешно: $taskTypesCount")
+
+            return Result.success(taskTypesCount)
+        } catch (e: Exception) {
+            _syncStatus.value = SynchronizationController.SyncStatus.ERROR
+
+            // Обновляем прогресс с ошибкой
+            updateProgress { progress ->
+                progress.copy(
+                    status = SyncStatus.FAILED,
+                    endTime = LocalDateTime.now(),
+                    errorCount = progress.errorCount + 1,
+                    lastErrorMessage = e.message,
+                    currentOperation = "Синхронизация типов заданий не удалась"
+                )
+            }
+
+            loggingService.logError("Task types sync error: ${e.message}")
+
+            return Result.failure(e)
+        }
     }
 
     class NoNetworkException(message: String) : Exception(message)

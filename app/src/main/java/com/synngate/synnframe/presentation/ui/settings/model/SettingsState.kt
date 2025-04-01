@@ -50,6 +50,7 @@ data class SettingsState(
     // Поля для сервиса синхронизации
     val isSyncServiceRunning: Boolean = false,
     val isManualSyncing: Boolean = false,
+    val isSyncingTaskTypes: Boolean = false,
     val syncStatus: SynchronizationController.SyncStatus = SynchronizationController.SyncStatus.IDLE,
     val lastSyncInfo: SynchronizationController.SyncInfo? = null,
     val periodicSyncEnabled: Boolean = false,

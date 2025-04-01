@@ -561,4 +561,7 @@
     <string name="bin_not_matches_plan">Ячейка не соответствует плану</string>
     <string name="enter_bin_first">Сначала введите ячейку</string>
     <string name="enter_product_first">Сначала введите товар</string>
+
+    <string name="sync_task_types">Синхронизировать типы заданий</string>
+    <string name="task_types_downloaded">Загружено типов заданий: %d</string>
 </resources>

@@ -29,7 +29,7 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
         private val MOBILE_SIZE_LIMIT = intPreferencesKey("mobile_size_limit")
         private val BIN_CODE_PATTERN = stringPreferencesKey("bin_code_pattern")
         private val SCAN_ORDER = stringPreferencesKey("scan_order")
-        const val DEFAULT_BIN_PATTERN = "{Aisle:@[a-zA-Z][0-9]}{Rack:@[0-9]{2}}{Shelf:@[1-9]{1}}{Position:@[1-9]}"
+        const val DEFAULT_BIN_PATTERN = "^[a-zA-Z][0-9][0-9]{2}[1-9][1-9]$"
     }
 
     val showServersOnStartup: Flow<Boolean> = dataStore.data.map { preferences ->

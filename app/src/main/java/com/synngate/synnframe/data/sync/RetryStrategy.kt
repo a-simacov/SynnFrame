@@ -3,8 +3,8 @@
 package com.synngate.synnframe.data.sync
 
 import com.synngate.synnframe.data.local.entity.OperationType
-import com.synngate.synnframe.util.network.NetworkState
 import com.synngate.synnframe.util.network.ConnectionType
+import com.synngate.synnframe.util.network.NetworkState
 import kotlin.math.pow
 
 class RetryStrategy(
@@ -40,6 +40,7 @@ class RetryStrategy(
             return when (operationType) {
                 OperationType.UPLOAD_TASK -> AGGRESSIVE
                 OperationType.DOWNLOAD_TASKS -> NORMAL
+                OperationType.DOWNLOAD_TASK_TYPES -> AGGRESSIVE
                 OperationType.DOWNLOAD_PRODUCTS -> NORMAL
                 OperationType.FULL_SYNC -> CONSERVATIVE
             }

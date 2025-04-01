@@ -22,6 +22,7 @@ data class SyncHistoryRecord(
     val tasksUploaded: Int,
     val tasksDownloaded: Int,
     val productsDownloaded: Int,
+    val taskTypesDownloaded: Int = 0,
 
     val successful: Boolean,
     val errorMessage: String? = null,
