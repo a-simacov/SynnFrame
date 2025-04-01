@@ -47,9 +47,9 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.CreationPlace
+import com.synngate.synnframe.domain.entity.FactLineActionType
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskStatus
-import com.synngate.synnframe.domain.entity.TaskType
 import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.inputs.BarcodeTextField
@@ -305,47 +305,59 @@ fun TaskDetailScreen(
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp)
             ) {
-                // Подсказка о текущем ожидаемом вводе
-                if (state.scanningState != ScanningState.IDLE) {
+                // Подсказка для текущего действия ввода
+                val currentAction = state.currentFactLineAction
+                if (currentAction != null) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(vertical = 8.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = when(state.scanningState) {
-                                ScanningState.SCAN_PRODUCT -> MaterialTheme.colorScheme.primaryContainer
-                                ScanningState.SCAN_BIN -> MaterialTheme.colorScheme.secondaryContainer
-                                else -> MaterialTheme.colorScheme.surfaceVariant
+                            containerColor = when(currentAction.type) {
+                                FactLineActionType.ENTER_PRODUCT_ANY,
+                                FactLineActionType.ENTER_PRODUCT_FROM_PLAN -> MaterialTheme.colorScheme.primaryContainer
+
+                                FactLineActionType.ENTER_BIN_ANY,
+                                FactLineActionType.ENTER_BIN_FROM_PLAN -> MaterialTheme.colorScheme.secondaryContainer
+
+                                FactLineActionType.ENTER_QUANTITY -> MaterialTheme.colorScheme.tertiaryContainer
                             }
                         )
                     ) {
                         Text(
-                            text = state.currentScanHint,
+                            text = currentAction.promptText,
                             style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(12.dp)
+                                .padding(16.dp)
                         )
                     }
                 }
 
+                // Поле ввода штрихкода
                 BarcodeTextField(
                     value = state.searchQuery,
                     onValueChange = { viewModel.onSearchQueryChanged(it) },
-                    onBarcodeScanned = { viewModel.processScanResult(it) },
-                    label = when(state.scanningState) {
-                        ScanningState.SCAN_PRODUCT -> stringResource(id = R.string.scan_or_enter_product)
-                        ScanningState.SCAN_BIN -> stringResource(id = R.string.scan_or_enter_bin)
+                    onBarcodeScanned = { viewModel.processScanResultForCurrentAction(it) },
+                    label = when {
+                        currentAction?.type == FactLineActionType.ENTER_PRODUCT_ANY ||
+                                currentAction?.type == FactLineActionType.ENTER_PRODUCT_FROM_PLAN ->
+                            stringResource(id = R.string.scan_or_enter_product)
+
+                        currentAction?.type == FactLineActionType.ENTER_BIN_ANY ||
+                                currentAction?.type == FactLineActionType.ENTER_BIN_FROM_PLAN ->
+                            stringResource(id = R.string.scan_or_enter_bin)
+
                         else -> stringResource(id = R.string.scan_or_enter_barcode)
                     },
                     enabled = state.isEditable,
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         Row {
-                            // Кнопка отмены текущего цикла ввода (при активном вводе)
-                            if (state.scanningState != ScanningState.IDLE) {
-                                IconButton(onClick = { viewModel.resetScanningCycle() }) {
+                            // Кнопка отмены текущего ввода, если он активен
+                            if (currentAction != null) {
+                                IconButton(onClick = { viewModel.resetFactLineInputState() }) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
                                         contentDescription = stringResource(id = R.string.cancel)
@@ -362,6 +374,13 @@ fun TaskDetailScreen(
                             }
                         }
                     }
+                )
+
+                // Информационная панель о текущем вводе
+                FactLineInputPanel(
+                    state = state,
+                    onComplete = { viewModel.completeFactLineInput() },
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 // Информационная панель о текущем процессе ввода
@@ -596,6 +615,114 @@ fun TaskDetailScreen(
 }
 
 @Composable
+private fun FactLineInputPanel(
+    state: TaskDetailState,
+    onComplete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val hasData = state.temporaryProduct != null ||
+            state.temporaryBinCode != null ||
+            state.temporaryQuantity != null
+
+    if (!hasData) return
+
+    Surface(
+        modifier = modifier.padding(vertical = 8.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Отображение введенного товара
+            if (state.temporaryProduct != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(id = R.string.product) + ":",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = state.temporaryProduct.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Индикатор проблемы
+                    if (!state.isValidProduct) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+
+            // Отображение введенной ячейки
+            if (state.temporaryBinCode != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(id = R.string.bin) + ":",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = state.formattedBinName ?: state.temporaryBinCode,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    // Индикатор проблемы
+                    if (!state.isValidBin) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+
+            // Отображение введенного количества
+            if (state.temporaryQuantity != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(id = R.string.quantity) + ":",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = formatQuantity(state.temporaryQuantity),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+
+            // Проверка возможности завершить ввод
+            val canComplete = state.temporaryProductId != null &&
+                    state.temporaryQuantity != null &&
+                    state.temporaryQuantity > 0
+
+            if (canComplete) {
+                Button(
+                    onClick = onComplete,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                ) {
+                    Text(text = stringResource(id = R.string.complete))
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ScanningInfoPanel(
     state: TaskDetailState,
     onComplete: () -> Unit,
@@ -702,12 +829,12 @@ private fun canCompleteEntry(state: TaskDetailState): Boolean {
 
 @Composable
 fun Task.getDisplayHeader(): String {
-    val taskType = when (type) {
-        TaskType.RECEIPT -> stringResource(id = R.string.task_type_receipt)
-        TaskType.PICK -> stringResource(id = R.string.task_type_pick)
-    }
+    // Используем название типа задания вместо enum
+    val taskTypeName = this.taskType?.name ?: this.taskTypeId
+
     val taskBarcode = if (this.creationPlace == CreationPlace.APP) {
         "${this.barcode.take(5)}...${this.barcode.takeLast(10)}"
     } else this.barcode
-    return "$taskType ($taskBarcode)"
+
+    return "$taskTypeName ($taskBarcode)"
 }

@@ -14,6 +14,8 @@ import com.synngate.synnframe.data.remote.api.ProductApi
 import com.synngate.synnframe.data.remote.api.ProductApiImpl
 import com.synngate.synnframe.data.remote.api.TaskApi
 import com.synngate.synnframe.data.remote.api.TaskApiImpl
+import com.synngate.synnframe.data.remote.api.TaskTypeApi
+import com.synngate.synnframe.data.remote.api.TaskTypeApiImpl
 import com.synngate.synnframe.data.remote.service.ApiService
 import com.synngate.synnframe.data.remote.service.ApiServiceImpl
 import com.synngate.synnframe.data.remote.service.ServerProvider
@@ -22,6 +24,7 @@ import com.synngate.synnframe.data.repository.ProductRepositoryImpl
 import com.synngate.synnframe.data.repository.ServerRepositoryImpl
 import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
 import com.synngate.synnframe.data.repository.TaskRepositoryImpl
+import com.synngate.synnframe.data.repository.TaskTypeRepositoryImpl
 import com.synngate.synnframe.data.repository.UserRepositoryImpl
 import com.synngate.synnframe.data.service.ClipboardServiceImpl
 import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
@@ -37,6 +40,7 @@ import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
 import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.domain.repository.TaskRepository
+import com.synngate.synnframe.domain.repository.TaskTypeRepository
 import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
@@ -53,6 +57,7 @@ import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
+import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.ui.login.LoginViewModel
@@ -111,6 +116,8 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     val logDao by lazy { database.logDao() }
     val productDao by lazy { database.productDao() }
     val taskDao by lazy { database.taskDao() }
+    val taskTypeDao by lazy { database.taskTypeDao() }
+    val factLineActionDao by lazy { database.factLineActionDao() }
 
     // HTTP Client
     @OptIn(ExperimentalSerializationApi::class)
@@ -197,6 +204,10 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         )
     }
 
+    val taskTypeRepository: TaskTypeRepository by lazy {
+        TaskTypeRepositoryImpl(taskTypeDao, factLineActionDao, taskTypeApi)
+    }
+
     // API сервисы
     val apiService: ApiService by lazy {
         Timber.d("Creating ApiService")
@@ -221,6 +232,10 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     val appUpdateApi: AppUpdateApi by lazy {
         Timber.d("Creating AppUpdateApi")
         AppUpdateApiImpl(httpClient, serverProvider)
+    }
+
+    val taskTypeApi: TaskTypeApi by lazy {
+        TaskTypeApiImpl(httpClient, serverProvider)
     }
 
     // Сервисы
@@ -308,6 +323,10 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
 
     val settingsUseCases by lazy {
         SettingsUseCases(settingsRepository, loggingService, fileService, applicationContext)
+    }
+
+    val taskTypeUseCases by lazy {
+        TaskTypeUseCases(taskTypeRepository, loggingService)
     }
 
     // Создание контейнера для уровня навигации
@@ -424,6 +443,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 productUseCases = appContainer.productUseCases,
                 userUseCases = appContainer.userUseCases,
                 settingsUseCases = appContainer.settingsUseCases,
+                taskTypeUseCases = appContainer.taskTypeUseCases,
                 soundService = appContainer.soundService,
                 ioDispatcher = Dispatchers.IO
             )

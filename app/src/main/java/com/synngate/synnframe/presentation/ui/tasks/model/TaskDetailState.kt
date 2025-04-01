@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.tasks.model
 
+import com.synngate.synnframe.domain.entity.FactLineAction
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.ProductUnit
 import com.synngate.synnframe.domain.entity.Task
@@ -67,5 +68,9 @@ data class TaskDetailState(
     val formattedBinName: String? = null, // форматированное имя ячейки для отображения
     val temporaryQuantity: Float? = null,
     val isValidProduct: Boolean = true,
-    val isValidBin: Boolean = true
+    val isValidBin: Boolean = true,
+
+    val currentFactLineAction: FactLineAction? = null,
+    val factLineActionIndex: Int = 0,
+    val factLineActions: List<FactLineAction> = emptyList()
 )

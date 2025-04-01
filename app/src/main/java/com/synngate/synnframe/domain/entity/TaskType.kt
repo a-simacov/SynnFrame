@@ -1,16 +1,13 @@
 package com.synngate.synnframe.domain.entity
 
-enum class TaskType {
-    RECEIPT,
-    PICK;
+import kotlinx.serialization.Serializable
 
-    companion object {
-        fun fromString(value: String): TaskType {
-            return when (value.uppercase()) {
-                "RECEIPT", "ПРИЁМКА", "ПРИЕМКА" -> RECEIPT
-                "PICK", "ОТБОР" -> PICK
-                else -> RECEIPT
-            }
-        }
-    }
-}
+@Serializable
+data class TaskType(
+    val id: String,
+    val name: String,
+    val action: TaskAction,
+    val canBeCreatedInApp: Boolean,
+    val allowExceedPlanQuantity: Boolean,
+    val factLineActions: List<FactLineAction>
+)

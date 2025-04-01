@@ -15,7 +15,6 @@ data class TaskEntity(
     @PrimaryKey
     val id: String,
     val name: String,
-    val type: String,
     val barcode: String,
     val createdAt: LocalDateTime,
     val viewedAt: LocalDateTime?,
@@ -26,16 +25,19 @@ data class TaskEntity(
     val status: String,
     val uploaded: Boolean,
     val uploadedAt: LocalDateTime?,
-    val allowProductsNotInPlan: Boolean = false
+    val allowProductsNotInPlan: Boolean = false,
+    val taskTypeId: String,
 ) {
     fun toDomainModel(
         planLines: List<TaskPlanLine> = emptyList(),
-        factLines: List<TaskFactLine> = emptyList()
+        factLines: List<TaskFactLine> = emptyList(),
+        taskType: TaskType? = null
     ): Task {
         return Task(
             id = id,
             name = name,
-            type = TaskType.fromString(type),
+            taskTypeId = taskTypeId,
+            taskType = taskType,
             barcode = barcode,
             createdAt = createdAt,
             viewedAt = viewedAt,
@@ -57,7 +59,7 @@ data class TaskEntity(
             return TaskEntity(
                 id = task.id,
                 name = task.name,
-                type = task.type.name,
+                taskTypeId = task.taskTypeId,
                 barcode = task.barcode,
                 createdAt = task.createdAt,
                 viewedAt = task.viewedAt,

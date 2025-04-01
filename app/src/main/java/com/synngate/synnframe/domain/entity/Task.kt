@@ -2,6 +2,7 @@ package com.synngate.synnframe.domain.entity
 
 import com.synngate.synnframe.util.serialization.LocalDateTimeSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import java.time.LocalDateTime
 
 @Serializable
@@ -10,7 +11,10 @@ data class Task(
 
     val name: String,
 
-    val type: TaskType,
+    val taskTypeId: String, // Идентификатор типа задания вместо enum
+
+    @Transient
+    val taskType: TaskType? = null, // Полный объект типа (transient - не сериализуется)
 
     val barcode: String,
 
@@ -69,4 +73,10 @@ data class Task(
         planLines.any { it.productId == productId }
 
     fun canDelete(): Boolean = status == TaskStatus.COMPLETED && uploaded
+
+    // Получение действия WMS из типа задания
+    fun getTaskAction(): TaskAction? = taskType?.action
+
+    // Получение названия типа задания
+    fun getTaskTypeName(): String = taskType?.name ?: taskTypeId
 }
