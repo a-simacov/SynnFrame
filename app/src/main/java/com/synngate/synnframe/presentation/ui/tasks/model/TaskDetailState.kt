@@ -60,7 +60,6 @@ data class TaskDetailState(
     val isReuploading: Boolean = false,
 
     // Новые поля для последовательного ввода
-    val scanningState: ScanningState = ScanningState.IDLE,
     val currentScanHint: String = "",
     val temporaryProductId: String? = null,
     val temporaryProduct: Product? = null,

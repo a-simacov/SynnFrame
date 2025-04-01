@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -27,7 +25,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,11 +38,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,7 +62,6 @@ import com.synngate.synnframe.presentation.ui.tasks.components.TaskLineItemRow
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskNoPlannedItemRow
 import com.synngate.synnframe.presentation.ui.tasks.model.ProductDisplayProperty
 import com.synngate.synnframe.presentation.ui.tasks.model.ProductPropertyType
-import com.synngate.synnframe.presentation.ui.tasks.model.ScanningState
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailEvent
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailState
 import com.synngate.synnframe.presentation.util.formatQuantity
@@ -166,7 +159,7 @@ fun TaskDetailScreen(
 
     if (state.isScanDialogVisible) {
         ScanBarcodeDialog(
-            onBarcodeScanned = { barcode -> viewModel.processScanResult(barcode) },
+            onBarcodeScanned = { barcode -> viewModel.processScanResultForCurrentAction(barcode) },
             onClose = { viewModel.closeDialog() },
             scannerMessage = state.scanBarcodeDialogState.scannerMessage,
             isScannerActive = state.scanBarcodeDialogState.isScannerActive,
@@ -386,18 +379,10 @@ fun TaskDetailScreen(
                     CurrentInputStatus(state = state)
                 }
 
-                // Информационная панель о текущем вводе
-                FactLineInputPanel(
-                    state = state,
-                    onComplete = { viewModel.completeFactLineInput() },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Информационная панель о текущем процессе ввода
-                if (state.scanningState != ScanningState.IDLE) {
-                    ScanningInfoPanel(
+                if (state.currentFactLineAction != null) {
+                    FactLineActionsPanel(
                         state = state,
-                        onComplete = { viewModel.completeFactLine() },
+                        onComplete = { viewModel.completeFactLineInput() },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -625,115 +610,7 @@ fun TaskDetailScreen(
 }
 
 @Composable
-private fun FactLineInputPanel(
-    state: TaskDetailState,
-    onComplete: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val hasData = state.temporaryProduct != null ||
-            state.temporaryBinCode != null ||
-            state.temporaryQuantity != null
-
-    if (!hasData) return
-
-    Surface(
-        modifier = modifier.padding(vertical = 8.dp),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // Отображение введенного товара
-            if (state.temporaryProduct != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(id = R.string.product) + ":",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = state.temporaryProduct.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    // Индикатор проблемы
-                    if (!state.isValidProduct) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
-
-            // Отображение введенной ячейки
-            if (state.temporaryBinCode != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(id = R.string.bin) + ":",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = state.formattedBinName ?: state.temporaryBinCode,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-
-                    // Индикатор проблемы
-                    if (!state.isValidBin) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
-
-            // Отображение введенного количества
-            if (state.temporaryQuantity != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(id = R.string.quantity) + ":",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = formatQuantity(state.temporaryQuantity),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-
-            // Проверка возможности завершить ввод
-            val canComplete = state.temporaryProductId != null &&
-                    state.temporaryQuantity != null &&
-                    state.temporaryQuantity > 0
-
-            if (canComplete) {
-                Button(
-                    onClick = onComplete,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp)
-                ) {
-                    Text(text = stringResource(id = R.string.complete))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ScanningInfoPanel(
+fun FactLineActionsPanel(
     state: TaskDetailState,
     onComplete: () -> Unit,
     modifier: Modifier = Modifier
@@ -744,9 +621,53 @@ private fun ScanningInfoPanel(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     ) {
         Column(
-            modifier = Modifier.padding(12.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
-            // Отображение введенного товара
+
+            val actionColor = when(state.currentFactLineAction?.type) {
+                FactLineActionType.ENTER_PRODUCT_ANY,
+                FactLineActionType.ENTER_PRODUCT_FROM_PLAN ->
+                    MaterialTheme.colorScheme.primaryContainer
+
+                FactLineActionType.ENTER_BIN_ANY,
+                FactLineActionType.ENTER_BIN_FROM_PLAN ->
+                    MaterialTheme.colorScheme.secondaryContainer
+
+                FactLineActionType.ENTER_QUANTITY ->
+                    MaterialTheme.colorScheme.tertiaryContainer
+
+                else -> MaterialTheme.colorScheme.surfaceVariant
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = actionColor)
+            ) {
+                Text(
+                    text = state.currentFactLineAction?.promptText ?: "",
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
+            }
+
+            // Отображение текущего действия и подсказки
+            state.currentFactLineAction?.let { action ->
+                Text(
+                    text = action.promptText,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Отображение введенных данных
+
+            // 1. Товар
             if (state.temporaryProduct != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -774,7 +695,7 @@ private fun ScanningInfoPanel(
                 }
             }
 
-            // Отображение введенной ячейки
+            // 2. Ячейка
             if (state.temporaryBinCode != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -799,7 +720,7 @@ private fun ScanningInfoPanel(
                 }
             }
 
-            // Отображение введенного количества
+            // 3. Количество
             if (state.temporaryQuantity != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -815,13 +736,17 @@ private fun ScanningInfoPanel(
                 }
             }
 
-            // Кнопка завершения, если все данные введены
-            if (canCompleteEntry(state)) {
+            // Кнопка завершения ввода
+            val canComplete = state.temporaryProductId != null &&
+                    state.temporaryQuantity != null &&
+                    state.temporaryQuantity > 0f
+
+            if (canComplete) {
                 Button(
                     onClick = onComplete,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp)
+                        .padding(top = 16.dp)
                 ) {
                     Text(stringResource(id = R.string.complete))
                 }
@@ -916,46 +841,6 @@ fun CurrentInputStatus(
             }
         }
     }
-}
-
-@Composable
-fun SearchTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onEnterPressed: () -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    trailingIcon: @Composable (() -> Unit)
-) {
-    val focusManager = LocalFocusManager.current
-
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        modifier = modifier.fillMaxWidth(),
-        enabled = enabled,
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Text,
-            imeAction = ImeAction.Done
-        ),
-        keyboardActions = KeyboardActions(
-            onDone = {
-                focusManager.clearFocus()
-                onEnterPressed()
-            }
-        ),
-        trailingIcon = trailingIcon
-    )
-}
-
-// Вспомогательная функция для проверки возможности завершения ввода
-private fun canCompleteEntry(state: TaskDetailState): Boolean {
-    return (state.temporaryProduct != null || state.temporaryProductId != null) &&
-            (state.temporaryQuantity != null && state.temporaryQuantity > 0f) &&
-            (state.scanningState == ScanningState.CONFIRM || state.scanningState == ScanningState.ENTER_QUANTITY)
 }
 
 @Composable
