@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -51,12 +52,14 @@ import com.synngate.synnframe.presentation.common.inputs.BarcodeTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.ErrorScreenContent
 import com.synngate.synnframe.presentation.common.status.StatusType
+import com.synngate.synnframe.presentation.ui.tasks.components.ScanBarcodeDialog
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskFactLineDialog
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskLineItemRow
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskNoPlannedItemRow
 import com.synngate.synnframe.presentation.ui.tasks.model.EntryStep
 import com.synngate.synnframe.presentation.ui.tasks.model.ProductDisplayProperty
 import com.synngate.synnframe.presentation.ui.tasks.model.ProductPropertyType
+import com.synngate.synnframe.presentation.ui.tasks.model.ScanningState
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailEvent
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailState
 import com.synngate.synnframe.presentation.util.formatQuantity
@@ -173,6 +176,26 @@ fun TaskDetailScreen(
         )
     }
 
+    if (state.isScanDialogVisible) {
+        ScanBarcodeDialog(
+            onBarcodeScanned = { barcode ->
+                // Вызываем специальный метод для результатов сканирования
+                viewModel.processScanDialogResult(barcode)
+            },
+            onClose = { viewModel.closeDialog() },
+            scannerMessage = state.scanBarcodeDialogState.scannerMessage,
+            scanningState = when(state.entryStep) {
+                EntryStep.ENTER_BIN -> ScanningState.SCAN_BIN
+                EntryStep.ENTER_PRODUCT -> ScanningState.SCAN_PRODUCT
+                else -> ScanningState.IDLE
+            },
+            isScannerActive = state.scanBarcodeDialogState.isScannerActive,
+            onScannerActiveChange = { active ->
+                viewModel.updateScannerActiveState(active)
+            }
+        )
+    }
+
     // Определение заголовка экрана и подзаголовка
     val screenTitle = task?.getDisplayHeader() ?: ""
 
@@ -282,6 +305,16 @@ fun TaskDetailScreen(
                                         contentDescription = "Отменить ввод"
                                     )
                                 }
+                            }
+
+                            if (state.isEditable && state.entryStep != EntryStep.ENTER_QUANTITY) {
+                                IconButton(onClick = { viewModel.showScanDialog() }) {
+                                    Icon(
+                                        imageVector = Icons.Default.PhotoCamera,
+                                        contentDescription = stringResource(R.string.scan_barcode)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
                             }
                         }
                     }
