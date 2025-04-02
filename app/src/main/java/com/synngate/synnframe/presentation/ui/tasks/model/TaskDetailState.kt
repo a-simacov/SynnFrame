@@ -46,7 +46,15 @@ data class TaskDetailState(
     // СОСТОЯНИЕ ДРУГИХ ДИАЛОГОВ
     val isScanDialogVisible: Boolean = false,      // Показан ли диалог сканирования
     val isCompleteConfirmationVisible: Boolean = false, // Показан ли диалог подтверждения
-    val scanBarcodeDialogState: ScanBarcodeDialogState = ScanBarcodeDialogState() // Состояние диалога сканирования
+    val scanBarcodeDialogState: ScanBarcodeDialogState = ScanBarcodeDialogState(), // Состояние диалога сканирования
+
+    // Порядок ввода строки факта
+    val entrySequence: List<EntryStep> = emptyList(),   // Полная последовательность шагов
+    val entryStepIndex: Int = 0,                        // Индекс текущего шага
+
+    // Флаг для сохранения контекста при навигации
+    val pendingProductSelection: Boolean = false,     // Ожидается выбор товара
+    val pendingReturnStep: EntryStep? = null
 )
 
 // Четкое перечисление шагов ввода

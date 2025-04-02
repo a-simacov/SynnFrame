@@ -54,6 +54,7 @@ import com.synngate.synnframe.presentation.ui.products.components.BatchScannerDi
 import com.synngate.synnframe.presentation.ui.products.model.ProductListEvent
 import com.synngate.synnframe.presentation.ui.products.model.ProductListItemUiModel
 import com.synngate.synnframe.presentation.ui.products.model.SortOrder
+import timber.log.Timber
 
 @Composable
 fun ProductListScreen(
@@ -85,6 +86,7 @@ fun ProductListScreen(
                     navController.previousBackStackEntry?.savedStateHandle?.set(
                         "selected_product_id", event.productId
                     )
+                    Timber.d("Saving selected product ID to savedStateHandle: ${event.productId}")
                     navigateBack()
                 }
             }

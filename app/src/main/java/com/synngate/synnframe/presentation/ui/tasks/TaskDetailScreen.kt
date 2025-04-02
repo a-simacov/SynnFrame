@@ -89,6 +89,23 @@ fun TaskDetailScreen(
                 }
 
                 is TaskDetailEvent.NavigateToProductsList -> {
+                    // Сохраняем флаг и данные ячейки в savedStateHandle текущего экрана
+                    navController.currentBackStackEntry?.savedStateHandle?.set(
+                        "waiting_for_product", event.waitingForProduct
+                    )
+
+                    if (event.binCode != null) {
+                        navController.currentBackStackEntry?.savedStateHandle?.set(
+                            "temp_bin_code", event.binCode
+                        )
+                    }
+
+                    if (event.binName != null) {
+                        navController.currentBackStackEntry?.savedStateHandle?.set(
+                            "temp_bin_name", event.binName
+                        )
+                    }
+
                     navigateToProductsList()
                 }
 
@@ -169,14 +186,27 @@ fun TaskDetailScreen(
     // Обработка возвращаемого значения из экрана выбора товара
     LaunchedEffect(navBackStackEntry) {
         val savedStateHandle = navBackStackEntry?.savedStateHandle
-        savedStateHandle?.get<String>("selected_product_id")?.let { productId ->
-            // Только если активен ввод и ожидается ввод товара
-            if (state.isEntryActive && state.entryStep == EntryStep.ENTER_PRODUCT) {
-                // Загружаем продукт по ID
-                viewModel.handleSelectedProductById(productId)
 
-                // Очищаем данные
+        // Проверяем, есть ли ID выбранного товара
+        val productId = savedStateHandle?.get<String>("selected_product_id")
+
+        if (productId != null) {
+            // Получаем флаг ожидания из savedStateHandle
+            val waitingForProduct = savedStateHandle.get<Boolean>("waiting_for_product") ?: false
+
+            if (waitingForProduct) {
+                // Получаем сохраненные данные ячейки, если есть
+                val binCode = savedStateHandle.get<String>("temp_bin_code")
+                val binName = savedStateHandle.get<String>("temp_bin_name")
+
+                // Обрабатываем выбранный товар с дополнительными данными
+                viewModel.handleSelectedProductFromList(productId, binCode, binName)
+
+                // Очищаем savedStateHandle
                 savedStateHandle.remove<String>("selected_product_id")
+                savedStateHandle.remove<Boolean>("waiting_for_product")
+                savedStateHandle.remove<String>("temp_bin_code")
+                savedStateHandle.remove<String>("temp_bin_name")
             }
         }
     }
