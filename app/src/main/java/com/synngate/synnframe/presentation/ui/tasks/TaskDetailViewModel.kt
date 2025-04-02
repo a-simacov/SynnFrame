@@ -1,6 +1,5 @@
 package com.synngate.synnframe.presentation.ui.tasks
 
-import com.synngate.synnframe.domain.entity.FactLineActionType
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.TaskFactLine
 import com.synngate.synnframe.domain.entity.TaskPlanLine
@@ -57,16 +56,6 @@ class TaskDetailViewModel(
                 val task = taskUseCases.getTaskById(taskId)
 
                 if (task != null) {
-                    val sequence = when {
-                        // Порядок из настроек типа задания, если есть
-                        task.taskType?.factLineActions?.isNotEmpty() == true -> {
-                            val actions = task.taskType.factLineActions.sortedBy { it.order }
-                            actions.map { action -> mapActionToEntryStep(action.type) }
-                        }
-                        // Порядок по умолчанию
-                        else -> listOf(EntryStep.ENTER_BIN, EntryStep.ENTER_PRODUCT, EntryStep.ENTER_QUANTITY)
-                    }
-
                     // Загружаем тип задания
                     val taskType = taskTypeUseCases.getTaskTypeById(task.taskTypeId)
 
@@ -141,7 +130,6 @@ class TaskDetailViewModel(
                             taskLines = taskLines,
                             isLoading = false,
                             isEditable = isEditable,
-                            entrySequence = sequence,
                             error = null
                         )
                     }
@@ -250,7 +238,6 @@ class TaskDetailViewModel(
         }
     }
 
-    // в com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModel
     fun uploadTask() {
         val task = uiState.value.task ?: return
 
@@ -292,31 +279,15 @@ class TaskDetailViewModel(
     }
 
     fun handleSelectedProductById(productId: String) {
-        Timber.d("Handling selected product by ID: $productId")
-
         launchIO {
-            // Проверяем текущее состояние
-            val state = uiState.value
-            if (state.entryStep != EntryStep.ENTER_PRODUCT) {
-                Timber.w("Wrong entry step for product selection: ${state.entryStep}")
-                return@launchIO
-            }
-
-            // Загружаем товар
+            Timber.d("Loading product by ID: $productId")
             val product = productUseCases.getProductById(productId)
-
             if (product != null) {
-                Timber.d("Product found: ${product.name}")
-
-                // Обновляем состояние товара
-                updateState { it.copy(
-                    entryProduct = product
-                )}
-
-                // Переходим к следующему шагу - это вызовет showQuantityInputDialog
-                moveToNextStep()
+                Timber.d("Product found: ${product.name}, handling selection")
+                // Если продукт найден - обрабатываем его
+                handleSelectedProduct(product)
             } else {
-                Timber.w("Product not found for ID: $productId")
+                Timber.d("Product not found by ID: $productId")
                 sendEvent(TaskDetailEvent.ShowSnackbar("Товар не найден"))
             }
         }
@@ -327,6 +298,7 @@ class TaskDetailViewModel(
     }
 
     fun closeDialog() {
+        Timber.d("Closing dialog")
         updateState {
             it.copy(
                 isScanDialogVisible = false,
@@ -339,13 +311,9 @@ class TaskDetailViewModel(
     }
 
     fun startFactLineEntry() {
-        val sequence = uiState.value.entrySequence
-        if (sequence.isEmpty()) return
-
         updateState { it.copy(
             isEntryActive = true,
-            entryStepIndex = 0,
-            entryStep = sequence.first(),
+            entryStep = EntryStep.ENTER_BIN,
             entryBinCode = null,
             entryBinName = null,
             entryProduct = null,
@@ -355,6 +323,7 @@ class TaskDetailViewModel(
 
     // Обработка сканированного штрихкода
     fun processScanResult(barcode: String) {
+        Timber.d("Processing scan result: $barcode for step: ${uiState.value.entryStep}")
         when (uiState.value.entryStep) {
             EntryStep.ENTER_BIN -> processBinCode(barcode)
             EntryStep.ENTER_PRODUCT -> processProductBarcode(barcode)
@@ -366,6 +335,7 @@ class TaskDetailViewModel(
     // Обработка введенной ячейки
     private fun processBinCode(code: String) {
         launchIO {
+            Timber.d("Processing bin code: $code")
             // Валидация кода ячейки
             val isValid = binValidator?.isValidBin(code) ?: true
 
@@ -395,19 +365,25 @@ class TaskDetailViewModel(
     // Обработка введенного товара
     private fun processProductBarcode(barcode: String) {
         launchIO {
+            Timber.d("Processing product barcode: $barcode")
             // Поиск товара по штрихкоду
             val product = productUseCases.findProductByBarcode(barcode)
 
             if (product != null) {
-                // Если товар найден - сохраняем его
-                updateState { it.copy(entryProduct = product) }
+                Timber.d("Product found: ${product.name}")
+                // Если товар найден - сохраняем его и устанавливаем следующий шаг
+                updateState { it.copy(
+                    entryProduct = product,
+                    entryStep = EntryStep.ENTER_QUANTITY
+                )}
 
-                // Переход к следующему шагу
-                moveToNextStep()
+                // Показываем диалог ввода количества
+                showQuantityInputDialog()
 
                 // Звуковое подтверждение успеха
                 soundService.playSuccessSound()
             } else {
+                Timber.d("Product not found for barcode: $barcode")
                 // Сообщение об ошибке
                 sendEvent(TaskDetailEvent.ShowSnackbar("Товар не найден"))
                 soundService.playErrorSound()
@@ -440,52 +416,27 @@ class TaskDetailViewModel(
         }
     }
 
-    fun processSelectedProduct(productId: String) {
-        launchIO {
-            val product = productUseCases.getProductById(productId)
-
-            if (product != null) {
-                // Обновляем состояние товара
-                updateState { it.copy(
-                    entryProduct = product,
-                    pendingProductSelection = false,
-                    // Не меняем entryStep - он должен остаться тем же
-                )}
-
-                // Переходим к следующему шагу
-                moveToNextStep()
-            } else {
-                sendEvent(TaskDetailEvent.ShowSnackbar("Товар не найден"))
-            }
-        }
-    }
-
     // Переход к следующему шагу
     private fun moveToNextStep() {
-        val state = uiState.value
-        val sequence = state.entrySequence
-        val currentIndex = state.entryStepIndex
+        val currentStep = uiState.value.entryStep
 
-        // Проверяем, есть ли следующий шаг
-        if (currentIndex < sequence.size - 1) {
-            // Переходим к следующему шагу
-            val nextIndex = currentIndex + 1
-            val nextStep = sequence[nextIndex]
+        val nextStep = when (currentStep) {
+            EntryStep.ENTER_BIN -> EntryStep.ENTER_PRODUCT
+            EntryStep.ENTER_PRODUCT -> EntryStep.ENTER_QUANTITY
+            EntryStep.ENTER_QUANTITY -> EntryStep.NONE
+            EntryStep.NONE -> EntryStep.NONE
+        }
 
-            updateState { it.copy(
-                entryStepIndex = nextIndex,
-                entryStep = nextStep
-            )}
+        Timber.d("Moving from step $currentStep to $nextStep")
 
-            // Если следующий шаг - ввод количества, показываем диалог
-            if (nextStep == EntryStep.ENTER_QUANTITY) {
-                showQuantityInputDialog()
-            }
-        } else {
-            // Все шаги завершены, сохраняем строку факта
-            if (canCompleteEntry()) {
-                completeFactLineEntry()
-            }
+        // Обновляем состояние шага
+        updateState { it.copy(entryStep = nextStep) }
+
+        // Если следующий шаг - ввод количества, показываем диалог
+        if (nextStep == EntryStep.ENTER_QUANTITY) {
+            showQuantityInputDialog()
+        } else if (nextStep == EntryStep.NONE && canCompleteEntry()) {
+            completeFactLineEntry()
         }
 
         // Очищаем поле ввода
@@ -495,12 +446,9 @@ class TaskDetailViewModel(
     // Диалог для ввода количества
     private fun showQuantityInputDialog() {
         val state = uiState.value
-        val product = state.entryProduct
+        val product = state.entryProduct ?: return
 
-        if (product == null) {
-            Timber.e("Cannot show quantity dialog: product is null")
-            return
-        }
+        Timber.d("Opening quantity input dialog for product: ${product.name}")
 
         // Находим существующую строку факта или создаем новую
         val taskId = state.task?.id ?: return
@@ -520,8 +468,6 @@ class TaskDetailViewModel(
         // Находим плановое количество, если есть
         val planLine = state.task?.planLines?.find { it.productId == productId }
         val planQuantity = planLine?.quantity ?: 0f
-
-        Timber.d("Opening quantity dialog for product: ${product.name}, planQuantity: $planQuantity")
 
         // Показываем диалог ввода количества
         updateState { it.copy(
@@ -630,7 +576,8 @@ class TaskDetailViewModel(
         // Обработка специальных команд
         when (query) {
             "0" -> {
-                handleSpecialCommand(query)
+                sendEvent(TaskDetailEvent.NavigateToProductsList)
+                updateState { it.copy(searchQuery = "") }
             }
             // Если достаточно длинная строка, обрабатываем как штрихкод
             else -> if (query.length >= MIN_BARCODE_LENGTH) {
@@ -641,71 +588,18 @@ class TaskDetailViewModel(
         }
     }
 
-    private fun handleSpecialCommand(command: String) {
-        val currentState = uiState.value
-
-        when (command) {
-            "0" -> {
-                handleZeroCommand()
-            }
-            // Можно добавить и другие специальные команды
-        }
-    }
-
-    // В TaskDetailViewModel
-    fun handleZeroCommand() {
-        val currentStep = uiState.value.entryStep
-
-        if (currentStep == EntryStep.ENTER_PRODUCT) {
-            // Сохраняем текущие данные о ячейке в state, если они есть
-            val binCode = uiState.value.entryBinCode
-            val binName = uiState.value.entryBinName
-
-            // Вместо установки pendingProductSelection в state,
-            // сохраняем флаг в событии навигации
-            sendEvent(TaskDetailEvent.NavigateToProductsList(
-                waitingForProduct = true,
-                binCode = binCode,
-                binName = binName
-            ))
-        } else {
-            sendEvent(TaskDetailEvent.ShowSnackbar("Сейчас не этап ввода товара"))
-        }
-    }
-
     // Обработка выбора товара из списка
     fun handleSelectedProduct(product: Product) {
-        // Сохраняем выбранный товар
+        Timber.d("Selected product: ${product.name}")
+        // Сохраняем выбранный товар и устанавливаем следующий шаг
         updateState { it.copy(
             entryProduct = product,
+            entryStep = EntryStep.ENTER_QUANTITY,
             searchQuery = ""
         )}
 
-        // Переходим к следующему шагу
-        moveToNextStep()
-    }
-
-    fun handleSelectedProductFromList(productId: String, savedBinCode: String?, savedBinName: String?) {
-        launchIO {
-            val product = productUseCases.getProductById(productId)
-
-            if (product != null) {
-                // Восстанавливаем состояние ввода с выбранным товаром и сохраненными данными ячейки
-                updateState { it.copy(
-                    isEntryActive = true,
-                    entryStep = EntryStep.ENTER_PRODUCT,
-                    entryProduct = product,
-                    // Восстанавливаем значения ячейки, если они были
-                    entryBinCode = savedBinCode ?: it.entryBinCode,
-                    entryBinName = savedBinName ?: it.entryBinName
-                )}
-
-                // Переходим к следующему шагу
-                moveToNextStep()
-            } else {
-                sendEvent(TaskDetailEvent.ShowSnackbar("Товар не найден"))
-            }
-        }
+        // Показываем диалог ввода количества
+        showQuantityInputDialog()
     }
 
     // Обработчик изменения значения в поле ввода количества
@@ -764,20 +658,6 @@ class TaskDetailViewModel(
                     isError = true
                 )
             )}
-        }
-    }
-
-    private fun mapActionToEntryStep(actionType: FactLineActionType): EntryStep {
-        return when(actionType) {
-            FactLineActionType.ENTER_PRODUCT_ANY,
-            FactLineActionType.ENTER_PRODUCT_FROM_PLAN -> EntryStep.ENTER_PRODUCT
-
-            FactLineActionType.ENTER_BIN_ANY,
-            FactLineActionType.ENTER_BIN_FROM_PLAN -> EntryStep.ENTER_BIN
-
-            FactLineActionType.ENTER_QUANTITY -> EntryStep.ENTER_QUANTITY
-
-            else -> EntryStep.NONE
         }
     }
 }

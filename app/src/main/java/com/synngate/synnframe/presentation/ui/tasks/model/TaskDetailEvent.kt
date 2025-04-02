@@ -9,11 +9,7 @@ sealed class TaskDetailEvent {
 
     data object NavigateBack : TaskDetailEvent()
 
-    data class NavigateToProductsList(
-        val waitingForProduct: Boolean = false,
-        val binCode: String? = null,
-        val binName: String? = null
-    ) : TaskDetailEvent()
+    data object NavigateToProductsList : TaskDetailEvent()
 
     data class ShowSnackbar(val message: String) : TaskDetailEvent()
 

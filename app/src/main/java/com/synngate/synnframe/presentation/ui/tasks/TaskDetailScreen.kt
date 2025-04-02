@@ -30,7 +30,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,23 +88,6 @@ fun TaskDetailScreen(
                 }
 
                 is TaskDetailEvent.NavigateToProductsList -> {
-                    // Сохраняем флаг и данные ячейки в savedStateHandle текущего экрана
-                    navController.currentBackStackEntry?.savedStateHandle?.set(
-                        "waiting_for_product", event.waitingForProduct
-                    )
-
-                    if (event.binCode != null) {
-                        navController.currentBackStackEntry?.savedStateHandle?.set(
-                            "temp_bin_code", event.binCode
-                        )
-                    }
-
-                    if (event.binName != null) {
-                        navController.currentBackStackEntry?.savedStateHandle?.set(
-                            "temp_bin_name", event.binName
-                        )
-                    }
-
                     navigateToProductsList()
                 }
 
@@ -139,20 +121,6 @@ fun TaskDetailScreen(
         }
     }
 
-    val showScanDialog by rememberSaveable { mutableStateOf(state.isScanDialogVisible) }
-    val showFactLineDialog by rememberSaveable { mutableStateOf(state.isFactLineDialogVisible) }
-    val showCompleteConfirmation by rememberSaveable { mutableStateOf(state.isCompleteConfirmationVisible) }
-
-    LaunchedEffect(showScanDialog, showFactLineDialog, showCompleteConfirmation) {
-        if (showFactLineDialog != state.isFactLineDialogVisible) {
-            if (!showFactLineDialog) viewModel.closeDialog()
-        }
-
-        if (showCompleteConfirmation != state.isCompleteConfirmationVisible) {
-            if (showCompleteConfirmation) viewModel.showCompleteConfirmation() else viewModel.closeDialog()
-        }
-    }
-
     if (state.isCompleteConfirmationVisible) {
         ConfirmationDialog(
             title = stringResource(id = R.string.complete_task),
@@ -165,7 +133,7 @@ fun TaskDetailScreen(
     if (state.isFactLineDialogVisible && state.selectedFactLine != null) {
         TaskFactLineDialog(
             factLine = state.selectedFactLine!!,
-            product = state.entryProduct, // Используем текущий продукт
+            product = state.entryProduct,
             planQuantity = state.selectedPlanQuantity,
             dialogState = state.factLineDialogState,
             onQuantityChange = { viewModel.onQuantityChange(it) },
@@ -191,23 +159,7 @@ fun TaskDetailScreen(
         val productId = savedStateHandle?.get<String>("selected_product_id")
 
         if (productId != null) {
-            // Получаем флаг ожидания из savedStateHandle
-            val waitingForProduct = savedStateHandle.get<Boolean>("waiting_for_product") ?: false
-
-            if (waitingForProduct) {
-                // Получаем сохраненные данные ячейки, если есть
-                val binCode = savedStateHandle.get<String>("temp_bin_code")
-                val binName = savedStateHandle.get<String>("temp_bin_name")
-
-                // Обрабатываем выбранный товар с дополнительными данными
-                viewModel.handleSelectedProductFromList(productId, binCode, binName)
-
-                // Очищаем savedStateHandle
-                savedStateHandle.remove<String>("selected_product_id")
-                savedStateHandle.remove<Boolean>("waiting_for_product")
-                savedStateHandle.remove<String>("temp_bin_code")
-                savedStateHandle.remove<String>("temp_bin_name")
-            }
+            viewModel.handleSelectedProductById(productId)
         }
     }
 
