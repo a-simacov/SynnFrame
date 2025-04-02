@@ -19,7 +19,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -52,6 +57,19 @@ fun ScanBarcodeDialog(
         }
     }
 
+    // Добавляем состояние для отслеживания одноразового сканирования
+    var hasProcessedBarcode by remember { mutableStateOf(false) }
+
+    // Используем DisposableEffect для закрытия диалога при размонтировании
+    DisposableEffect(Unit) {
+        onDispose {
+            // Гарантируем закрытие диалога при размонтировании компонента
+            if (!hasProcessedBarcode) {
+                onClose()
+            }
+        }
+    }
+
     Dialog(
         onDismissRequest = onClose,
         properties = DialogProperties(
@@ -75,7 +93,7 @@ fun ScanBarcodeDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = when(scanningState) {
+                        text = when (scanningState) {
                             ScanningState.SCAN_PRODUCT -> stringResource(id = R.string.scan_product)
                             ScanningState.SCAN_BIN -> stringResource(id = R.string.scan_bin)
                             else -> stringResource(id = R.string.scan_barcode)
@@ -98,7 +116,7 @@ fun ScanBarcodeDialog(
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = when(scanningState) {
+                        containerColor = when (scanningState) {
                             ScanningState.SCAN_PRODUCT -> MaterialTheme.colorScheme.primaryContainer
                             ScanningState.SCAN_BIN -> MaterialTheme.colorScheme.secondaryContainer
                             else -> MaterialTheme.colorScheme.surfaceVariant
@@ -106,7 +124,7 @@ fun ScanBarcodeDialog(
                     )
                 ) {
                     Text(
-                        text = when(scanningState) {
+                        text = when (scanningState) {
                             ScanningState.SCAN_PRODUCT -> "Сканируйте штрихкод товара"
                             ScanningState.SCAN_BIN -> "Сканируйте штрихкод ячейки"
                             else -> "Отсканируйте штрихкод"
@@ -127,7 +145,13 @@ fun ScanBarcodeDialog(
                 ) {
                     if (isScannerActive) {
                         BarcodeScannerView(
-                            onBarcodeDetected = onBarcodeScanned,
+                            onBarcodeDetected = { barcode ->
+                                if (!hasProcessedBarcode) {
+                                    hasProcessedBarcode = true
+                                    onScannerActiveChange(false) // Отключаем сканер
+                                    onBarcodeScanned(barcode)
+                                }
+                            },
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
@@ -149,7 +173,11 @@ fun ScanBarcodeDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(0.1f).height(8.dp))
+                Spacer(
+                    modifier = Modifier
+                        .weight(0.1f)
+                        .height(8.dp)
+                )
             }
         }
     }

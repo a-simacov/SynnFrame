@@ -489,8 +489,6 @@ class TaskDetailViewModel(
         }
     }
 
-    // Обработка сканированного штрихкода из диалога сканирования
-// Полностью новый метод для обработки результатов сканирования
     fun processScanDialogResult(barcode: String) {
         Timber.d("Processing scan dialog result: $barcode for step: ${uiState.value.entryStep}")
 
@@ -506,44 +504,45 @@ class TaskDetailViewModel(
         // Обработка в зависимости от текущего шага ввода
         when (uiState.value.entryStep) {
             EntryStep.ENTER_BIN -> {
-                // Только обработка как ячейки, без поиска товара!
-                processBinCodeOnly(barcode)
+                processBinCodeWithDelay(barcode)
             }
             EntryStep.ENTER_PRODUCT -> {
-                // Только обработка как товара
-                processProductBarcodeAndShowQuantityDialog(barcode)
+                processProductBarcodeOnly(barcode)
             }
             else -> {
-                Timber.d("Unexpected entry step for scanning: ${uiState.value.entryStep}")
                 sendEvent(TaskDetailEvent.ShowSnackbar("Неожиданный этап ввода для сканирования"))
             }
         }
     }
 
-    // Метод только для обработки кода ячейки (без поиска товара)
-    private fun processBinCodeOnly(code: String) {
-        Timber.d("Processing bin code only: $code")
+    // Метод для обработки ячейки с задержкой перед сменой состояния
+    private fun processBinCodeWithDelay(barcode: String) {
         launchIO {
             try {
                 // Валидация кода ячейки
-                val isValid = binValidator?.isValidBin(code) ?: true
+                val isValid = binValidator?.isValidBin(barcode) ?: true
 
                 if (isValid) {
                     // Форматирование имени ячейки
-                    val binName = binFormatter?.formatBinName(code) ?: code
+                    val binName = binFormatter?.formatBinName(barcode) ?: barcode
 
-                    // Обновляем состояние с ячейкой и переходим к следующему шагу
+                    // Обновляем состояние с ячейкой но НЕ меняем шаг пока
                     updateState { it.copy(
-                        entryBinCode = code,
+                        entryBinCode = barcode,
                         entryBinName = binName
                     )}
 
-                    // Успешный звук и переход к следующему шагу
+                    // Звуковое подтверждение успеха
                     soundService.playSuccessSound()
-                    moveToNextStep()
+
+                    // Добавляем задержку перед сменой состояния
+                    delay(500) // Задержка в 500 мс
+
+                    // Теперь меняем шаг
+                    updateState { it.copy(entryStep = EntryStep.ENTER_PRODUCT) }
                 } else {
-                    // Ошибка валидации ячейки
-                    sendEvent(TaskDetailEvent.ShowSnackbar("Неверный формат ячейки: $code"))
+                    // Сообщение об ошибке
+                    sendEvent(TaskDetailEvent.ShowSnackbar("Неверный формат ячейки"))
                     soundService.playErrorSound()
                 }
             } catch (e: Exception) {
@@ -554,9 +553,8 @@ class TaskDetailViewModel(
         }
     }
 
-    // Метод для обработки штрихкода товара и немедленного показа диалога ввода количества
-    private fun processProductBarcodeAndShowQuantityDialog(barcode: String) {
-        Timber.d("Processing product barcode and showing quantity dialog: $barcode")
+    // Метод только для обработки штрихкода товара
+    private fun processProductBarcodeOnly(barcode: String) {
         launchIO {
             try {
                 // Поиск товара по штрихкоду
@@ -565,59 +563,27 @@ class TaskDetailViewModel(
                 if (product != null) {
                     Timber.d("Product found: ${product.name}")
 
-                    // Сохраняем товар в состоянии
+                    // Если товар найден - сохраняем его
                     updateState { it.copy(
                         entryProduct = product,
                         entryStep = EntryStep.ENTER_QUANTITY
                     )}
 
-                    // Воспроизводим звук успеха
-                    soundService.playSuccessSound()
-
-                    // Явно показываем диалог ввода количества
+                    // Показываем диалог ввода количества
                     showQuantityInputDialog()
+
+                    // Звуковое подтверждение успеха
+                    soundService.playSuccessSound()
                 } else {
                     Timber.d("Product not found for barcode: $barcode")
                     sendEvent(TaskDetailEvent.ShowSnackbar("Товар не найден по штрихкоду: $barcode"))
                     soundService.playErrorSound()
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error processing product barcode: ${e.message}")
-                sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка обработки штрихкода: ${e.message}"))
+                Timber.e(e, "Error processing product barcode")
+                sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка: ${e.message}"))
                 soundService.playErrorSound()
             }
-        }
-    }
-
-    // Метод для определения типа отсканированного кода
-    private fun determineScannedCodeType(barcode: String) {
-        launchIO {
-            // Сначала проверяем, является ли это ячейкой
-            val isValidBin = binValidator?.isValidBin(barcode) ?: false
-
-            if (isValidBin) {
-                Timber.d("Detected as bin code: $barcode")
-                // Если это ячейка, начинаем ввод с ячейки
-                startFactLineEntry()
-                processBinCode(barcode)
-                return@launchIO
-            }
-
-            // Пробуем найти товар
-            val product = productUseCases.findProductByBarcode(barcode)
-
-            if (product != null) {
-                Timber.d("Detected as product: ${product.name}")
-                // Если это товар, начинаем ввод с товара
-                startFactLineEntry()
-                processProductBarcode(barcode)
-                return@launchIO
-            }
-
-            // Если не определено, выводим сообщение
-            Timber.d("Unknown barcode type: $barcode")
-            sendEvent(TaskDetailEvent.ShowSnackbar("Неизвестный штрихкод: не найден товар или ячейка"))
-            soundService.playErrorSound()
         }
     }
 

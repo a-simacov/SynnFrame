@@ -27,8 +27,13 @@ class BarcodeAnalyzer(
     private val onBarcodeDetected: (String) -> Unit
 ) : ImageAnalysis.Analyzer {
 
+    //todo добавить приватное поле для продолжительного распознавание ШК.
+
     // Флаг, указывающий, обрабатывается ли в данный момент изображение
     private var isAnalyzing = false
+
+    // Флаг, указывающий, что штрихкод уже был распознан
+    private var isBarcodeDetected = false
 
     // Настройка формата штрихкодов для распознавания
     private val formatReader = MultiFormatReader().apply {
@@ -57,7 +62,7 @@ class BarcodeAnalyzer(
     @SuppressLint("UnsafeOptInUsageError")
     override fun analyze(imageProxy: ImageProxy) {
         // Если уже идет анализ, пропускаем
-        if (isAnalyzing) {
+        if (isAnalyzing || isBarcodeDetected) {
             imageProxy.close()
             return
         }
@@ -97,6 +102,7 @@ class BarcodeAnalyzer(
                 val result = tryDecodeWithOrientation(imageData, width, height, rotationDegrees, hints)
                 if (result != null) {
                     Timber.d("Barcode detected: ${result.text}")
+                    isBarcodeDetected = true
                     onBarcodeDetected(result.text)
                     return
                 }
@@ -119,6 +125,10 @@ class BarcodeAnalyzer(
             isAnalyzing = false
             imageProxy.close()
         }
+    }
+
+    fun reset() {
+        isBarcodeDetected = false
     }
 
     // Функция для попытки декодирования с учетом ориентации
