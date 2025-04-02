@@ -24,4 +24,10 @@ sealed class TaskDetailEvent {
     data object ShowDeleteConfirmation : TaskDetailEvent()
 
     data object HideDeleteConfirmation : TaskDetailEvent()
+
+    data object ShowProductSelectionDialog : TaskDetailEvent()
+
+    data object HideProductSelectionDialog : TaskDetailEvent()
+
+    data class UpdateProductFilter(val filter: String) : TaskDetailEvent()
 }

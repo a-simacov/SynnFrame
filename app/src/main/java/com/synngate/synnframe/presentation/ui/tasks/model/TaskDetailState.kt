@@ -54,7 +54,13 @@ data class TaskDetailState(
 
     // Флаг для сохранения контекста при навигации
     val pendingProductSelection: Boolean = false,     // Ожидается выбор товара
-    val pendingReturnStep: EntryStep? = null
+    val pendingReturnStep: EntryStep? = null,
+
+    val isProductSelectionDialogVisible: Boolean = false,  // Флаг отображения диалога
+    val productSelectionFilter: String = "",               // Текущий фильтр поиска товаров
+    val filteredProducts: List<Product> = emptyList(),     // Отфильтрованный список товаров
+    val isProductsLoading: Boolean = false,                // Флаг загрузки списка товаров
+    val planProductIds: Set<String>? = null
 )
 
 // Четкое перечисление шагов ввода

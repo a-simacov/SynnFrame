@@ -548,4 +548,10 @@
     <string name="enter_product_first">Input product first</string>
     <string name="sync_task_types">Sync task types</string>
     <string name="task_types_downloaded">Task types synced: %d</string>
+    <string name="select_product_from_plan">Choose product from plan</string>
+    <string name="search_by_name_article_barcode">Search by name, article or barcode</string>
+    <string name="search_product_hint">Input name, article or barcode</string>
+    <string name="no_products_found">No products found</string>
+    <string name="filtering_by_plan">Only planned products are shown</string>
+    <string name="article_fmt">Article: %s</string>
 </resources>

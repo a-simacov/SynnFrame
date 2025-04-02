@@ -46,6 +46,7 @@ import com.synngate.synnframe.domain.entity.CreationPlace
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
+import com.synngate.synnframe.presentation.common.dialog.ProductSelectionDialog
 import com.synngate.synnframe.presentation.common.inputs.BarcodeTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.ErrorScreenContent
@@ -117,6 +118,14 @@ fun TaskDetailScreen(
                 is TaskDetailEvent.HideDeleteConfirmation -> {
                     showDeleteDialog = false
                 }
+
+                TaskDetailEvent.HideProductSelectionDialog -> { }
+                TaskDetailEvent.ShowProductSelectionDialog -> {
+
+                }
+                is TaskDetailEvent.UpdateProductFilter -> {
+
+                }
             }
         }
     }
@@ -142,6 +151,25 @@ fun TaskDetailScreen(
                 viewModel.applyQuantityChange(factLine, additionalQuantity)
             },
             onDismiss = { viewModel.closeDialog() }
+        )
+    }
+
+    if (state.isProductSelectionDialogVisible) {
+        ProductSelectionDialog(
+            products = state.filteredProducts,
+            onProductSelected = { product ->
+                viewModel.handleSelectedProduct(product)
+                viewModel.hideProductSelectionDialog()
+            },
+            onDismiss = { viewModel.hideProductSelectionDialog() },
+            initialFilter = state.productSelectionFilter,
+            isLoading = state.isProductsLoading,
+            title = when {
+                state.planProductIds != null -> stringResource(id = R.string.select_product_from_plan)
+                else -> stringResource(id = R.string.select_product)
+            },
+            planProductIds = state.planProductIds,
+            onFilterChanged = { viewModel.updateProductFilter(it) }
         )
     }
 
