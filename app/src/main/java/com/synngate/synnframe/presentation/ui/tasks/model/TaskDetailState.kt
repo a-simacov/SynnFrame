@@ -13,32 +13,40 @@ data class TaskLineItem(
 )
 
 data class TaskDetailState(
-    // Основные данные задания
-    val taskId: String = "",
-    val task: Task? = null,
-    val taskLines: List<TaskLineItem> = emptyList(),
+    // ОСНОВНЫЕ ДАННЫЕ ЗАДАНИЯ
+    val taskId: String = "",                       // ID задания
+    val task: Task? = null,                        // Полные данные задания
+    val taskLines: List<TaskLineItem> = emptyList(), // Комбинированные строки плана и факта
 
-    // Данные для ввода
-    val searchQuery: String = "",
-    val isLoading: Boolean = false,
-    val isProcessing: Boolean = false,
-    val error: String? = null,
-    val isEditable: Boolean = false,
+    // СОСТОЯНИЯ ЗАГРУЗКИ И ОШИБОК
+    val isLoading: Boolean = false,                // Загрузка данных задания
+    val isProcessing: Boolean = false,             // Выполнение операции
+    val error: String? = null,                     // Сообщение об ошибке
+    val isEditable: Boolean = false,               // Можно ли редактировать задание
 
-    // Диалоги
-    val isScanDialogVisible: Boolean = false,
-    val isFactLineDialogVisible: Boolean = false,
-    val isCompleteConfirmationVisible: Boolean = false,
-    val selectedFactLine: TaskFactLine? = null,
-    val selectedPlanQuantity: Float = 0f,
+    // ПОИСКОВЫЙ ЗАПРОС
+    val searchQuery: String = "",                  // Текущий поисковый запрос в поле ввода
 
-    // Состояние ввода строки факта
-    val isEntryActive: Boolean = false,  // Признак активности ввода строки факта
-    val entryStep: EntryStep = EntryStep.NONE,  // Текущий шаг ввода
-    val entryBinCode: String? = null,    // Введенный код ячейки
-    val entryBinName: String? = null,    // Форматированное имя ячейки
-    val entryProduct: Product? = null,   // Выбранный товар
-    val entryQuantity: Float? = null     // Введенное количество
+    // СОСТОЯНИЕ ПРОЦЕССА ВВОДА СТРОКИ ФАКТА
+    val isEntryActive: Boolean = false,            // Активен ли процесс ввода строки факта
+    val entryStep: EntryStep = EntryStep.NONE,     // Текущий шаг ввода
+
+    // ВРЕМЕННЫЕ ДАННЫЕ СТРОКИ ФАКТА
+    val entryBinCode: String? = null,              // Введенный код ячейки
+    val entryBinName: String? = null,              // Форматированное имя ячейки
+    val entryProduct: Product? = null,             // Выбранный товар
+    val entryQuantity: Float? = null,              // Введенное количество
+
+    // СОСТОЯНИЕ ДИАЛОГА ВВОДА КОЛИЧЕСТВА
+    val isFactLineDialogVisible: Boolean = false,  // Показан ли диалог ввода количества
+    val selectedFactLine: TaskFactLine? = null,     // Выбранная строка факта
+    val selectedPlanQuantity: Float = 0f,          // Плановое количество
+    val factLineDialogState: FactLineDialogState = FactLineDialogState(), // Состояние диалога
+
+    // СОСТОЯНИЕ ДРУГИХ ДИАЛОГОВ
+    val isScanDialogVisible: Boolean = false,      // Показан ли диалог сканирования
+    val isCompleteConfirmationVisible: Boolean = false, // Показан ли диалог подтверждения
+    val scanBarcodeDialogState: ScanBarcodeDialogState = ScanBarcodeDialogState() // Состояние диалога сканирования
 )
 
 // Четкое перечисление шагов ввода

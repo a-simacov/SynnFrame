@@ -11,6 +11,7 @@ import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.tasks.model.EntryStep
+import com.synngate.synnframe.presentation.ui.tasks.model.FactLineDialogState
 import com.synngate.synnframe.presentation.ui.tasks.model.ScanOrder
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailEvent
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailState
@@ -301,10 +302,9 @@ class TaskDetailViewModel(
                 isFactLineDialogVisible = false,
                 isCompleteConfirmationVisible = false,
                 selectedFactLine = null,
+                factLineDialogState = FactLineDialogState()
             )
         }
-
-        sendEvent(TaskDetailEvent.CloseDialog)
     }
 
     fun startFactLineEntry() {
@@ -416,17 +416,14 @@ class TaskDetailViewModel(
             EntryStep.NONE -> EntryStep.NONE
         }
 
-        if (nextStep == EntryStep.ENTER_QUANTITY) {
-            // Для ввода количества открываем специальный диалог
-            showQuantityInputDialog()
-        } else {
-            // Для других шагов просто обновляем состояние
-            updateState { it.copy(entryStep = nextStep) }
+        // Обновляем состояние шага
+        updateState { it.copy(entryStep = nextStep) }
 
-            // Если переходим к завершению, сохраняем строку факта
-            if (nextStep == EntryStep.NONE && canCompleteEntry()) {
-                completeFactLineEntry()
-            }
+        // Если следующий шаг - ввод количества, показываем диалог
+        if (nextStep == EntryStep.ENTER_QUANTITY) {
+            showQuantityInputDialog()
+        } else if (nextStep == EntryStep.NONE && canCompleteEntry()) {
+            completeFactLineEntry()
         }
 
         // Очищаем поле ввода
@@ -438,31 +435,35 @@ class TaskDetailViewModel(
         val state = uiState.value
         val product = state.entryProduct ?: return
 
-        // Находим строку факта или создаем новую
+        // Находим существующую строку факта или создаем новую
         val taskId = state.task?.id ?: return
         val productId = product.id
 
-        val factLine = state.task?.factLines?.find { it.productId == productId }
-            ?: TaskFactLine(
-                id = UUID.randomUUID().toString(),
-                taskId = taskId,
-                productId = productId,
-                quantity = 0f,
-                binCode = state.entryBinCode
-            )
+        // Проверяем, существует ли уже строка факта для этого товара
+        val existingFactLine = state.task?.factLines?.find { it.productId == productId }
 
-        // Находим плановое количество
+        val factLine = existingFactLine ?: TaskFactLine(
+            id = UUID.randomUUID().toString(),
+            taskId = taskId,
+            productId = productId,
+            quantity = 0f,
+            binCode = state.entryBinCode
+        )
+
+        // Находим плановое количество, если есть
         val planLine = state.task?.planLines?.find { it.productId == productId }
         val planQuantity = planLine?.quantity ?: 0f
 
         // Показываем диалог ввода количества
-        updateState {
-            it.copy(
-                selectedFactLine = factLine,
-                isFactLineDialogVisible = true,
-                selectedPlanQuantity = planQuantity
-            )
-        }
+        updateState { it.copy(
+            selectedFactLine = factLine,
+            isFactLineDialogVisible = true,
+            factLineDialogState = FactLineDialogState(
+                additionalQuantity = "",
+                isError = false
+            ),
+            selectedPlanQuantity = planQuantity
+        )}
     }
 
     // Проверка возможности завершения ввода
@@ -475,25 +476,46 @@ class TaskDetailViewModel(
     private fun completeFactLineEntry() {
         val state = uiState.value
 
-        if (!canCompleteEntry()) return
+        if (!canCompleteEntry()) {
+            Timber.d("Cannot complete entry: Product or quantity is missing")
+            return
+        }
 
         launchIO {
-            val product = state.entryProduct!!
-            val quantity = state.entryQuantity!!
-
-            val taskId = state.task?.id ?: return@launchIO
-
-            val factLine = TaskFactLine(
-                id = UUID.randomUUID().toString(),
-                taskId = taskId,
-                productId = product.id,
-                quantity = quantity,
-                binCode = state.entryBinCode
-            )
+            updateState { it.copy(isProcessing = true) }
 
             try {
+                val product = state.entryProduct!!
+                val quantity = state.entryQuantity!!
+                val binCode = state.entryBinCode
+
+                val taskId = state.task?.id ?: return@launchIO
+
+                // Проверяем, существует ли уже строка факта
+                val existingFactLine = state.task.factLines.find { it.productId == product.id }
+
+                val factLine = if (existingFactLine != null) {
+                    // Обновляем существующую строку
+                    existingFactLine.copy(
+                        quantity = quantity,
+                        binCode = binCode ?: existingFactLine.binCode
+                    )
+                } else {
+                    // Создаем новую строку
+                    TaskFactLine(
+                        id = UUID.randomUUID().toString(),
+                        taskId = taskId,
+                        productId = product.id,
+                        quantity = quantity,
+                        binCode = binCode
+                    )
+                }
+
                 // Сохраняем строку факта
                 taskUseCases.updateTaskFactLine(factLine)
+
+                // Воспроизводим звук успеха
+                soundService.playSuccessSound()
 
                 // Обновляем задание
                 loadTask()
@@ -505,12 +527,15 @@ class TaskDetailViewModel(
                     entryBinCode = null,
                     entryBinName = null,
                     entryProduct = null,
-                    entryQuantity = null
+                    entryQuantity = null,
+                    isProcessing = false
                 )}
 
                 // Уведомляем о успешном сохранении
                 sendEvent(TaskDetailEvent.UpdateSuccess)
             } catch (e: Exception) {
+                Timber.e(e, "Error saving fact line: ${e.message}")
+                updateState { it.copy(isProcessing = false) }
                 sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка сохранения: ${e.message}"))
             }
         }
@@ -560,4 +585,62 @@ class TaskDetailViewModel(
         moveToNextStep()
     }
 
+    // Обработчик изменения значения в поле ввода количества
+    fun onQuantityChange(value: String) {
+        updateState { it.copy(
+            factLineDialogState = it.factLineDialogState.copy(
+                additionalQuantity = value,
+                isError = false
+            )
+        )}
+    }
+
+    // Обработчик ошибки в поле ввода количества
+    fun onQuantityError(isError: Boolean) {
+        updateState { it.copy(
+            factLineDialogState = it.factLineDialogState.copy(
+                isError = isError
+            )
+        )}
+    }
+
+    // Обработчик применения нового количества
+    fun applyQuantityChange(factLine: TaskFactLine, additionalQuantity: String) {
+        try {
+            val addValue = additionalQuantity.toFloatOrNull() ?: 0f
+            if (addValue == 0f) {
+                updateState { it.copy(
+                    factLineDialogState = it.factLineDialogState.copy(
+                        isError = true
+                    )
+                )}
+                return
+            }
+
+            // Рассчитываем новое количество
+            val updatedQuantity = if (factLine.quantity > 0) {
+                factLine.quantity + addValue
+            } else {
+                addValue
+            }
+
+            // Обновляем временное значение количества
+            updateState { it.copy(
+                entryQuantity = updatedQuantity
+            )}
+
+            // Закрываем диалог
+            closeDialog()
+
+            // Сохраняем строку факта
+            completeFactLineEntry()
+        } catch (e: Exception) {
+            Timber.e(e, "Error applying quantity change")
+            updateState { it.copy(
+                factLineDialogState = it.factLineDialogState.copy(
+                    isError = true
+                )
+            )}
+        }
+    }
 }

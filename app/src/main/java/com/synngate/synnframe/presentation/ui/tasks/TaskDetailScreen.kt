@@ -51,6 +51,7 @@ import com.synngate.synnframe.presentation.common.inputs.BarcodeTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.ErrorScreenContent
 import com.synngate.synnframe.presentation.common.status.StatusType
+import com.synngate.synnframe.presentation.ui.tasks.components.TaskFactLineDialog
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskLineItemRow
 import com.synngate.synnframe.presentation.ui.tasks.components.TaskNoPlannedItemRow
 import com.synngate.synnframe.presentation.ui.tasks.model.EntryStep
@@ -140,6 +141,21 @@ fun TaskDetailScreen(
             title = stringResource(id = R.string.complete_task),
             message = stringResource(id = R.string.complete_task_confirmation),
             onConfirm = { viewModel.completeTask() },
+            onDismiss = { viewModel.closeDialog() }
+        )
+    }
+
+    if (state.isFactLineDialogVisible && state.selectedFactLine != null) {
+        TaskFactLineDialog(
+            factLine = state.selectedFactLine!!,
+            product = state.entryProduct, // Используем текущий продукт
+            planQuantity = state.selectedPlanQuantity,
+            dialogState = state.factLineDialogState,
+            onQuantityChange = { viewModel.onQuantityChange(it) },
+            onError = { viewModel.onQuantityError(it) },
+            onApply = { factLine, additionalQuantity ->
+                viewModel.applyQuantityChange(factLine, additionalQuantity)
+            },
             onDismiss = { viewModel.closeDialog() }
         )
     }
