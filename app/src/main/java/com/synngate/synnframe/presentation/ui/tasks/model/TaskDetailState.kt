@@ -46,6 +46,7 @@ data class TaskDetailState(
     // СОСТОЯНИЕ ДРУГИХ ДИАЛОГОВ
     val isScanDialogVisible: Boolean = false,      // Показан ли диалог сканирования
     val isCompleteConfirmationVisible: Boolean = false, // Показан ли диалог подтверждения
+    val isDeleteConfirmationVisible: Boolean = false, // Показан ли диалог подтверждения удаления
     val scanBarcodeDialogState: ScanBarcodeDialogState = ScanBarcodeDialogState(), // Состояние диалога сканирования
 
     // Порядок ввода строки факта

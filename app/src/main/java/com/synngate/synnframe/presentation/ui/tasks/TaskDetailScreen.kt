@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -196,6 +197,16 @@ fun TaskDetailScreen(
         )
     }
 
+    // Диалог подтверждения удаления задания
+    if (state.isDeleteConfirmationVisible) {
+        ConfirmationDialog(
+            title = stringResource(id = R.string.delete_task_title),
+            message = stringResource(id = R.string.delete_task_message),
+            onConfirm = { viewModel.deleteTask() },
+            onDismiss = { viewModel.hideDeleteConfirmation() }
+        )
+    }
+
     // Определение заголовка экрана и подзаголовка
     val screenTitle = task?.getDisplayHeader() ?: ""
 
@@ -222,6 +233,18 @@ fun TaskDetailScreen(
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {
             Pair(it, StatusType.ERROR)
+        },
+        actions = {
+            if (task?.canDelete() == true) {
+                IconButton(
+                    onClick = { viewModel.showDeleteConfirmation() }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = stringResource(id = R.string.delete_task)
+                    )
+                }
+            }
         },
         bottomBar = {
             // Кнопки управления заданием
@@ -250,8 +273,16 @@ fun TaskDetailScreen(
                     }
 
                     TaskStatus.COMPLETED -> {
-                        if (state.task?.canDelete() == true) {
-                        } else
+                        if (task.canDelete()) {
+                            // Кнопка "Выгрузить повторно"
+                            Button(
+                                onClick = { viewModel.reuploadTask() },
+                                enabled = !state.isProcessing,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(stringResource(id = R.string.reupload_task))
+                            }
+                        } else {
                             // Кнопка "Выгрузить"
                             Button(
                                 onClick = { viewModel.uploadTask() },
@@ -264,7 +295,9 @@ fun TaskDetailScreen(
                                     else
                                         stringResource(id = R.string.upload_task)
                                 )
+
                             }
+                        }
                     }
                 }
             }

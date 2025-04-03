@@ -241,8 +241,14 @@ class TaskDetailViewModel(
         }
     }
 
-    fun uploadTask() {
+    fun uploadTask(forceReupload: Boolean = false) {
         val task = uiState.value.task ?: return
+
+        // Если задание уже выгружено и не требуется принудительная выгрузка, выходим
+        if (task.uploaded && !forceReupload) {
+            sendEvent(TaskDetailEvent.ShowSnackbar("Задание уже выгружено"))
+            return
+        }
 
         launchIO {
             updateState { it.copy(isProcessing = true) }
@@ -252,7 +258,11 @@ class TaskDetailViewModel(
 
                 if (result.isSuccess) {
                     loadTask()
-                    sendEvent(TaskDetailEvent.ShowSnackbar("Задание успешно выгружено"))
+                    val message = if (forceReupload)
+                        "Задание успешно повторно выгружено"
+                    else
+                        "Задание успешно выгружено"
+                    sendEvent(TaskDetailEvent.ShowSnackbar(message))
                 } else {
                     val error = result.exceptionOrNull()
                     val errorMsg = error?.message ?: "Неизвестная ошибка"
@@ -423,6 +433,7 @@ class TaskDetailViewModel(
                 isScanDialogVisible = false,
                 isFactLineDialogVisible = false,
                 isCompleteConfirmationVisible = false,
+                isDeleteConfirmationVisible = false,
                 selectedFactLine = null,
                 factLineDialogState = FactLineDialogState()
             )
@@ -1002,5 +1013,93 @@ class TaskDetailViewModel(
             isScanDialogVisible = false,
             isFactLineDialogVisible = false
         )}
+    }
+
+    // Добавляем новые методы в TaskDetailViewModel
+
+    // Показать диалог подтверждения удаления
+    fun showDeleteConfirmation() {
+        updateState { it.copy(isDeleteConfirmationVisible = true) }
+        sendEvent(TaskDetailEvent.ShowDeleteConfirmation)
+    }
+
+    // Скрыть диалог подтверждения удаления
+    fun hideDeleteConfirmation() {
+        updateState { it.copy(isDeleteConfirmationVisible = false) }
+        sendEvent(TaskDetailEvent.HideDeleteConfirmation)
+    }
+
+    // Удаление задания
+    fun deleteTask() {
+        val task = uiState.value.task ?: return
+
+        launchIO {
+            updateState { it.copy(isProcessing = true) }
+
+            try {
+                val result = taskUseCases.deleteTask(task.id)
+
+                if (result.isSuccess) {
+                    // Закрываем диалог подтверждения
+                    updateState { it.copy(isDeleteConfirmationVisible = false) }
+
+                    // Показываем сообщение об успешном удалении
+                    sendEvent(TaskDetailEvent.ShowSnackbar("Задание успешно удалено"))
+
+                    // Возвращаемся к списку заданий
+                    sendEvent(TaskDetailEvent.NavigateBack)
+                } else {
+                    val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                    sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка удаления: $error"))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error deleting task")
+                sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка удаления: ${e.message}"))
+            } finally {
+                updateState { it.copy(isProcessing = false) }
+            }
+        }
+    }
+
+    // Метод для повторной выгрузки задания
+    fun reuploadTask() {
+        val task = uiState.value.task ?: return
+
+        launchIO {
+            updateState { it.copy(isProcessing = true) }
+
+            try {
+                // Используем тот же метод uploadTask, который используется для обычной выгрузки
+                val result = taskUseCases.uploadTask(task.id)
+
+                if (result.isSuccess) {
+                    loadTask() // Обновляем данные задания
+                    sendEvent(TaskDetailEvent.ShowSnackbar("Задание успешно выгружено повторно"))
+                } else {
+                    val error = result.exceptionOrNull()
+                    val errorMsg = error?.message ?: "Неизвестная ошибка"
+
+                    // Логирование ошибки
+                    Timber.e(error, "Detailed error during task reupload")
+
+                    // Формируем понятное пользователю сообщение об ошибке
+                    val userErrorMsg = when {
+                        errorMsg.contains("Connection refused") -> "Ошибка соединения с сервером"
+                        errorMsg.contains("timeout") -> "Превышено время ожидания ответа от сервера"
+                        errorMsg.contains("404") -> "Сервер не нашел указанный ресурс (404)"
+                        errorMsg.contains("401") || errorMsg.contains("403") -> "Ошибка авторизации (401/403)"
+                        errorMsg.contains("500") -> "Внутренняя ошибка сервера (500)"
+                        else -> "Ошибка выгрузки: $errorMsg"
+                    }
+
+                    sendEvent(TaskDetailEvent.ShowSnackbar(userErrorMsg))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error reuploading task")
+                sendEvent(TaskDetailEvent.ShowSnackbar("Ошибка повторной выгрузки: ${e.message}"))
+            } finally {
+                updateState { it.copy(isProcessing = false) }
+            }
+        }
     }
 }
