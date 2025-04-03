@@ -13,6 +13,7 @@ import com.synngate.synnframe.data.sync.SyncHistoryRecord
 import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
 import com.synngate.synnframe.domain.repository.TaskRepository
+import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.WebServerController
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
@@ -21,6 +22,8 @@ import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.presentation.service.base.BaseForegroundService
 import com.synngate.synnframe.presentation.service.base.launchSafely
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
+import com.synngate.synnframe.presentation.service.webserver.controller.WebServerControllerFactory
+import com.synngate.synnframe.presentation.service.webserver.util.respondError
 import com.synngate.synnframe.presentation.ui.MainActivity
 import com.synngate.synnframe.util.network.NetworkMonitor
 import io.ktor.serialization.kotlinx.json.json
@@ -81,6 +84,10 @@ class WebServerService : BaseForegroundService() {
         (application as SynnFrameApplication).appContainer.productRepository
     }
 
+    private val userRepository: UserRepository by lazy {
+        (application as SynnFrameApplication).appContainer.userRepository
+    }
+
     private val serverRepository: ServerRepository by lazy {
         (application as SynnFrameApplication).appContainer.serverRepository
     }
@@ -131,6 +138,26 @@ class WebServerService : BaseForegroundService() {
 
     override val serviceName: String = "WebServerService"
     override val notificationId: Int = NotificationChannelManager.NOTIFICATION_ID_WEB_SERVER
+
+    private val controllerFactory by lazy {
+        WebServerControllerFactory(
+            loggingService,
+            userRepository,
+            taskRepository,
+            productRepository,
+            taskTypeUseCases,
+            syncIntegrator,
+            // Передаем метод saveSyncHistoryRecord как лямбду
+            saveSyncHistoryRecord = { tasksDownloaded, productsDownloaded, taskTypesDownloaded, duration ->
+                saveSyncHistoryRecord(
+                    tasksDownloaded = tasksDownloaded,
+                    productsDownloaded = productsDownloaded,
+                    taskTypesDownloaded = taskTypesDownloaded,
+                    duration = duration
+                )
+            }
+        )
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -227,6 +254,12 @@ class WebServerService : BaseForegroundService() {
      * Конфигурация сервера Ktor
      */
     private fun Application.configureServer() {
+        // Инициализируем контроллеры
+        val echoController = controllerFactory.createEchoController()
+        val productsController = controllerFactory.createProductsController()
+        val tasksController = controllerFactory.createTasksController()
+        val taskTypesController = controllerFactory.createTaskTypesController()
+
         // Настройка плагинов
         install(ContentNegotiation) {
             json()
@@ -237,10 +270,7 @@ class WebServerService : BaseForegroundService() {
         install(StatusPages) {
             exception<Throwable> { call, cause ->
                 Timber.e(cause, "Error handling request")
-                call.respond(
-                    io.ktor.http.HttpStatusCode.InternalServerError,
-                    mapOf("error" to (cause.message ?: "Internal Server Error"))
-                )
+                call.respondError(cause.message ?: "Internal Server Error")
             }
         }
 
@@ -249,101 +279,48 @@ class WebServerService : BaseForegroundService() {
             basic(WebServerConstants.AUTH_SCHEME) {
                 realm = WebServerConstants.AUTH_REALM
                 validate { credentials ->
-                    // Используем провайдер аутентификации для проверки учетных данных
                     if (authProvider.validateCredentials(credentials.name, credentials.password)) {
                         UserIdPrincipal(credentials.name)
                     } else {
-                        Timber.w("Authentication failed for user: ${credentials.name}")
                         null
                     }
                 }
             }
         }
 
-        // Настройка маршрутизации
         routing {
-            // Публичные маршруты (без аутентификации)
+            // Публичные маршруты
             route(WebServerConstants.ROUTE_ECHO) {
                 get {
                     val startTime = System.currentTimeMillis()
-
-                    // Подготовка ответа
-                    val response = mapOf(
-                        "status" to "ok",
-                        "timestamp" to System.currentTimeMillis(),
-                        "serverVersion" to "1.0.0"
-                    )
-
-                    call.respond(response)
-
-                    // Логирование запроса
-                    val duration = System.currentTimeMillis() - startTime
-                    logRequest(call, duration)
+                    echoController.handleEcho(call)
+                    logRequest(call, System.currentTimeMillis() - startTime)
                 }
             }
 
-            // Защищенные маршруты (требуют аутентификации)
+            // Защищенные маршруты
             authenticate(WebServerConstants.AUTH_SCHEME) {
                 route(WebServerConstants.ROUTE_TASKS) {
                     post {
                         val startTime = System.currentTimeMillis()
-
-                        try {
-                            // Обработка полученных данных о заданиях с использованием DTO
-                            processTasks(call)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error processing tasks data")
-                            call.respond(
-                                io.ktor.http.HttpStatusCode.BadRequest,
-                                mapOf("error" to "Invalid tasks data: ${e.message}")
-                            )
-                        }
-
-                        // Логирование запроса
-                        val duration = System.currentTimeMillis() - startTime
-                        logRequest(call, duration)
+                        tasksController.handleTasks(call)
+                        logRequest(call, System.currentTimeMillis() - startTime)
                     }
                 }
 
                 route(WebServerConstants.ROUTE_PRODUCTS) {
                     post {
                         val startTime = System.currentTimeMillis()
-
-                        try {
-                            // Обработка полученных данных о товарах с использованием DTO
-                            processProducts(call)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error processing products data")
-                            call.respond(
-                                io.ktor.http.HttpStatusCode.BadRequest,
-                                mapOf("error" to "Invalid products data: ${e.message}")
-                            )
-                        }
-
-                        // Логирование запроса
-                        val duration = System.currentTimeMillis() - startTime
-                        logRequest(call, duration)
+                        productsController.handleProducts(call)
+                        logRequest(call, System.currentTimeMillis() - startTime)
                     }
                 }
 
                 route(WebServerConstants.ROUTE_TASK_TYPES) {
                     post {
                         val startTime = System.currentTimeMillis()
-
-                        try {
-                            // Обработка полученных данных о типах заданий
-                            processTaskTypes(call)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error processing task types data")
-                            call.respond(
-                                io.ktor.http.HttpStatusCode.BadRequest,
-                                mapOf("error" to "Invalid task types data: ${e.message}")
-                            )
-                        }
-
-                        // Логирование запроса
-                        val duration = System.currentTimeMillis() - startTime
-                        logRequest(call, duration)
+                        taskTypesController.handleTaskTypes(call)
+                        logRequest(call, System.currentTimeMillis() - startTime)
                     }
                 }
             }
