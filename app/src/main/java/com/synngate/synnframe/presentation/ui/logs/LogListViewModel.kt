@@ -1,15 +1,18 @@
 package com.synngate.synnframe.presentation.ui.logs
 
+import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
-import com.synngate.synnframe.presentation.common.dialog.DateFilterPreset
-import com.synngate.synnframe.presentation.ui.logs.model.LogListEvent
 import com.synngate.synnframe.presentation.ui.logs.model.LogListState
+import com.synngate.synnframe.presentation.ui.logs.model.LogListStateEvent
+import com.synngate.synnframe.presentation.ui.logs.model.LogListUiEvent
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -17,13 +20,109 @@ import java.time.format.DateTimeFormatter
 class LogListViewModel(
     private val logUseCases: LogUseCases,
     private val loggingService: LoggingService,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-) : BaseViewModel<LogListState, LogListEvent>(LogListState(), ioDispatcher) {
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+) : BaseViewModel<LogListState, LogListUiEvent>(LogListState(), ioDispatcher) {
 
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")
 
+    private val stateEvents = MutableSharedFlow<LogListStateEvent>()
+
     init {
         loadLogs()
+
+        // Обрабатываем события состояния внутри ViewModel
+        viewModelScope.launch {
+            stateEvents.collect { event ->
+                handleStateEvent(event)
+            }
+        }
+    }
+
+    // Обработчик событий состояния
+    private fun handleStateEvent(event: LogListStateEvent) {
+        when (event) {
+            is LogListStateEvent.ShowDeleteAllConfirmation -> {
+                updateState { it.copy(isDeleteAllConfirmationVisible = true) }
+            }
+
+            is LogListStateEvent.HideDeleteAllConfirmation -> {
+                updateState { it.copy(isDeleteAllConfirmationVisible = false) }
+            }
+
+            is LogListStateEvent.ShowCleanupDialog -> {
+                updateState { it.copy(isCleanupDialogVisible = true) }
+            }
+
+            is LogListStateEvent.HideCleanupDialog -> {
+                updateState { it.copy(isCleanupDialogVisible = false) }
+            }
+
+            is LogListStateEvent.ShowDateFilterDialog -> {
+                updateState { it.copy(isDateFilterDialogVisible = true) }
+            }
+
+            is LogListStateEvent.HideDateFilterDialog -> {
+                updateState { it.copy(isDateFilterDialogVisible = false) }
+            }
+
+            is LogListStateEvent.CleanupOldLogs -> {
+                cleanupOldLogs(event.days)
+            }
+
+            is LogListStateEvent.DeleteAllLogs -> {
+                deleteAllLogs()
+            }
+        }
+    }
+
+    fun showDeleteAllConfirmation() {
+        viewModelScope.launch {
+            stateEvents.emit(LogListStateEvent.ShowDeleteAllConfirmation)
+        }
+    }
+
+    fun hideDeleteAllConfirmation() {
+        viewModelScope.launch {
+            stateEvents.emit(LogListStateEvent.HideDeleteAllConfirmation)
+        }
+    }
+
+    fun showCleanupDialog() {
+        viewModelScope.launch {
+            stateEvents.emit(LogListStateEvent.ShowCleanupDialog)
+        }
+    }
+
+    fun hideCleanupDialog() {
+        viewModelScope.launch {
+            stateEvents.emit(LogListStateEvent.HideCleanupDialog)
+        }
+    }
+
+    fun showDateFilterDialog() {
+        viewModelScope.launch {
+            stateEvents.emit(LogListStateEvent.ShowDateFilterDialog)
+        }
+    }
+
+    fun hideDateFilterDialog() {
+        viewModelScope.launch {
+            stateEvents.emit(LogListStateEvent.HideDateFilterDialog)
+        }
+    }
+
+    fun onCleanupConfirmed(days: Int) {
+        viewModelScope.launch {
+            stateEvents.emit(LogListStateEvent.HideCleanupDialog)
+            stateEvents.emit(LogListStateEvent.CleanupOldLogs(days))
+        }
+    }
+
+    fun onDeleteAllConfirmed() {
+        viewModelScope.launch {
+            stateEvents.emit(LogListStateEvent.HideDeleteAllConfirmation)
+            stateEvents.emit(LogListStateEvent.DeleteAllLogs)
+        }
     }
 
     fun loadLogs() {
@@ -45,30 +144,36 @@ class LogListViewModel(
                     dateToFilter = dateTo
                 ).catch { e ->
                     Timber.e(e, "Error loading logs")
-                    updateState { it.copy(
-                        isLoading = false,
-                        error = "Error loading logs: ${e.message}"
-                    ) }
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            error = "Error loading logs: ${e.message}"
+                        )
+                    }
                 }.collect { logs ->
-                    updateState { it.copy(
-                        logs = logs,
-                        isLoading = false,
-                        error = null
-                    ) }
+                    updateState {
+                        it.copy(
+                            logs = logs,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Exception during logs loading")
-                updateState { it.copy(
-                    isLoading = false,
-                    error = "Error loading logs: ${e.message}"
-                ) }
+                updateState {
+                    it.copy(
+                        isLoading = false,
+                        error = "Error loading logs: ${e.message}"
+                    )
+                }
 
                 loggingService.logError("Error loading logs: ${e.message}")
             }
         }
     }
 
-    fun cleanupOldLogs(daysToKeep: Int) {
+    private fun cleanupOldLogs(daysToKeep: Int) {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
 
@@ -78,11 +183,9 @@ class LogListViewModel(
                     val deletedCount = result.getOrNull() ?: 0
                     updateState { it.copy(isLoading = false, error = null) }
 
-                    // Перезагружаем логи после очистки
                     loadLogs()
 
-                    // Показываем сообщение об успешной очистке
-                    sendEvent(LogListEvent.ShowSnackbar("Удалено $deletedCount логов старше $daysToKeep дней"))
+                    sendEvent(LogListUiEvent.ShowSnackbar("Удалено $deletedCount логов старше $daysToKeep дней"))
                 } else {
                     val exception = result.exceptionOrNull()
                     updateState {
@@ -106,10 +209,6 @@ class LogListViewModel(
         }
     }
 
-    fun showCleanupDialog() {
-        sendEvent(LogListEvent.ShowCleanupDialog)
-    }
-
     fun updateMessageFilter(filter: String) {
         updateState { it.copy(messageFilter = filter) }
         loadLogs()
@@ -125,89 +224,59 @@ class LogListViewModel(
             it.copy(
                 dateFromFilter = dateFrom,
                 dateToFilter = dateTo,
-                activeDateFilterPreset = null // Сбрасываем предустановленный период
+                activeDateFilterPreset = null
             )
         }
-        loadLogs()
-    }
-
-    fun applyDateFilterPreset(preset: DateFilterPreset) {
-        val (startDate, endDate) = preset.getDates()
-        updateState {
-            it.copy(
-                dateFromFilter = startDate,
-                dateToFilter = endDate,
-                activeDateFilterPreset = preset,
-                isDateFilterDialogVisible = false
-            )
-        }
-        loadLogs()
-    }
-
-    fun resetFilters() {
-        updateState { it.copy(
-            messageFilter = "",
-            selectedTypes = emptySet(),
-            dateFromFilter = null,
-            dateToFilter = null,
-            activeDateFilterPreset = null
-        ) }
         loadLogs()
     }
 
     fun clearDateFilter() {
-        updateState { it.copy(
-            dateFromFilter = null,
-            dateToFilter = null,
-            activeDateFilterPreset = null
-        ) }
+        updateState {
+            it.copy(
+                dateFromFilter = null,
+                dateToFilter = null,
+                activeDateFilterPreset = null
+            )
+        }
         loadLogs()
     }
 
-    fun showDateFilterDialog() {
-        sendEvent(LogListEvent.ShowDateFilterDialog)
-        updateState { it.copy(isDateFilterDialogVisible = true) }
-    }
-
-    fun hideDateFilterDialog() {
-        sendEvent(LogListEvent.HideDateFilterDialog)
-        updateState { it.copy(isDateFilterDialogVisible = false) }
-    }
-
-    fun showDeleteAllConfirmation() {
-        sendEvent(LogListEvent.ShowDeleteAllConfirmation)
-    }
-
-    fun deleteAllLogs() {
+    private fun deleteAllLogs() {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
                 val result = logUseCases.deleteAllLogs()
                 if (result.isSuccess) {
-                    updateState { it.copy(
-                        logs = emptyList(),
-                        isLoading = false,
-                        error = null
-                    ) }
+                    updateState {
+                        it.copy(
+                            logs = emptyList(),
+                            isLoading = false,
+                            error = null
+                        )
+                    }
 
                     loggingService.logInfo("Все логи были удалены")
-                    sendEvent(LogListEvent.ShowSnackbar("Все логи успешно удалены"))
+                    sendEvent(LogListUiEvent.ShowSnackbar("Все логи успешно удалены"))
                 } else {
                     val exception = result.exceptionOrNull()
-                    updateState { it.copy(
-                        isLoading = false,
-                        error = "Ошибка удаления логов: ${exception?.message}"
-                    ) }
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            error = "Ошибка удаления логов: ${exception?.message}"
+                        )
+                    }
 
                     loggingService.logError("Ошибка удаления логов: ${exception?.message}")
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Exception during logs deletion")
-                updateState { it.copy(
-                    isLoading = false,
-                    error = "Ошибка удаления логов: ${e.message}"
-                ) }
+                updateState {
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка удаления логов: ${e.message}"
+                    )
+                }
 
                 loggingService.logError("Ошибка удаления логов: ${e.message}")
             }
@@ -215,7 +284,7 @@ class LogListViewModel(
     }
 
     fun navigateToLogDetail(logId: Int) {
-        sendEvent(LogListEvent.NavigateToLogDetail(logId))
+        sendEvent(LogListUiEvent.NavigateToLogDetail(logId))
     }
 
     fun formatLogType(type: LogType): String {
@@ -228,15 +297,5 @@ class LogListViewModel(
 
     fun formatLogDate(dateTime: LocalDateTime): String {
         return dateTime.format(dateFormatter)
-    }
-
-    fun formatDateFilterPeriod(): String {
-        val fromDate = uiState.value.dateFromFilter
-        val toDate = uiState.value.dateToFilter
-
-        if (fromDate == null || toDate == null) return ""
-
-        val formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
-        return "${fromDate.format(formatter)} - ${toDate.format(formatter)}"
     }
 }

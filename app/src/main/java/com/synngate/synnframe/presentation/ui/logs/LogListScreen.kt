@@ -48,7 +48,7 @@ import com.synngate.synnframe.presentation.common.list.LogListItem
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.status.StatusType
-import com.synngate.synnframe.presentation.ui.logs.model.LogListEvent
+import com.synngate.synnframe.presentation.ui.logs.model.LogListUiEvent
 
 @Composable
 fun LogListScreen(
@@ -58,77 +58,49 @@ fun LogListScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
-
     val snackbarHostState = remember { SnackbarHostState() }
-    var showDeleteAllConfirmation by remember { mutableStateOf(false) }
-    var showCleanupDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is LogListEvent.ShowSnackbar -> {
+                is LogListUiEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(
                         message = event.message,
                         duration = SnackbarDuration.Short
                     )
                 }
-                is LogListEvent.NavigateToLogDetail -> {
+                is LogListUiEvent.NavigateToLogDetail -> {
                     navigateToLogDetail(event.logId)
-                }
-                is LogListEvent.ShowDeleteAllConfirmation -> {
-                    showDeleteAllConfirmation = true
-                }
-                is LogListEvent.ShowDateFilterDialog -> {
-                    // Обрабатывается через состояние viewModel
-                }
-                is LogListEvent.HideDateFilterDialog -> {
-                    // Обрабатывается через состояние viewModel
-                }
-                is LogListEvent.ShowCleanupDialog -> {
-                    showCleanupDialog = true
                 }
             }
         }
     }
 
-    // Диалог подтверждения удаления всех логов
-    if (showDeleteAllConfirmation) {
+    if (state.isDeleteAllConfirmationVisible) {
         AlertDialog(
-            onDismissRequest = { showDeleteAllConfirmation = false },
+            onDismissRequest = { viewModel.hideDeleteAllConfirmation() },
             title = { Text(stringResource(R.string.delete_all_logs_title)) },
             text = { Text(stringResource(R.string.delete_all_logs_message)) },
             confirmButton = {
-                Button(
-                    onClick = {
-                        showDeleteAllConfirmation = false
-                        viewModel.deleteAllLogs()
-                    }
-                ) {
+                Button(onClick = { viewModel.onDeleteAllConfirmed() }) {
                     Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
-                OutlinedButton(
-                    onClick = { showDeleteAllConfirmation = false }
-                ) {
+                OutlinedButton(onClick = { viewModel.hideDeleteAllConfirmation() }) {
                     Text(stringResource(R.string.cancel))
                 }
             }
         )
     }
 
-    // Диалог очистки старых логов
-    if (showCleanupDialog) {
+    if (state.isCleanupDialogVisible) {
         LogCleanupDialog(
-            onDismiss = { showCleanupDialog = false },
-            onConfirm = { days ->
-                showCleanupDialog = false
-                viewModel.cleanupOldLogs(days)
-            }
+            onDismiss = { viewModel.hideCleanupDialog() },
+            onConfirm = { days -> viewModel.onCleanupConfirmed(days) }
         )
     }
 
-    // Диалог фильтра по дате
     if (state.isDateFilterDialogVisible) {
         DateTimeFilterDialog(
             fromDate = state.dateFromFilter,
@@ -148,35 +120,9 @@ fun LogListScreen(
             Pair(it, StatusType.ERROR)
         },
         actions = {
-            // Кнопка фильтра по дате
-            IconButton(
-                onClick = { viewModel.showDateFilterDialog() }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CalendarMonth,
-                    contentDescription = stringResource(R.string.date_filter)
-                )
-            }
-
-            // Кнопка очистки старых логов
-            IconButton(
-                onClick = { viewModel.showCleanupDialog() }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.History,
-                    contentDescription = stringResource(R.string.cleanup_old_logs)
-                )
-            }
-
-            // Кнопка удаления всех логов
-            IconButton(
-                onClick = { viewModel.showDeleteAllConfirmation() }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.delete_all_logs)
-                )
-            }
+            FilterByDateButton(onClick = { viewModel.showDateFilterDialog() })
+            CleanupLogsButton(onClick = { viewModel.showCleanupDialog() })
+            DeleteAllLogsButton(onClick = { viewModel.showDeleteAllConfirmation() })
         },
         isLoading = state.isLoading
     ) { paddingValues ->
@@ -260,6 +206,42 @@ fun LogListScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DeleteAllLogsButton(onClick: () -> Unit) {
+    IconButton(
+        onClick = { onClick.invoke() }
+    ) {
+        Icon(
+            imageVector = Icons.Default.Delete,
+            contentDescription = stringResource(R.string.delete_all_logs)
+        )
+    }
+}
+
+@Composable
+private fun CleanupLogsButton(onClick: () -> Unit) {
+    IconButton(
+        onClick = { onClick.invoke() }
+    ) {
+        Icon(
+            imageVector = Icons.Default.History,
+            contentDescription = stringResource(R.string.cleanup_old_logs)
+        )
+    }
+}
+
+@Composable
+private fun FilterByDateButton(onClick: () -> Unit) {
+    IconButton(
+        onClick = { onClick.invoke() }
+    ) {
+        Icon(
+            imageVector = Icons.Default.CalendarMonth,
+            contentDescription = stringResource(R.string.date_filter)
+        )
     }
 }
 

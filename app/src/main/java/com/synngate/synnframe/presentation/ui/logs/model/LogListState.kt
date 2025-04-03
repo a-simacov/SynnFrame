@@ -13,8 +13,11 @@ data class LogListState(
     val selectedTypes: Set<LogType> = emptySet(),
     val dateFromFilter: LocalDateTime? = null,
     val dateToFilter: LocalDateTime? = null,
-    val isDateFilterDialogVisible: Boolean = false,
-    val activeDateFilterPreset: DateFilterPreset? = null
+    val activeDateFilterPreset: DateFilterPreset? = null,
+
+    val isDeleteAllConfirmationVisible: Boolean = false,
+    val isCleanupDialogVisible: Boolean = false,
+    val isDateFilterDialogVisible: Boolean = false
 ) {
     val hasActiveFilters: Boolean
         get() = messageFilter.isNotEmpty() || selectedTypes.isNotEmpty() ||
