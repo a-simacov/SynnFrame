@@ -37,7 +37,7 @@ import com.synngate.synnframe.presentation.common.scaffold.ErrorScreenContent
 import com.synngate.synnframe.presentation.common.scaffold.LoadingScreenContent
 import com.synngate.synnframe.presentation.common.status.LogTypeIndicator
 import com.synngate.synnframe.presentation.common.status.StatusType
-import com.synngate.synnframe.presentation.ui.logs.model.LogDetailEvent
+import com.synngate.synnframe.presentation.ui.logs.model.LogDetailUiEvent
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -50,31 +50,24 @@ fun LogDetailScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Обрабатываем события из ViewModel
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is LogDetailEvent.ShowSnackbar -> {
+                is LogDetailUiEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(
                         message = event.message,
                         duration = SnackbarDuration.Short
                     )
                 }
-                is LogDetailEvent.NavigateBack -> {
+
+                is LogDetailUiEvent.NavigateBack -> {
                     navigateBack()
-                }
-                is LogDetailEvent.ShowDeleteConfirmation -> {
-                    // Состояние диалога обновляется в ViewModel
-                }
-                is LogDetailEvent.HideDeleteConfirmation -> {
-                    // Состояние диалога обновляется в ViewModel
                 }
             }
         }
     }
 
-    // Диалог подтверждения удаления
-    if (state.showDeleteConfirmation) {
+    if (state.isDeleteConfirmationVisible) {
         ConfirmationDialog(
             title = stringResource(R.string.delete_log_title),
             message = stringResource(R.string.delete_log_message),
@@ -96,24 +89,8 @@ fun LogDetailScreen(
         },
         isLoading = state.isLoading || state.isDeletingLog,
         actions = {
-            // Кнопки в верхней панели
-            IconButton(
-                onClick = { viewModel.copyLogToClipboard() }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ContentCopy,
-                    contentDescription = stringResource(R.string.copy_to_clipboard)
-                )
-            }
-
-            IconButton(
-                onClick = { viewModel.showDeleteConfirmation() }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.delete_log)
-                )
-            }
+            CopyLogButton(onClick = { viewModel.copyLogToClipboard() })
+            DeleteLogButton(onClick = { viewModel.showDeleteConfirmation() })
         }
     ) { paddingValues ->
         Box(
@@ -127,12 +104,14 @@ fun LogDetailScreen(
                         message = stringResource(R.string.loading_log)
                     )
                 }
+
                 state.error != null && state.log == null -> {
                     ErrorScreenContent(
                         message = state.error ?: stringResource(R.string.error_loading_log),
                         onRetry = { viewModel.loadLog() }
                     )
                 }
+
                 state.log != null -> {
                     Column(
                         modifier = Modifier
@@ -208,5 +187,29 @@ fun LogDetailScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun DeleteLogButton(onClick: () -> Unit) {
+    IconButton(
+        onClick = { onClick.invoke() }
+    ) {
+        Icon(
+            imageVector = Icons.Default.Delete,
+            contentDescription = stringResource(R.string.delete_log)
+        )
+    }
+}
+
+@Composable
+fun CopyLogButton(onClick: () -> Unit) {
+    IconButton(
+        onClick = { onClick.invoke() }
+    ) {
+        Icon(
+            imageVector = Icons.Default.ContentCopy,
+            contentDescription = stringResource(R.string.copy_to_clipboard)
+        )
     }
 }

@@ -15,7 +15,7 @@ data class LogDetailState(
 
     val isTextCopied: Boolean = false,
 
-    val showDeleteConfirmation: Boolean = false,
+    val isDeleteConfirmationVisible: Boolean = false,
 
     val isDeletingLog: Boolean = false
 )

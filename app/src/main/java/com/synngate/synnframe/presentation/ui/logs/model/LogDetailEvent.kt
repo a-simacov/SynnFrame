@@ -1,12 +1,15 @@
 package com.synngate.synnframe.presentation.ui.logs.model
 
-sealed class LogDetailEvent {
+sealed class LogDetailUiEvent {
 
-    data class ShowSnackbar(val message: String) : LogDetailEvent()
+    data class ShowSnackbar(val message: String) : LogDetailUiEvent()
 
-    data object NavigateBack : LogDetailEvent()
+    data object NavigateBack : LogDetailUiEvent()
+}
 
-    data object ShowDeleteConfirmation : LogDetailEvent()
+sealed class LogDetailStateEvent {
 
-    data object HideDeleteConfirmation : LogDetailEvent()
+    data object ShowDeleteConfirmation : LogDetailStateEvent()
+
+    data object HideDeleteConfirmation : LogDetailStateEvent()
 }

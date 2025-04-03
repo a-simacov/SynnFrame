@@ -1,15 +1,19 @@
 package com.synngate.synnframe.presentation.ui.logs
 
+import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
-import com.synngate.synnframe.presentation.ui.logs.model.LogDetailEvent
 import com.synngate.synnframe.presentation.ui.logs.model.LogDetailState
+import com.synngate.synnframe.presentation.ui.logs.model.LogDetailStateEvent
+import com.synngate.synnframe.presentation.ui.logs.model.LogDetailUiEvent
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.format.DateTimeFormatter
 
@@ -18,13 +22,33 @@ class LogDetailViewModel(
     private val logUseCases: LogUseCases,
     private val loggingService: LoggingService,
     private val clipboardService: ClipboardService,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-) : BaseViewModel<LogDetailState, LogDetailEvent>(LogDetailState(), ioDispatcher) {
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+) : BaseViewModel<LogDetailState, LogDetailUiEvent>(LogDetailState(), ioDispatcher) {
 
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")
 
+    private val stateEvents = MutableSharedFlow<LogDetailStateEvent>()
+
     init {
         loadLog()
+
+        viewModelScope.launch {
+            stateEvents.collect { event ->
+                handleStateEvent(event)
+            }
+        }
+    }
+
+    private fun handleStateEvent(event: LogDetailStateEvent) {
+        when (event) {
+            is LogDetailStateEvent.ShowDeleteConfirmation -> {
+                updateState { it.copy(isDeleteConfirmationVisible = true) }
+            }
+
+            is LogDetailStateEvent.HideDeleteConfirmation -> {
+                updateState { it.copy(isDeleteConfirmationVisible = false) }
+            }
+        }
     }
 
     fun loadLog() {
@@ -92,19 +116,21 @@ class LogDetailViewModel(
         if (isCopied) {
             launchIO {
                 loggingService.logInfo("Лог с ID ${log.id} скопирован в буфер обмена")
-                sendEvent(LogDetailEvent.ShowSnackbar("Лог успешно скопирован в буфер обмена"))
+                sendEvent(LogDetailUiEvent.ShowSnackbar("Лог успешно скопирован в буфер обмена"))
             }
         }
     }
 
     fun showDeleteConfirmation() {
-        sendEvent(LogDetailEvent.ShowDeleteConfirmation)
-        updateState { it.copy(showDeleteConfirmation = true) }
+        viewModelScope.launch {
+            stateEvents.emit(LogDetailStateEvent.ShowDeleteConfirmation)
+        }
     }
 
     fun hideDeleteConfirmation() {
-        sendEvent(LogDetailEvent.HideDeleteConfirmation)
-        updateState { it.copy(showDeleteConfirmation = false) }
+        viewModelScope.launch {
+            stateEvents.emit(LogDetailStateEvent.HideDeleteConfirmation)
+        }
     }
 
     fun deleteLog() {
@@ -112,7 +138,6 @@ class LogDetailViewModel(
             updateState {
                 it.copy(
                     isDeletingLog = true,
-                    showDeleteConfirmation = false,
                     error = null
                 )
             }
@@ -131,7 +156,7 @@ class LogDetailViewModel(
                     loggingService.logInfo("Лог с ID $logId успешно удален")
 
                     // Отправляем событие навигации назад вместо прямого вызова колбэка
-                    sendEvent(LogDetailEvent.NavigateBack)
+                    sendEvent(LogDetailUiEvent.NavigateBack)
                 } else {
                     val exception = result.exceptionOrNull()
                     updateState {
