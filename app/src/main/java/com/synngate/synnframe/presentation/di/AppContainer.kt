@@ -73,6 +73,7 @@ import com.synngate.synnframe.presentation.ui.settings.SettingsViewModel
 import com.synngate.synnframe.presentation.ui.sync.SyncHistoryViewModel
 import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModel
 import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModel
+import com.synngate.synnframe.util.network.NetworkMonitor
 import com.synngate.synnframe.util.resources.ResourceProvider
 import com.synngate.synnframe.util.resources.ResourceProviderImpl
 import io.ktor.client.HttpClient
@@ -105,7 +106,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     // Database
-    private val database by lazy {
+    val database by lazy {
         Timber.d("Creating AppDatabase")
         AppDatabase.getInstance(applicationContext)
     }
@@ -147,6 +148,11 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
                 level = LogLevel.ALL
             }
         }
+    }
+
+    val networkMonitor: NetworkMonitor by lazy {
+        Timber.d("Creating NetworkMonitor")
+        NetworkMonitor(applicationContext)
     }
 
     // Добавляем ResourceProvider

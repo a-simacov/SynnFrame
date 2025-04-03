@@ -67,4 +67,20 @@ class TaskTypeRepositoryImpl(
             Result.failure(e)
         }
     }
+
+    override suspend fun deleteAllTaskTypes() {
+        taskTypeDao.deleteAllTaskTypes()
+    }
+
+    override suspend fun insertTaskTypes(taskTypes: List<TaskTypeEntity>) {
+        taskTypeDao.insertTaskTypes(taskTypes)
+    }
+
+    override suspend fun deleteActionsForTaskType(taskTypeId: String) {
+        factLineActionDao.deleteActionsForTaskType(taskTypeId)
+    }
+
+    override suspend fun insertFactLineActions(actions: List<FactLineActionEntity>) {
+        factLineActionDao.insertFactLineActions(actions)
+    }
 }
