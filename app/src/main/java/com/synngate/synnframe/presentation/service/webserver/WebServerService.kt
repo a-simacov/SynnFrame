@@ -174,6 +174,21 @@ class WebServerService : BaseForegroundService() {
                 }
             }
         }
+        notifyControllerAboutServiceState(true)
+    }
+
+    override fun onDestroy() {
+        notifyControllerAboutServiceState(false)
+        super.onDestroy()
+    }
+
+    private fun notifyControllerAboutServiceState(isRunning: Boolean) {
+        // Получаем экземпляр контроллера, который уже инициализирован в lazy-свойстве
+        try {
+            webServerController.updateRunningState(isRunning)
+        } catch (e: Exception) {
+            Timber.e(e, "Error updating controller state")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

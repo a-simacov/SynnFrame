@@ -12,6 +12,8 @@ interface WebServerController : ServiceController {
 
     suspend fun clearRequestsLog()
 
+    fun updateRunningState(isRunning: Boolean)
+
     data class RequestInfo(
         val timestamp: Long,
         val method: String,

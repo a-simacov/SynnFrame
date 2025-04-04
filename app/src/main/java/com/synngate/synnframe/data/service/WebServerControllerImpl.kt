@@ -6,10 +6,10 @@ import android.content.Context
 import android.content.Intent
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.WebServerController
-import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.service.webserver.WebServerService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 import java.net.NetworkInterface
 import java.util.Collections
@@ -20,7 +20,7 @@ class WebServerControllerImpl(
 ) : WebServerController {
 
     private val _isRunning = MutableStateFlow(false)
-    override val isRunning: Flow<Boolean> = _isRunning
+    override val isRunning: Flow<Boolean> = _isRunning.asStateFlow()
 
     private val _serverHost = MutableStateFlow(getLocalIpAddress())
     override val serverHost: Flow<String> = _serverHost
@@ -74,6 +74,11 @@ class WebServerControllerImpl(
         } else {
             startService().map { true }
         }
+    }
+
+    override fun updateRunningState(isRunning: Boolean) {
+        _isRunning.value = isRunning
+        // Можно также сохранить состояние для восстановления при перезагрузке приложения
     }
 
     override suspend fun clearRequestsLog() {
