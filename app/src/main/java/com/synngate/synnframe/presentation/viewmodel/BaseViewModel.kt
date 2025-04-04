@@ -61,6 +61,14 @@ abstract class BaseViewModel<S, E>(
     }
 
     /**
+     * Обработка событий состояния
+     * @param event Событие, которое изменяет состояние
+     */
+    protected fun handleStateEvent(event: StateEventHandler<S>) {
+        updateState { currentState -> event.handle(currentState) }
+    }
+
+    /**
      * Запуск корутины в IO-диспетчере
      * @param block Блок кода для выполнения
      * @return Job запущенной корутины

@@ -33,48 +33,20 @@ class LogListViewModel(
         // Обрабатываем события состояния внутри ViewModel
         viewModelScope.launch {
             stateEvents.collect { event ->
+                // Применяем обновление состояния через интерфейс
                 handleStateEvent(event)
+
+                // Для событий с побочными эффектами выполняем дополнительные действия
+                when (event) {
+                    is LogListStateEvent.CleanupOldLogs -> cleanupOldLogs(event.days)
+                    is LogListStateEvent.DeleteAllLogs -> deleteAllLogs()
+                    else -> {} // Для всех остальных событий достаточно обработки через handleStateEvent
+                }
             }
         }
     }
 
-    // Обработчик событий состояния
-    private fun handleStateEvent(event: LogListStateEvent) {
-        when (event) {
-            is LogListStateEvent.ShowDeleteAllConfirmation -> {
-                updateState { it.copy(isDeleteAllConfirmationVisible = true) }
-            }
-
-            is LogListStateEvent.HideDeleteAllConfirmation -> {
-                updateState { it.copy(isDeleteAllConfirmationVisible = false) }
-            }
-
-            is LogListStateEvent.ShowCleanupDialog -> {
-                updateState { it.copy(isCleanupDialogVisible = true) }
-            }
-
-            is LogListStateEvent.HideCleanupDialog -> {
-                updateState { it.copy(isCleanupDialogVisible = false) }
-            }
-
-            is LogListStateEvent.ShowDateFilterDialog -> {
-                updateState { it.copy(isDateFilterDialogVisible = true) }
-            }
-
-            is LogListStateEvent.HideDateFilterDialog -> {
-                updateState { it.copy(isDateFilterDialogVisible = false) }
-            }
-
-            is LogListStateEvent.CleanupOldLogs -> {
-                cleanupOldLogs(event.days)
-            }
-
-            is LogListStateEvent.DeleteAllLogs -> {
-                deleteAllLogs()
-            }
-        }
-    }
-
+    // Публичные методы для триггера событий
     fun showDeleteAllConfirmation() {
         viewModelScope.launch {
             stateEvents.emit(LogListStateEvent.ShowDeleteAllConfirmation)
