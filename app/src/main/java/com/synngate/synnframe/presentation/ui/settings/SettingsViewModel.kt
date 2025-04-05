@@ -12,7 +12,6 @@ import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsEvent
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsState
-import com.synngate.synnframe.presentation.ui.tasks.model.ScanOrder
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -53,7 +52,6 @@ class SettingsViewModel(
                 val buttonHeight = settingsUseCases.navigationButtonHeight.first()
                 val activeServer = serverUseCases.getActiveServer().first()
                 val binCodePattern = settingsUseCases.binCodePattern.first()
-                val scanOrder = settingsUseCases.scanOrder.first()
 
                 // Обновляем состояние с загруженными данными
                 updateState {
@@ -66,8 +64,7 @@ class SettingsViewModel(
                         navigationButtonHeight = buttonHeight,
                         activeServer = activeServer,
                         isLoading = false,
-                        binCodePattern = binCodePattern,
-                        scanOrder = scanOrder
+                        binCodePattern = binCodePattern
                     )
                 }
 
@@ -266,9 +263,6 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Обновление языка интерфейса
-     */
     fun updateLanguageCode(languageCode: String) {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
@@ -309,9 +303,6 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Обновление высоты кнопки навигации
-     */
     fun updateNavigationButtonHeight(height: Float) {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
@@ -352,9 +343,6 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Проверка наличия обновлений
-     */
     fun checkForUpdates() {
         launchIO {
             updateState {
@@ -409,23 +397,14 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Показать диалог подтверждения обновления
-     */
     fun showUpdateConfirmDialog() {
         updateState { it.copy(showUpdateConfirmDialog = true) }
     }
 
-    /**
-     * Скрыть диалог подтверждения обновления
-     */
     fun hideUpdateConfirmDialog() {
         updateState { it.copy(showUpdateConfirmDialog = false) }
     }
 
-    /**
-     * Загрузка обновления
-     */
     // Добавим методы для работы с разрешениями
     fun checkInstallPermission(): Boolean {
         return if (updateInstaller is UpdateInstallerImpl) {
@@ -505,9 +484,6 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Установка обновления
-     */
     private fun installUpdate(filePath: String) {
         launchIO {
             updateState {
@@ -556,9 +532,6 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Запуск локального веб-сервера
-     */
     fun toggleWebServer() {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
@@ -788,16 +761,6 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Навигация к экрану серверов
-     */
-    fun navigateToServerList() {
-        sendEvent(SettingsEvent.NavigateToServerList)
-    }
-
-    /**
-     * Навигация назад
-     */
     fun navigateBack() {
         sendEvent(SettingsEvent.NavigateBack)
     }
@@ -806,18 +769,10 @@ class SettingsViewModel(
         sendEvent(SettingsEvent.NavigateToSyncHistory)
     }
 
-    // Методы для обновления настроек ячеек
     fun updateBinCodePattern(pattern: String) {
         updateState { it.copy(binCodePattern = pattern) }
         launchIO {
             settingsUseCases.setBinCodePattern(pattern)
-        }
-    }
-
-    fun updateScanOrder(order: ScanOrder) {
-        updateState { it.copy(scanOrder = order) }
-        launchIO {
-            settingsUseCases.setScanOrder(order)
         }
     }
 

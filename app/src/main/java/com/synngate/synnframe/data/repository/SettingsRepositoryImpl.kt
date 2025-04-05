@@ -6,7 +6,6 @@ import com.synngate.synnframe.data.remote.api.AppUpdateApi
 import com.synngate.synnframe.data.remote.dto.AppVersionDto
 import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.presentation.theme.ThemeMode
-import com.synngate.synnframe.presentation.ui.tasks.model.ScanOrder
 import kotlinx.coroutines.flow.Flow
 
 class SettingsRepositoryImpl(
@@ -51,13 +50,7 @@ class SettingsRepositoryImpl(
 
     override fun getBinCodePattern(): Flow<String> = appSettingsDataStore.binCodePattern
 
-    override fun getScanOrder(): Flow<ScanOrder> = appSettingsDataStore.scanOrder
-
     override suspend fun setBinCodePattern(pattern: String) {
         appSettingsDataStore.setBinCodePattern(pattern)
-    }
-
-    override suspend fun setScanOrder(order: ScanOrder) {
-        appSettingsDataStore.setScanOrder(order)
     }
 }

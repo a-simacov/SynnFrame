@@ -9,7 +9,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,7 +24,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -63,7 +61,6 @@ import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsEvent
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsState
-import com.synngate.synnframe.presentation.ui.tasks.model.ScanOrder
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.format.DateTimeFormatter
@@ -256,10 +253,9 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            BinAndScanOrderSection(
+            BinPatternSection(
                 state = state,
                 onUpdateBinCodePattern = viewModel::updateBinCodePattern,
-                onUpdateScanOrder = viewModel::updateScanOrder,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -726,10 +722,9 @@ fun InterfaceSettingsSection(
 }
 
 @Composable
-fun BinAndScanOrderSection(
+fun BinPatternSection(
     state: SettingsState,
     onUpdateBinCodePattern: (String) -> Unit,
-    onUpdateScanOrder: (ScanOrder) -> Unit,
     modifier: Modifier = Modifier
 ) {
     InfoCard(
@@ -756,33 +751,6 @@ fun BinAndScanOrderSection(
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(bottom = 8.dp)
         )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            RadioButton(
-                selected = state.scanOrder == ScanOrder.PRODUCT_FIRST,
-                onClick = { onUpdateScanOrder(ScanOrder.PRODUCT_FIRST) }
-            )
-            Text(
-                text = stringResource(R.string.product_first),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.clickable { onUpdateScanOrder(ScanOrder.PRODUCT_FIRST) }
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            RadioButton(
-                selected = state.scanOrder == ScanOrder.BIN_FIRST,
-                onClick = { onUpdateScanOrder(ScanOrder.BIN_FIRST) }
-            )
-            Text(
-                text = stringResource(R.string.bin_first),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.clickable { onUpdateScanOrder(ScanOrder.BIN_FIRST) }
-            )
-        }
     }
 }
 

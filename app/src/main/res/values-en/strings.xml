@@ -526,7 +526,6 @@
     <string name="reupload_task">Reupload task</string>
     <string name="bin_settings">Bins settings</string>
     <string name="bin_code_pattern">Bin code template</string>
-    <string name="scan_order">Scan order</string>
     <string name="product_first">Product first</string>
     <string name="bin_first">Bin first</string>
     <string name="scan_product">Scan product</string>

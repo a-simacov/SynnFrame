@@ -14,7 +14,6 @@ import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.tasks.model.EntryStep
 import com.synngate.synnframe.presentation.ui.tasks.model.FactLineDialogState
 import com.synngate.synnframe.presentation.ui.tasks.model.ScanBarcodeDialogState
-import com.synngate.synnframe.presentation.ui.tasks.model.ScanOrder
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailEvent
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskDetailState
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskLineItem
@@ -24,7 +23,6 @@ import com.synngate.synnframe.util.bin.BinValidator
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
 import java.util.UUID
@@ -41,7 +39,6 @@ class TaskDetailViewModel(
 ) : BaseViewModel<TaskDetailState, TaskDetailEvent>(TaskDetailState(taskId = taskId)) {
 
     private val scannedBarcodeCache = mutableMapOf<String, Product?>()
-    private val _scanOrder = MutableStateFlow(ScanOrder.PRODUCT_FIRST)
     private var binValidator: BinValidator? = null
     private var binFormatter: BinFormatter? = null
 
@@ -165,8 +162,6 @@ class TaskDetailViewModel(
             val pattern = settingsUseCases.binCodePattern.first()
             binValidator = BinValidator(pattern)
             binFormatter = BinFormatter(pattern)
-
-            _scanOrder.value = settingsUseCases.scanOrder.first()
         }
     }
 

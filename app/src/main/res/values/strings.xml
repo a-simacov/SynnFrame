@@ -540,7 +540,6 @@
     <!-- Ячейки -->
     <string name="bin_settings">Настройки ячеек</string>
     <string name="bin_code_pattern">Шаблон кода ячейки</string>
-    <string name="scan_order">Порядок сканирования</string>
     <string name="product_first">Сначала товар</string>
     <string name="bin_first">Сначала ячейка</string>
     <string name="scan_product">Сканировать товар</string>
