@@ -742,15 +742,6 @@ fun BinPatternSection(
             minLines = 2,
             maxLines = 4
         )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Выбор порядка сканирования
-        Text(
-            text = stringResource(R.string.scan_order),
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
     }
 }
 
