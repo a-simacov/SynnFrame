@@ -47,10 +47,9 @@ import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.common.buttons.ActionButton
-import com.synngate.synnframe.presentation.common.buttons.CyclicValueButton
+import com.synngate.synnframe.presentation.common.buttons.CarouselValueButton
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.buttons.PropertyToggleButton
-import com.synngate.synnframe.presentation.common.buttons.SelectableButton
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.dialog.ProgressDialog
 import com.synngate.synnframe.presentation.common.inputs.NumberTextField
@@ -630,8 +629,8 @@ fun InterfaceSettingsSection(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        CyclicValueButton(
-            values = ThemeMode.values().toList(),
+        CarouselValueButton(
+            values = ThemeMode.entries,
             currentValue = state.themeMode,
             onValueChange = onThemeModeChange,
             valueToString = { theme ->
@@ -655,7 +654,7 @@ fun InterfaceSettingsSection(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        CyclicValueButton(
+        CarouselValueButton(
             values = listOf("ru", "en"),
             currentValue = state.languageCode,
             onValueChange = onLanguageCodeChange,
@@ -752,38 +751,6 @@ fun BinPatternSection(
             maxLines = 4
         )
     }
-}
-
-@Composable
-private fun ThemeModeButton(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    SelectableButton(
-        text = text,
-        isSelected = selected,
-        onClick = onClick,
-        modifier = modifier,
-        buttonHeight = 48f // Уменьшенная высота для вариантов выбора
-    )
-}
-
-@Composable
-private fun LanguageButton(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    SelectableButton(
-        text = text,
-        isSelected = selected,
-        onClick = onClick,
-        modifier = modifier,
-        buttonHeight = 48f // Уменьшенная высота для вариантов выбора
-    )
 }
 
 @Composable
@@ -906,7 +873,7 @@ fun LoggingSettingsSection(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        CyclicValueButton(
+        CarouselValueButton(
             values = LogLevel.values().toList(),
             currentValue = state.logLevel,
             onValueChange = onLogLevelChange,

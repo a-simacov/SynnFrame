@@ -1,6 +1,7 @@
 package com.synngate.synnframe.presentation.common.buttons
 
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
@@ -27,6 +29,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -38,10 +41,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.presentation.theme.LocalNavigationButtonHeight
 import com.synngate.synnframe.presentation.theme.SynnFrameTheme
+import com.synngate.synnframe.presentation.theme.ThemeMode
 
 @Composable
 fun NavigationButton(
@@ -195,7 +200,8 @@ fun ActionButton(
     }
 }
 
-@Preview(showBackground = false,
+@Preview(
+    showBackground = false,
     uiMode = Configuration.UI_MODE_NIGHT_NO
 )
 @Composable
@@ -209,14 +215,14 @@ private fun ActionButtonPreview() {
         ) {
             ActionButton(
                 text = stringResource(id = R.string.sync_data),
-                onClick = {  },
+                onClick = { },
                 icon = Icons.Default.Sync,
                 contentDescription = stringResource(id = R.string.sync_data),
             )
             Spacer(modifier = Modifier.height(12.dp))
             ActionButton(
                 text = stringResource(id = R.string.login),
-                onClick = {  },
+                onClick = { },
                 isLoading = false,
                 enabled = true,
                 modifier = Modifier.fillMaxWidth()
@@ -471,23 +477,16 @@ fun <T> CyclicValueButton(
     buttonHeight: Float = 72f,
     modifier: Modifier = Modifier
 ) {
-    // Проверка на пустой список значений
     if (values.isEmpty()) {
         return
     }
 
-    // Текст, отображаемый на кнопке
     val valueText = valueToString(currentValue)
     val buttonText = if (labelText != null) "$labelText: $valueText" else valueText
 
-    // При нажатии переключаемся на следующее значение в списке
     val onClick = {
-        // Находим индекс текущего значения
         val currentIndex = values.indexOf(currentValue)
-        // Если по какой-то причине текущее значение не найдено в списке,
-        // начинаем с первого элемента
         val nextIndex = if (currentIndex == -1) 0 else (currentIndex + 1) % values.size
-        // Вызываем колбэк со следующим значением
         onValueChange(values[nextIndex])
     }
 
@@ -497,4 +496,142 @@ fun <T> CyclicValueButton(
         modifier = modifier,
         buttonHeight = buttonHeight
     )
+}
+
+@Composable
+fun <T> CarouselValueButton(
+    values: List<T>,
+    currentValue: T,
+    onValueChange: (T) -> Unit,
+    valueToString: @Composable (T) -> String,
+    modifier: Modifier = Modifier,
+    labelText: String? = null,
+    buttonHeight: Dp = 72.dp,
+    buttonColors: ButtonColors = ButtonDefaults.buttonColors()
+) {
+    if (values.isEmpty()) {
+        return
+    }
+
+    val currentIndex = values.indexOf(currentValue)
+    if (currentIndex == -1) {
+        onValueChange(values.firstOrNull() ?: return)
+        return
+    }
+
+    val prevIndex = if (currentIndex == 0) values.lastIndex else currentIndex - 1
+    val nextIndex = (currentIndex + 1) % values.size
+
+    // Получаем строковые представления значений
+    val prevValueText = if (values.size > 2) valueToString(values[prevIndex]) else ""
+    val currentValueText = valueToString(currentValue)
+    val nextValueText = valueToString(values[nextIndex])
+
+    Button(
+        onClick = {
+            onValueChange(values[nextIndex])
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .height(buttonHeight),
+        contentPadding = PaddingValues(8.dp),
+        shape = MaterialTheme.shapes.medium,
+        colors = buttonColors
+    ) {
+        Box(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (labelText != null) {
+                Text(
+                    text = labelText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(bottom = 4.dp)
+                )
+            }
+
+            Row(
+                modifier = Modifier.align(Alignment.Center),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = prevValueText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LocalContentColor.current.copy(alpha = 0.5f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(0.25f),
+                )
+
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = currentValueText,
+                        style = MaterialTheme.typography.titleLarge,
+                        //modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = "Следующее",
+                        modifier = Modifier.size(16.dp),
+                        tint = LocalContentColor.current.copy(alpha = 0.5f)
+                    )
+                }
+
+                Text(
+                    text = nextValueText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LocalContentColor.current.copy(alpha = 0.5f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(0.25f)
+                )
+            }
+        }
+    }
+}
+
+@Preview(
+    showBackground = false,
+    uiMode = Configuration.UI_MODE_NIGHT_NO
+)
+@Composable
+private fun CarouselValueButtonPreview() {
+    SynnFrameTheme {
+        Column {
+            CarouselValueButton(
+                values = ThemeMode.entries,
+                currentValue = ThemeMode.SYSTEM,
+                onValueChange = {},
+                valueToString = { theme ->
+                    when (theme) {
+                        ThemeMode.SYSTEM -> stringResource(id = R.string.theme_system)
+                        ThemeMode.LIGHT -> stringResource(id = R.string.theme_light)
+                        ThemeMode.DARK -> stringResource(id = R.string.theme_dark)
+                    }
+                },
+                //labelText = stringResource(id = R.string.theme),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            CarouselValueButton(
+                values = listOf(true, false),
+                currentValue = false,
+                onValueChange = {},
+                valueToString = { value ->
+                    when (value) {
+                        false -> "НЕТ"
+                        true -> "ДА"
+                    }
+                },
+                //labelText = stringResource(id = R.string.theme),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
 }

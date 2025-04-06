@@ -1,7 +1,6 @@
 package com.synngate.synnframe.util.logging
 
 import android.util.Log
-import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.domain.service.LoggingService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,10 +35,10 @@ class AppTree(
             return false
         }
 
-        // В Debug-сборке всегда разрешаем все логи для консоли
-        if (BuildConfig.DEBUG) {
-            return true
-        }
+//        // В Debug-сборке всегда разрешаем все логи для консоли
+//        if (BuildConfig.DEBUG) {
+//            return true
+//        }
 
         // В Release применяем настройки уровня логирования
         val currentLevel = logLevelProvider.getCurrentLogLevel()
