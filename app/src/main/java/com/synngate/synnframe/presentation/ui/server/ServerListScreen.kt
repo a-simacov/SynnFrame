@@ -37,7 +37,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,15 +56,12 @@ fun ServerListScreen(
     navigateToServerDetail: (Int?) -> Unit,
     navigateToLogin: () -> Unit
 ) {
-    // Получаем состояние через collectAsState()
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Состояние диалога удаления
     var showDeleteDialog by remember { mutableStateOf(false) }
     var serverToDelete by remember { mutableStateOf<Pair<Int, String>?>(null) }
 
-    // Сбор одноразовых событий
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
@@ -80,7 +76,6 @@ fun ServerListScreen(
         }
     }
 
-    // Диалог подтверждения удаления
     if (showDeleteDialog && serverToDelete != null) {
         ConfirmationDialog(
             title = stringResource(id = R.string.delete_server_title),
@@ -136,7 +131,6 @@ fun ServerListScreen(
                     )
                 }
 
-                // Кнопка "Продолжить"
                 NavigationButton(
                     text = stringResource(id = R.string.continue_button),
                     onClick = { viewModel.navigateToLogin() },
@@ -146,19 +140,16 @@ fun ServerListScreen(
         }
     ) { paddingValues ->
         if (state.isLoading) {
-            // Индикатор загрузки
             LoadingScreenContent(
                 message = stringResource(id = R.string.loading_servers),
                 modifier = Modifier.padding(paddingValues)
             )
         } else if (state.servers.isEmpty()) {
-            // Пустой список серверов
             EmptyScreenContent(
                 message = stringResource(id = R.string.servers_empty),
                 modifier = Modifier.padding(paddingValues)
             )
         } else {
-            // Список серверов
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()

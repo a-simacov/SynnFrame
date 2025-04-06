@@ -210,7 +210,15 @@ fun AppScaffold(
                             .padding(8.dp)
                             .navigationBarsPadding()
                     ) {
-                        // Информация о пользователе и синхронизации
+                        // Кастомная нижняя панель
+                        bottomBar()
+
+                        HorizontalDivider(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        )
+
                         Box(
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -229,15 +237,6 @@ fun AppScaffold(
                                 modifier = Modifier.align(Alignment.CenterEnd)
                             )
                         }
-
-                        HorizontalDivider(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                        )
-
-                        // Кастомная нижняя панель
-                        bottomBar()
                     }
                 }
             },
