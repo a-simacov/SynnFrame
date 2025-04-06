@@ -7,7 +7,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 class AppTree(
     private val loggingService: LoggingService,
@@ -18,11 +19,19 @@ class AppTree(
         fun getCurrentLogLevel(): LogLevel
     }
 
-    // Флаг для предотвращения рекурсивных вызовов
-    private val isProcessingLog = AtomicBoolean(false)
+    // Улучшенная защита от рекурсии через ThreadLocal
+    private val isProcessingLog = ThreadLocal.withInitial { false }
+
+    // Кэш для дедупликации логов
+    private val recentLogsCache = ConcurrentHashMap<String, Long>()
+
+    // Константы для настройки дедупликации
+    private val DEDUPLICATION_WINDOW_MS = 1000L // 1 секунда
+    private val CACHE_CLEANUP_INTERVAL_MS = 30000L // 30 секунд
+    private var lastCleanupTime = System.currentTimeMillis()
 
     override fun isLoggable(tag: String?, priority: Int): Boolean {
-        // Если мы уже обрабатываем лог, отклоняем, чтобы избежать рекурсии
+        // Если текущий поток уже обрабатывает лог, отклоняем для предотвращения рекурсии
         if (isProcessingLog.get()) {
             return false
         }
@@ -32,7 +41,7 @@ class AppTree(
             return true
         }
 
-        // В Release применяем настройки уровня логирования для консоли
+        // В Release применяем настройки уровня логирования
         val currentLevel = logLevelProvider.getCurrentLogLevel()
         return when (currentLevel) {
             LogLevel.FULL -> true
@@ -43,12 +52,32 @@ class AppTree(
     }
 
     override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
-        // Защита от рекурсии
-        if (isProcessingLog.getAndSet(true)) {
+        // Защита от рекурсии на уровне потока
+        if (isProcessingLog.get()) {
             return
         }
 
         try {
+            isProcessingLog.set(true)
+
+            // Создаем уникальный ключ из приоритета, тега и сообщения
+            val logKey = "$priority|${tag ?: ""}|$message"
+
+            // Проверяем, был ли такой лог недавно
+            val now = System.currentTimeMillis()
+            val lastLogTime = recentLogsCache.put(logKey, now)
+
+            // Если точно такой же лог был записан менее секунды назад, пропускаем его
+            if (lastLogTime != null && (now - lastLogTime) < DEDUPLICATION_WINDOW_MS) {
+                return
+            }
+
+            // Периодически очищаем кэш
+            if (now - lastCleanupTime > CACHE_CLEANUP_INTERVAL_MS) {
+                cleanupCache(now)
+                lastCleanupTime = now
+            }
+
             // Выводим в консоль если разрешено
             when (priority) {
                 Log.VERBOSE, Log.DEBUG -> Log.d(tag, message, t)
@@ -57,7 +86,7 @@ class AppTree(
                 Log.ERROR, Log.ASSERT -> Log.e(tag, message, t)
             }
 
-            // Сохраняем в БД с проверкой минимально допустимого уровня
+            // Применяем фильтрацию по уровню для записи в БД
             val currentLevel = logLevelProvider.getCurrentLogLevel()
             val shouldSaveToDb = when (currentLevel) {
                 LogLevel.FULL -> priority >= Log.DEBUG
@@ -82,13 +111,23 @@ class AppTree(
                         }
                     } catch (e: Exception) {
                         // Используем стандартный Log, не Timber!
-                        Timber.tag("AppTree").e(e, "Failed to save log to database")
+                        Log.e("AppTree", "Failed to save log to database", e)
                     }
                 }
             }
         } finally {
             // Важно: освобождаем блокировку в блоке finally
             isProcessingLog.set(false)
+        }
+    }
+
+    /**
+     * Очистка устаревших записей из кэша
+     */
+    private fun cleanupCache(currentTime: Long) {
+        val cutoffTime = currentTime - TimeUnit.MINUTES.toMillis(5) // Удаляем логи старше 5 минут
+        recentLogsCache.entries.removeIf { (_, timestamp) ->
+            currentTime - timestamp > cutoffTime
         }
     }
 }

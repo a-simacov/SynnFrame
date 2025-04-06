@@ -33,7 +33,6 @@ class LogUseCases(
             val cutoffDate = LocalDateTime.now().minusDays(daysToKeep.toLong())
             val deletedCount = logRepository.deleteLogsOlderThan(cutoffDate)
 
-            logInfo("Удалено логов старше $daysToKeep дней: $deletedCount")
             Result.success(deletedCount)
         } catch (e: Exception) {
             Timber.e(e, "Exception during logs cleanup")
@@ -59,7 +58,6 @@ class LogUseCases(
     suspend fun deleteAllLogs(): Result<Unit> {
         return try {
             logRepository.deleteAllLogs()
-            logInfo("Все логи удалены")
 
             Result.success(Unit)
         } catch (e: Exception) {
