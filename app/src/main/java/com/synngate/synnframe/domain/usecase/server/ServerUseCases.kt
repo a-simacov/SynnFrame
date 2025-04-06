@@ -2,7 +2,6 @@ package com.synngate.synnframe.domain.usecase.server
 
 import com.synngate.synnframe.domain.entity.Server
 import com.synngate.synnframe.domain.repository.ServerRepository
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import kotlinx.coroutines.flow.Flow
@@ -11,7 +10,6 @@ import timber.log.Timber
 class ServerUseCases(
     private val serverRepository: ServerRepository,
     private val serverCoordinator: ServerCoordinator,
-    private val loggingService: LoggingService
 ) : BaseUseCase {
 
     fun getServers(): Flow<List<Server>> =
@@ -28,12 +26,11 @@ class ServerUseCases(
             validateServer(server)
 
             val id = serverRepository.addServer(server)
-            loggingService.logInfo("Добавлен сервер: ${server.name} (${server.host}:${server.port})")
+            Timber.i("Added server: ${server.name} (${server.host}:${server.port})")
 
             Result.success(id)
         } catch (e: Exception) {
-            Timber.e(e, "Exception during server addition")
-            loggingService.logError("Ошибка при добавлении сервера: ${e.message}")
+            Timber.e("Exception during server addition: ${e.message}")
             Result.failure(e)
         }
     }
@@ -43,12 +40,11 @@ class ServerUseCases(
             validateServer(server)
 
             serverRepository.updateServer(server)
-            loggingService.logInfo("Обновлен сервер: ${server.name} (${server.host}:${server.port})")
+            Timber.i("Updated server: ${server.name} (${server.host}:${server.port})")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during server update")
-            loggingService.logError("Ошибка при обновлении сервера: ${e.message}")
             Result.failure(e)
         }
     }
@@ -59,12 +55,11 @@ class ServerUseCases(
                 ?: return Result.failure(IllegalArgumentException("Server not found: $id"))
 
             serverRepository.deleteServer(id)
-            loggingService.logInfo("Удален сервер: ${server.name} (${server.host}:${server.port})")
+            Timber.i("Deleted server: ${server.name} (${server.host}:${server.port})")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during server deletion")
-            loggingService.logError("Ошибка при удалении сервера: ${e.message}")
             Result.failure(e)
         }
     }

@@ -4,7 +4,6 @@ import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.service.ClipboardService
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.ui.products.mapper.ProductUiMapper
 import com.synngate.synnframe.presentation.ui.products.model.BarcodeUiModel
@@ -14,8 +13,6 @@ import com.synngate.synnframe.presentation.ui.products.model.ProductDetailUiMode
 import com.synngate.synnframe.presentation.ui.products.model.ProductUnitUiModel
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import com.synngate.synnframe.util.resources.ResourceProvider
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -23,11 +20,9 @@ import timber.log.Timber
 class ProductDetailViewModel(
     private val productId: String,
     private val productUseCases: ProductUseCases,
-    private val loggingService: LoggingService,
     private val clipboardService: ClipboardService,
     private val productUiMapper: ProductUiMapper,
     private val resourceProvider: ResourceProvider,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<ProductDetailState, ProductDetailEvent>(
     ProductDetailState()
 ) {
@@ -61,8 +56,6 @@ class ProductDetailViewModel(
                             error = null
                         )
                     }
-
-                    loggingService.logInfo("Просмотр товара: ${product.name} (${product.id})")
                 } else {
                     updateState {
                         it.copy(
@@ -71,18 +64,16 @@ class ProductDetailViewModel(
                         )
                     }
 
-                    loggingService.logWarning("Попытка просмотра несуществующего товара с ID $productId")
+                    Timber.w("Attempt to view unexistent ID $productId")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error loading product with ID $productId")
+                Timber.e(e, "Error loading product with ID $productId: ${e.message}")
                 updateState {
                     it.copy(
                         isLoading = false,
                         error = resourceProvider.getString(R.string.error_loading_product, e.message ?: "")
                     )
                 }
-
-                loggingService.logError("Ошибка загрузки товара с ID $productId: ${e.message}")
             }
         }
     }
@@ -127,10 +118,6 @@ class ProductDetailViewModel(
 
             sendEvent(ProductDetailEvent.CopyBarcodeToClipboard(barcode))
             sendEvent(ProductDetailEvent.ShowSnackbar("Штрихкод скопирован в буфер обмена"))
-
-            viewModelScope.launch(ioDispatcher) {
-                loggingService.logInfo("Штрихкод товара скопирован в буфер обмена: $barcode")
-            }
         }
     }
 
@@ -170,10 +157,6 @@ class ProductDetailViewModel(
 
             sendEvent(ProductDetailEvent.CopyProductInfoToClipboard)
             sendEvent(ProductDetailEvent.ShowSnackbar("Информация о товаре скопирована в буфер обмена"))
-
-            viewModelScope.launch(ioDispatcher) {
-                loggingService.logInfo("Информация о товаре скопирована в буфер обмена: ${product.name}")
-            }
         }
     }
 

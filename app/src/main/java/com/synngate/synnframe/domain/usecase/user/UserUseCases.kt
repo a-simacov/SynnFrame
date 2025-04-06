@@ -3,15 +3,13 @@ package com.synngate.synnframe.domain.usecase.user
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.User
 import com.synngate.synnframe.domain.repository.UserRepository
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
 import java.io.IOException
 
 class UserUseCases(
-    private val userRepository: UserRepository,
-    private val loggingService: LoggingService
+    private val userRepository: UserRepository
 ) : BaseUseCase {
 
     fun getUsers(): Flow<List<User>> =
@@ -29,11 +27,10 @@ class UserUseCases(
     private suspend fun addUser(user: User): Result<User> {
         return try {
             userRepository.addUser(user)
-            loggingService.logInfo("Добавлен пользователь: ${user.name}")
+            Timber.i("User was added: ${user.name}")
             Result.success(user)
         } catch (e: Exception) {
             Timber.e(e, "Error adding user")
-            loggingService.logError("Ошибка при добавлении пользователя: ${e.message}")
             Result.failure(e)
         }
     }
@@ -46,11 +43,10 @@ class UserUseCases(
             }
 
             userRepository.setCurrentUser(userId)
-            loggingService.logInfo("Установлен текущий пользователь: ${user.name}")
+            Timber.i("Current user was set: ${user.name}")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Error setting current user")
-            loggingService.logError("Ошибка при установке текущего пользователя: ${e.message}")
             Result.failure(e)
         }
     }
@@ -58,11 +54,10 @@ class UserUseCases(
     private suspend fun clearCurrentUser(): Result<Unit> {
         return try {
             userRepository.clearCurrentUser()
-            loggingService.logInfo("Сброшен текущий пользователь")
+            Timber.i("Current user was cleared")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Error clearing current user")
-            loggingService.logError("Ошибка при сбросе текущего пользователя: ${e.message}")
             Result.failure(e)
         }
     }
@@ -78,7 +73,7 @@ class UserUseCases(
                     return setCurrentUserResult.map { localUser }
                 }
 
-                loggingService.logInfo("Вход выполнен для пользователя: ${localUser.name}")
+                Timber.i("Logged in user: ${localUser.name}")
                 return Result.success(localUser)
             }
 
@@ -109,21 +104,20 @@ class UserUseCases(
                             return setCurrentUserResult.map { user }
                         }
 
-                        loggingService.logInfo("Успешная аутентификация пользователя: ${user.name}")
+                        Timber.i("User auth was successfull: ${user.name}")
                         Result.success(user)
                     } else {
-                        loggingService.logWarning("Пустой ответ при аутентификации")
+                        Timber.w("Empty answer on auth")
                         Result.failure(IOException("Пустой ответ при аутентификации"))
                     }
                 }
                 is ApiResult.Error -> {
-                    loggingService.logWarning("Ошибка аутентификации: ${response.message}")
+                    Timber.w("Error in auth: ${response.message}")
                     Result.failure(IOException("Ошибка аутентификации: ${response.code} - ${response.message}"))
                 }
             }
         } catch (e: Exception) {
             Timber.e(e, "Exception during user login")
-            loggingService.logError("Исключение при входе пользователя: ${e.message}")
             Result.failure(e)
         }
     }

@@ -3,7 +3,6 @@ package com.synngate.synnframe.presentation.service.webserver.controller
 import com.synngate.synnframe.data.remote.dto.ProductDto
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.repository.ProductRepository
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.presentation.service.webserver.WebServerConstants
 import com.synngate.synnframe.presentation.service.webserver.WebServerSyncIntegrator
 import com.synngate.synnframe.presentation.service.webserver.util.respondError
@@ -17,7 +16,6 @@ import timber.log.Timber
 import java.util.Locale
 
 class ProductsController(
-    override val logger: LoggingService,
     private val productRepository: ProductRepository,
     private val syncIntegrator: WebServerSyncIntegrator,
     private val saveSyncHistoryRecord: suspend (Int, Int, Int, Long) -> Unit
@@ -85,9 +83,9 @@ class ProductsController(
             val duration = System.currentTimeMillis() - startTime
 
             if (shouldClearExisting)
-                logger.logInfo(String.format(Locale.getDefault(), WebServerConstants.LOG_PRODUCTS_FULL_UPDATE, products.size))
+                Timber.i(String.format(Locale.getDefault(), WebServerConstants.LOG_PRODUCTS_FULL_UPDATE, products.size))
             else
-                logger.logInfo(
+                Timber.i(
                     String.format(Locale.getDefault(), WebServerConstants.LOG_PRODUCTS_RECEIVED, products.size, newProducts.size, updatedProducts.size, duration)
                 )
 

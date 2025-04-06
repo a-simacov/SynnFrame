@@ -3,8 +3,6 @@ package com.synngate.synnframe.presentation.ui.sync
 import com.synngate.synnframe.data.sync.SyncHistoryRecord
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import timber.log.Timber
 
@@ -31,16 +29,12 @@ sealed class SyncHistoryEvent {
  */
 class SyncHistoryViewModel(
     private val synchronizationController: SynchronizationController,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<SyncHistoryState, SyncHistoryEvent>(SyncHistoryState()) {
 
     init {
         loadSyncHistory()
     }
 
-    /**
-     * Загрузка истории синхронизаций
-     */
     private fun loadSyncHistory() {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
@@ -79,23 +73,14 @@ class SyncHistoryViewModel(
         }
     }
 
-    /**
-     * Обработка клика по элементу истории
-     */
     fun onHistoryItemClick(record: SyncHistoryRecord) {
         updateState { it.copy(selectedRecord = record) }
     }
 
-    /**
-     * Закрытие диалога с деталями
-     */
     fun closeDetails() {
         updateState { it.copy(selectedRecord = null) }
     }
 
-    /**
-     * Навигация назад
-     */
     fun navigateBack() {
         sendEvent(SyncHistoryEvent.NavigateBack)
     }

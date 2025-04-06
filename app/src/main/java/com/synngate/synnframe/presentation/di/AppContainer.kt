@@ -259,8 +259,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         Timber.d("Creating ServerCoordinator")
         ServerCoordinatorImpl(
             serverRepository,
-            appSettingsDataStore,
-            loggingService
+            appSettingsDataStore
         )
     }
 
@@ -270,17 +269,17 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     val webServerController by lazy {
-        WebServerControllerImpl(applicationContext, loggingService)
+        WebServerControllerImpl(applicationContext)
     }
 
     val webServerManager: WebServerManager by lazy {
         Timber.d("Creating WebServerManager")
-        WebServerManagerImpl(webServerController, loggingService)
+        WebServerManagerImpl(webServerController)
     }
 
     val updateInstaller: UpdateInstaller by lazy {
         Timber.d("Creating UpdateInstaller")
-        UpdateInstallerImpl(applicationContext, loggingService)
+        UpdateInstallerImpl(applicationContext)
     }
 
     val soundService: SoundService by lazy {
@@ -302,26 +301,25 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
             productUseCases,
             taskTypeUseCases,
             appSettingsDataStore,
-            loggingService,
             database
         )
     }
 
     // Use Cases
     val serverUseCases by lazy {
-        ServerUseCases(serverRepository, serverCoordinator, loggingService)
+        ServerUseCases(serverRepository, serverCoordinator)
     }
 
     val userUseCases by lazy {
-        UserUseCases(userRepository, loggingService)
+        UserUseCases(userRepository)
     }
 
     val taskUseCases by lazy {
-        TaskUseCases(taskRepository, loggingService)
+        TaskUseCases(taskRepository)
     }
 
     val productUseCases by lazy {
-        ProductUseCases(productRepository, loggingService)
+        ProductUseCases(productRepository)
     }
 
     val logUseCases by lazy {
@@ -329,11 +327,11 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     val settingsUseCases by lazy {
-        SettingsUseCases(settingsRepository, loggingService, fileService, applicationContext)
+        SettingsUseCases(settingsRepository, fileService, applicationContext)
     }
 
     val taskTypeUseCases by lazy {
-        TaskTypeUseCases(taskTypeRepository, loggingService)
+        TaskTypeUseCases(taskTypeRepository)
     }
 
     // Создание контейнера для уровня навигации
@@ -370,8 +368,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         return getOrCreateViewModel("LogListViewModel") {
             LogListViewModel(
                 appContainer.logUseCases,
-                appContainer.loggingService,
-                Dispatchers.IO
             )
         }
     }
@@ -381,9 +377,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
             LogDetailViewModel(
                 logId,
                 appContainer.logUseCases,
-                appContainer.loggingService,
                 appContainer.clipboardService,
-                Dispatchers.IO
             )
         }
     }
@@ -393,7 +387,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
             ServerListViewModel(
                 serverUseCases = appContainer.serverUseCases,
                 settingsUseCases = appContainer.settingsUseCases,
-                ioDispatcher = Dispatchers.IO
             )
         }
     }
@@ -403,7 +396,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
             ServerDetailViewModel(
                 serverId = serverId,
                 serverUseCases = appContainer.serverUseCases,
-                ioDispatcher = Dispatchers.IO
             )
         }
     }
@@ -426,7 +418,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 taskUseCases = appContainer.taskUseCases,
                 productUseCases = appContainer.productUseCases,
                 synchronizationController = appContainer.synchronizationController,
-                ioDispatcher = Dispatchers.IO
             )
         }
     }
@@ -436,9 +427,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
             TaskListViewModel(
                 taskUseCases = appContainer.taskUseCases,
                 userUseCases = appContainer.userUseCases,
-                loggingService = appContainer.loggingService,
                 taskTypeUseCases = appContainer.taskTypeUseCases,
-                ioDispatcher = Dispatchers.IO
             )
         }
     }
@@ -453,7 +442,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 settingsUseCases = appContainer.settingsUseCases,
                 taskTypeUseCases = appContainer.taskTypeUseCases,
                 soundService = appContainer.soundService,
-                ioDispatcher = Dispatchers.IO
             )
         }
     }
@@ -462,12 +450,10 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         return getOrCreateViewModel("ProductListViewModel_${if (isSelectionMode) "selection" else "normal"}") {
             ProductListViewModel(
                 productUseCases = appContainer.productUseCases,
-                loggingService = appContainer.loggingService,
                 soundService = appContainer.soundService,
                 synchronizationController = appContainer.synchronizationController,
                 productUiMapper = appContainer.productUiMapper, // Добавляем маппер
                 resourceProvider = appContainer.resourceProvider, // Добавляем providerResources
-                ioDispatcher = Dispatchers.IO,
                 isSelectionMode = isSelectionMode
             )
         }
@@ -478,11 +464,9 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
             ProductDetailViewModel(
                 productId = productId,
                 productUseCases = appContainer.productUseCases,
-                loggingService = appContainer.loggingService,
                 clipboardService = appContainer.clipboardService,
                 productUiMapper = appContainer.productUiMapper, // Добавляем маппер
                 resourceProvider = appContainer.resourceProvider, // Добавляем providerResources
-                ioDispatcher = Dispatchers.IO
             )
         }
     }
@@ -492,11 +476,9 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
             SettingsViewModel(
                 appContainer.settingsUseCases,
                 appContainer.serverUseCases,
-                appContainer.loggingService,
                 appContainer.webServerManager,
                 appContainer.synchronizationController,
-                appContainer.updateInstaller,
-                Dispatchers.IO
+                appContainer.updateInstaller
             )
         }
     }
@@ -504,8 +486,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
     fun createSyncHistoryViewModel(): SyncHistoryViewModel {
         return getOrCreateViewModel("SyncHistoryViewModel") {
             SyncHistoryViewModel(
-                synchronizationController = appContainer.synchronizationController,
-                ioDispatcher = Dispatchers.IO
+                synchronizationController = appContainer.synchronizationController
             )
         }
     }

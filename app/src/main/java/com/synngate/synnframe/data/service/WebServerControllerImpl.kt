@@ -4,7 +4,6 @@ package com.synngate.synnframe.data.service
 
 import android.content.Context
 import android.content.Intent
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.WebServerController
 import com.synngate.synnframe.presentation.service.webserver.WebServerService
 import kotlinx.coroutines.flow.Flow
@@ -15,8 +14,7 @@ import java.net.NetworkInterface
 import java.util.Collections
 
 class WebServerControllerImpl(
-    private val context: Context,
-    private val loggingService: LoggingService
+    private val context: Context
 ) : WebServerController {
 
     private val _isRunning = MutableStateFlow(false)
@@ -43,11 +41,10 @@ class WebServerControllerImpl(
             }
             context.startForegroundService(intent)
             _isRunning.value = true
-            loggingService.logInfo("Локальный веб-сервер запущен на порту ${_serverPort.value}")
+            Timber.i("Local web server was started at port ${_serverPort.value}")
             Result.success(Unit)
         } catch (e: Exception) {
-            Timber.e(e, "Error starting web server")
-            loggingService.logError("Ошибка запуска веб-сервера: ${e.message}")
+            Timber.e("Error starting web server: ${e.message}")
             Result.failure(e)
         }
     }
@@ -59,11 +56,10 @@ class WebServerControllerImpl(
             }
             context.startService(intent)
             _isRunning.value = false
-            loggingService.logInfo("Локальный веб-сервер остановлен")
+            Timber.i("Local web server was stopped")
             Result.success(Unit)
         } catch (e: Exception) {
-            Timber.e(e, "Error stopping web server")
-            loggingService.logError("Ошибка остановки веб-сервера: ${e.message}")
+            Timber.e("Error stopping web server: ${e.message}")
             Result.failure(e)
         }
     }

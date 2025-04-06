@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.synngate.synnframe.presentation.theme.ThemeMode
+import com.synngate.synnframe.util.logging.LogLevel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
@@ -28,6 +29,8 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
         private val MOBILE_SIZE_LIMIT = intPreferencesKey("mobile_size_limit")
         private val BIN_CODE_PATTERN = stringPreferencesKey("bin_code_pattern")
         const val DEFAULT_BIN_PATTERN = "^[a-zA-Z][0-9][0-9]{2}[1-9][1-9]$"
+        private val LOG_LEVEL = stringPreferencesKey("log_level")
+        const val DEFAULT_LOG_LEVEL = "FULL"
     }
 
     val showServersOnStartup: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -76,6 +79,15 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
     val binCodePattern: Flow<String> = dataStore.data.map { preferences ->
         preferences[BIN_CODE_PATTERN] ?: DEFAULT_BIN_PATTERN
     }
+
+    val logLevel: Flow<LogLevel> = dataStore.data
+        .map { preferences ->
+            try {
+                LogLevel.fromString(preferences[LOG_LEVEL] ?: DEFAULT_LOG_LEVEL)
+            } catch (e: Exception) {
+                LogLevel.FULL
+            }
+        }
 
     suspend fun setShowServersOnStartup(show: Boolean) {
         dataStore.edit { preferences ->
@@ -138,6 +150,12 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
     suspend fun setBinCodePattern(pattern: String) {
         dataStore.edit { preferences ->
             preferences[BIN_CODE_PATTERN] = pattern
+        }
+    }
+
+    suspend fun setLogLevel(level: LogLevel) {
+        dataStore.edit { preferences ->
+            preferences[LOG_LEVEL] = level.name
         }
     }
 }

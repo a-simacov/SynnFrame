@@ -1,7 +1,6 @@
 package com.synngate.synnframe.presentation.service.webserver.controller
 
 import com.synngate.synnframe.data.remote.dto.TaskTypeDto
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.presentation.service.webserver.WebServerConstants
 import com.synngate.synnframe.presentation.service.webserver.WebServerSyncIntegrator
@@ -14,7 +13,6 @@ import kotlinx.serialization.Serializable
 import timber.log.Timber
 
 class TaskTypesController(
-    override val logger: LoggingService,
     private val taskTypeUseCases: TaskTypeUseCases,
     private val syncIntegrator: WebServerSyncIntegrator,
     private val saveSyncHistoryRecord: suspend (Int, Int, Int, Long) -> Unit
@@ -53,7 +51,7 @@ class TaskTypesController(
                 val count = result.getOrNull() ?: 0
 
                 // Логируем операцию
-                logger.logInfo(
+                Timber.i(
                     String.format(WebServerConstants.LOG_TASK_TYPES_RECEIVED, count, duration)
                 )
 
@@ -85,7 +83,7 @@ class TaskTypesController(
                 )
             } else {
                 val error = result.exceptionOrNull()
-                logger.logError(String.format(WebServerConstants.LOG_ERROR_TASK_TYPES, error?.message))
+                Timber.e(String.format(WebServerConstants.LOG_ERROR_TASK_TYPES, error?.message))
 
                 call.respondError(
                     "Failed to sync task types: ${error?.message}",

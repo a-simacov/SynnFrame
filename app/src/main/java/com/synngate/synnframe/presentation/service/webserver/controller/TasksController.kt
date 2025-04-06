@@ -4,7 +4,6 @@ import com.synngate.synnframe.data.remote.dto.TaskDto
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.repository.TaskRepository
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.presentation.service.webserver.WebServerConstants
 import com.synngate.synnframe.presentation.service.webserver.WebServerSyncIntegrator
 import com.synngate.synnframe.presentation.service.webserver.util.respondError
@@ -16,7 +15,6 @@ import kotlinx.serialization.Serializable
 import timber.log.Timber
 
 class TasksController(
-    override val logger: LoggingService,
     private val taskRepository: TaskRepository,
     private val syncIntegrator: WebServerSyncIntegrator,
     private val saveSyncHistoryRecord: suspend (Int, Int, Int, Long) -> Unit
@@ -71,7 +69,7 @@ class TasksController(
 
             // Логируем операцию
             val duration = System.currentTimeMillis() - startTime
-            logger.logInfo(
+            Timber.i(
                 String.format(
                     WebServerConstants.LOG_TASKS_RECEIVED,
                     tasks.size,

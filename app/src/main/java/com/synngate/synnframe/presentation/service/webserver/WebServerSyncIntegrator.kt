@@ -2,7 +2,6 @@ package com.synngate.synnframe.presentation.service.webserver
 
 import com.synngate.synnframe.data.sync.SyncProgress
 import com.synngate.synnframe.data.sync.SyncStatus
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.SynchronizationController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,8 +15,7 @@ import java.util.UUID
  * Обеспечивает обновление UI с данными, полученными через веб-сервер
  */
 class WebServerSyncIntegrator(
-    private val synchronizationController: SynchronizationController,
-    private val loggingService: LoggingService
+    private val synchronizationController: SynchronizationController
 ) {
     private val scope = CoroutineScope(Dispatchers.Default)
 
@@ -49,7 +47,6 @@ class WebServerSyncIntegrator(
                 updateLastSyncInfo(tasksDownloaded, productsDownloaded, taskTypesDownloaded)
             } catch (e: Exception) {
                 Timber.e(e, "Error updating sync progress")
-                loggingService.logError("Ошибка обновления прогресса синхронизации: ${e.message}")
             }
         }
     }
@@ -72,13 +69,9 @@ class WebServerSyncIntegrator(
             if (tasksDownloaded > 0 || taskTypesDownloaded > 0) {
                 // Здесь только логирование, так как нет публичного метода для обновления
                 Timber.d("WebServer downloaded: tasks=$tasksDownloaded, taskTypes=$taskTypesDownloaded")
-                loggingService.logInfo(
-                    "Через веб-сервер получено: заданий=$tasksDownloaded, типов заданий=$taskTypesDownloaded"
-                )
             }
         } catch (e: Exception) {
             Timber.e(e, "Error updating last sync info")
-            loggingService.logError("Ошибка обновления информации о синхронизации: ${e.message}")
         }
     }
 }

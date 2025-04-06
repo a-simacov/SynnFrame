@@ -6,6 +6,7 @@ import com.synngate.synnframe.data.remote.api.AppUpdateApi
 import com.synngate.synnframe.data.remote.dto.AppVersionDto
 import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.presentation.theme.ThemeMode
+import com.synngate.synnframe.util.logging.LogLevel
 import kotlinx.coroutines.flow.Flow
 
 class SettingsRepositoryImpl(
@@ -19,6 +20,7 @@ class SettingsRepositoryImpl(
     override val themeMode: Flow<ThemeMode> = appSettingsDataStore.themeMode
     override val languageCode: Flow<String> = appSettingsDataStore.languageCode
     override val navigationButtonHeight: Flow<Float> = appSettingsDataStore.navigationButtonHeight
+    override val logLevel: Flow<LogLevel> = appSettingsDataStore.logLevel
 
     override suspend fun setShowServersOnStartup(show: Boolean) {
         appSettingsDataStore.setShowServersOnStartup(show)
@@ -52,5 +54,9 @@ class SettingsRepositoryImpl(
 
     override suspend fun setBinCodePattern(pattern: String) {
         appSettingsDataStore.setBinCodePattern(pattern)
+    }
+
+    override suspend fun setLogLevel(level: LogLevel) {
+        appSettingsDataStore.setLogLevel(level)
     }
 }

@@ -20,8 +20,6 @@ import com.synngate.synnframe.presentation.ui.tasks.model.TaskLineItem
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import com.synngate.synnframe.util.bin.BinFormatter
 import com.synngate.synnframe.util.bin.BinValidator
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
@@ -35,7 +33,6 @@ class TaskDetailViewModel(
     private val settingsUseCases: SettingsUseCases,
     private val taskTypeUseCases: TaskTypeUseCases,
     private val soundService: SoundService,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<TaskDetailState, TaskDetailEvent>(TaskDetailState(taskId = taskId)) {
 
     private val scannedBarcodeCache = mutableMapOf<String, Product?>()

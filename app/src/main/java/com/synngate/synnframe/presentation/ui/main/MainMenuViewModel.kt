@@ -7,13 +7,10 @@ import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.main.model.MainMenuEvent
 import com.synngate.synnframe.presentation.ui.main.model.MainMenuState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import timber.log.Timber
-import java.time.format.DateTimeFormatter
 
 /**
  * ViewModel для экрана главного меню
@@ -23,18 +20,13 @@ class MainMenuViewModel(
     private val taskUseCases: TaskUseCases,
     private val productUseCases: ProductUseCases,
     private val synchronizationController: SynchronizationController,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<MainMenuState, MainMenuEvent>(MainMenuState()) {
 
-    private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
 
     init {
         loadData()
     }
 
-    /**
-     * Загрузка данных для главного экрана
-     */
     private fun loadData() {
         launchIO {
             updateState { it.copy(isLoading = true) }
@@ -78,37 +70,22 @@ class MainMenuViewModel(
         }
     }
 
-    /**
-     * Обработка нажатия на кнопку "Задания"
-     */
     fun onTasksClick() {
         sendEvent(MainMenuEvent.NavigateToTasks)
     }
 
-    /**
-     * Обработка нажатия на кнопку "Товары"
-     */
     fun onProductsClick() {
         sendEvent(MainMenuEvent.NavigateToProducts)
     }
 
-    /**
-     * Обработка нажатия на кнопку "Логи"
-     */
     fun onLogsClick() {
         sendEvent(MainMenuEvent.NavigateToLogs)
     }
 
-    /**
-     * Обработка нажатия на кнопку "Настройки"
-     */
     fun onSettingsClick() {
         sendEvent(MainMenuEvent.NavigateToSettings)
     }
 
-    /**
-     * Обработка нажатия на кнопку "Смена пользователя"
-     */
     fun onChangeUserClick() {
         launchIO {
             try {
@@ -131,38 +108,23 @@ class MainMenuViewModel(
         }
     }
 
-    /**
-     * Обработка нажатия на кнопку "Закрыть"
-     */
     fun onExitClick() {
         updateState { it.copy(showExitConfirmation = true) }
         sendEvent(MainMenuEvent.ShowExitConfirmation)
     }
 
-    /**
-     * Скрыть диалог подтверждения выхода
-     */
     fun hideExitConfirmation() {
         updateState { it.copy(showExitConfirmation = false) }
     }
 
-    /**
-     * Выход из приложения
-     */
     fun exitApp() {
         sendEvent(MainMenuEvent.ExitApp)
     }
 
-    /**
-     * Обновление данных
-     */
     fun refreshData() {
         loadData()
     }
 
-    /**
-     * Синхронизация данных с сервером
-     */
     fun syncData() {
         launchIO {
             updateState { it.copy(isSyncing = true) }

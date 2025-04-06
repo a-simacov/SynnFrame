@@ -1,7 +1,6 @@
 package com.synngate.synnframe.presentation.service.webserver.controller
 
 import com.synngate.synnframe.domain.repository.UserRepository
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.presentation.service.webserver.util.respondError
 import com.synngate.synnframe.presentation.service.webserver.util.respondSuccess
 import io.ktor.server.application.ApplicationCall
@@ -10,7 +9,6 @@ import kotlinx.serialization.Serializable
 import timber.log.Timber
 
 class EchoController(
-    override val logger: LoggingService,
     private val userRepository: UserRepository
 ) : WebServerController {
 

@@ -2,7 +2,6 @@ package com.synngate.synnframe.presentation.ui.products
 
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.Product
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.SoundService
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
@@ -14,26 +13,21 @@ import com.synngate.synnframe.presentation.ui.products.model.ProductListState
 import com.synngate.synnframe.presentation.ui.products.model.SortOrder
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import com.synngate.synnframe.util.resources.ResourceProvider
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import timber.log.Timber
-import java.time.format.DateTimeFormatter
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.cancellation.CancellationException
 
 class ProductListViewModel(
     private val productUseCases: ProductUseCases,
-    private val loggingService: LoggingService,
     private val soundService: SoundService,
     private val synchronizationController: SynchronizationController,
     private val productUiMapper: ProductUiMapper,
     private val resourceProvider: ResourceProvider,
     private val isSelectionMode: Boolean = false,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<ProductListState, ProductListEvent>(
     ProductListState(isSelectionMode = isSelectionMode)
 ) {
@@ -41,7 +35,6 @@ class ProductListViewModel(
     private var searchJob: Job? = null
     private val soundPlayedCache = ConcurrentHashMap<String, Long>()
     private val SOUND_DEBOUNCE_TIMEOUT = 1500L
-    private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
 
     init {
         observeProductsCount()
@@ -312,13 +305,12 @@ class ProductListViewModel(
 
                 updateState { it.copy(isLoading = false) }
             } catch (e: Exception) {
-                Timber.e(e, "Error finding product by barcode")
+                Timber.e(e, "Error finding product by barcode: ${e.message}")
 
                 // Воспроизводим звук неуспешного сканирования с дебаунсингом
                 playErrorSound(barcode)
 
                 updateState { it.copy(isLoading = false) }
-                loggingService.logError("Ошибка поиска по штрихкоду: ${e.message}")
                 // Вызываем колбэк с null в случае ошибки
                 launchMain { onProductFound(null) }
             }
@@ -376,16 +368,12 @@ class ProductListViewModel(
     }
 
     fun processBatchScanResults(results: List<ScanResult>) {
-        // Логируем результаты сканирования
         launchIO {
             val foundCount = results.count { it.product != null }
             val notFoundCount = results.size - foundCount
 
-            loggingService.logInfo(
-                "Завершено пакетное сканирование: найдено $foundCount товаров, не найдено $notFoundCount"
-            )
+            Timber.i("Batch scanning finished: found $foundCount products, not found $notFoundCount")
 
-            // Показываем сообщение с результатами
             sendEvent(
                 ProductListEvent.ShowSnackbar(
                     "Сканирование завершено: найдено $foundCount, не найдено $notFoundCount"
@@ -393,7 +381,6 @@ class ProductListViewModel(
             )
         }
 
-        // Закрываем диалог сканирования
         finishBatchScanning()
     }
 
@@ -408,7 +395,6 @@ class ProductListViewModel(
     fun confirmProductSelection() {
         val selectedProduct = uiState.value.selectedProduct
         if (selectedProduct != null) {
-            // Отправляем только ID продукта вместо целого объекта
             sendEvent(ProductListEvent.ReturnSelectedProductId(selectedProduct.id))
         }
     }

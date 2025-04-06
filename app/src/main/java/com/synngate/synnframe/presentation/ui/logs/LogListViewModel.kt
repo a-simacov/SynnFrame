@@ -2,7 +2,6 @@ package com.synngate.synnframe.presentation.ui.logs
 
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.LogType
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
 import com.synngate.synnframe.presentation.ui.logs.model.LogListState
 import com.synngate.synnframe.presentation.ui.logs.model.LogListStateEvent
@@ -19,7 +18,6 @@ import java.time.format.DateTimeFormatter
 
 class LogListViewModel(
     private val logUseCases: LogUseCases,
-    private val loggingService: LoggingService,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<LogListState, LogListUiEvent>(LogListState(), ioDispatcher) {
 
@@ -132,15 +130,13 @@ class LogListViewModel(
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Exception during logs loading")
+                Timber.e(e, "Error loading logs: ${e.message}")
                 updateState {
                     it.copy(
                         isLoading = false,
                         error = "Error loading logs: ${e.message}"
                     )
                 }
-
-                loggingService.logError("Error loading logs: ${e.message}")
             }
         }
     }
@@ -166,7 +162,7 @@ class LogListViewModel(
                             error = "Ошибка при очистке логов: ${exception?.message}"
                         )
                     }
-                    loggingService.logError("Ошибка при очистке логов: ${exception?.message}")
+                    Timber.e("Error on cleanup logs: ${exception?.message}")
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Exception during logs cleanup")
@@ -176,7 +172,7 @@ class LogListViewModel(
                         error = "Ошибка при очистке логов: ${e.message}"
                     )
                 }
-                loggingService.logError("Ошибка при очистке логов: ${e.message}")
+                Timber.e("Error on cleanup logs: ${e.message}")
             }
         }
     }
@@ -228,7 +224,7 @@ class LogListViewModel(
                         )
                     }
 
-                    loggingService.logInfo("Все логи были удалены")
+                    Timber.i("All logs were deleted")
                     sendEvent(LogListUiEvent.ShowSnackbar("Все логи успешно удалены"))
                 } else {
                     val exception = result.exceptionOrNull()
@@ -239,18 +235,16 @@ class LogListViewModel(
                         )
                     }
 
-                    loggingService.logError("Ошибка удаления логов: ${exception?.message}")
+                    Timber.e("Error in deleting logs: ${exception?.message}")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Exception during logs deletion")
+                Timber.e(e, "Exception during logs deletion ${e.message}")
                 updateState {
                     it.copy(
                         isLoading = false,
                         error = "Ошибка удаления логов: ${e.message}"
                     )
                 }
-
-                loggingService.logError("Ошибка удаления логов: ${e.message}")
             }
         }
     }

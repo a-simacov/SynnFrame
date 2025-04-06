@@ -6,8 +6,6 @@ import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.presentation.ui.server.model.ServerListEvent
 import com.synngate.synnframe.presentation.ui.server.model.ServerListState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -18,7 +16,6 @@ import timber.log.Timber
 class ServerListViewModel(
     private val serverUseCases: ServerUseCases,
     private val settingsUseCases: SettingsUseCases,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<ServerListState, ServerListEvent>(ServerListState()) {
 
     init {
@@ -27,9 +24,6 @@ class ServerListViewModel(
         observeSettings()
     }
 
-    /**
-     * Загружает начальные данные
-     */
     private fun loadServers() {
         launchIO {
             val serversCount = serverUseCases.getServers().first().size
@@ -63,9 +57,6 @@ class ServerListViewModel(
         }
     }
 
-    /**
-     * Наблюдает за изменениями в списке серверов
-     */
     private fun observeServers() {
         serverUseCases.getServers()
             .onEach { servers ->
@@ -90,9 +81,6 @@ class ServerListViewModel(
             .launchIn(viewModelScope)
     }
 
-    /**
-     * Наблюдает за изменениями в настройках
-     */
     private fun observeSettings() {
         launchIO {
             settingsUseCases.showServersOnStartup.collectLatest { showOnStartup ->
@@ -103,30 +91,18 @@ class ServerListViewModel(
         }
     }
 
-    /**
-     * Обрабатывает нажатие на сервер в списке
-     */
     fun onServerClick(serverId: Int) {
         sendEvent(ServerListEvent.NavigateToServerDetail(serverId))
     }
 
-    /**
-     * Обрабатывает нажатие на кнопку "Добавить сервер"
-     */
     fun onAddServerClick() {
         sendEvent(ServerListEvent.NavigateToServerDetail(null))
     }
 
-    /**
-     * Обрабатывает нажатие на кнопку "Удалить" для сервера
-     */
     fun onDeleteServerClick(serverId: Int, serverName: String) {
         sendEvent(ServerListEvent.ShowDeleteConfirmation(serverId, serverName))
     }
 
-    /**
-     * Удаляет сервер
-     */
     fun deleteServer(serverId: Int) {
         launchIO {
             updateState { it.copy(isLoading = true) }
@@ -145,9 +121,6 @@ class ServerListViewModel(
         }
     }
 
-    /**
-     * Обрабатывает изменение настройки "Показывать при запуске"
-     */
     fun setShowServersOnStartup(show: Boolean) {
         launchIO {
             val result = settingsUseCases.setShowServersOnStartup(show)
@@ -160,9 +133,6 @@ class ServerListViewModel(
         }
     }
 
-    /**
-     * Переход к экрану логина
-     */
     fun navigateToLogin() {
         sendEvent(ServerListEvent.NavigateToLogin)
     }

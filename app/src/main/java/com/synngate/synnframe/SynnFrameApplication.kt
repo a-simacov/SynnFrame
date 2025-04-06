@@ -2,7 +2,8 @@ package com.synngate.synnframe
 
 import android.app.Application
 import com.synngate.synnframe.presentation.di.AppContainer
-import com.synngate.synnframe.util.logging.ReleaseTree
+import com.synngate.synnframe.util.logging.AppTree
+import com.synngate.synnframe.util.logging.LogLevelProvider
 import com.synngate.synnframe.util.network.TrustAllCertificates
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,18 +19,24 @@ class SynnFrameApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // Инициализация Timber для логирования
-        if (BuildConfig.DEBUG) {
-            Timber.plant(Timber.DebugTree())
-        } else {
-            Timber.plant(ReleaseTree())
-        }
+        // 1. Сначала инициализируем Timber с простым DebugTree или специальным InitTree
+        Timber.plant(object : Timber.DebugTree() {
+            override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+                // Только вывод в консоль, без сохранения в БД
+                super.log(priority, tag, message, t)
+            }
+        })
+
+        // 2. Инициализация DI контейнера
+        appContainer = AppContainer(applicationContext)
+
+        // 3. Заменяем Timber tree на полнофункциональный
+        Timber.uprootAll() // Удаляем временный tree
+        val logLevelProvider = LogLevelProvider(appContainer.appSettingsDataStore)
+        Timber.plant(AppTree(appContainer.loggingService, logLevelProvider))
 
         // Настраиваем доверие всем SSL сертификатам (только для разработки)
         TrustAllCertificates.initialize()
-
-        // Инициализация DI контейнера
-        appContainer = AppContainer(applicationContext)
 
         // Устанавливаем локаль из настроек
         launchInBackground {

@@ -6,6 +6,7 @@ import com.synngate.synnframe.data.sync.RetrySettings
 import com.synngate.synnframe.domain.entity.Server
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.theme.ThemeMode
+import com.synngate.synnframe.util.logging.LogLevel
 import java.time.LocalDateTime
 
 data class SettingsState(
@@ -69,5 +70,6 @@ data class SettingsState(
 // Отображение раздела с настройками повторных попыток
     val showRetrySettings: Boolean = false,
 
-    val binCodePattern: String = AppSettingsDataStore.DEFAULT_BIN_PATTERN
+    val binCodePattern: String = AppSettingsDataStore.DEFAULT_BIN_PATTERN,
+    val logLevel: LogLevel = LogLevel.FULL,
 )

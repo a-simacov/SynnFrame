@@ -1,6 +1,5 @@
 package com.synngate.synnframe.data.service
 
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.WebServerController
 import com.synngate.synnframe.domain.service.WebServerManager
 import kotlinx.coroutines.flow.Flow
@@ -8,7 +7,6 @@ import timber.log.Timber
 
 class WebServerManagerImpl(
     private val webServerController: WebServerController,
-    private val loggingService: LoggingService
 ) : WebServerManager {
 
     override val isRunning: Flow<Boolean> = webServerController.isRunning
@@ -17,12 +15,11 @@ class WebServerManagerImpl(
         return try {
             val result = webServerController.startService()
             if (result.isSuccess) {
-                loggingService.logInfo("Локальный веб-сервер запущен")
+                Timber.i("Local web server was started")
             }
             result
         } catch (e: Exception) {
-            Timber.e(e, "Error starting web server")
-            loggingService.logError("Ошибка запуска веб-сервера: ${e.message}")
+            Timber.e("Error starting web server: ${e.message}")
             Result.failure(e)
         }
     }
@@ -31,12 +28,11 @@ class WebServerManagerImpl(
         return try {
             val result = webServerController.stopService()
             if (result.isSuccess) {
-                loggingService.logInfo("Локальный веб-сервер остановлен")
+                Timber.i("Local web server was stopped")
             }
             result
         } catch (e: Exception) {
-            Timber.e(e, "Error stopping web server")
-            loggingService.logError("Ошибка остановки веб-сервера: ${e.message}")
+            Timber.e("Error stopping web server: ${e.message}")
             Result.failure(e)
         }
     }
@@ -45,8 +41,7 @@ class WebServerManagerImpl(
         return try {
             webServerController.toggleService()
         } catch (e: Exception) {
-            Timber.e(e, "Error toggling web server")
-            loggingService.logError("Ошибка переключения веб-сервера: ${e.message}")
+            Timber.e("Error toggling web server: ${e.message}")
             Result.failure(e)
         }
     }

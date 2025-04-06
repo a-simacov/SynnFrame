@@ -61,6 +61,7 @@ import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsEvent
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsState
+import com.synngate.synnframe.util.logging.LogLevel
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.format.DateTimeFormatter
@@ -219,6 +220,14 @@ fun SettingsScreen(
             WebServerSection(
                 state = state,
                 onToggleWebServer = viewModel::toggleWebServer
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            LoggingSettingsSection(
+                state = state,
+                onLogLevelChange = viewModel::updateLogLevel,
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -877,6 +886,53 @@ fun UpdateSection(
                     state.isDownloadingUpdate ||
                     state.isInstallingUpdate,
             modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+fun LoggingSettingsSection(
+    state: SettingsState,
+    onLogLevelChange: (LogLevel) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    InfoCard(
+        title = stringResource(id = R.string.logging_settings),
+        modifier = modifier
+    ) {
+        Text(
+            text = stringResource(id = R.string.log_level_selection),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        CyclicValueButton(
+            values = LogLevel.values().toList(),
+            currentValue = state.logLevel,
+            onValueChange = onLogLevelChange,
+            valueToString = { logLevel ->
+                when(logLevel) {
+                    LogLevel.FULL -> stringResource(id = R.string.log_level_full)
+                    LogLevel.INFO -> stringResource(id = R.string.log_level_info)
+                    LogLevel.WARNING -> stringResource(id = R.string.log_level_warning)
+                    LogLevel.ERROR -> stringResource(id = R.string.log_level_error)
+                }
+            },
+            // Можно добавить иконку, например Icons.Filled.ChangeCircle
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Пояснение для каждого уровня
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = when(state.logLevel) {
+                LogLevel.FULL -> stringResource(id = R.string.log_level_full_description)
+                LogLevel.INFO -> stringResource(id = R.string.log_level_info_description)
+                LogLevel.WARNING -> stringResource(id = R.string.log_level_warning_description)
+                LogLevel.ERROR -> stringResource(id = R.string.log_level_error_description)
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

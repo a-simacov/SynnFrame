@@ -11,7 +11,6 @@ import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
 import com.synngate.synnframe.domain.repository.TaskRepository
 import com.synngate.synnframe.domain.repository.UserRepository
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.WebServerController
 import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.presentation.service.base.BaseForegroundService
@@ -55,11 +54,6 @@ import java.util.concurrent.TimeUnit
 
 class WebServerService : BaseForegroundService() {
 
-    // Инъекция зависимостей
-    override val loggingService: LoggingService by lazy {
-        (application as SynnFrameApplication).appContainer.loggingService
-    }
-
     private val webServerController: WebServerController by lazy {
         (application as SynnFrameApplication).appContainer.webServerController
     }
@@ -101,8 +95,7 @@ class WebServerService : BaseForegroundService() {
     // Интегратор для обновления информации в SynchronizationController
     private val syncIntegrator by lazy {
         WebServerSyncIntegrator(
-            (application as SynnFrameApplication).appContainer.synchronizationController,
-            loggingService
+            (application as SynnFrameApplication).appContainer.synchronizationController
         )
     }
 
@@ -118,7 +111,6 @@ class WebServerService : BaseForegroundService() {
 
     private val controllerFactory by lazy {
         WebServerControllerFactory(
-            loggingService,
             userRepository,
             taskRepository,
             productRepository,
@@ -229,11 +221,9 @@ class WebServerService : BaseForegroundService() {
                     configureServer()
                 }.start(wait = false)
 
-                loggingService.logInfo(String.format(WebServerConstants.LOG_WEB_SERVER_STARTED, port))
-                Timber.i("Web server started on port $port")
+                Timber.i(String.format(WebServerConstants.LOG_WEB_SERVER_STARTED, port))
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                loggingService.logError("Ошибка запуска веб-сервера: ${e.message}")
                 Timber.e(e, "Error starting web server")
             }
         }
@@ -392,11 +382,11 @@ class WebServerService : BaseForegroundService() {
             )
 
             // Также добавим запись в логи приложения
-            loggingService.logInfo(
-                "Веб-сервер: ${requestInfo.method} ${requestInfo.path}, " +
-                        "Код: ${requestInfo.statusCode}, " +
-                        "Время: ${requestInfo.responseTime}мс, " +
-                        "Клиент: ${requestInfo.clientIp}"
+            Timber.i(
+                "Web server: ${requestInfo.method} ${requestInfo.path}, " +
+                        "Code: ${requestInfo.statusCode}, " +
+                        "Time: ${requestInfo.responseTime}мс, " +
+                        "Client: ${requestInfo.clientIp}"
             )
         }
     }
@@ -406,11 +396,9 @@ class WebServerService : BaseForegroundService() {
             try {
                 server?.stop(1, 5, TimeUnit.SECONDS)
                 server = null
-                loggingService.logInfo(WebServerConstants.LOG_WEB_SERVER_STOPPED)
-                Timber.i("Web server stopped")
+                Timber.i(WebServerConstants.LOG_WEB_SERVER_STOPPED)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                loggingService.logError("Ошибка остановки веб-сервера: ${e.message}")
                 Timber.e(e, "Error stopping web server")
             }
         }

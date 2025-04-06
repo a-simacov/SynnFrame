@@ -1,5 +1,3 @@
-// File: com.synngate.synnframe.presentation.service.base.BaseForegroundService.kt
-
 package com.synngate.synnframe.presentation.service.base
 
 import android.app.Notification
@@ -7,7 +5,6 @@ import android.app.Service
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
-import com.synngate.synnframe.domain.service.LoggingService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,9 +22,6 @@ abstract class BaseForegroundService : Service() {
 
     // Биндер для связи с клиентами сервиса
     private val binder = LocalBinder()
-
-    // Логирование
-    protected abstract val loggingService: LoggingService
 
     // Название сервиса для логов
     protected abstract val serviceName: String
@@ -81,7 +75,7 @@ abstract class BaseForegroundService : Service() {
 
         // Логирование начала работы сервиса
         serviceScope.launchSafely {
-            loggingService.logInfo("$serviceName запущен")
+            Timber.i("$serviceName запущен")
         }
 
         // Выполнение специфичной для сервиса инициализации
@@ -105,7 +99,7 @@ abstract class BaseForegroundService : Service() {
 
         // Логирование остановки сервиса
         serviceScope.launchSafely {
-            loggingService.logInfo("$serviceName остановлен")
+            Timber.i("$serviceName остановлен")
         }
 
         // Остановка foreground-режима и самого сервиса

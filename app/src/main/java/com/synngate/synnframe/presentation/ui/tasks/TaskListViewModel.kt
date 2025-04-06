@@ -3,15 +3,12 @@ package com.synngate.synnframe.presentation.ui.tasks
 import com.synngate.synnframe.domain.entity.CreationPlace
 import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskStatus
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskListEvent
 import com.synngate.synnframe.presentation.ui.tasks.model.TaskListState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -23,9 +20,7 @@ import java.util.UUID
 class TaskListViewModel(
     private val taskUseCases: TaskUseCases,
     private val userUseCases: UserUseCases,
-    private val loggingService: LoggingService,
     private val taskTypeUseCases: TaskTypeUseCases,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<TaskListState, TaskListEvent>(TaskListState()) {
 
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
@@ -75,12 +70,11 @@ class TaskListViewModel(
                     ) }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error loading tasks")
+                Timber.e(e, "Error loading tasks: ${e.message}")
                 updateState { it.copy(
                     isLoading = false,
                     error = "Unknown error occurred: ${e.message}"
                 ) }
-                loggingService.logError("Error loading logs: ${e.message}")
             }
         }
     }
@@ -160,14 +154,14 @@ class TaskListViewModel(
 
                     updateState { it.copy(isSyncing = false) }
                     sendEvent(TaskListEvent.ShowSnackbar("Ошибка синхронизации: $error"))
-                    loggingService.logError("Ошибка синхронизации: $error")
+                    Timber.e("Sync error: $error")
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error syncing tasks")
 
                 updateState { it.copy(isSyncing = false) }
                 sendEvent(TaskListEvent.ShowSnackbar("Ошибка синхронизации: ${e.message}"))
-                loggingService.logError("Ошибка синхронизации: ${e.message}")
+                Timber.e("Sync error: ${e.message}")
             }
         }
     }

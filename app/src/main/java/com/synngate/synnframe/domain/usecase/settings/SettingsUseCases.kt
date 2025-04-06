@@ -1,23 +1,19 @@
 package com.synngate.synnframe.domain.usecase.settings
 
 import android.content.Context
-import android.os.StatFs
-import androidx.core.content.FileProvider
 import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.domain.service.FileService
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import com.synngate.synnframe.presentation.theme.ThemeMode
+import com.synngate.synnframe.util.logging.LogLevel
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
-import java.io.File
 import java.io.IOException
 
 class SettingsUseCases(
     private val settingsRepository: SettingsRepository,
-    private val loggingService: LoggingService,
     private val fileService: FileService,
     private val applicationContext: Context
 ) : BaseUseCase {
@@ -30,15 +26,15 @@ class SettingsUseCases(
     val navigationButtonHeight: Flow<Float> = settingsRepository.navigationButtonHeight
 
     val binCodePattern = settingsRepository.getBinCodePattern()
+    val logLevel: Flow<LogLevel> = settingsRepository.logLevel
 
     suspend fun setShowServersOnStartup(show: Boolean): Result<Unit> {
         return try {
             settingsRepository.setShowServersOnStartup(show)
-            loggingService.logInfo("Настройка 'Показывать при запуске' установлена: $show")
+            Timber.i("Setting 'Show on startup' was set: $show")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting ShowServersOnStartup")
-            loggingService.logError("Ошибка при изменении настройки: ${e.message}")
             Result.failure(e)
         }
     }
@@ -46,11 +42,10 @@ class SettingsUseCases(
     suspend fun setPeriodicUpload(enabled: Boolean, intervalSeconds: Int? = null): Result<Unit> {
         return try {
             settingsRepository.setPeriodicUpload(enabled, intervalSeconds)
-            loggingService.logInfo("Настройка 'Периодическая выгрузка' установлена: $enabled, интервал: $intervalSeconds")
+            Timber.i("Setting 'Periodic upload' was set: $enabled, interval: $intervalSeconds")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting PeriodicUpload")
-            loggingService.logError("Ошибка при изменении настройки: ${e.message}")
             Result.failure(e)
         }
     }
@@ -58,11 +53,10 @@ class SettingsUseCases(
     suspend fun setThemeMode(mode: ThemeMode): Result<Unit> {
         return try {
             settingsRepository.setThemeMode(mode)
-            loggingService.logInfo("Настройка 'Тема оформления' установлена: $mode")
+            Timber.i("Setting 'Theme' was set: $mode")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting ThemeMode")
-            loggingService.logError("Ошибка при изменении настройки: ${e.message}")
             Result.failure(e)
         }
     }
@@ -70,11 +64,10 @@ class SettingsUseCases(
     suspend fun setLanguageCode(code: String): Result<Unit> {
         return try {
             settingsRepository.setLanguageCode(code)
-            loggingService.logInfo("Настройка 'Язык интерфейса' установлена: $code")
+            Timber.i("Setting 'Language' was set: $code")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting LanguageCode")
-            loggingService.logError("Ошибка при изменении настройки: ${e.message}")
             Result.failure(e)
         }
     }
@@ -82,11 +75,10 @@ class SettingsUseCases(
     suspend fun setNavigationButtonHeight(height: Float): Result<Unit> {
         return try {
             settingsRepository.setNavigationButtonHeight(height)
-            loggingService.logInfo("Настройка 'Высота кнопки навигации' установлена: $height")
+            Timber.i("Setting 'Nav button height' was set: $height")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting NavigationButtonHeight")
-            loggingService.logError("Ошибка при изменении настройки: ${e.message}")
             Result.failure(e)
         }
     }
@@ -106,21 +98,20 @@ class SettingsUseCases(
                             isNewVersionAvailable(currentVersion, serverVersion)
 
                     if (isNewVersionAvailable) {
-                        loggingService.logInfo("Проверка обновлений: доступна версия ${updateInfo?.lastVersion}")
+                        Timber.i("Checking updates: version available ${updateInfo?.lastVersion}")
                         Result.success(Pair(updateInfo?.lastVersion, updateInfo?.releaseDate))
                     } else {
-                        loggingService.logInfo("Проверка обновлений: обновлений не найдено")
+                        Timber.i("Checking updates: not found")
                         Result.success(Pair(null, null))
                     }
                 }
                 is ApiResult.Error -> {
-                    loggingService.logWarning("Ошибка проверки обновлений: ${response.message}")
+                    Timber.w("Error checking updates: ${response.message}")
                     Result.failure(IOException("Failed to check for updates: ${response.code}"))
                 }
             }
         } catch (e: Exception) {
             Timber.e(e, "Exception during checking for updates")
-            loggingService.logError("Исключение при проверке обновлений: ${e.message}")
             Result.failure(e)
         }
     }
@@ -129,13 +120,13 @@ class SettingsUseCases(
         return try {
             // Проверяем наличие свободного места (примерно 50 МБ для APK)
             if (!fileService.hasEnoughStorage(50 * 1024 * 1024L)) {
-                loggingService.logWarning("Недостаточно места для загрузки обновления")
+                Timber.w("Insufficient storage space for uploading updates")
                 return Result.failure(IOException("Insufficient storage space"))
             }
 
             // Создаем директорию для обновлений, если она не существует
             if (!fileService.ensureDirectoryExists("updates")) {
-                loggingService.logWarning("Не удалось создать директорию для обновлений")
+                Timber.w("Failed to create updates directory")
                 return Result.failure(IOException("Failed to create updates directory"))
             }
 
@@ -151,50 +142,20 @@ class SettingsUseCases(
                     val filePath = fileService.saveFile(fileName, responseBody)
 
                     if (filePath != null) {
-                        loggingService.logInfo("Обновление загружено: $version, путь: $filePath")
+                        Timber.i("Update was downloaede: $version, path: $filePath")
                         Result.success(filePath)
                     } else {
-                        loggingService.logWarning("Не удалось сохранить обновление")
+                        Timber.w("Failed to save update file")
                         Result.failure(IOException("Failed to save update file"))
                     }
                 }
                 is ApiResult.Error -> {
-                    loggingService.logWarning("Ошибка загрузки обновления: ${response.message}")
+                    Timber.w("Error downloading updates: ${response.message}")
                     Result.failure(IOException("Failed to download update: ${response.code}"))
                 }
             }
         } catch (e: Exception) {
             Timber.e(e, "Exception during update download")
-            loggingService.logError("Исключение при загрузке обновления: ${e.message}")
-            Result.failure(e)
-        }
-    }
-    // Вспомогательный метод для проверки доступного места
-    private fun getAvailableStorage(): Long {
-        val stat = StatFs(applicationContext.filesDir.path)
-        return stat.availableBlocksLong * stat.blockSizeLong
-    }
-
-    suspend fun installUpdate(filePath: String): Result<Boolean> {
-        return try {
-            val file = File(filePath)
-            if (!file.exists()) {
-                loggingService.logError("Файл обновления не существует: $filePath")
-                return Result.failure(IOException("Update file does not exist"))
-            }
-
-            // Бизнес-логика работы с FileProvider
-            val apkUri = FileProvider.getUriForFile(
-                applicationContext,
-                "${applicationContext.packageName}.fileprovider",
-                file
-            )
-
-            loggingService.logInfo("Подготовка к установке обновления: $filePath")
-            Result.success(true)
-        } catch (e: Exception) {
-            Timber.e(e, "Exception during update installation preparation")
-            loggingService.logError("Исключение при подготовке установки обновления: ${e.message}")
             Result.failure(e)
         }
     }
@@ -218,6 +179,17 @@ class SettingsUseCases(
 
     suspend fun setBinCodePattern(pattern: String) {
         settingsRepository.setBinCodePattern(pattern)
-        loggingService.logInfo("Установлен шаблон кода ячейки: $pattern")
+        Timber.i("Bin code pattern was set: $pattern")
+    }
+
+    suspend fun setLogLevel(level: LogLevel): Result<Unit> {
+        return try {
+            settingsRepository.setLogLevel(level)
+            Timber.i("Log level was set: $level")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error updating log level")
+            Result.failure(e)
+        }
     }
 }

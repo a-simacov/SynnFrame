@@ -4,15 +4,13 @@ import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.domain.entity.TaskFactLine
 import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.repository.TaskRepository
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
 import java.time.LocalDateTime
 
 class TaskUseCases(
-    private val taskRepository: TaskRepository,
-    private val loggingService: LoggingService
+    private val taskRepository: TaskRepository
 ) : BaseUseCase {
 
     fun getTasks(): Flow<List<Task>> =
@@ -47,12 +45,12 @@ class TaskUseCases(
             return Result.failure(IllegalArgumentException("Task not found"))
 
             if (task.status != TaskStatus.TO_DO) {
-                loggingService.logWarning("Невозможно начать выполнение задания '${task.name}', текущий статус: ${task.status}")
+                Timber.w("Impossible to start task completion '${task.name}', current status: ${task.status}")
                 return Result.failure(IllegalStateException("Task is not in TO_DO status"))
             }
 
             if (task.executorId != null && task.executorId != executorId) {
-                loggingService.logWarning("Задание '${task.name}' назначено другому исполнителю: ${task.executorId}")
+                Timber.w("Task '${task.name}' is assigned to another executor: ${task.executorId}")
                 return Result.failure(IllegalStateException("Task is assigned to another executor"))
             }
 
@@ -60,14 +58,13 @@ class TaskUseCases(
                 try {
                     val availabilityResult = taskRepository.checkTaskAvailability(id)
                     if (availabilityResult.isFailure || availabilityResult.getOrNull() != true) {
-                        loggingService.logWarning("Задание '${task.name}' недоступно для выполнения")
+                        Timber.w("Task '${task.name}' is not available")
                         return Result.failure(IllegalStateException("Task is not available"))
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "Exception during task availability check")
-                    loggingService.logError("Ошибка при проверке доступности задания: ${e.message}")
                     // Если нет подключения к серверу, позволяем взять задание в работу
-                    loggingService.logWarning("Нет подключения к серверу, задание взято в работу без проверки")
+                    Timber.w("Нет подключения к серверу, задание взято в работу без проверки")
                 }
             }
 
@@ -78,12 +75,11 @@ class TaskUseCases(
             )
 
             taskRepository.updateTask(updatedTask)
-            loggingService.logInfo("Начато выполнение задания: ${task.name}")
+            Timber.i("Task execution started: ${task.name}")
 
             return Result.success(taskRepository.getTaskById(id)!!)
         } catch (e: Exception) {
             Timber.e(e, "Exception during starting task")
-            loggingService.logError("Исключение при запуске задания: ${e.message}")
             return Result.failure(e)
         }
     }
@@ -94,7 +90,7 @@ class TaskUseCases(
             return Result.failure(IllegalArgumentException("Task not found"))
 
             if (task.status != TaskStatus.IN_PROGRESS) {
-                loggingService.logWarning("Невозможно завершить задание '${task.name}', текущий статус: ${task.status}")
+                Timber.w("Impossible to complete the task '${task.name}', current status: ${task.status}")
                 return Result.failure(IllegalStateException("Task is not in IN_PROGRESS status"))
             }
 
@@ -104,19 +100,17 @@ class TaskUseCases(
             )
 
             taskRepository.updateTask(updatedTask)
-            loggingService.logInfo("Завершено выполнение задания: ${task.name}")
+            Timber.i("Task completion finished: ${task.name}")
 
             try {
                 uploadTask(id)
             } catch (e: Exception) {
                 Timber.e(e, "Exception during task upload after completion")
-                loggingService.logWarning("Ошибка выгрузки задания после завершения: ${e.message}")
             }
 
             return Result.success(taskRepository.getTaskById(id)!!)
         } catch (e: Exception) {
             Timber.e(e, "Exception during completing task")
-            loggingService.logError("Исключение при завершении задания: ${e.message}")
             return Result.failure(e)
         }
     }
@@ -127,15 +121,14 @@ class TaskUseCases(
             throw IllegalArgumentException("Task not found: ${factLine.taskId}")
 
             if (task.status != TaskStatus.IN_PROGRESS) {
-                loggingService.logWarning("Невозможно обновить строку факта: задание не в статусе выполнения")
+                Timber.w("Cannot update fact line: task is not in progress")
                 throw IllegalStateException("Cannot update fact line: task is not in progress")
             }
 
             taskRepository.updateTaskFactLine(factLine)
-            loggingService.logInfo("Обновлена строка факта для задания ${factLine.taskId}, товар ${factLine.productId}, количество ${factLine.quantity}")
+            Timber.i("Updated fact line ${factLine.taskId}, product ${factLine.productId}, qty ${factLine.quantity}")
         } catch (e: Exception) {
             Timber.e(e, "Error updating task fact line")
-            loggingService.logError("Ошибка при обновлении строки факта: ${e.message}")
             throw e
         }
     }
@@ -146,29 +139,28 @@ class TaskUseCases(
             return Result.failure(IllegalArgumentException("Task not found"))
 
             if (task.status != TaskStatus.COMPLETED) {
-                loggingService.logWarning("Невозможно выгрузить незавершенное задание: ${task.name}")
+                Timber.w("Cannot upload incomplete task: ${task.name}")
                 return Result.failure(IllegalStateException("Cannot upload incomplete task"))
             }
 
             val result = taskRepository.uploadTaskToServer(id)
 
             if (result.isSuccess) {
-                loggingService.logInfo("Задание успешно выгружено: ${task.name}")
+                Timber.i("Task was uploaded successfully: ${task.name}")
             } else {
                 val error = result.exceptionOrNull()
-                loggingService.logWarning("Ошибка выгрузки задания: ${task.name}, причина: ${error?.message}")
+                Timber.w("Error uploading task: ${task.name}, error: ${error?.message}")
 
                 // Для лучшей диагностики добавим стек трейс
                 if (error != null) {
                     val stackTrace = error.stackTraceToString()
-                    loggingService.logError("Стек вызовов ошибки: $stackTrace")
+                    Timber.e("Stack trace error: $stackTrace")
                 }
             }
 
             result
         } catch (e: Exception) {
             Timber.e(e, "Exception during task upload")
-            loggingService.logError("Исключение при выгрузке задания: ${e.message}, стек: ${e.stackTraceToString()}")
             Result.failure(e)
         }
     }
@@ -179,7 +171,7 @@ class TaskUseCases(
             val completedTasks = taskRepository.getCompletedNotUploadedTasks()
 
             if (completedTasks.isEmpty()) {
-                loggingService.logInfo("Нет завершенных заданий для выгрузки")
+                Timber.i("No completed tasks to upload")
                 return Result.success(0)
             }
 
@@ -193,11 +185,10 @@ class TaskUseCases(
                 }
             }
 
-            loggingService.logInfo("Выгружено заданий: $successCount из ${completedTasks.size}")
+            Timber.i("Uploaded tasks: $successCount from ${completedTasks.size}")
             Result.success(successCount)
         } catch (e: Exception) {
             Timber.e(e, "Exception during completed tasks upload")
-            loggingService.logError("Исключение при выгрузке завершенных заданий: ${e.message}")
             Result.failure(e)
         }
     }
@@ -233,11 +224,10 @@ class TaskUseCases(
                 }
             }
 
-            loggingService.logInfo("Синхронизация заданий: добавлено $addedCount, обновлено $updatedCount")
+            Timber.i("Tasks sync: added $addedCount, updated $updatedCount")
             Result.success(addedCount + updatedCount)
         } catch (e: Exception) {
             Timber.e(e, "Exception during tasks synchronization")
-            loggingService.logError("Исключение при синхронизации заданий: ${e.message}")
             Result.failure(e)
         }
     }
@@ -257,12 +247,11 @@ class TaskUseCases(
             taskRepository.addTask(task)
 
             // Логируем операцию
-            loggingService.logInfo("Добавлено новое задание: ${task.name} (${task.id})")
+            Timber.i("New task was added: ${task.name} (${task.id})")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Error adding task")
-            loggingService.logError("Ошибка при добавлении задания: ${e.message}")
             Result.failure(e)
         }
     }
@@ -273,7 +262,6 @@ class TaskUseCases(
             Result.success(tasks)
         } catch (e: Exception) {
             Timber.e(e, "Error getting completed not uploaded tasks")
-            loggingService.logError("Ошибка получения невыгруженных заданий: ${e.message}")
             Result.failure(e)
         }
     }
@@ -286,18 +274,17 @@ class TaskUseCases(
 
             // Проверяем, что задание выгружено
             if (!task.uploaded) {
-                loggingService.logWarning("Невозможно удалить невыгруженное задание: ${task.name}")
+                Timber.w("Cannot delete non-uploaded task: ${task.name}")
                 return Result.failure(IllegalStateException("Cannot delete non-uploaded task"))
             }
 
             // Удаляем задание через репозиторий
             taskRepository.deleteTask(id)
-            loggingService.logInfo("Удалено задание: ${task.name}")
+            Timber.i("Task was deleted: ${task.name}")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during task deletion")
-            loggingService.logError("Исключение при удалении задания: ${e.message}")
             Result.failure(e)
         }
     }

@@ -4,7 +4,6 @@ import com.synngate.synnframe.data.local.dao.SyncOperationDao
 import com.synngate.synnframe.data.local.entity.OperationType
 import com.synngate.synnframe.data.local.entity.SyncOperation
 import com.synngate.synnframe.data.sync.RetryStrategy
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.util.network.NetworkMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +15,6 @@ import java.time.LocalDateTime
 class SyncQueueManager(
     private val syncOperationDao: SyncOperationDao,
     private val networkMonitor: NetworkMonitor,
-    private val loggingService: LoggingService,
     private val defaultStrategy: RetryStrategy = RetryStrategy.NORMAL
 ) {
     // Scope для запуска корутин
@@ -77,7 +75,7 @@ class SyncQueueManager(
 
     suspend fun markOperationCompleted(id: Long) {
         syncOperationDao.markOperationAsCompleted(id)
-        loggingService.logInfo("Операция синхронизации $id завершена успешно")
+        Timber.i("Sync operation $id finished successfully")
     }
 
     suspend fun handleFailedAttempt(id: Long, error: String): Boolean {
@@ -99,7 +97,7 @@ class SyncQueueManager(
         // Если превышено максимальное количество попыток, отмечаем операцию как завершенную (с ошибкой)
         if (newAttempts >= strategy.maxAttempts) {
             syncOperationDao.markOperationAsCompleted(id)
-            loggingService.logWarning("Операция синхронизации $id не удалась после ${strategy.maxAttempts} попыток: $error")
+            Timber.w("Sync operation $id failed after ${strategy.maxAttempts} attempts: $error")
             return false
         }
 
@@ -116,11 +114,11 @@ class SyncQueueManager(
         syncOperationDao.setNextAttemptTime(id, nextAttemptTime)
 
         // Записываем событие в лог с подробной информацией
-        loggingService.logWarning(
-            "Операция синхронизации $id (${operation.operationType}) не удалась (попытка $newAttempts/${strategy.maxAttempts}). " +
-                    "Следующая попытка в $nextAttemptTime (задержка ${delaySeconds}с). " +
-                    "Состояние сети: ${networkState.javaClass.simpleName}. " +
-                    "Ошибка: $error"
+        Timber.w(
+            "Sync operation $id (${operation.operationType}) failed (attempt $newAttempts/${strategy.maxAttempts}). " +
+                    "Next attempt at $nextAttemptTime (delay ${delaySeconds}sec). " +
+                    "Network state: ${networkState.javaClass.simpleName}. " +
+                    "Error: $error"
         )
 
         return true

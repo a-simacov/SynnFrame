@@ -16,7 +16,6 @@ interface UpdateInstaller {
 
 class UpdateInstallerImpl(
     private val context: Context,
-    private val loggingService: LoggingService
 ) : UpdateInstaller {
 
     // Метод для проверки возможности установки пакета
@@ -44,7 +43,7 @@ class UpdateInstallerImpl(
         return try {
             val file = File(filePath)
             if (!file.exists()) {
-                loggingService.logError("Файл обновления не найден: $filePath")
+                Timber.e("Update file was not found: $filePath")
                 return Result.failure(Exception("Файл обновления не найден"))
             }
 
@@ -57,15 +56,14 @@ class UpdateInstallerImpl(
 
             // Проверка разрешения на установку из неизвестных источников
             if (!canInstallPackages()) {
-                loggingService.logWarning("Необходимо разрешение на установку приложений")
+                Timber.w("Install application permission required")
                 return Result.failure(Exception("INSTALL_PACKAGES permission required"))
             }
 
-            loggingService.logInfo("Подготовка к установке обновления: $filePath")
+            Timber.i("Preparing to install updates: $filePath")
             Result.success(uri)
         } catch (e: Exception) {
-            Timber.e(e, "Error preparing update installation")
-            loggingService.logError("Ошибка подготовки установки: ${e.message}")
+            Timber.e("Error preparing update installation: ${e.message}")
             Result.failure(e)
         }
     }

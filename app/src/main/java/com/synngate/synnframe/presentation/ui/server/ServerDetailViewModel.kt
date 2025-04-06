@@ -5,15 +5,11 @@ import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.presentation.ui.server.model.ServerDetailEvent
 import com.synngate.synnframe.presentation.ui.server.model.ServerDetailState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import timber.log.Timber
 
 class ServerDetailViewModel(
     private val serverId: Int?,
     private val serverUseCases: ServerUseCases,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<ServerDetailState, ServerDetailEvent>(
     ServerDetailState(serverId = serverId, isEditMode = serverId != null)
 ) {
@@ -24,9 +20,6 @@ class ServerDetailViewModel(
         }
     }
 
-    /**
-     * Загружает данные сервера
-     */
     private fun loadServer(id: Int) {
         launchIO {
             updateState { it.copy(isLoading = true) }
@@ -70,58 +63,34 @@ class ServerDetailViewModel(
         }
     }
 
-    /**
-     * Обновляет имя сервера
-     */
     fun updateName(name: String) {
         updateState { it.copy(name = name, validationError = null) }
     }
 
-    /**
-     * Обновляет хост сервера
-     */
     fun updateHost(host: String) {
         updateState { it.copy(host = host, validationError = null) }
     }
 
-    /**
-     * Обновляет порт сервера
-     */
     fun updatePort(port: String) {
         updateState { it.copy(port = port, validationError = null) }
     }
 
-    /**
-     * Обновляет точку подключения к API
-     */
     fun updateApiEndpoint(apiEndpoint: String) {
         updateState { it.copy(apiEndpoint = apiEndpoint, validationError = null) }
     }
 
-    /**
-     * Обновляет логин для доступа к API
-     */
     fun updateLogin(login: String) {
         updateState { it.copy(login = login, validationError = null) }
     }
 
-    /**
-     * Обновляет пароль для доступа к API
-     */
     fun updatePassword(password: String) {
         updateState { it.copy(password = password, validationError = null) }
     }
 
-    /**
-     * Обновляет статус активности сервера
-     */
     fun updateIsActive(isActive: Boolean) {
         updateState { it.copy(isActive = isActive) }
     }
 
-    /**
-     * Проверяет подключение к серверу
-     */
     fun testConnection() {
         val state = uiState.value
 
@@ -168,9 +137,6 @@ class ServerDetailViewModel(
         }
     }
 
-    /**
-     * Сохраняет сервер
-     */
     fun saveServer() {
         val state = uiState.value
 
@@ -228,9 +194,6 @@ class ServerDetailViewModel(
         }
     }
 
-    /**
-     * Проверяет, что все необходимые поля заполнены и значения валидны
-     */
     private fun validateFields(): String? {
         val state = uiState.value
 
@@ -246,9 +209,6 @@ class ServerDetailViewModel(
         }
     }
 
-    /**
-     * Возвращается на предыдущий экран
-     */
     fun navigateBack() {
         sendEvent(ServerDetailEvent.NavigateBack)
     }

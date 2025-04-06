@@ -553,4 +553,14 @@
     <string name="no_products_found">No products found</string>
     <string name="filtering_by_plan">Only planned products are shown</string>
     <string name="article_fmt">Article: %s</string>
+    <string name="logging_settings">Logging settings</string>
+    <string name="log_level_selection">Log level</string>
+    <string name="log_level_full">Full</string>
+    <string name="log_level_info">Info</string>
+    <string name="log_level_warning">Warning</string>
+    <string name="log_level_error">Errors</string>
+    <string name="log_level_full_description">Saves all logs including debug info</string>
+    <string name="log_level_info_description">Saves info messages, warnings and erros</string>
+    <string name="log_level_warning_description">Saves warnings and errors only</string>
+    <string name="log_level_error_description">Saves error messages only</string>
 </resources>

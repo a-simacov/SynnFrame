@@ -2,7 +2,6 @@ package com.synngate.synnframe.presentation.ui.settings
 
 import android.content.Intent
 import androidx.lifecycle.viewModelScope
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.UpdateInstallerImpl
@@ -13,8 +12,7 @@ import com.synngate.synnframe.presentation.theme.ThemeMode
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsEvent
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
+import com.synngate.synnframe.util.logging.LogLevel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -24,11 +22,9 @@ import kotlin.math.min
 class SettingsViewModel(
     private val settingsUseCases: SettingsUseCases,
     private val serverUseCases: ServerUseCases,
-    private val loggingService: LoggingService,
     private val webServerManager: WebServerManager,
     private val synchronizationController: SynchronizationController,
-    private val updateInstaller: UpdateInstaller,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val updateInstaller: UpdateInstaller
 ) : BaseViewModel<SettingsState, SettingsEvent>(SettingsState()) {
 
     init {
@@ -52,6 +48,7 @@ class SettingsViewModel(
                 val buttonHeight = settingsUseCases.navigationButtonHeight.first()
                 val activeServer = serverUseCases.getActiveServer().first()
                 val binCodePattern = settingsUseCases.binCodePattern.first()
+                val logLevel = settingsUseCases.logLevel.first()
 
                 // Обновляем состояние с загруженными данными
                 updateState {
@@ -64,7 +61,8 @@ class SettingsViewModel(
                         navigationButtonHeight = buttonHeight,
                         activeServer = activeServer,
                         isLoading = false,
-                        binCodePattern = binCodePattern
+                        binCodePattern = binCodePattern,
+                        logLevel = logLevel
                     )
                 }
 
@@ -131,6 +129,12 @@ class SettingsViewModel(
         viewModelScope.launch {
             serverUseCases.getActiveServer().collect { server ->
                 updateState { it.copy(activeServer = server) }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsUseCases.logLevel.collect { level ->
+                updateState { it.copy(logLevel = level) }
             }
         }
     }
@@ -813,6 +817,45 @@ class SettingsViewModel(
                     )
                 }
                 sendEvent(SettingsEvent.ShowSnackbar("Ошибка синхронизации типов заданий"))
+            }
+        }
+    }
+
+    fun updateLogLevel(level: LogLevel) {
+        launchIO {
+            updateState { it.copy(isLoading = true, error = null) }
+
+            try {
+                val result = settingsUseCases.setLogLevel(level)
+
+                if (result.isSuccess) {
+                    updateState {
+                        it.copy(
+                            logLevel = level,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
+                    sendEvent(SettingsEvent.SettingsUpdated)
+                } else {
+                    val exception = result.exceptionOrNull()
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            error = "Ошибка обновления уровня логирования: ${exception?.message}"
+                        )
+                    }
+                    sendEvent(SettingsEvent.ShowSnackbar("Ошибка обновления уровня логирования"))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error updating log level")
+                updateState {
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка обновления уровня логирования: ${e.message}"
+                    )
+                }
+                sendEvent(SettingsEvent.ShowSnackbar("Ошибка обновления уровня логирования"))
             }
         }
     }

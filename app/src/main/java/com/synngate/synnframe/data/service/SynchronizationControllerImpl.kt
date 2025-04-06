@@ -15,7 +15,6 @@ import com.synngate.synnframe.data.local.entity.OperationType
 import com.synngate.synnframe.data.sync.SyncHistoryRecord
 import com.synngate.synnframe.data.sync.SyncProgress
 import com.synngate.synnframe.data.sync.SyncStatus
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
@@ -48,7 +47,6 @@ class SynchronizationControllerImpl(
     private val productUseCases: ProductUseCases,
     private val taskTypeUseCases: TaskTypeUseCases,
     private val appSettingsDataStore: AppSettingsDataStore,
-    private val loggingService: LoggingService,
     private val appDatabase: AppDatabase
 ) : SynchronizationController {
 
@@ -108,8 +106,7 @@ class SynchronizationControllerImpl(
 
         syncQueueManager = SyncQueueManager(
             appDatabase.syncOperationDao(),
-            networkMonitor,
-            loggingService
+            networkMonitor
         )
 
         // Настраиваем наблюдение за состоянием сети
@@ -132,7 +129,7 @@ class SynchronizationControllerImpl(
                     // Проверяем, не находится ли контроллер в состоянии ошибки
                     if (_syncStatus.value == SynchronizationController.SyncStatus.ERROR) {
                         resetSyncState()
-                        loggingService.logInfo("Reset error state for a new sync attempt")
+                        Timber.i("Reset error state for a new sync attempt")
                     }
 
                     // Обрабатываем отложенные операции только если контроллер не в процессе синхронизации
@@ -186,11 +183,10 @@ class SynchronizationControllerImpl(
             }
             context.startForegroundService(intent)
             _isRunning.value = true
-            loggingService.logInfo("Sync service started")
+            Timber.i("Sync service started")
             Result.success(Unit)
         } catch (e: Exception) {
-            Timber.e(e, "Error starting synchronization service")
-            loggingService.logError("Error starting synchronization service: ${e.message}")
+            Timber.e("Error starting synchronization service: ${e.message}")
             Result.failure(e)
         }
     }
@@ -202,11 +198,10 @@ class SynchronizationControllerImpl(
             }
             context.startService(intent)
             _isRunning.value = false
-            loggingService.logInfo("Sync service stopped")
+            Timber.i("Sync service stopped")
             Result.success(Unit)
         } catch (e: Exception) {
-            Timber.e(e, "Error stopping synchronization service")
-            loggingService.logError("Error stopping synchronization service: ${e.message}")
+            Timber.e("Error stopping synchronization service: ${e.message}")
             Result.failure(e)
         }
     }
@@ -248,7 +243,7 @@ class SynchronizationControllerImpl(
                 executeImmediately = false
             )
 
-            loggingService.logInfo("Sync is enqueued and will be proceeded when network appears")
+            Timber.i("Sync is enqueued and will be proceeded when network appears")
 
             return Result.failure(
                 NoNetworkException("No network connection. Sync will start when network appears.")
@@ -273,7 +268,7 @@ class SynchronizationControllerImpl(
                     executeImmediately = false
                 )
 
-                loggingService.logWarning("Sync failed: ${e.message}. Retry attempt planned.")
+                Timber.w("Sync failed: ${e.message}. Retry attempt planned.")
             }
 
             return Result.failure(e)
@@ -295,16 +290,15 @@ class SynchronizationControllerImpl(
             // Планируем или отменяем периодическую синхронизацию
             if (enabled) {
                 schedulePeriodicSync(interval)
-                loggingService.logInfo("Periodical sync is on with interval $interval seconds")
+                Timber.i("Periodical sync is on with interval $interval seconds")
             } else {
                 cancelPeriodicSync()
-                loggingService.logInfo("Periodical sync is off")
+                Timber.i("Periodical sync is off")
             }
 
             Result.success(Unit)
         } catch (e: Exception) {
-            Timber.e(e, "Error updating periodic sync settings")
-            loggingService.logError("Error updating periodic sync settings: ${e.message}")
+            Timber.e("Error updating periodic sync settings: ${e.message}")
             Result.failure(e)
         }
     }
@@ -595,7 +589,7 @@ class SynchronizationControllerImpl(
                         )
                     }
 
-                    loggingService.logWarning(
+                    Timber.w(
                         "Attempt $attempt downloading tasks failed. " +
                                 "Repeat after ${delay}ms. Error: ${e.message}"
                     )
@@ -626,7 +620,7 @@ class SynchronizationControllerImpl(
                         )
                     }
 
-                    loggingService.logWarning(
+                    Timber.w(
                         "Attempt $attempt products sync failed. " +
                                 "Repeat after ${delay}ms. Error: ${e.message}"
                     )
@@ -655,7 +649,7 @@ class SynchronizationControllerImpl(
                         )
                     }
 
-                    loggingService.logWarning(
+                    Timber.w(
                         "Attempt $attempt task types sync failed. " +
                                 "Repeat after ${delay}ms. Error: ${e.message}"
                     )
@@ -706,12 +700,12 @@ class SynchronizationControllerImpl(
             // Сохраняем информацию о синхронизации
             saveSyncInfo(syncResult)
 
-            loggingService.logInfo(
-                "Полная синхронизация завершена успешно. " +
-                        "Выгружено заданий: $uploadedCount, " +
-                        "загружено заданий: $tasksDownloadedCount, " +
-                        "загружено товаров: $productsDownloadedCount. " +
-                        "Время: ${durationMillis}мс"
+            Timber.i(
+                "Full sync finished successfully. " +
+                        "Uploaded tasks: $uploadedCount, " +
+                        "downloaded tasks: $tasksDownloadedCount, " +
+                        "downloaded products: $productsDownloadedCount. " +
+                        "Time: ${durationMillis}ms"
             )
 
             return syncResult
@@ -757,7 +751,7 @@ class SynchronizationControllerImpl(
             // Сохраняем информацию о синхронизации
             saveSyncInfo(syncResult)
 
-            loggingService.logError("Full sync error: ${e.message}")
+            Timber.e("Full sync error: ${e.message}")
 
             return syncResult
         }
@@ -833,7 +827,7 @@ class SynchronizationControllerImpl(
                 executeImmediately = false
             )
 
-            loggingService.logInfo("Task types sync is enqueued and will proceed when network appears")
+            Timber.i("Task types sync is enqueued and will proceed when network appears")
 
             return Result.failure(
                 NoNetworkException("No network connection. Sync will start when network appears.")
@@ -865,7 +859,7 @@ class SynchronizationControllerImpl(
                         )
                     }
 
-                    loggingService.logWarning(
+                    Timber.w(
                         "Attempt $attempt task types sync failed. " +
                                 "Repeat after ${delay}ms. Error: ${e.message}"
                     )
@@ -895,7 +889,7 @@ class SynchronizationControllerImpl(
                 errorMessage = null
             )
 
-            loggingService.logInfo("Синхронизация типов заданий завершена успешно: $taskTypesCount")
+            Timber.i("Task types sync finished successfully: $taskTypesCount")
 
             return Result.success(taskTypesCount)
         } catch (e: Exception) {
@@ -912,7 +906,7 @@ class SynchronizationControllerImpl(
                 )
             }
 
-            loggingService.logError("Task types sync error: ${e.message}")
+            Timber.e("Task types sync error: ${e.message}")
 
             return Result.failure(e)
         }

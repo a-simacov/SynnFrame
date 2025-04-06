@@ -3,7 +3,6 @@ package com.synngate.synnframe.presentation.ui.logs
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.domain.service.ClipboardService
-import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
 import com.synngate.synnframe.presentation.ui.logs.model.LogDetailState
 import com.synngate.synnframe.presentation.ui.logs.model.LogDetailStateEvent
@@ -20,7 +19,6 @@ import java.time.format.DateTimeFormatter
 class LogDetailViewModel(
     private val logId: Int,
     private val logUseCases: LogUseCases,
-    private val loggingService: LoggingService,
     private val clipboardService: ClipboardService,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseViewModel<LogDetailState, LogDetailUiEvent>(LogDetailState(), ioDispatcher) {
@@ -74,18 +72,16 @@ class LogDetailViewModel(
                         )
                     }
 
-                    loggingService.logWarning("Попытка просмотра несуществующего лога с ID $logId")
+                    Timber.w("Попытка просмотра несуществующего лога с ID $logId")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error loading log with ID $logId")
+                Timber.e(e, "Error loading log with ID $logId: ${e.message}")
                 updateState {
                     it.copy(
                         isLoading = false,
                         error = "Ошибка загрузки лога: ${e.message}"
                     )
                 }
-
-                loggingService.logError("Ошибка загрузки лога с ID $logId: ${e.message}")
             }
         }
     }
@@ -115,7 +111,6 @@ class LogDetailViewModel(
 
         if (isCopied) {
             launchIO {
-                loggingService.logInfo("Лог с ID ${log.id} скопирован в буфер обмена")
                 sendEvent(LogDetailUiEvent.ShowSnackbar("Лог успешно скопирован в буфер обмена"))
             }
         }
@@ -153,9 +148,6 @@ class LogDetailViewModel(
                         )
                     }
 
-                    loggingService.logInfo("Лог с ID $logId успешно удален")
-
-                    // Отправляем событие навигации назад вместо прямого вызова колбэка
                     sendEvent(LogDetailUiEvent.NavigateBack)
                 } else {
                     val exception = result.exceptionOrNull()
@@ -166,7 +158,7 @@ class LogDetailViewModel(
                         )
                     }
 
-                    loggingService.logError("Ошибка удаления лога с ID $logId: ${exception?.message}")
+                    Timber.e("Error in deletion log with ID $logId: ${exception?.message}")
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Exception during log deletion")
@@ -177,7 +169,7 @@ class LogDetailViewModel(
                     )
                 }
 
-                loggingService.logError("Исключение при удалении лога с ID $logId: ${e.message}")
+                Timber.e("Exception on deleting log with ID $logId: ${e.message}")
             }
         }
     }
