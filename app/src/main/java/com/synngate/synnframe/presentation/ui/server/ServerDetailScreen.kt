@@ -24,8 +24,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.presentation.common.buttons.ActionButton
+import com.synngate.synnframe.presentation.common.buttons.BooleanButton
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
-import com.synngate.synnframe.presentation.common.buttons.PropertyToggleButton
 import com.synngate.synnframe.presentation.common.dialog.ProgressDialog
 import com.synngate.synnframe.presentation.common.inputs.AppTextField
 import com.synngate.synnframe.presentation.common.inputs.NumberTextField
@@ -271,13 +271,16 @@ private fun ServerDetailContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Переключатель активности (показывать только при редактировании существующего сервера)
         if (state.isEditMode) {
-            PropertyToggleButton(
-                property = stringResource(id = R.string.server_active),
-                value = state.isActive,
-                onToggle = onActiveToggle,
-                modifier = Modifier.fillMaxWidth()
+            BooleanButton(
+                currentValue = state.isActive,
+                onValueChange = onActiveToggle,
+                modifier = Modifier.fillMaxWidth(),
+                valueToString = {
+                    stringResource(
+                        id = if (it) R.string.server_active else R.string.server_inactive
+                    )
+                }
             )
 
             Spacer(modifier = Modifier.height(24.dp))

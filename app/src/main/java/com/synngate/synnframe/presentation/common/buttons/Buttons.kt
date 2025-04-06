@@ -596,6 +596,30 @@ fun <T> CarouselValueButton(
     }
 }
 
+@Composable
+fun BooleanButton(
+    currentValue: Boolean,
+    onValueChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    valueToString: @Composable (Boolean) -> String = { stringResource(id = if (it) R.string.yes else R.string.no) },
+    labelText: String = ""
+) {
+    if (labelText.isNotBlank())
+        Text(
+            text = labelText,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+    CarouselValueButton(
+        values = listOf(false, true),
+        currentValue = currentValue,
+        onValueChange = onValueChange,
+        valueToString = valueToString,
+        modifier = modifier
+    )
+}
+
 @Preview(
     showBackground = false,
     uiMode = Configuration.UI_MODE_NIGHT_NO

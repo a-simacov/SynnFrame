@@ -47,9 +47,9 @@ import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.common.buttons.ActionButton
+import com.synngate.synnframe.presentation.common.buttons.BooleanButton
 import com.synngate.synnframe.presentation.common.buttons.CarouselValueButton
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
-import com.synngate.synnframe.presentation.common.buttons.PropertyToggleButton
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.dialog.ProgressDialog
 import com.synngate.synnframe.presentation.common.inputs.NumberTextField
@@ -150,7 +150,8 @@ fun SettingsScreen(
                     resources.updateConfiguration(configuration, resources.displayMetrics)
 
                     // Перезапускаем активность для применения изменений
-                    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                    val intent =
+                        context.packageManager.getLaunchIntentForPackage(context.packageName)
                     intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                     context.startActivity(intent)
                 }
@@ -295,14 +296,15 @@ fun ActiveServerSection(
     modifier: Modifier = Modifier
 ) {
     // Оптимизация: кэшируем значения, чтобы избежать лишних вычислений
-    val periodicUploadEnabled = remember(state.periodicUploadEnabled) { state.periodicUploadEnabled }
+    val periodicUploadEnabled =
+        remember(state.periodicUploadEnabled) { state.periodicUploadEnabled }
 
     InfoCard(
         title = stringResource(id = R.string.active_server_settings),
         modifier = modifier
     ) {
         NavigationButton(
-            text = stringResource(id = R.string.navigate_to_servers),
+            text = stringResource(id = R.string.servers_title),
             onClick = onNavigateToServerList,
             modifier = Modifier.fillMaxWidth()
         )
@@ -338,19 +340,19 @@ fun ActiveServerSection(
         HorizontalDivider()
 
         Spacer(modifier = Modifier.height(16.dp))
-        PropertyToggleButton(
-            property = stringResource(id = R.string.server_show_on_startup),
-            value = state.showServersOnStartup,
-            onToggle = onShowServersOnStartupChange,
-            modifier = Modifier.fillMaxWidth()
+        BooleanButton(
+            currentValue = state.showServersOnStartup,
+            onValueChange = onShowServersOnStartupChange,
+            modifier = Modifier.fillMaxWidth(),
+            labelText = stringResource(id = R.string.server_show_on_startup)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
-        PropertyToggleButton(
-            property = stringResource(id = R.string.periodic_upload_enabled),
-            value = state.periodicUploadEnabled,
-            onToggle = onPeriodicUploadEnabledChange,
-            modifier = Modifier.fillMaxWidth()
+        BooleanButton(
+            currentValue = state.periodicUploadEnabled,
+            onValueChange = onPeriodicUploadEnabledChange,
+            modifier = Modifier.fillMaxWidth(),
+            labelText = stringResource(id = R.string.periodic_upload_enabled)
         )
 
         // Оптимизация: AnimatedVisibility с condition в remember
@@ -491,11 +493,11 @@ fun SynchronizationSection(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Настройка периодической синхронизации
-        PropertyToggleButton(
-            property = stringResource(id = R.string.periodic_sync_enabled),
-            value = state.periodicSyncEnabled,
-            onToggle = { enabled -> onUpdatePeriodicSync(enabled, null) },
-            modifier = Modifier.fillMaxWidth()
+        BooleanButton(
+            currentValue = state.periodicSyncEnabled,
+            onValueChange = { enabled -> onUpdatePeriodicSync(enabled, null) },
+            modifier = Modifier.fillMaxWidth(),
+            labelText = stringResource(id = R.string.periodic_sync_enabled)
         )
 
         // В SynchronizationSection добавляем еще одну кнопку
@@ -634,7 +636,7 @@ fun InterfaceSettingsSection(
             currentValue = state.themeMode,
             onValueChange = onThemeModeChange,
             valueToString = { theme ->
-                when(theme) {
+                when (theme) {
                     ThemeMode.SYSTEM -> stringResource(id = R.string.theme_system)
                     ThemeMode.LIGHT -> stringResource(id = R.string.theme_light)
                     ThemeMode.DARK -> stringResource(id = R.string.theme_dark)
@@ -659,7 +661,7 @@ fun InterfaceSettingsSection(
             currentValue = state.languageCode,
             onValueChange = onLanguageCodeChange,
             valueToString = { code ->
-                when(code) {
+                when (code) {
                     "ru" -> "Русский"
                     "en" -> "English"
                     else -> code
@@ -878,7 +880,7 @@ fun LoggingSettingsSection(
             currentValue = state.logLevel,
             onValueChange = onLogLevelChange,
             valueToString = { logLevel ->
-                when(logLevel) {
+                when (logLevel) {
                     LogLevel.FULL -> stringResource(id = R.string.log_level_full)
                     LogLevel.INFO -> stringResource(id = R.string.log_level_info)
                     LogLevel.WARNING -> stringResource(id = R.string.log_level_warning)
@@ -892,7 +894,7 @@ fun LoggingSettingsSection(
         // Пояснение для каждого уровня
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = when(state.logLevel) {
+            text = when (state.logLevel) {
                 LogLevel.FULL -> stringResource(id = R.string.log_level_full_description)
                 LogLevel.INFO -> stringResource(id = R.string.log_level_info_description)
                 LogLevel.WARNING -> stringResource(id = R.string.log_level_warning_description)

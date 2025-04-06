@@ -563,4 +563,5 @@
     <string name="log_level_info_description">Saves info messages, warnings and erros</string>
     <string name="log_level_warning_description">Saves warnings and errors only</string>
     <string name="log_level_error_description">Saves error messages only</string>
+    <string name="server_inactive">Inactive</string>
 </resources>
