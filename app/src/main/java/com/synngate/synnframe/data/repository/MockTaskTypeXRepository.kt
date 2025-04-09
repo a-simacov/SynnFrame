@@ -1,0 +1,209 @@
+package com.synngate.synnframe.data.repository
+
+import com.synngate.synnframe.domain.entity.taskx.AvailableTaskAction
+import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
+import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
+import com.synngate.synnframe.domain.entity.taskx.FactLineXActionType
+import com.synngate.synnframe.domain.entity.taskx.ObjectSelectionCondition
+import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
+import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
+import com.synngate.synnframe.domain.entity.taskx.WmsAction
+import com.synngate.synnframe.domain.entity.taskx.WmsOperation
+import com.synngate.synnframe.domain.repository.TaskTypeXRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+import java.util.UUID
+
+class MockTaskTypeXRepository : TaskTypeXRepository {
+
+    private val taskTypesFlow = MutableStateFlow<Map<String, TaskTypeX>>(createInitialTaskTypes())
+
+    override fun getTaskTypes(): Flow<List<TaskTypeX>> {
+        return taskTypesFlow.map { it.values.toList() }
+    }
+
+    override suspend fun getTaskTypeById(id: String): TaskTypeX? {
+        return taskTypesFlow.value[id]
+    }
+
+    override suspend fun addTaskType(taskType: TaskTypeX) {
+        val updatedMap = taskTypesFlow.value.toMutableMap()
+        updatedMap[taskType.id] = taskType
+        taskTypesFlow.value = updatedMap
+    }
+
+    override suspend fun updateTaskType(taskType: TaskTypeX) {
+        addTaskType(taskType) // Same implementation for mock
+    }
+
+    override suspend fun deleteTaskType(id: String) {
+        val updatedMap = taskTypesFlow.value.toMutableMap()
+        updatedMap.remove(id)
+        taskTypesFlow.value = updatedMap
+    }
+
+    // Создание начальных тестовых данных
+    private fun createInitialTaskTypes(): Map<String, TaskTypeX> {
+        // Создадим тип задания "Приемка по монопалетам" из примера
+        val receiptTaskType = createReceiptTaskType()
+
+        // Создадим тип задания "Отбор заказа"
+        val pickingTaskType = createPickingTaskType()
+
+        return mapOf(
+            receiptTaskType.id to receiptTaskType,
+            pickingTaskType.id to pickingTaskType
+        )
+    }
+
+    // Создание типа задания "Приемка по монопалетам"
+    private fun createReceiptTaskType(): TaskTypeX {
+        // Создадим группу действий "Выбрать товар приемки"
+        val selectProductGroup = FactLineActionGroup(
+            id = "564321657",
+            name = "Выбрать товар приемки",
+            order = 1,
+            targetFieldType = TaskXLineFieldType.STORAGE_PRODUCT,
+            wmsAction = WmsAction.RECEIPT,
+            resultType = "TaskProduct",
+            actions = listOf(
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Выбрать товар из классификатора",
+                    actionType = FactLineXActionType.SELECT_PRODUCT,
+                    order = 1,
+                    selectionCondition = ObjectSelectionCondition.FROM_PLAN,
+                    promptText = "Выберите товар из плана задания"
+                ),
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Ввести срок годности",
+                    actionType = FactLineXActionType.ENTER_QUANTITY,
+                    order = 2,
+                    promptText = "Введите срок годности (если требуется)"
+                ),
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Выбрать статус товара",
+                    actionType = FactLineXActionType.SELECT_PRODUCT,
+                    order = 3,
+                    promptText = "Выберите статус товара"
+                ),
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Ввести вес товара",
+                    actionType = FactLineXActionType.ENTER_QUANTITY,
+                    order = 4,
+                    promptText = "Введите вес товара"
+                ),
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Ввести количество",
+                    actionType = FactLineXActionType.ENTER_QUANTITY,
+                    order = 5,
+                    promptText = "Введите количество товара"
+                )
+            )
+        )
+
+        // Создадим группу действий "Добавить паллету приемки"
+        val addPalletGroup = FactLineActionGroup(
+            id = "564321658",
+            name = "Добавить паллету приемки",
+            order = 2,
+            targetFieldType = TaskXLineFieldType.PLACEMENT_PALLET,
+            wmsAction = WmsAction.RECEIPT,
+            resultType = "Pallet",
+            actions = listOf(
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Создать паллету",
+                    actionType = FactLineXActionType.CREATE_PALLET,
+                    order = 1,
+                    promptText = "Создание новой паллеты"
+                ),
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Печать этикетки",
+                    actionType = FactLineXActionType.PRINT_LABEL,
+                    order = 2,
+                    promptText = "Печать этикетки паллеты"
+                ),
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Закрыть паллету",
+                    actionType = FactLineXActionType.CLOSE_PALLET,
+                    order = 3,
+                    promptText = "Закрытие паллеты"
+                )
+            )
+        )
+
+        // Создадим группу действий "Выбрать ячейку приемки"
+        val selectBinGroup = FactLineActionGroup(
+            id = "564321659",
+            name = "Выбрать ячейку приемки",
+            order = 3,
+            targetFieldType = TaskXLineFieldType.PLACEMENT_BIN,
+            wmsAction = WmsAction.PUT_INTO,
+            resultType = "BinX",
+            actions = listOf(
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Выбрать ячейку",
+                    actionType = FactLineXActionType.SELECT_BIN,
+                    order = 1,
+                    promptText = "Выберите ячейку из зоны приемки",
+                    additionalParams = mapOf("zone" to "Приемка")
+                )
+            )
+        )
+
+        return TaskTypeX(
+            id = "6546513215648",
+            name = "Приемка по монопалетам",
+            wmsOperation = WmsOperation.RECEIPT,
+            canBeCreatedInApp = false,
+            allowCompletionWithoutFactLines = false,
+            allowExceedPlanQuantity = false,
+            availableActions = listOf(
+                AvailableTaskAction.PAUSE,
+                AvailableTaskAction.RESUME,
+                AvailableTaskAction.SHOW_PLAN_LINES,
+                AvailableTaskAction.SHOW_FACT_LINES,
+                AvailableTaskAction.COMPARE_LINES
+            ),
+            factLineActionGroups = listOf(
+                selectProductGroup,
+                addPalletGroup,
+                selectBinGroup
+            ),
+            finalActions = emptyList()
+        )
+    }
+
+    // Создание типа задания "Отбор заказа"
+    private fun createPickingTaskType(): TaskTypeX {
+        // Здесь можно добавить другой тип задания для примера
+        // Упрощенный вариант для иллюстрации
+        return TaskTypeX(
+            id = "7891011121314",
+            name = "Отбор заказа",
+            wmsOperation = WmsOperation.PICKING,
+            canBeCreatedInApp = false,
+            allowCompletionWithoutFactLines = false,
+            allowExceedPlanQuantity = false,
+            availableActions = listOf(
+                AvailableTaskAction.PAUSE,
+                AvailableTaskAction.RESUME,
+                AvailableTaskAction.SHOW_PLAN_LINES,
+                AvailableTaskAction.SHOW_FACT_LINES,
+                AvailableTaskAction.COMPARE_LINES,
+                AvailableTaskAction.VERIFY_TASK
+            ),
+            factLineActionGroups = emptyList(), // Для краткости опустим детали
+            finalActions = emptyList()
+        )
+    }
+}
