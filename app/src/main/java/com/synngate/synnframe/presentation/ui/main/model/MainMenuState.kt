@@ -37,4 +37,6 @@ sealed class MainMenuEvent {
     data object ExitApp : MainMenuEvent()
 
     data class ShowSnackbar(val message: String) : MainMenuEvent()
+
+    data object NavigateToTasksX : MainMenuEvent()
 }

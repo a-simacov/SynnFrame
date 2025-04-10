@@ -21,7 +21,7 @@ class TaskXDetailViewModel(
     private val taskId: String,
     private val taskXUseCases: TaskXUseCases,
     private val userUseCases: UserUseCases,
-    private val factLineWizardController: FactLineWizardController
+    val factLineWizardController: FactLineWizardController
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
 
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")

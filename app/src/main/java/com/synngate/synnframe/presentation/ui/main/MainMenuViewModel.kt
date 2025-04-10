@@ -86,6 +86,10 @@ class MainMenuViewModel(
         sendEvent(MainMenuEvent.NavigateToSettings)
     }
 
+    fun onTasksXClick() {
+        sendEvent(MainMenuEvent.NavigateToTasksX)
+    }
+
     fun onChangeUserClick() {
         launchIO {
             try {

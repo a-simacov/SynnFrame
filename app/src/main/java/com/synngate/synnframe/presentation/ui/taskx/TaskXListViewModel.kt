@@ -108,6 +108,14 @@ class TaskXListViewModel(
         sendEvent(TaskXListEvent.NavigateToTaskDetail(taskId))
     }
 
+    fun showDateFilterDialog() {
+        updateState { it.copy(isDateFilterDialogVisible = true) }
+    }
+
+    fun hideDateFilterDialog() {
+        updateState { it.copy(isDateFilterDialogVisible = false) }
+    }
+
     fun formatDate(dateTime: LocalDateTime): String {
         return dateTime.format(dateFormatter)
     }

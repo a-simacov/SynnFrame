@@ -1,8 +1,9 @@
 package com.synngate.synnframe.domain.service
 
-import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
+import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.FactLineWizardState
-import com.synngate.synnframe.domain.entity.taskx.FactLineX
+import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
@@ -11,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 import java.time.LocalDateTime
-import java.util.UUID
 
 /**
  * Контроллер для управления процессом создания строки факта
@@ -35,6 +35,7 @@ class FactLineWizardController(
 
         _wizardState.value = FactLineWizardState(
             taskId = task.id,
+            groups = taskType.factLineActionGroups, // Передаем группы в состояние
             currentGroupIndex = 0,
             currentActionIndex = 0,
             startedAt = LocalDateTime.now()
@@ -46,32 +47,27 @@ class FactLineWizardController(
      */
     suspend fun processStepResult(result: Any?) {
         val currentState = _wizardState.value ?: return
-        val taskType = taskXUseCases.getTaskType(
-            taskXUseCases.getTaskById(currentState.taskId)?.taskTypeId ?: ""
-        ) ?: return
-
-        val groups = taskType.factLineActionGroups
 
         if (result == null) {
             // Переход к предыдущему шагу
-            navigateBack(currentState, groups)
+            navigateBack(currentState)
         } else {
             // Сохранение результата и переход к следующему шагу
-            saveResult(currentState, groups, result)
+            saveResult(currentState, result)
         }
     }
 
     /**
      * Переход назад к предыдущему шагу
      */
-    private fun navigateBack(currentState: FactLineWizardState, groups: List<FactLineActionGroup>) {
+    private fun navigateBack(currentState: FactLineWizardState) {
         var newGroupIndex = currentState.currentGroupIndex
         var newActionIndex = currentState.currentActionIndex - 1
 
         if (newActionIndex < 0) {
             newGroupIndex--
             if (newGroupIndex >= 0) {
-                val prevGroup = groups[newGroupIndex]
+                val prevGroup = currentState.groups[newGroupIndex]
                 newActionIndex = prevGroup.actions.size - 1
             }
         }
@@ -91,22 +87,25 @@ class FactLineWizardController(
     /**
      * Сохранение результата текущего шага
      */
-    private fun saveResult(
-        currentState: FactLineWizardState,
-        groups: List<FactLineActionGroup>,
-        result: Any
-    ) {
-        if (currentState.currentGroupIndex >= groups.size) return
+    private fun saveResult(currentState: FactLineWizardState, result: Any) {
+        if (currentState.currentGroupIndex >= currentState.groups.size) return
 
-        val currentGroup = groups[currentState.currentGroupIndex]
+        val currentGroup = currentState.groups[currentState.currentGroupIndex]
         val targetField = currentGroup.targetFieldType
 
         // Обновляем результаты в зависимости от типа поля
         val updatedState = when (targetField) {
-            TaskXLineFieldType.STORAGE_PRODUCT -> currentState.copy(storageProduct = result as? com.synngate.synnframe.domain.entity.taskx.TaskProduct)
-            TaskXLineFieldType.STORAGE_PALLET -> currentState.copy(storagePallet = result as? com.synngate.synnframe.domain.entity.taskx.Pallet)
-            TaskXLineFieldType.PLACEMENT_PALLET -> currentState.copy(placementPallet = result as? com.synngate.synnframe.domain.entity.taskx.Pallet)
-            TaskXLineFieldType.PLACEMENT_BIN -> currentState.copy(placementBin = result as? com.synngate.synnframe.domain.entity.taskx.BinX)
+            TaskXLineFieldType.STORAGE_PRODUCT -> currentState.copy(storageProduct = result as? TaskProduct)
+            TaskXLineFieldType.STORAGE_PALLET -> currentState.copy(storagePallet = result as? Pallet)
+            TaskXLineFieldType.PLACEMENT_PALLET -> currentState.copy(placementPallet = result as? Pallet)
+            TaskXLineFieldType.PLACEMENT_BIN -> currentState.copy(placementBin = result as? BinX)
+        }
+
+        // Записываем действие WMS из текущей группы, если оно еще не задано
+        val updatedWithWmsAction = if (updatedState.wmsAction == null) {
+            updatedState.copy(wmsAction = currentGroup.wmsAction)
+        } else {
+            updatedState
         }
 
         // Переходим к следующему шагу
@@ -119,37 +118,9 @@ class FactLineWizardController(
             newActionIndex = 0
         }
 
-        _wizardState.value = updatedState.copy(
+        _wizardState.value = updatedWithWmsAction.copy(
             currentGroupIndex = newGroupIndex,
             currentActionIndex = newActionIndex
-        )
-    }
-
-    /**
-     * Создание объекта строки факта на основе текущего состояния
-     */
-    suspend fun createFactLine(): FactLineX? {
-        val state = _wizardState.value ?: return null
-        val task = taskXUseCases.getTaskById(state.taskId) ?: return null
-        val taskType = taskXUseCases.getTaskType(task.taskTypeId) ?: return null
-
-        // Определяем wmsAction из текущей группы действий или используем стандартное значение
-        val wmsAction = if (state.currentGroupIndex < taskType.factLineActionGroups.size) {
-            taskType.factLineActionGroups[0].wmsAction // Берем из первой группы для примера
-        } else {
-            state.wmsAction ?: com.synngate.synnframe.domain.entity.taskx.WmsAction.RECEIPT
-        }
-
-        return FactLineX(
-            id = UUID.randomUUID().toString(),
-            taskId = state.taskId,
-            storageProduct = state.storageProduct,
-            storagePallet = state.storagePallet,
-            wmsAction = wmsAction,
-            placementPallet = state.placementPallet,
-            placementBin = state.placementBin,
-            startedAt = state.startedAt,
-            completedAt = LocalDateTime.now()
         )
     }
 
@@ -157,7 +128,12 @@ class FactLineWizardController(
      * Добавление строки факта и завершение мастера
      */
     suspend fun completeWizard(): Result<TaskX> {
-        val factLine = createFactLine() ?: return Result.failure(IllegalStateException("Не удалось создать строку факта"))
+        val state = _wizardState.value ?: return Result.failure(IllegalStateException("Состояние мастера не инициализировано"))
+
+        // Используем метод createFactLine из состояния
+        val factLine = state.createFactLine()
+            ?: return Result.failure(IllegalStateException("Не удалось создать строку факта"))
+
         val result = taskXUseCases.addFactLine(factLine)
 
         // Закрываем мастер в любом случае

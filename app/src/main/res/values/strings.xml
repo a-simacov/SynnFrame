@@ -584,4 +584,46 @@
     <string name="log_level_info_description">Сохраняет информационные сообщения, предупреждения и ошибки</string>
     <string name="log_level_warning_description">Сохраняет только предупреждения и ошибки</string>
     <string name="log_level_error_description">Сохраняет только сообщения об ошибках</string>
+
+    <!-- Добавить в файл res/values/strings.xml -->
+    <!-- Расширенные задания (TaskX) -->
+    <string name="taskx_title">Расширенные задания</string>
+    <string name="taskx_menu_title">Расширенные задания</string>
+    <string name="taskx_empty">Расширенные задания не найдены</string>
+    <string name="taskx_detail_title">Детали расширенного задания</string>
+    <string name="taskx_search_hint">Поиск задания</string>
+
+    <!-- Факт строки -->
+    <string name="fact_line_wizard_title">Добавление строки факта</string>
+    <string name="fact_line_summary">Проверьте информацию перед завершением</string>
+    <string name="fact_line_confirm">Подтвердить</string>
+    <string name="fact_line_back">Назад</string>
+    <string name="fact_line_next">Далее</string>
+    <string name="fact_line_finish">Завершить</string>
+    <string name="fact_line_cancel">Отмена</string>
+    <string name="fact_line_added">Строка факта успешно добавлена</string>
+    <string name="fact_line_error">Ошибка при добавлении строки факта</string>
+
+    <!-- Действия мастера -->
+    <string name="action_select_product">Выбрать товар</string>
+    <string name="action_enter_quantity">Ввести количество</string>
+    <string name="action_select_bin">Выбрать ячейку</string>
+    <string name="action_select_pallet">Выбрать паллету</string>
+    <string name="action_create_pallet">Создать паллету</string>
+    <string name="action_close_pallet">Закрыть паллету</string>
+    <string name="action_print_label">Печать этикетки</string>
+
+    <!-- Типы строки -->
+    <string name="field_storage_product">Товар хранения</string>
+    <string name="field_storage_pallet">Паллета хранения</string>
+    <string name="field_placement_pallet">Паллета размещения</string>
+    <string name="field_placement_bin">Ячейка размещения</string>
+
+    <!-- Уведомления -->
+    <string name="taskx_started">Задание начато</string>
+    <string name="taskx_completed">Задание завершено</string>
+    <string name="taskx_paused">Задание приостановлено</string>
+    <string name="taskx_resumed">Задание возобновлено</string>
+    <string name="taskx_verified">Задание успешно верифицировано</string>
+    <string name="taskx_cannot_add_fact">Добавление строк факта возможно только для задания в статусе \'Выполняется\'</string>
 </resources>

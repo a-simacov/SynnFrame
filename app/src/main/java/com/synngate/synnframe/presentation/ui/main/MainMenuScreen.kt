@@ -51,6 +51,7 @@ fun MainMenuScreen(
     navigateToLogs: () -> Unit,
     navigateToSettings: () -> Unit,
     navigateToLogin: () -> Unit,
+    navigateToTasksX: () -> Unit,
     exitApp: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -76,6 +77,7 @@ fun MainMenuScreen(
                         duration = SnackbarDuration.Short
                     )
                 }
+                is MainMenuEvent.NavigateToTasksX -> navigateToTasksX()
                 is MainMenuEvent.ShowExitConfirmation -> {
                     // Обрабатывается через showExitConfirmation в state
                 }
@@ -131,6 +133,16 @@ fun MainMenuScreen(
                 icon = Icons.AutoMirrored.Outlined.Assignment,
                 contentDescription = stringResource(id = R.string.tasks),
                 badge = state.assignedTasksCount.takeIf { it > 0 }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            NavigationButton(
+                text = "Расширенные задания", // Можно добавить строку в ресурсы
+                onClick = { viewModel.onTasksXClick() },
+                icon = Icons.AutoMirrored.Outlined.Assignment,
+                contentDescription = "Расширенные задания", // Можно добавить строку в ресурсы
+                badge = null // Можно добавить счетчик заданий X, если нужно
             )
 
             Spacer(modifier = Modifier.height(12.dp))

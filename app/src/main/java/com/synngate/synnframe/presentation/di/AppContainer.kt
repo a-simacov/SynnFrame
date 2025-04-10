@@ -20,6 +20,10 @@ import com.synngate.synnframe.data.remote.service.ApiService
 import com.synngate.synnframe.data.remote.service.ApiServiceImpl
 import com.synngate.synnframe.data.remote.service.ServerProvider
 import com.synngate.synnframe.data.repository.LogRepositoryImpl
+import com.synngate.synnframe.data.repository.MockBinXRepository
+import com.synngate.synnframe.data.repository.MockPalletRepository
+import com.synngate.synnframe.data.repository.MockTaskTypeXRepository
+import com.synngate.synnframe.data.repository.MockTaskXRepository
 import com.synngate.synnframe.data.repository.ProductRepositoryImpl
 import com.synngate.synnframe.data.repository.ServerRepositoryImpl
 import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
@@ -35,12 +39,16 @@ import com.synngate.synnframe.data.service.SoundServiceImpl
 import com.synngate.synnframe.data.service.SynchronizationControllerImpl
 import com.synngate.synnframe.data.service.WebServerControllerImpl
 import com.synngate.synnframe.data.service.WebServerManagerImpl
+import com.synngate.synnframe.domain.repository.BinXRepository
 import com.synngate.synnframe.domain.repository.LogRepository
+import com.synngate.synnframe.domain.repository.PalletRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
 import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.domain.repository.TaskRepository
 import com.synngate.synnframe.domain.repository.TaskTypeRepository
+import com.synngate.synnframe.domain.repository.TaskTypeXRepository
+import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
@@ -60,6 +68,7 @@ import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
+import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.ui.login.LoginViewModel
@@ -75,6 +84,8 @@ import com.synngate.synnframe.presentation.ui.settings.SettingsViewModel
 import com.synngate.synnframe.presentation.ui.sync.SyncHistoryViewModel
 import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModel
 import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModel
+import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailViewModel
+import com.synngate.synnframe.presentation.ui.taskx.TaskXListViewModel
 import com.synngate.synnframe.util.network.NetworkMonitor
 import com.synngate.synnframe.util.resources.ResourceProvider
 import com.synngate.synnframe.util.resources.ResourceProviderImpl
@@ -336,7 +347,41 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         TaskTypeUseCases(taskTypeRepository)
     }
 
-    val factLineWizardController by lazy {
+    // Репозитории для заданий X
+    val taskXRepository: TaskXRepository by lazy {
+        Timber.d("Creating TaskXRepository")
+        MockTaskXRepository(taskTypeXRepository)
+    }
+
+    val taskTypeXRepository: TaskTypeXRepository by lazy {
+        Timber.d("Creating TaskTypeXRepository")
+        MockTaskTypeXRepository()
+    }
+
+    val binXRepository: BinXRepository by lazy {
+        Timber.d("Creating BinXRepository")
+        MockBinXRepository()
+    }
+
+    val palletRepository: PalletRepository by lazy {
+        Timber.d("Creating PalletRepository")
+        MockPalletRepository()
+    }
+
+    // UseCase для заданий X
+    val taskXUseCases: TaskXUseCases by lazy {
+        Timber.d("Creating TaskXUseCases")
+        TaskXUseCases(
+            taskXRepository = taskXRepository,
+            taskTypeXRepository = taskTypeXRepository,
+            binXRepository = binXRepository,
+            palletRepository = palletRepository
+        )
+    }
+
+    // Контроллер мастера создания строки факта
+    val factLineWizardController: FactLineWizardController by lazy {
+        Timber.d("Creating FactLineWizardController")
         FactLineWizardController(taskXUseCases)
     }
 
@@ -497,6 +542,26 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         return getOrCreateViewModel("SyncHistoryViewModel") {
             SyncHistoryViewModel(
                 synchronizationController = appContainer.synchronizationController
+            )
+        }
+    }
+
+    fun createTaskXListViewModel(): TaskXListViewModel {
+        return getOrCreateViewModel("TaskXListViewModel") {
+            TaskXListViewModel(
+                taskXUseCases = appContainer.taskXUseCases,
+                userUseCases = appContainer.userUseCases
+            )
+        }
+    }
+
+    fun createTaskXDetailViewModel(taskId: String): TaskXDetailViewModel {
+        return getOrCreateViewModel("TaskXDetailViewModel_$taskId") {
+            TaskXDetailViewModel(
+                taskId = taskId,
+                taskXUseCases = appContainer.taskXUseCases,
+                userUseCases = appContainer.userUseCases,
+                factLineWizardController = appContainer.factLineWizardController
             )
         }
     }

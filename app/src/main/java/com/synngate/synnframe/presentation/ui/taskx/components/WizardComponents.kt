@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
+import com.synngate.synnframe.domain.entity.taskx.FactLineWizardState
 import com.synngate.synnframe.domain.entity.taskx.ObjectSelectionCondition
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.ProductStatus
@@ -551,7 +552,7 @@ fun PrintLabelStep(
 // Итоговый шаг - показывает сводку
 @Composable
 fun SummaryStep(
-    intermediateResults: Map<String, Any?>,
+    state: FactLineWizardState,
     onComplete: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
@@ -562,6 +563,8 @@ fun SummaryStep(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(bottom = 16.dp)
         )
+
+        val intermediateResults = state.getIntermediateResults()
 
         // Отображаем товар
         intermediateResults["STORAGE_PRODUCT"]?.let { product ->

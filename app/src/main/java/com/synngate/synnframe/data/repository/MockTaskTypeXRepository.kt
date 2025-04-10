@@ -43,20 +43,6 @@ class MockTaskTypeXRepository : TaskTypeXRepository {
         taskTypesFlow.value = updatedMap
     }
 
-    // Создание начальных тестовых данных
-    private fun createInitialTaskTypes(): Map<String, TaskTypeX> {
-        // Создадим тип задания "Приемка по монопалетам" из примера
-        val receiptTaskType = createReceiptTaskType()
-
-        // Создадим тип задания "Отбор заказа"
-        val pickingTaskType = createPickingTaskType()
-
-        return mapOf(
-            receiptTaskType.id to receiptTaskType,
-            pickingTaskType.id to pickingTaskType
-        )
-    }
-
     // Создание типа задания "Приемка по монопалетам"
     private fun createReceiptTaskType(): TaskTypeX {
         // Создадим группу действий "Выбрать товар приемки"
@@ -185,8 +171,60 @@ class MockTaskTypeXRepository : TaskTypeXRepository {
 
     // Создание типа задания "Отбор заказа"
     private fun createPickingTaskType(): TaskTypeX {
-        // Здесь можно добавить другой тип задания для примера
-        // Упрощенный вариант для иллюстрации
+        // Создаем группу действий "Взять товар из ячейки"
+        val takeProdGroup = FactLineActionGroup(
+            id = UUID.randomUUID().toString(),
+            name = "Взять товар из ячейки",
+            order = 1,
+            targetFieldType = TaskXLineFieldType.STORAGE_PRODUCT,
+            wmsAction = WmsAction.TAKE_FROM,
+            resultType = "TaskProduct",
+            actions = listOf(
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Выбрать ячейку",
+                    actionType = FactLineXActionType.SELECT_BIN,
+                    order = 1,
+                    selectionCondition = ObjectSelectionCondition.FROM_PLAN,
+                    promptText = "Отсканируйте или выберите ячейку"
+                ),
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Выбрать товар",
+                    actionType = FactLineXActionType.SELECT_PRODUCT,
+                    order = 2,
+                    selectionCondition = ObjectSelectionCondition.FROM_PLAN,
+                    promptText = "Выберите товар"
+                ),
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Введите количество",
+                    actionType = FactLineXActionType.ENTER_QUANTITY,
+                    order = 3,
+                    promptText = "Введите количество товара"
+                )
+            )
+        )
+
+        // Создаем группу действий "Выбрать ячейку размещения"
+        val selectPlaceBinGroup = FactLineActionGroup(
+            id = UUID.randomUUID().toString(),
+            name = "Выбрать ячейку размещения",
+            order = 2,
+            targetFieldType = TaskXLineFieldType.PLACEMENT_BIN,
+            wmsAction = WmsAction.PUT_INTO,
+            resultType = "BinX",
+            actions = listOf(
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Выбрать ячейку размещения",
+                    actionType = FactLineXActionType.SELECT_BIN,
+                    order = 1,
+                    promptText = "Отсканируйте или выберите ячейку для размещения товара"
+                )
+            )
+        )
+
         return TaskTypeX(
             id = "7891011121314",
             name = "Отбор заказа",
@@ -202,8 +240,102 @@ class MockTaskTypeXRepository : TaskTypeXRepository {
                 AvailableTaskAction.COMPARE_LINES,
                 AvailableTaskAction.VERIFY_TASK
             ),
-            factLineActionGroups = emptyList(), // Для краткости опустим детали
+            factLineActionGroups = listOf(takeProdGroup, selectPlaceBinGroup),
             finalActions = emptyList()
+        )
+    }
+
+    // Создание типа задания "Перемещение"
+    private fun createMovementTaskType(): TaskTypeX {
+        // Создаем группу действий "Взять товар"
+        val takeFromGroup = FactLineActionGroup(
+            id = UUID.randomUUID().toString(),
+            name = "Взять товар",
+            order = 1,
+            targetFieldType = TaskXLineFieldType.STORAGE_PRODUCT,
+            wmsAction = WmsAction.TAKE_FROM,
+            resultType = "TaskProduct",
+            actions = listOf(
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Выбрать ячейку хранения",
+                    actionType = FactLineXActionType.SELECT_BIN,
+                    order = 1,
+                    selectionCondition = ObjectSelectionCondition.FROM_PLAN,
+                    promptText = "Отсканируйте или выберите ячейку хранения"
+                ),
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Выбрать товар",
+                    actionType = FactLineXActionType.SELECT_PRODUCT,
+                    order = 2,
+                    selectionCondition = ObjectSelectionCondition.FROM_PLAN,
+                    promptText = "Выберите товар из ячейки"
+                ),
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Введите количество",
+                    actionType = FactLineXActionType.ENTER_QUANTITY,
+                    order = 3,
+                    promptText = "Введите количество товара"
+                )
+            )
+        )
+
+        // Создаем группу действий "Положить товар"
+        val putToGroup = FactLineActionGroup(
+            id = UUID.randomUUID().toString(),
+            name = "Положить товар",
+            order = 2,
+            targetFieldType = TaskXLineFieldType.PLACEMENT_BIN,
+            wmsAction = WmsAction.PUT_INTO,
+            resultType = "BinX",
+            actions = listOf(
+                FactLineXAction(
+                    id = UUID.randomUUID().toString(),
+                    name = "Выбрать ячейку размещения",
+                    actionType = FactLineXActionType.SELECT_BIN,
+                    order = 1,
+                    selectionCondition = ObjectSelectionCondition.FROM_PLAN,
+                    promptText = "Отсканируйте или выберите ячейку размещения"
+                )
+            )
+        )
+
+        return TaskTypeX(
+            id = "8910111213141",
+            name = "Перемещение",
+            wmsOperation = WmsOperation.MOVEMENT,
+            canBeCreatedInApp = false,
+            allowCompletionWithoutFactLines = false,
+            allowExceedPlanQuantity = false,
+            availableActions = listOf(
+                AvailableTaskAction.PAUSE,
+                AvailableTaskAction.RESUME,
+                AvailableTaskAction.SHOW_PLAN_LINES,
+                AvailableTaskAction.SHOW_FACT_LINES,
+                AvailableTaskAction.COMPARE_LINES
+            ),
+            factLineActionGroups = listOf(takeFromGroup, putToGroup),
+            finalActions = emptyList()
+        )
+    }
+
+    // Обновим метод createInitialTaskTypes
+    private fun createInitialTaskTypes(): Map<String, TaskTypeX> {
+        // Создаем тип задания "Приемка по монопалетам" из примера
+        val receiptTaskType = createReceiptTaskType()
+
+        // Создаем тип задания "Отбор заказа"
+        val pickingTaskType = createPickingTaskType()
+
+        // Создаем тип задания "Перемещение"
+        val movementTaskType = createMovementTaskType()
+
+        return mapOf(
+            receiptTaskType.id to receiptTaskType,
+            pickingTaskType.id to pickingTaskType,
+            movementTaskType.id to movementTaskType
         )
     }
 }

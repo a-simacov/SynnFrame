@@ -96,14 +96,11 @@ fun TaskXDetailScreen(
     }
 
     // Если открыт мастер добавления строки факта, отображаем его
-    if (wizardState != null) {
+    if (viewModel.factLineWizardController.wizardState.collectAsState().value != null) {
         FactLineWizard(
-            state = wizardState!!,
-            onCancel = { viewModel.cancelWizard() },
-            onStepComplete = { result -> viewModel.completeWizardStep(result) },
-            onWizardComplete = { factLine -> viewModel.completeWizard(factLine) }
+            viewModel = viewModel,
+            modifier = Modifier.fillMaxSize()
         )
-        return // Не показываем основной экран, пока открыт мастер
     }
 
     AppScaffold(

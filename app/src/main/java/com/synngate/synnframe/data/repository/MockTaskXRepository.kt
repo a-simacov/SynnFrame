@@ -1,6 +1,7 @@
 package com.synngate.synnframe.data.repository
 
 import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.FactLineX
 import com.synngate.synnframe.domain.entity.taskx.PlanLineX
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
@@ -175,7 +176,7 @@ class MockTaskXRepository(
         return Result.success(isVerified)
     }
 
-    // Создание начальных тестовых данных
+    // Обновим метод createInitialTasks в MockTaskXRepository
     private fun createInitialTasks(): Map<String, TaskX> {
         val tasks = mutableMapOf<String, TaskX>()
 
@@ -183,9 +184,138 @@ class MockTaskXRepository(
         val receiptTask = createReceiptTask()
         tasks[receiptTask.id] = receiptTask
 
-        // Можно добавить еще несколько тестовых заданий разных типов
+        // Добавим еще несколько тестовых заданий разных типов
+        val pickingTask = createPickingTask()
+        tasks[pickingTask.id] = pickingTask
+
+        val movementTask = createMovementTask()
+        tasks[movementTask.id] = movementTask
 
         return tasks
+    }
+
+    // Создание задания "Отбор заказа"
+    private fun createPickingTask(): TaskX {
+        // Создаем продукты для строк плана
+        val productTV = Product(
+            id = "p3",
+            name = "Телевизор 55\"",
+            accountingModel = com.synngate.synnframe.domain.entity.AccountingModel.QTY,
+            articleNumber = "TV-55001",
+            mainUnitId = "u3",
+            units = emptyList()
+        )
+
+        val productPhone = Product(
+            id = "p4",
+            name = "Смартфон",
+            accountingModel = com.synngate.synnframe.domain.entity.AccountingModel.QTY,
+            articleNumber = "PH-12345",
+            mainUnitId = "u4",
+            units = emptyList()
+        )
+
+        // Создаем товары задания для строк плана
+        val taskProductTV = TaskProduct(
+            product = productTV,
+            quantity = 2f
+        )
+
+        val taskProductPhone = TaskProduct(
+            product = productPhone,
+            quantity = 5f
+        )
+
+        // Создаем строки плана
+        val planLine1 = PlanLineX(
+            id = UUID.randomUUID().toString(),
+            taskId = "task2",
+            executionOrder = 1,
+            storageProduct = taskProductTV,
+            wmsAction = WmsAction.TAKE_FROM,
+            placementBin = BinX(
+                code = "C00311",
+                zone = "Отбор",
+                line = "C",
+                rack = "03",
+                tier = "1",
+                position = "1"
+            )
+        )
+
+        val planLine2 = PlanLineX(
+            id = UUID.randomUUID().toString(),
+            taskId = "task2",
+            executionOrder = 2,
+            storageProduct = taskProductPhone,
+            wmsAction = WmsAction.TAKE_FROM,
+            placementBin = BinX(
+                code = "C00312",
+                zone = "Отбор",
+                line = "C",
+                rack = "03",
+                tier = "1",
+                position = "2"
+            )
+        )
+
+        // Создаем задание
+        return TaskX(
+            id = "task2",
+            barcode = "03165467988",
+            name = "Отбор заказа №12345",
+            taskTypeId = "7891011121314", // ID типа задания "Отбор заказа"
+            status = TaskXStatus.TO_DO,
+            createdAt = LocalDateTime.now().minusHours(3),
+            planLines = listOf(planLine1, planLine2)
+        )
+    }
+
+    // Создание задания "Перемещение"
+    private fun createMovementTask(): TaskX {
+        // Создаем продукт для строк плана
+        val productLaptop = Product(
+            id = "p5",
+            name = "Ноутбук",
+            accountingModel = com.synngate.synnframe.domain.entity.AccountingModel.QTY,
+            articleNumber = "LT-9876",
+            mainUnitId = "u5",
+            units = emptyList()
+        )
+
+        // Создаем товар задания для строк плана
+        val taskProductLaptop = TaskProduct(
+            product = productLaptop,
+            quantity = 10f
+        )
+
+        // Создаем строку плана
+        val planLine = PlanLineX(
+            id = UUID.randomUUID().toString(),
+            taskId = "task3",
+            executionOrder = 0,
+            storageProduct = taskProductLaptop,
+            wmsAction = WmsAction.TAKE_FROM,
+            placementBin = BinX(
+                code = "B00211",
+                zone = "Хранение",
+                line = "B",
+                rack = "02",
+                tier = "1",
+                position = "1"
+            )
+        )
+
+        // Создаем задание
+        return TaskX(
+            id = "task3",
+            barcode = "03165467989",
+            name = "Перемещение товара",
+            taskTypeId = "8910111213141", // ID типа задания "Перемещение"
+            status = TaskXStatus.TO_DO,
+            createdAt = LocalDateTime.now().minusHours(1),
+            planLines = listOf(planLine)
+        )
     }
 
     // Создание задания "Приемка по монопалетам" из примера

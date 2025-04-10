@@ -30,10 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.synngate.synnframe.domain.entity.taskx.FactLineWizardState
-import com.synngate.synnframe.domain.entity.taskx.canGoBack
-import com.synngate.synnframe.domain.entity.taskx.getIntermediateResults
-import com.synngate.synnframe.domain.entity.taskx.getProgressValue
-import com.synngate.synnframe.domain.entity.taskx.isLastStep
 import com.synngate.synnframe.presentation.ui.taskx.components.SummaryStep
 
 @Composable
@@ -108,7 +104,7 @@ private fun FactLineWizardContent(
             // Завершающий шаг
             SummaryStep(
                 state = state,
-                onComplete = { onWizardComplete() },
+                onComplete = onWizardComplete,
                 onCancel = onCancel
             )
         } else {

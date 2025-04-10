@@ -33,6 +33,8 @@ import com.synngate.synnframe.presentation.ui.settings.SettingsScreen
 import com.synngate.synnframe.presentation.ui.sync.SyncHistoryScreen
 import com.synngate.synnframe.presentation.ui.tasks.TaskDetailScreen
 import com.synngate.synnframe.presentation.ui.tasks.TaskListScreen
+import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailScreen
+import com.synngate.synnframe.presentation.ui.taskx.TaskXListScreen
 import timber.log.Timber
 
 /**
@@ -184,6 +186,11 @@ fun AppNavigation(
                             popUpTo(Screen.MainMenu.route) { inclusive = true }
                         }
                     },
+                    navigateToTasksX = { // Добавляем обработчик для навигации к заданиям X
+                        navController.navigate(Screen.TaskXList.route) {
+                            popUpTo(Screen.MainMenu.route) { inclusive = false }
+                        }
+                    },
                     exitApp = {
                         (context as? Activity)?.finish()
                     }
@@ -226,6 +233,11 @@ fun AppNavigation(
 
             // Граф навигации для логов
             logsNavGraph(
+                navController = navController,
+                navigationScopeManager = navigationScopeManager
+            )
+
+            taskXNavGraph(
                 navController = navController,
                 navigationScopeManager = navigationScopeManager
             )
@@ -448,6 +460,59 @@ fun NavGraphBuilder.logsNavGraph(
     }
 }
 
+// Добавим функцию расширения для NavGraphBuilder
+fun NavGraphBuilder.taskXNavGraph(
+    navController: NavHostController,
+    navigationScopeManager: NavigationScopeManager
+) {
+    // Получаем контейнер для графа
+    val graphContainer = navigationScopeManager.getGraphContainer("taskx_graph")
+
+    navigation(
+        startDestination = Screen.TaskXList.route,
+        route = "taskx_graph"
+    ) {
+        // Экран списка заданий X - используем ПОСТОЯННЫЙ контейнер
+        composable(Screen.TaskXList.route) { entry ->
+            val screenContainer =
+                rememberPersistentScreenContainer(navController, entry, navigationScopeManager)
+            val viewModel = remember { screenContainer.createTaskXListViewModel() }
+
+            TaskXListScreen(
+                viewModel = viewModel,
+                navigateToTaskDetail = { taskId ->
+                    navController.navigate(Screen.TaskXDetail.createRoute(taskId))
+                },
+                navigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Экран детальной информации о задании X - используем ВРЕМЕННЫЙ контейнер
+        composable(
+            route = Screen.TaskXDetail.route,
+            arguments = listOf(
+                navArgument("taskId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { entry ->
+            val taskId = entry.arguments?.getString("taskId") ?: ""
+            val screenContainer =
+                rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
+            val viewModel = remember(taskId) { screenContainer.createTaskXDetailViewModel(taskId) }
+
+            TaskXDetailScreen(
+                viewModel = viewModel,
+                navigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+    }
+}
+
 /**
  * Запечатанный класс для определения экранов навигации
  */
@@ -481,4 +546,9 @@ sealed class Screen(val route: String) {
 
     object Settings : Screen("settings")
     object SyncHistory : Screen("sync_history")
+
+    object TaskXList : Screen("taskx_list") // Список заданий X
+    object TaskXDetail : Screen("taskx_detail/{taskId}") { // Детальная информация о задании X
+        fun createRoute(taskId: String) = "taskx_detail/$taskId"
+    }
 }

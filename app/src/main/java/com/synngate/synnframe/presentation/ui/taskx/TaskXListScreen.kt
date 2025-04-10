@@ -77,12 +77,12 @@ fun TaskXListScreen(
             onApply = { fromDate, toDate ->
                 viewModel.updateDateFilter(fromDate, toDate)
             },
-            onDismiss = { /* Скрыть диалог */ }
+            onDismiss = { viewModel.hideDateFilterDialog() }
         )
     }
 
     AppScaffold(
-        title = stringResource(id = R.string.tasks_title),
+        title = stringResource(id = R.string.taskx_title),
         onNavigateBack = navigateBack,
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {
@@ -91,7 +91,7 @@ fun TaskXListScreen(
         isLoading = state.isLoading,
         actions = {
             // Кнопка фильтра по дате
-            IconButton(onClick = { /* Показать диалог выбора даты */ }) {
+            IconButton(onClick = { viewModel.showDateFilterDialog() }) {
                 Icon(
                     imageVector = Icons.Default.CalendarMonth,
                     contentDescription = stringResource(id = R.string.date_filter)
@@ -106,9 +106,9 @@ fun TaskXListScreen(
         ) {
             // Поле поиска
             SearchTextField(
-                value = state.searchQuery ?: "",
+                value = state.searchQuery,
                 onValueChange = { viewModel.updateSearchQuery(it) },
-                label = stringResource(id = R.string.search_tasks),
+                label = stringResource(id = R.string.taskx_search_hint),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -181,7 +181,7 @@ fun TaskXListScreen(
                     message = if (state.hasActiveFilters)
                         stringResource(R.string.no_tasks_with_filter)
                     else
-                        stringResource(R.string.no_tasks)
+                        stringResource(R.string.taskx_empty)
                 )
             } else {
                 LazyColumn(
