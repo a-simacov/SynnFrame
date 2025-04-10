@@ -1,17 +1,21 @@
 package com.synngate.synnframe.domain.service
 
 import com.synngate.synnframe.domain.entity.taskx.BinX
-import com.synngate.synnframe.domain.entity.taskx.FactLineWizardState
+import com.synngate.synnframe.domain.entity.taskx.FactLineX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
+import com.synngate.synnframe.domain.entity.taskx.WmsAction
 import com.synngate.synnframe.domain.usecase.wizard.FactLineWizardUseCases
+import com.synngate.synnframe.presentation.ui.taskx.wizard.WizardFactory
+import com.synngate.synnframe.presentation.ui.taskx.wizard.WizardStep
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 import java.time.LocalDateTime
+import java.util.UUID
 
 /**
  * Контроллер для управления процессом создания строки факта
@@ -19,143 +23,166 @@ import java.time.LocalDateTime
 class FactLineWizardController(
     private val factLineWizardUseCases: FactLineWizardUseCases
 ) {
-    private val _wizardState = MutableStateFlow<FactLineWizardState?>(null)
-    val wizardState: StateFlow<FactLineWizardState?> = _wizardState.asStateFlow()
+    data class WizardState(
+        val taskId: String = "",
+        val steps: List<WizardStep> = emptyList(),
+        val currentStepIndex: Int = 0,
+        val results: Map<String, Any?> = emptyMap(),
+        val startedAt: LocalDateTime = LocalDateTime.now(),
+        val errors: Map<String, String> = emptyMap(),
+        val isInitialized: Boolean = false
+    ) {
+        val currentStep: WizardStep?
+            get() = if (currentStepIndex < steps.size) steps[currentStepIndex] else null
+
+        val isCompleted: Boolean
+            get() = currentStepIndex >= steps.size
+
+        val progress: Float
+            get() = if (steps.isEmpty()) 0f else currentStepIndex.toFloat() / steps.size
+
+        val canGoBack: Boolean
+            get() = currentStepIndex > 0 && currentStep?.canNavigateBack ?: true
+
+        /**
+         * Получает результаты для создания строки факта
+         */
+        fun getFactLineData(): Map<TaskXLineFieldType, Any?> {
+            val data = mutableMapOf<TaskXLineFieldType, Any?>()
+
+            // Собираем данные из результатов
+            results.forEach { (key, value) ->
+                when {
+                    key.contains("STORAGE_PRODUCT") && value is TaskProduct ->
+                        data[TaskXLineFieldType.STORAGE_PRODUCT] = value
+                    key.contains("STORAGE_PALLET") && value is Pallet ->
+                        data[TaskXLineFieldType.STORAGE_PALLET] = value
+                    key.contains("PLACEMENT_PALLET") && value is Pallet ->
+                        data[TaskXLineFieldType.PLACEMENT_PALLET] = value
+                    key.contains("PLACEMENT_BIN") && value is BinX ->
+                        data[TaskXLineFieldType.PLACEMENT_BIN] = value
+                    key.contains("WMS_ACTION") && value is WmsAction ->
+                        data[TaskXLineFieldType.WMS_ACTION] = value
+                }
+            }
+
+            return data
+        }
+    }
+
+    private val _wizardState = MutableStateFlow<WizardState?>(null)
+    val wizardState: StateFlow<WizardState?> = _wizardState.asStateFlow()
 
     /**
-     * Инициализация мастера для задания
+     * Инициализация мастера на основе типа задания
      */
     suspend fun initialize(task: TaskX) {
         val taskType = factLineWizardUseCases.getTaskType(task.taskTypeId) ?: return
 
-        if (taskType.factLineActionGroups.isEmpty()) {
+        // Используем фабрику для создания шагов мастера
+        val factory = WizardFactory(factLineWizardUseCases.getWizardViewModel())
+        val steps = factory.createWizardSteps(taskType)
+
+        if (steps.isEmpty()) {
             Timber.w("Для типа задания ${taskType.name} не определены действия для добавления строки факта")
             return
         }
 
-        _wizardState.value = FactLineWizardState(
+        _wizardState.value = WizardState(
             taskId = task.id,
-            groups = taskType.factLineActionGroups,
-            currentGroupIndex = 0,
-            currentActionIndex = 0,
-            startedAt = LocalDateTime.now()
+            steps = steps,
+            isInitialized = true
         )
     }
 
     /**
      * Обработка результата текущего шага
      */
-    suspend fun processStepResult(result: Any?) {
+    fun processStepResult(result: Any?) {
         val currentState = _wizardState.value ?: return
 
         if (result == null) {
             // Переход к предыдущему шагу
-            navigateBack(currentState)
-        } else {
-            // Сохранение результата и переход к следующему шагу
-            saveResult(currentState, result)
-        }
-    }
-
-    /**
-     * Переход назад к предыдущему шагу
-     */
-    private fun navigateBack(currentState: FactLineWizardState) {
-        var newGroupIndex = currentState.currentGroupIndex
-        var newActionIndex = currentState.currentActionIndex - 1
-
-        if (newActionIndex < 0) {
-            newGroupIndex--
-            if (newGroupIndex >= 0) {
-                val prevGroup = currentState.groups[newGroupIndex]
-                newActionIndex = prevGroup.actions.size - 1
+            if (currentState.canGoBack) {
+                _wizardState.value = currentState.copy(
+                    currentStepIndex = currentState.currentStepIndex - 1
+                )
             }
+            return
         }
 
-        // Не позволяем выйти за пределы первого шага
-        if (newGroupIndex < 0) {
-            newGroupIndex = 0
-            newActionIndex = 0
+        // Сохранение результата текущего шага
+        val currentStep = currentState.currentStep ?: return
+        val updatedResults = currentState.results.toMutableMap()
+        updatedResults[currentStep.id] = result
+
+        // Проверка валидации
+        if (!currentStep.validator(updatedResults)) {
+            val errors = currentState.errors.toMutableMap()
+            errors[currentStep.id] = "Недопустимое значение"
+            _wizardState.value = currentState.copy(errors = errors)
+            return
         }
 
+        // Переход к следующему шагу
         _wizardState.value = currentState.copy(
-            currentGroupIndex = newGroupIndex,
-            currentActionIndex = newActionIndex
+            currentStepIndex = currentState.currentStepIndex + 1,
+            results = updatedResults
         )
     }
 
     /**
-     * Сохранение результата текущего шага
-     */
-    private fun saveResult(currentState: FactLineWizardState, result: Any) {
-        if (currentState.currentGroupIndex >= currentState.groups.size) return
-
-        val currentGroup = currentState.groups[currentState.currentGroupIndex]
-        val targetField = currentGroup.targetFieldType
-
-        // Обновляем результаты в зависимости от типа поля
-        val updatedState = when (targetField) {
-            TaskXLineFieldType.STORAGE_PRODUCT -> currentState.copy(storageProduct = result as? TaskProduct)
-            TaskXLineFieldType.STORAGE_PALLET -> currentState.copy(storagePallet = result as? Pallet)
-            TaskXLineFieldType.PLACEMENT_PALLET -> currentState.copy(placementPallet = result as? Pallet)
-            TaskXLineFieldType.PLACEMENT_BIN -> currentState.copy(placementBin = result as? BinX)
-        }
-
-        // Записываем действие WMS из текущей группы, если оно еще не задано
-        val updatedWithWmsAction = if (updatedState.wmsAction == null) {
-            updatedState.copy(wmsAction = currentGroup.wmsAction)
-        } else {
-            updatedState
-        }
-
-        // Переходим к следующему шагу
-        var newGroupIndex = currentState.currentGroupIndex
-        var newActionIndex = currentState.currentActionIndex + 1
-
-        // Если все действия в текущей группе выполнены, переходим к следующей группе
-        if (newActionIndex >= currentGroup.actions.size) {
-            newGroupIndex++
-            newActionIndex = 0
-        }
-
-        _wizardState.value = updatedWithWmsAction.copy(
-            currentGroupIndex = newGroupIndex,
-            currentActionIndex = newActionIndex
-        )
-    }
-
-    /**
-     * Добавление строки факта и завершение мастера
+     * Создание строки факта из результатов мастера
      */
     suspend fun completeWizard(): Result<TaskX> {
         val state = _wizardState.value ?: return Result.failure(
             IllegalStateException("Состояние мастера не инициализировано")
         )
 
-        // Создаем строку факта из состояния мастера
-        val factLineResult = factLineWizardUseCases.createFactLine(state)
-        if (factLineResult.isFailure) {
-            return Result.failure(
-                factLineResult.exceptionOrNull() ?: Exception("Ошибка создания строки факта")
-            )
+        if (!state.isCompleted) {
+            return Result.failure(IllegalStateException("Мастер не завершен"))
         }
 
-        val factLine = factLineResult.getOrNull()!!
+        try {
+            // Создание строки факта из состояния мастера
+            val factLineData = state.getFactLineData()
 
-        // Добавляем строку факта в задание
-        val result = factLineWizardUseCases.addFactLine(factLine)
+            // Получаем данные для строки факта
+            val storageProduct = factLineData[TaskXLineFieldType.STORAGE_PRODUCT] as? TaskProduct
+            val storagePallet = factLineData[TaskXLineFieldType.STORAGE_PALLET] as? Pallet
+            val placementPallet = factLineData[TaskXLineFieldType.PLACEMENT_PALLET] as? Pallet
+            val placementBin = factLineData[TaskXLineFieldType.PLACEMENT_BIN] as? BinX
+            val wmsAction = factLineData[TaskXLineFieldType.WMS_ACTION] as? WmsAction ?: WmsAction.RECEIPT
 
-        // Закрываем мастер и очищаем кэш
-        _wizardState.value = null
-        factLineWizardUseCases.clearCache()
+            val factLine = FactLineX(
+                id = UUID.randomUUID().toString(),
+                taskId = state.taskId,
+                storageProduct = storageProduct,
+                storagePallet = storagePallet,
+                wmsAction = wmsAction,
+                placementPallet = placementPallet,
+                placementBin = placementBin,
+                startedAt = state.startedAt,
+                completedAt = LocalDateTime.now()
+            )
 
-        return result
+            // Добавление строки факта в задание
+            val result = factLineWizardUseCases.addFactLine(factLine)
+
+            // Сброс состояния мастера
+            cancel()
+
+            return result
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при создании строки факта")
+            return Result.failure(e)
+        }
     }
 
     /**
      * Отмена мастера
      */
-    fun cancelWizard() {
+    fun cancel() {
         _wizardState.value = null
         factLineWizardUseCases.clearCache()
     }

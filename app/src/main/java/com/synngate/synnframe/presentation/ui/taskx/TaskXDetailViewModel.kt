@@ -291,13 +291,14 @@ class TaskXDetailViewModel(
 
             // Инициализируем мастер через контроллер
             factLineWizardController.initialize(task)
+
+            // Уведомляем UI о необходимости показать мастер
+            sendEvent(TaskXDetailEvent.ShowFactLineWizard)
         }
     }
 
     fun processWizardStep(result: Any?) {
-        launchIO {
-            factLineWizardController.processStepResult(result)
-        }
+        factLineWizardController.processStepResult(result)
     }
 
     fun completeWizard() {
@@ -319,7 +320,7 @@ class TaskXDetailViewModel(
     }
 
     fun cancelWizard() {
-        factLineWizardController.cancelWizard()
+        factLineWizardController.cancel()
     }
 
     fun showCompletionDialog() {
