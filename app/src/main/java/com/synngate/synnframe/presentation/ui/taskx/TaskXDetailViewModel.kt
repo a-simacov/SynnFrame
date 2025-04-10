@@ -1,18 +1,16 @@
-// ViewModel для экрана задания X
 package com.synngate.synnframe.presentation.ui.taskx
 
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.taskx.AvailableTaskAction
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
+import com.synngate.synnframe.domain.service.FactLineWizardController
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
-import com.synngate.synnframe.presentation.ui.taskx.model.FactLineWizardUiState
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -22,19 +20,28 @@ import java.time.format.DateTimeFormatter
 class TaskXDetailViewModel(
     private val taskId: String,
     private val taskXUseCases: TaskXUseCases,
-    private val userUseCases: UserUseCases
+    private val userUseCases: UserUseCases,
+    private val factLineWizardController: FactLineWizardController
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
 
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
-    private val _wizard = MutableStateFlow<FactLineWizardUiState?>(null)
-    val wizard = _wizard.asStateFlow()
 
     init {
         loadTask()
+
+        // Подписываемся на изменения состояния мастера
+        viewModelScope.launch {
+            factLineWizardController.wizardState.collectLatest { wizardState ->
+                // Обновляем UI при изменении состояния мастера
+                if (wizardState != null) {
+                    sendEvent(TaskXDetailEvent.ShowFactLineWizard)
+                }
+            }
+        }
     }
 
     fun loadTask() {
-        viewModelScope.launch {
+        launchIO {
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
@@ -77,10 +84,10 @@ class TaskXDetailViewModel(
     }
 
     fun startTask() {
-        viewModelScope.launch {
+        launchIO {
             val currentState = uiState.value
-            val task = currentState.task ?: return@launch
-            val currentUserId = currentState.currentUserId ?: return@launch
+            val task = currentState.task ?: return@launchIO
+            val currentUserId = currentState.currentUserId ?: return@launchIO
 
             updateState { it.copy(isProcessing = true) }
 
@@ -117,8 +124,8 @@ class TaskXDetailViewModel(
     }
 
     fun completeTask() {
-        viewModelScope.launch {
-            val task = uiState.value.task ?: return@launch
+        launchIO {
+            val task = uiState.value.task ?: return@launchIO
 
             updateState { it.copy(isProcessing = true) }
 
@@ -130,7 +137,8 @@ class TaskXDetailViewModel(
                     updateState {
                         it.copy(
                             task = updatedTask,
-                            isProcessing = false
+                            isProcessing = false,
+                            showCompletionDialog = false
                         )
                     }
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Задание завершено"))
@@ -138,6 +146,7 @@ class TaskXDetailViewModel(
                     updateState {
                         it.copy(
                             isProcessing = false,
+                            showCompletionDialog = false,
                             error = result.exceptionOrNull()?.message ?: "Ошибка при завершении задания"
                         )
                     }
@@ -147,6 +156,7 @@ class TaskXDetailViewModel(
                 updateState {
                     it.copy(
                         isProcessing = false,
+                        showCompletionDialog = false,
                         error = "Ошибка при завершении задания: ${e.message}"
                     )
                 }
@@ -155,8 +165,8 @@ class TaskXDetailViewModel(
     }
 
     fun pauseTask() {
-        viewModelScope.launch {
-            val task = uiState.value.task ?: return@launch
+        launchIO {
+            val task = uiState.value.task ?: return@launchIO
 
             updateState { it.copy(isProcessing = true) }
 
@@ -193,8 +203,8 @@ class TaskXDetailViewModel(
     }
 
     fun resumeTask() {
-        viewModelScope.launch {
-            val task = uiState.value.task ?: return@launch
+        launchIO {
+            val task = uiState.value.task ?: return@launchIO
 
             updateState { it.copy(isProcessing = true) }
 
@@ -231,8 +241,8 @@ class TaskXDetailViewModel(
     }
 
     fun verifyTask(barcode: String) {
-        viewModelScope.launch {
-            val task = uiState.value.task ?: return@launch
+        launchIO {
+            val task = uiState.value.task ?: return@launchIO
 
             updateState { it.copy(isProcessing = true) }
 
@@ -242,11 +252,13 @@ class TaskXDetailViewModel(
                 if (result.isSuccess && result.getOrNull() == true) {
                     // Перезагружаем задание, чтобы обновить поле isVerified
                     loadTask()
+                    updateState { it.copy(showVerificationDialog = false) }
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Задание успешно верифицировано"))
                 } else {
                     updateState {
                         it.copy(
                             isProcessing = false,
+                            showVerificationDialog = false,
                             error = "Неверный штрихкод для верификации"
                         )
                     }
@@ -256,6 +268,7 @@ class TaskXDetailViewModel(
                 updateState {
                     it.copy(
                         isProcessing = false,
+                        showVerificationDialog = false,
                         error = "Ошибка при верификации задания: ${e.message}"
                     )
                 }
@@ -264,37 +277,62 @@ class TaskXDetailViewModel(
     }
 
     fun startAddFactLineWizard() {
-        val task = uiState.value.task ?: return
-        val taskType = uiState.value.taskType ?: return
+        launchIO {
+            val task = uiState.value.task ?: return@launchIO
 
-        if (task.status != TaskXStatus.IN_PROGRESS) {
-            sendEvent(TaskXDetailEvent.ShowSnackbar("Добавление строк факта возможно только для задания в статусе 'Выполняется'"))
-            return
+            if (task.status != TaskXStatus.IN_PROGRESS) {
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Добавление строк факта возможно только для задания в статусе 'Выполняется'"))
+                return@launchIO
+            }
+
+            // Инициализируем мастер через контроллер
+            factLineWizardController.initialize(task)
         }
+    }
 
-        if (taskType.factLineActionGroups.isEmpty()) {
-            sendEvent(TaskXDetailEvent.ShowSnackbar("Для данного типа задания не определены действия для добавления строки факта"))
-            return
+    fun processWizardStep(result: Any?) {
+        launchIO {
+            factLineWizardController.processStepResult(result)
         }
+    }
 
-        // Инициализируем мастер
-        val wizardState = FactLineWizardUiState(
-            taskId = task.id,
-            groups = taskType.factLineActionGroups,
-            currentGroupIndex = 0,
-            currentActionIndex = 0
-        )
+    fun completeWizard() {
+        launchIO {
+            val result = factLineWizardController.completeWizard()
 
-        _wizard.value = wizardState
-        sendEvent(TaskXDetailEvent.ShowFactLineWizard)
+            if (result.isSuccess) {
+                // Перезагружаем задание для отображения новой строки факта
+                loadTask()
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Строка факта успешно добавлена"))
+            } else {
+                updateState {
+                    it.copy(
+                        error = result.exceptionOrNull()?.message ?: "Ошибка при добавлении строки факта"
+                    )
+                }
+            }
+        }
     }
 
     fun cancelWizard() {
-        _wizard.value = null
+        factLineWizardController.cancelWizard()
     }
 
-    // Другие методы для управления мастером добавления строки факта
-    // ...
+    fun showCompletionDialog() {
+        updateState { it.copy(showCompletionDialog = true) }
+    }
+
+    fun hideCompletionDialog() {
+        updateState { it.copy(showCompletionDialog = false) }
+    }
+
+    fun showVerificationDialog() {
+        updateState { it.copy(showVerificationDialog = true) }
+    }
+
+    fun hideVerificationDialog() {
+        updateState { it.copy(showVerificationDialog = false) }
+    }
 
     fun formatDate(dateTime: LocalDateTime?): String {
         return dateTime?.format(dateFormatter) ?: "Не указано"
@@ -308,6 +346,10 @@ class TaskXDetailViewModel(
             TaskXStatus.COMPLETED -> "Завершено"
             TaskXStatus.CANCELLED -> "Отменено"
         }
+    }
+
+    fun formatTaskType(taskTypeId: String): String {
+        return uiState.value.taskType?.name ?: "Неизвестный тип"
     }
 
     fun showPlanLines() {

@@ -19,7 +19,8 @@ data class TaskXDetailState(
     val error: String? = null,
     val activeView: TaskXDetailView = TaskXDetailView.COMPARED_LINES,
     val showVerificationDialog: Boolean = false,
-    val currentUserId: String? = null
+    val currentUserId: String? = null,
+    val showCompletionDialog: Boolean = false
 )
 
 sealed class TaskXDetailEvent {

@@ -44,6 +44,8 @@ import com.synngate.synnframe.domain.repository.TaskTypeRepository
 import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
+import com.synngate.synnframe.domain.service.FactLineDataCacheService
+import com.synngate.synnframe.domain.service.FactLineWizardController
 import com.synngate.synnframe.domain.service.FileService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
@@ -332,6 +334,14 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
 
     val taskTypeUseCases by lazy {
         TaskTypeUseCases(taskTypeRepository)
+    }
+
+    val factLineWizardController by lazy {
+        FactLineWizardController(taskXUseCases)
+    }
+
+    val factLineDataCacheService by lazy {
+        FactLineDataCacheService(taskXUseCases)
     }
 
     // Создание контейнера для уровня навигации
