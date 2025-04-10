@@ -130,6 +130,6 @@ class TaskXListViewModel(
     }
 
     fun formatTaskType(task: TaskX): String {
-        return task.getTaskType()?.name ?: "Unknown type"
+        return task.taskTypeId
     }
 }

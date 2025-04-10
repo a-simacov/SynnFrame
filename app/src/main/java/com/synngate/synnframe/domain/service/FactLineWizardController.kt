@@ -6,7 +6,7 @@ import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
-import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
+import com.synngate.synnframe.domain.usecase.wizard.FactLineWizardUseCases
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,7 +17,7 @@ import java.time.LocalDateTime
  * Контроллер для управления процессом создания строки факта
  */
 class FactLineWizardController(
-    private val taskXUseCases: TaskXUseCases
+    private val factLineWizardUseCases: FactLineWizardUseCases
 ) {
     private val _wizardState = MutableStateFlow<FactLineWizardState?>(null)
     val wizardState: StateFlow<FactLineWizardState?> = _wizardState.asStateFlow()
@@ -26,7 +26,7 @@ class FactLineWizardController(
      * Инициализация мастера для задания
      */
     suspend fun initialize(task: TaskX) {
-        val taskType = taskXUseCases.getTaskType(task.taskTypeId) ?: return
+        val taskType = factLineWizardUseCases.getTaskType(task.taskTypeId) ?: return
 
         if (taskType.factLineActionGroups.isEmpty()) {
             Timber.w("Для типа задания ${taskType.name} не определены действия для добавления строки факта")
@@ -35,7 +35,7 @@ class FactLineWizardController(
 
         _wizardState.value = FactLineWizardState(
             taskId = task.id,
-            groups = taskType.factLineActionGroups, // Передаем группы в состояние
+            groups = taskType.factLineActionGroups,
             currentGroupIndex = 0,
             currentActionIndex = 0,
             startedAt = LocalDateTime.now()
@@ -128,16 +128,26 @@ class FactLineWizardController(
      * Добавление строки факта и завершение мастера
      */
     suspend fun completeWizard(): Result<TaskX> {
-        val state = _wizardState.value ?: return Result.failure(IllegalStateException("Состояние мастера не инициализировано"))
+        val state = _wizardState.value ?: return Result.failure(
+            IllegalStateException("Состояние мастера не инициализировано")
+        )
 
-        // Используем метод createFactLine из состояния
-        val factLine = state.createFactLine()
-            ?: return Result.failure(IllegalStateException("Не удалось создать строку факта"))
+        // Создаем строку факта из состояния мастера
+        val factLineResult = factLineWizardUseCases.createFactLine(state)
+        if (factLineResult.isFailure) {
+            return Result.failure(
+                factLineResult.exceptionOrNull() ?: Exception("Ошибка создания строки факта")
+            )
+        }
 
-        val result = taskXUseCases.addFactLine(factLine)
+        val factLine = factLineResult.getOrNull()!!
 
-        // Закрываем мастер в любом случае
+        // Добавляем строку факта в задание
+        val result = factLineWizardUseCases.addFactLine(factLine)
+
+        // Закрываем мастер и очищаем кэш
         _wizardState.value = null
+        factLineWizardUseCases.clearCache()
 
         return result
     }
@@ -147,5 +157,6 @@ class FactLineWizardController(
      */
     fun cancelWizard() {
         _wizardState.value = null
+        factLineWizardUseCases.clearCache()
     }
 }

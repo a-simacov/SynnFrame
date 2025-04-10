@@ -16,6 +16,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,46 +32,35 @@ import com.synngate.synnframe.domain.entity.taskx.ProductStatus
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.presentation.common.inputs.NumberTextField
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView
+import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
 // Шаг выбора товара
+// app/src/main/java/com/synngate/synnframe/presentation/ui/taskx/components/WizardComponents.kt
 @Composable
 fun ProductSelectionStep(
     promptText: String,
     selectionCondition: ObjectSelectionCondition,
     intermediateResults: Map<String, Any?>,
     onProductSelected: (TaskProduct) -> Unit,
+    viewModel: FactLineWizardViewModel,  // Новый параметр - ViewModel для управления данными
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var products by remember { mutableStateOf<List<Product>>(emptyList()) }
     var showScanner by remember { mutableStateOf(false) }
 
-    // Здесь будет загрузка товаров в зависимости от selectionCondition
+    // Получаем продукты через ViewModel
+    val products by viewModel.products.collectAsState()
+
+    // Загрузка продуктов при изменении поискового запроса
     LaunchedEffect(selectionCondition, searchQuery) {
-        // TODO: загрузить товары через ViewModel/UseCase
-        // Временные данные
-        products = listOf(
-            Product(
-                id = "p1",
-                name = "Наушники вкладыши",
-                accountingModel = com.synngate.synnframe.domain.entity.AccountingModel.QTY,
-                articleNumber = "H-12345",
-                mainUnitId = "u1",
-                units = emptyList()
-            ),
-            Product(
-                id = "p2",
-                name = "Молоко",
-                accountingModel = com.synngate.synnframe.domain.entity.AccountingModel.QTY,
-                articleNumber = "M-67890",
-                mainUnitId = "u2",
-                units = emptyList()
-            )
-        ).filter { product ->
-            searchQuery.isEmpty() ||
-                    product.name.contains(searchQuery, ignoreCase = true) ||
-                    product.articleNumber.contains(searchQuery, ignoreCase = true)
+        // Получаем IDs продуктов из плана, если нужно
+        val planProductIds = if (selectionCondition == ObjectSelectionCondition.FROM_PLAN) {
+            intermediateResults["PLAN_PRODUCT_IDS"] as? Set<String>
+        } else {
+            null
         }
+
+        viewModel.loadProducts(searchQuery, planProductIds)
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -83,17 +73,16 @@ fun ProductSelectionStep(
         if (showScanner) {
             BarcodeScannerView(
                 onBarcodeDetected = { barcode ->
-                    // TODO: найти товар по штрихкоду
-                    // Временное решение
-                    if (products.isNotEmpty()) {
-                        val selectedProduct = products.first()
-                        // Создаем TaskProduct с выбранным товаром
-                        val taskProduct = TaskProduct(
-                            product = selectedProduct,
-                            quantity = 1f, // Дефолтное количество
-                            status = ProductStatus.STANDARD
-                        )
-                        onProductSelected(taskProduct)
+                    viewModel.findProductByBarcode(barcode) { product ->
+                        if (product != null) {
+                            // Создаем TaskProduct из найденного продукта
+                            val taskProduct = TaskProduct(
+                                product = product,
+                                quantity = 1f,
+                                status = ProductStatus.STANDARD
+                            )
+                            onProductSelected(taskProduct)
+                        }
                     }
                 },
                 modifier = Modifier
@@ -133,10 +122,9 @@ fun ProductSelectionStep(
                     ProductItem(
                         product = product,
                         onClick = {
-                            // Создаем TaskProduct с выбранным товаром
                             val taskProduct = TaskProduct(
                                 product = product,
-                                quantity = 1f, // Дефолтное количество
+                                quantity = 1f,
                                 status = ProductStatus.STANDARD
                             )
                             onProductSelected(taskProduct)

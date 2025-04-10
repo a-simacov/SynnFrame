@@ -4,6 +4,12 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.synngate.synnframe.data.datasource.BinDataSource
+import com.synngate.synnframe.data.datasource.PalletDataSource
+import com.synngate.synnframe.data.datasource.ProductDataSource
+import com.synngate.synnframe.data.datasource.mock.MockBinDataSource
+import com.synngate.synnframe.data.datasource.mock.MockPalletDataSource
+import com.synngate.synnframe.data.datasource.mock.MockProductDataSource
 import com.synngate.synnframe.data.datastore.AppSettingsDataStore
 import com.synngate.synnframe.data.local.database.AppDatabase
 import com.synngate.synnframe.data.remote.api.AppUpdateApi
@@ -30,6 +36,9 @@ import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
 import com.synngate.synnframe.data.repository.TaskRepositoryImpl
 import com.synngate.synnframe.data.repository.TaskTypeRepositoryImpl
 import com.synngate.synnframe.data.repository.UserRepositoryImpl
+import com.synngate.synnframe.data.repository.WizardBinRepositoryImpl
+import com.synngate.synnframe.data.repository.WizardPalletRepositoryImpl
+import com.synngate.synnframe.data.repository.WizardProductRepositoryImpl
 import com.synngate.synnframe.data.service.ClipboardServiceImpl
 import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
 import com.synngate.synnframe.data.service.FileServiceImpl
@@ -50,6 +59,9 @@ import com.synngate.synnframe.domain.repository.TaskTypeRepository
 import com.synngate.synnframe.domain.repository.TaskTypeXRepository
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.repository.UserRepository
+import com.synngate.synnframe.domain.repository.WizardBinRepository
+import com.synngate.synnframe.domain.repository.WizardPalletRepository
+import com.synngate.synnframe.domain.repository.WizardProductRepository
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.FactLineDataCacheService
@@ -70,6 +82,7 @@ import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
+import com.synngate.synnframe.domain.usecase.wizard.FactLineWizardUseCases
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.ui.login.LoginViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModel
@@ -86,6 +99,7 @@ import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModel
 import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXListViewModel
+import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 import com.synngate.synnframe.util.network.NetworkMonitor
 import com.synngate.synnframe.util.resources.ResourceProvider
 import com.synngate.synnframe.util.resources.ResourceProviderImpl
@@ -189,6 +203,18 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         }
     }
 
+    val productDataSource: ProductDataSource by lazy {
+        MockProductDataSource()
+    }
+
+    val binDataSource: BinDataSource by lazy {
+        MockBinDataSource()
+    }
+
+    val palletDataSource: PalletDataSource by lazy {
+        MockPalletDataSource()
+    }
+
     // Репозитории
     val logRepository: LogRepository by lazy {
         Timber.d("Creating LogRepository")
@@ -225,6 +251,18 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
 
     val taskTypeRepository: TaskTypeRepository by lazy {
         TaskTypeRepositoryImpl(taskTypeDao, factLineActionDao, taskTypeApi)
+    }
+
+    val wizardProductRepository: WizardProductRepository by lazy {
+        WizardProductRepositoryImpl(productDataSource)
+    }
+
+    val wizardBinRepository: WizardBinRepository by lazy {
+        WizardBinRepositoryImpl(binDataSource)
+    }
+
+    val wizardPalletRepository: WizardPalletRepository by lazy {
+        WizardPalletRepositoryImpl(palletDataSource)
     }
 
     // API сервисы
@@ -379,14 +417,29 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         )
     }
 
-    // Контроллер мастера создания строки факта
-    val factLineWizardController: FactLineWizardController by lazy {
-        Timber.d("Creating FactLineWizardController")
-        FactLineWizardController(taskXUseCases)
+    val factLineDataCacheService by lazy {
+        FactLineDataCacheService(
+            wizardProductRepository,
+            wizardBinRepository,
+            wizardPalletRepository
+        )
     }
 
-    val factLineDataCacheService by lazy {
-        FactLineDataCacheService(taskXUseCases)
+    val factLineWizardUseCases by lazy {
+        FactLineWizardUseCases(
+            factLineDataCacheService,
+            taskXUseCases,
+            taskTypeXRepository
+        )
+    }
+
+    val factLineWizardViewModel by lazy {
+        FactLineWizardViewModel(factLineWizardUseCases)
+    }
+
+    // Обновляем контроллер визарда
+    val factLineWizardController: FactLineWizardController by lazy {
+        FactLineWizardController(factLineWizardUseCases)
     }
 
     // Создание контейнера для уровня навигации
@@ -555,12 +608,22 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         }
     }
 
+    fun createFactLineWizardViewModel(): FactLineWizardViewModel {
+        return getOrCreateViewModel("FactLineWizardViewModel") {
+            FactLineWizardViewModel(
+                factLineWizardUseCases = appContainer.factLineWizardUseCases
+            )
+        }
+    }
+
+    // Обновленный метод для TaskXDetailViewModel
     fun createTaskXDetailViewModel(taskId: String): TaskXDetailViewModel {
         return getOrCreateViewModel("TaskXDetailViewModel_$taskId") {
             TaskXDetailViewModel(
                 taskId = taskId,
                 taskXUseCases = appContainer.taskXUseCases,
                 userUseCases = appContainer.userUseCases,
+                factLineWizardViewModel = createFactLineWizardViewModel(),
                 factLineWizardController = appContainer.factLineWizardController
             )
         }

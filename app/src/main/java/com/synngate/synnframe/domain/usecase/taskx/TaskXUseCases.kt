@@ -280,4 +280,12 @@ class TaskXUseCases(
     suspend fun binExists(code: String): Boolean {
         return binXRepository.binExists(code)
     }
+
+    suspend fun getTaskTypeById(taskTypeId: String): TaskTypeX? {
+        return taskTypeXRepository.getTaskTypeById(taskTypeId)
+    }
+
+    fun getTaskTypes(): Flow<List<TaskTypeX>> {
+        return taskTypeXRepository.getTaskTypes()
+    }
 }

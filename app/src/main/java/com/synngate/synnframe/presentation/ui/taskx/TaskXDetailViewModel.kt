@@ -9,6 +9,7 @@ import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
+import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -21,6 +22,7 @@ class TaskXDetailViewModel(
     private val taskId: String,
     private val taskXUseCases: TaskXUseCases,
     private val userUseCases: UserUseCases,
+    private val factLineWizardViewModel: FactLineWizardViewModel,
     val factLineWizardController: FactLineWizardController
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
 
