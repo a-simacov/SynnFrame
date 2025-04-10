@@ -1,7 +1,5 @@
-// Задание X (TaskX)
 package com.synngate.synnframe.domain.entity.taskx
 
-import com.synngate.synnframe.domain.entity.User
 import com.synngate.synnframe.util.serialization.LocalDateTimeSerializer
 import kotlinx.serialization.Serializable
 import java.time.LocalDateTime
@@ -25,19 +23,16 @@ data class TaskX(
     val completedAt: LocalDateTime? = null,   // Дата и время завершения
     val planLines: List<PlanLineX> = emptyList(), // Строки плана
     val factLines: List<FactLineX> = emptyList(), // Строки факта
-    val finalFactLine: FactLineX? = null       // Финальная строка факта
+    val finalFactLine: FactLineX? = null,      // Финальная строка факта
+    val allowCompletionWithoutFactLines: Boolean = false // Добавляем это свойство
 ) {
-    fun getTaskType(): TaskTypeX? = null // Будет реализовано в репозитории
-
-    fun getExecutor(): User? = null // Будет реализовано в репозитории
-
     // Можно ли начать выполнение задания
     fun canStart(): Boolean = status == TaskXStatus.TO_DO
 
-    // Можно ли завершить задание
+    // Можно ли завершить задание (изменена логика без использования getTaskType)
     fun canComplete(): Boolean {
         return status == TaskXStatus.IN_PROGRESS &&
-                (factLines.isNotEmpty() || getTaskType()?.allowCompletionWithoutFactLines == true)
+                (factLines.isNotEmpty() || allowCompletionWithoutFactLines)
     }
 
     // Можно ли приостановить задание

@@ -433,10 +433,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         )
     }
 
-    val factLineWizardViewModel by lazy {
-        FactLineWizardViewModel(factLineWizardUseCases)
-    }
-
     // Обновляем контроллер визарда
     val factLineWizardController: FactLineWizardController by lazy {
         FactLineWizardController(factLineWizardUseCases)

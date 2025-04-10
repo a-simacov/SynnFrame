@@ -287,6 +287,8 @@ class TaskXDetailViewModel(
                 return@launchIO
             }
 
+            factLineWizardViewModel.clearCache()
+
             // Инициализируем мастер через контроллер
             factLineWizardController.initialize(task)
         }

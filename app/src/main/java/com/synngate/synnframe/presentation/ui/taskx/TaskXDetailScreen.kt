@@ -28,9 +28,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
+import com.synngate.synnframe.SynnFrameApplication
 import com.synngate.synnframe.domain.entity.taskx.AvailableTaskAction
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
@@ -55,7 +57,12 @@ fun TaskXDetailScreen(
     val wizardState by viewModel.factLineWizardController.wizardState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val task = state.task
-    val taskType = state.taskType
+
+    val wizardViewModel = remember {
+        (LocalContext.current.applicationContext as SynnFrameApplication)
+            .appContainer.screenContainer.createFactLineWizardViewModel()
+    }
+
 
     // Обработка событий
     LaunchedEffect(viewModel) {
@@ -99,6 +106,7 @@ fun TaskXDetailScreen(
     if (wizardState != null) {
         FactLineWizard(
             viewModel = viewModel,
+            wizardViewModel = wizardViewModel,
             modifier = Modifier.fillMaxSize()
         )
     }

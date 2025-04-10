@@ -34,15 +34,13 @@ import com.synngate.synnframe.presentation.common.inputs.NumberTextField
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
-// Шаг выбора товара
-// app/src/main/java/com/synngate/synnframe/presentation/ui/taskx/components/WizardComponents.kt
 @Composable
 fun ProductSelectionStep(
     promptText: String,
     selectionCondition: ObjectSelectionCondition,
     intermediateResults: Map<String, Any?>,
     onProductSelected: (TaskProduct) -> Unit,
-    viewModel: FactLineWizardViewModel,  // Новый параметр - ViewModel для управления данными
+    viewModel: FactLineWizardViewModel, // Добавляем параметр ViewModel
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -142,6 +140,7 @@ fun ProductQuantityStep(
     promptText: String,
     intermediateResults: Map<String, Any?>,
     onQuantityEntered: (Float) -> Unit,
+    viewModel: FactLineWizardViewModel, // Добавляем параметр ViewModel
     modifier: Modifier = Modifier
 ) {
     var quantity by remember { mutableStateOf("1.0") }
@@ -211,45 +210,18 @@ fun BinSelectionStep(
     promptText: String,
     zoneFilter: String?,
     onBinSelected: (BinX) -> Unit,
+    viewModel: FactLineWizardViewModel, // Добавляем параметр ViewModel
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var bins by remember { mutableStateOf<List<BinX>>(emptyList()) }
     var showScanner by remember { mutableStateOf(false) }
 
-    // Здесь будет загрузка ячеек в зависимости от зоны
+    // Получение данных из ViewModel
+    val bins by viewModel.bins.collectAsState()
+
+    // Загрузка ячеек при изменении поискового запроса
     LaunchedEffect(zoneFilter, searchQuery) {
-        // TODO: загрузить ячейки через ViewModel/UseCase
-        // Временные данные
-        bins = listOf(
-            BinX(
-                code = "A00111",
-                zone = "Приемка",
-                line = "A",
-                rack = "01",
-                tier = "1",
-                position = "1"
-            ),
-            BinX(
-                code = "A00112",
-                zone = "Приемка",
-                line = "A",
-                rack = "01",
-                tier = "1",
-                position = "2"
-            ),
-            BinX(
-                code = "B00211",
-                zone = "Хранение",
-                line = "B",
-                rack = "02",
-                tier = "1",
-                position = "1"
-            )
-        ).filter { bin ->
-            (zoneFilter == null || bin.zone == zoneFilter) &&
-                    (searchQuery.isEmpty() || bin.code.contains(searchQuery, ignoreCase = true))
-        }
+        viewModel.loadBins(searchQuery, zoneFilter)
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -262,10 +234,10 @@ fun BinSelectionStep(
         if (showScanner) {
             BarcodeScannerView(
                 onBarcodeDetected = { barcode ->
-                    // TODO: найти ячейку по штрихкоду
-                    // Временное решение
-                    bins.find { it.code == barcode }?.let { bin ->
-                        onBinSelected(bin)
+                    viewModel.findBinByCode(barcode) { bin ->
+                        if (bin != null) {
+                            onBinSelected(bin)
+                        }
                     }
                 },
                 modifier = Modifier
@@ -311,30 +283,24 @@ fun BinSelectionStep(
         }
     }
 }
-
 // Шаг выбора паллеты
 @Composable
 fun PalletSelectionStep(
     promptText: String,
     selectionCondition: ObjectSelectionCondition,
     onPalletSelected: (Pallet) -> Unit,
+    viewModel: FactLineWizardViewModel, // Добавляем параметр ViewModel
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var pallets by remember { mutableStateOf<List<Pallet>>(emptyList()) }
     var showScanner by remember { mutableStateOf(false) }
 
-    // Здесь будет загрузка паллет
+    // Получение данных из ViewModel
+    val pallets by viewModel.pallets.collectAsState()
+
+    // Загрузка паллет при изменении поискового запроса
     LaunchedEffect(selectionCondition, searchQuery) {
-        // TODO: загрузить паллеты через ViewModel/UseCase
-        // Временные данные
-        pallets = listOf(
-            Pallet(code = "IN000000001", isClosed = true),
-            Pallet(code = "IN000000002", isClosed = false),
-            Pallet(code = "IN000000003", isClosed = false)
-        ).filter { pallet ->
-            searchQuery.isEmpty() || pallet.code.contains(searchQuery, ignoreCase = true)
-        }
+        viewModel.loadPallets(searchQuery)
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -347,10 +313,10 @@ fun PalletSelectionStep(
         if (showScanner) {
             BarcodeScannerView(
                 onBarcodeDetected = { barcode ->
-                    // TODO: найти паллету по штрихкоду
-                    // Временное решение
-                    pallets.find { it.code == barcode }?.let { pallet ->
-                        onPalletSelected(pallet)
+                    viewModel.findPalletByCode(barcode) { pallet ->
+                        if (pallet != null) {
+                            onPalletSelected(pallet)
+                        }
                     }
                 },
                 modifier = Modifier
@@ -402,6 +368,7 @@ fun PalletSelectionStep(
 fun CreatePalletStep(
     promptText: String,
     onPalletCreated: (Pallet) -> Unit,
+    viewModel: FactLineWizardViewModel, // Добавляем параметр ViewModel
     modifier: Modifier = Modifier
 ) {
     var isCreating by remember { mutableStateOf(false) }
@@ -422,13 +389,12 @@ fun CreatePalletStep(
         Button(
             onClick = {
                 isCreating = true
-                // TODO: Создать паллету через ViewModel/UseCase
-                // Временное решение
-                val newPallet = Pallet(
-                    code = "IN000000${(1000..9999).random()}",
-                    isClosed = false
-                )
-                onPalletCreated(newPallet)
+                viewModel.createPallet { result ->
+                    isCreating = false
+                    result.getOrNull()?.let { newPallet ->
+                        onPalletCreated(newPallet)
+                    }
+                }
             },
             enabled = !isCreating,
             modifier = Modifier.fillMaxWidth()
@@ -444,6 +410,7 @@ fun ClosePalletStep(
     promptText: String,
     intermediateResults: Map<String, Any?>,
     onPalletClosed: (Boolean) -> Unit,
+    viewModel: FactLineWizardViewModel, // Добавляем параметр ViewModel
     modifier: Modifier = Modifier
 ) {
     var isClosing by remember { mutableStateOf(false) }
@@ -475,8 +442,12 @@ fun ClosePalletStep(
         Button(
             onClick = {
                 isClosing = true
-                // TODO: Закрыть паллету через ViewModel/UseCase
-                onPalletClosed(true)
+                pallet?.let { currentPallet ->
+                    viewModel.closePallet(currentPallet.code) { result ->
+                        isClosing = false
+                        onPalletClosed(result.isSuccess)
+                    }
+                }
             },
             enabled = !isClosing && pallet != null && !pallet.isClosed,
             modifier = Modifier.fillMaxWidth()
@@ -492,6 +463,7 @@ fun PrintLabelStep(
     promptText: String,
     intermediateResults: Map<String, Any?>,
     onLabelPrinted: (Boolean) -> Unit,
+    viewModel: FactLineWizardViewModel, // Добавляем параметр ViewModel
     modifier: Modifier = Modifier
 ) {
     var isPrinting by remember { mutableStateOf(false) }
@@ -526,8 +498,16 @@ fun PrintLabelStep(
         Button(
             onClick = {
                 isPrinting = true
-                // TODO: Отправить на печать через ViewModel/UseCase
-                onLabelPrinted(true)
+                pallet?.let { currentPallet ->
+                    viewModel.printPalletLabel(currentPallet.code) { result ->
+                        isPrinting = false
+                        onLabelPrinted(result.isSuccess)
+                    }
+                } ?: run {
+                    // Если нет паллеты, просто имитируем успешную печать для этикетки товара
+                    isPrinting = false
+                    onLabelPrinted(true)
+                }
             },
             enabled = !isPrinting,
             modifier = Modifier.fillMaxWidth()

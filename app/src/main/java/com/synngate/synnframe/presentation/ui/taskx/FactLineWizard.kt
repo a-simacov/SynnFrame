@@ -31,10 +31,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.synngate.synnframe.domain.entity.taskx.FactLineWizardState
 import com.synngate.synnframe.presentation.ui.taskx.components.SummaryStep
+import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
 @Composable
 fun FactLineWizard(
     viewModel: TaskXDetailViewModel,
+    wizardViewModel: FactLineWizardViewModel,
     modifier: Modifier = Modifier
 ) {
     // Получаем состояние мастера из ViewModel
@@ -51,7 +53,8 @@ fun FactLineWizard(
                 state = wizardState!!,
                 onCancel = { viewModel.cancelWizard() },
                 onStepComplete = { result -> viewModel.processWizardStep(result) },
-                onWizardComplete = { viewModel.completeWizard() }
+                onWizardComplete = { viewModel.completeWizard() },
+                wizardViewModel = wizardViewModel
             )
         }
     }
@@ -63,6 +66,7 @@ private fun FactLineWizardContent(
     onCancel: () -> Unit,
     onStepComplete: (Any?) -> Unit,
     onWizardComplete: () -> Unit,
+    wizardViewModel: FactLineWizardViewModel,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -118,7 +122,8 @@ private fun FactLineWizardContent(
                 FactLineWizardStepFactory.CreateStep(
                     action = currentAction,
                     intermediateResults = state.getIntermediateResults(),
-                    onStepComplete = onStepComplete
+                    onStepComplete = onStepComplete,
+                    wizardViewModel = wizardViewModel // Передаем ViewModel визарда
                 )
             }
 

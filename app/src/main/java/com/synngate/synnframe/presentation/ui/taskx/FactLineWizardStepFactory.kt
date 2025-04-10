@@ -10,6 +10,7 @@ import com.synngate.synnframe.presentation.ui.taskx.components.PalletSelectionSt
 import com.synngate.synnframe.presentation.ui.taskx.components.PrintLabelStep
 import com.synngate.synnframe.presentation.ui.taskx.components.ProductQuantityStep
 import com.synngate.synnframe.presentation.ui.taskx.components.ProductSelectionStep
+import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
 /**
  * Фабрика для создания компонентов шагов мастера
@@ -20,7 +21,8 @@ object FactLineWizardStepFactory {
     fun CreateStep(
         action: FactLineXAction,
         intermediateResults: Map<String, Any?>,
-        onStepComplete: (Any?) -> Unit
+        onStepComplete: (Any?) -> Unit,
+        wizardViewModel: FactLineWizardViewModel
     ) {
         // Получаем реализацию для конкретного типа действия
         val strategy = getStepStrategy(action.actionType)
@@ -29,7 +31,8 @@ object FactLineWizardStepFactory {
         strategy.CreateStepContent(
             action = action,
             intermediateResults = intermediateResults,
-            onStepComplete = onStepComplete
+            onStepComplete = onStepComplete,
+            wizardViewModel = wizardViewModel
         )
     }
 
@@ -54,7 +57,8 @@ interface WizardStepStrategy {
     fun CreateStepContent(
         action: FactLineXAction,
         intermediateResults: Map<String, Any?>,
-        onStepComplete: (Any?) -> Unit
+        onStepComplete: (Any?) -> Unit,
+        wizardViewModel: FactLineWizardViewModel
     )
 }
 
@@ -66,13 +70,15 @@ class ProductSelectionStrategy : WizardStepStrategy {
     override fun CreateStepContent(
         action: FactLineXAction,
         intermediateResults: Map<String, Any?>,
-        onStepComplete: (Any?) -> Unit
+        onStepComplete: (Any?) -> Unit,
+        wizardViewModel: FactLineWizardViewModel
     ) {
         ProductSelectionStep(
             promptText = action.promptText,
             selectionCondition = action.selectionCondition,
             intermediateResults = intermediateResults,
-            onProductSelected = onStepComplete
+            onProductSelected = onStepComplete,
+            viewModel = wizardViewModel
         )
     }
 }
@@ -85,12 +91,14 @@ class QuantityInputStrategy : WizardStepStrategy {
     override fun CreateStepContent(
         action: FactLineXAction,
         intermediateResults: Map<String, Any?>,
-        onStepComplete: (Any?) -> Unit
+        onStepComplete: (Any?) -> Unit,
+        wizardViewModel: FactLineWizardViewModel
     ) {
         ProductQuantityStep(
             promptText = action.promptText,
             intermediateResults = intermediateResults,
-            onQuantityEntered = onStepComplete
+            onQuantityEntered = onStepComplete,
+            viewModel = wizardViewModel
         )
     }
 }
@@ -101,12 +109,14 @@ class BinSelectionStrategy : WizardStepStrategy {
     override fun CreateStepContent(
         action: FactLineXAction,
         intermediateResults: Map<String, Any?>,
-        onStepComplete: (Any?) -> Unit
+        onStepComplete: (Any?) -> Unit,
+        wizardViewModel: FactLineWizardViewModel
     ) {
         BinSelectionStep(
             promptText = action.promptText,
             zoneFilter = action.additionalParams["zone"],
-            onBinSelected = onStepComplete
+            onBinSelected = onStepComplete,
+            viewModel = wizardViewModel
         )
     }
 }
@@ -116,12 +126,14 @@ class PalletSelectionStrategy : WizardStepStrategy {
     override fun CreateStepContent(
         action: FactLineXAction,
         intermediateResults: Map<String, Any?>,
-        onStepComplete: (Any?) -> Unit
+        onStepComplete: (Any?) -> Unit,
+        wizardViewModel: FactLineWizardViewModel
     ) {
         PalletSelectionStep(
             promptText = action.promptText,
             selectionCondition = action.selectionCondition,
-            onPalletSelected = onStepComplete
+            onPalletSelected = onStepComplete,
+            viewModel = wizardViewModel
         )
     }
 }
@@ -131,11 +143,13 @@ class PalletCreationStrategy : WizardStepStrategy {
     override fun CreateStepContent(
         action: FactLineXAction,
         intermediateResults: Map<String, Any?>,
-        onStepComplete: (Any?) -> Unit
+        onStepComplete: (Any?) -> Unit,
+        wizardViewModel: FactLineWizardViewModel
     ) {
         CreatePalletStep(
             promptText = action.promptText,
-            onPalletCreated = onStepComplete
+            onPalletCreated = onStepComplete,
+            viewModel = wizardViewModel
         )
     }
 }
@@ -145,12 +159,14 @@ class PalletClosingStrategy : WizardStepStrategy {
     override fun CreateStepContent(
         action: FactLineXAction,
         intermediateResults: Map<String, Any?>,
-        onStepComplete: (Any?) -> Unit
+        onStepComplete: (Any?) -> Unit,
+        wizardViewModel: FactLineWizardViewModel
     ) {
         ClosePalletStep(
             promptText = action.promptText,
             intermediateResults = intermediateResults,
-            onPalletClosed = onStepComplete
+            onPalletClosed = onStepComplete,
+            viewModel = wizardViewModel
         )
     }
 }
@@ -160,12 +176,14 @@ class LabelPrintingStrategy : WizardStepStrategy {
     override fun CreateStepContent(
         action: FactLineXAction,
         intermediateResults: Map<String, Any?>,
-        onStepComplete: (Any?) -> Unit
+        onStepComplete: (Any?) -> Unit,
+        wizardViewModel: FactLineWizardViewModel
     ) {
         PrintLabelStep(
             promptText = action.promptText,
             intermediateResults = intermediateResults,
-            onLabelPrinted = onStepComplete
+            onLabelPrinted = onStepComplete,
+            viewModel = wizardViewModel
         )
     }
 }
