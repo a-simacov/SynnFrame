@@ -52,7 +52,7 @@ fun TaskXDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
-    val wizardState by viewModel.wizard.collectAsState()
+    val wizardState by viewModel.factLineWizardController.wizardState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val task = state.task
     val taskType = state.taskType
@@ -96,7 +96,7 @@ fun TaskXDetailScreen(
     }
 
     // Если открыт мастер добавления строки факта, отображаем его
-    if (viewModel.factLineWizardController.wizardState.collectAsState().value != null) {
+    if (wizardState != null) {
         FactLineWizard(
             viewModel = viewModel,
             modifier = Modifier.fillMaxSize()

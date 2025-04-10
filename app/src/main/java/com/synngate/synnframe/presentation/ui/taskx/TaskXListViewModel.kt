@@ -2,7 +2,6 @@ package com.synngate.synnframe.presentation.ui.taskx
 
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
-import com.synngate.synnframe.domain.entity.taskx.WmsOperation
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXListEvent
@@ -130,23 +129,7 @@ class TaskXListViewModel(
         }
     }
 
-    fun formatTaskType(taskTypeId: String): String {
-        // Здесь должен быть запрос к репозиторию типов заданий,
-        // но для упрощения используем мапу известных типов
-        return when (taskTypeId) {
-            "6546513215648" -> "Приемка по монопалетам"
-            "7891011121314" -> "Отбор заказа"
-            else -> "Неизвестный тип"
-        }
-    }
-
-    fun getWmsOperationForTask(task: TaskX): WmsOperation? {
-        // Для полной реализации нужно получать тип задания из репозитория
-        // и возвращать его wmsOperation, но для упрощения используем маппинг
-        return when (task.taskTypeId) {
-            "6546513215648" -> WmsOperation.RECEIPT
-            "7891011121314" -> WmsOperation.PICKING
-            else -> null
-        }
+    fun formatTaskType(task: TaskX): String {
+        return task.getTaskType()?.name ?: "Unknown type"
     }
 }

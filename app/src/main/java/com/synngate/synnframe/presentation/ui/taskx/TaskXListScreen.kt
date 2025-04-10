@@ -195,7 +195,7 @@ fun TaskXListScreen(
                             task = task,
                             formatStatus = { viewModel.formatTaskStatus(it) },
                             formatDate = { viewModel.formatDate(it) },
-                            formatTaskType = { viewModel.formatTaskType(it) },
+                            formatTaskType = { viewModel.formatTaskType(task) },
                             onClick = { viewModel.navigateToTaskDetail(task.id) }
                         )
                     }
