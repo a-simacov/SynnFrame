@@ -41,6 +41,7 @@ import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 @Composable
 fun FactLineWizard(
     viewModel: TaskXDetailViewModel,
+    wizardViewModel: FactLineWizardViewModel,
     modifier: Modifier = Modifier
 ) {
     // Получаем состояние мастера из контроллера

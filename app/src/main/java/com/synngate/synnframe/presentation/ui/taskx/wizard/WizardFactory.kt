@@ -132,11 +132,11 @@ class WizardFactory(private val wizardViewModel: FactLineWizardViewModel) {
             id = "WMS_ACTION_${actionGroup.id}",
             title = "Установка действия",
             content = { context ->
-                // Автоматически устанавливаем действие WMS и переходим к следующему шагу
+                // Автоматически устанавливаем действие WMS
                 context.onComplete(actionGroup.wmsAction)
 
-                // Устанавливаем целевое поле в зависимости от типа
-                context.onComplete(mapTargetFieldTypeToResult(actionGroup.targetFieldType, context.results))
+                // Добавляем явное указание типа поля для сохранения WMS_ACTION
+                context.onComplete(mapOf(TaskXLineFieldType.WMS_ACTION to actionGroup.wmsAction))
             },
             // Навигация назад не имеет смысла для автоматического шага
             canNavigateBack = false
@@ -155,6 +155,7 @@ class WizardFactory(private val wizardViewModel: FactLineWizardViewModel) {
             TaskXLineFieldType.STORAGE_PALLET -> currentResults["STORAGE_PALLET"]
             TaskXLineFieldType.PLACEMENT_PALLET -> currentResults["PLACEMENT_PALLET"]
             TaskXLineFieldType.PLACEMENT_BIN -> currentResults["PLACEMENT_BIN"]
+            TaskXLineFieldType.WMS_ACTION -> TODO()
         }
     }
 }
