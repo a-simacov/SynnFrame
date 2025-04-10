@@ -571,13 +571,8 @@
     <string name="taskx_details">Task Details</string>
     <string name="taskx_search_hint">Search tasks by name or barcode</string>
     <string name="taskx_empty">No tasks found</string>
-    <string name="scan_barcode">Scan Barcode</string>
-    <string name="scan_barcode_instruction">Position the barcode within the frame to scan</string>
 
     <!-- TaskX actions -->
-    <string name="start_task">Start Task</string>
-    <string name="complete_task">Complete Task</string>
-    <string name="complete_task_confirmation">Are you sure you want to complete this task?</string>
     <string name="pause_task">Pause</string>
     <string name="resume_task">Resume</string>
     <string name="verify_task">Verify</string>
@@ -587,21 +582,17 @@
     <string name="plan_and_fact">Plan/Fact</string>
     <string name="plan">Plan</string>
     <string name="fact">Fact</string>
-    <string name="no_tasks_with_filter">No tasks match the current filter</string>
 
     <!-- TaskX fact line wizard -->
     <string name="fact_line_title">Add Fact Line</string>
-    <string name="select_product">Select Product</string>
     <string name="select_bin">Select Bin</string>
     <string name="select_pallet">Select Pallet</string>
     <string name="create_pallet">Create Pallet</string>
     <string name="close_pallet">Close Pallet</string>
     <string name="print_label">Print Label</string>
-    <string name="enter_quantity">Enter Quantity</string>
 
     <!-- TaskX summary and completion -->
     <string name="summary_check">Check information before completion</string>
-    <string name="confirm">Confirm</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
     <string name="finish">Finish</string>

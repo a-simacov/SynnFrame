@@ -158,7 +158,6 @@
     <string name="accounting_model_qty">По количеству</string>
     <string name="filter_accounting_model">Фильтр по модели учета</string>
     <string name="all_models">Все модели</string>
-    <string name="scan_barcode">Сканировать штрихкод</string>
     <string name="sort">Сортировка</string>
     <string name="show_filters">Показать фильтры</string>
     <string name="hide_filters">Скрыть фильтры</string>
@@ -194,6 +193,7 @@
     <string name="no_scanned_items">Нет отсканированных товаров</string>
     <string name="product_not_found">Товар не найден</string>
     <string name="searching_product">Поиск товара по штрихкоду %s...</string>
+    <string name="scan_barcode">Отсканируйте штрихкод</string>
     <string name="scan_barcode_instruction">Отсканируйте штрихкод товара для добавления в список</string>
     <string name="clear_all">Очистить все</string>
     <string name="finish_scanning">Завершить</string>

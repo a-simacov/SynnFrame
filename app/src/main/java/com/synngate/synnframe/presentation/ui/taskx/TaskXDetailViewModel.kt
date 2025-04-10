@@ -22,7 +22,7 @@ class TaskXDetailViewModel(
     private val taskId: String,
     private val taskXUseCases: TaskXUseCases,
     private val userUseCases: UserUseCases,
-    private val factLineWizardViewModel: FactLineWizardViewModel,
+    val factLineWizardViewModel: FactLineWizardViewModel,
     val factLineWizardController: FactLineWizardController
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
 
