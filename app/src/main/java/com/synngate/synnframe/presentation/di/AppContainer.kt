@@ -429,14 +429,13 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         FactLineWizardUseCases(
             factLineDataCacheService,
             taskXUseCases,
-            taskTypeXRepository,
-            createFactLineWizardViewModel() // Передаем ViewModel при создании
+            taskTypeXRepository
         )
     }
 
     // Обновляем контроллер визарда
     val factLineWizardController: FactLineWizardController by lazy {
-        FactLineWizardController(factLineWizardUseCases)
+        FactLineWizardController(factLineWizardUseCases, createFactLineWizardViewModel())
     }
 
     fun createFactLineWizardViewModel(): FactLineWizardViewModel {

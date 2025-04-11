@@ -65,14 +65,14 @@ class MockTaskTypeXRepository : TaskTypeXRepository {
                 FactLineXAction(
                     id = UUID.randomUUID().toString(),
                     name = "Ввести срок годности",
-                    actionType = FactLineXActionType.ENTER_QUANTITY,
+                    actionType = FactLineXActionType.ENTER_EXPIRATION_DATE,
                     order = 2,
                     promptText = "Введите срок годности (если требуется)"
                 ),
                 FactLineXAction(
                     id = UUID.randomUUID().toString(),
                     name = "Выбрать статус товара",
-                    actionType = FactLineXActionType.SELECT_PRODUCT,
+                    actionType = FactLineXActionType.SELECT_PRODUCT_STATUS,
                     order = 3,
                     promptText = "Выберите статус товара"
                 ),

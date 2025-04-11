@@ -7,5 +7,7 @@ enum class FactLineXActionType {
     SELECT_PALLET,           // Выбрать паллету
     CREATE_PALLET,           // Создать паллету
     CLOSE_PALLET,            // Закрыть паллету
-    PRINT_LABEL;             // Печать этикетки
+    PRINT_LABEL,             // Печать этикетки
+    ENTER_EXPIRATION_DATE,   // Ввести срок годности (новый)
+    SELECT_PRODUCT_STATUS;   // Выбрать статус товара (новый)
 }

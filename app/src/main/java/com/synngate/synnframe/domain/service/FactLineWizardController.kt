@@ -3,6 +3,7 @@ package com.synngate.synnframe.domain.service
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.FactLineX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.ProductStatus
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
@@ -10,10 +11,12 @@ import com.synngate.synnframe.domain.entity.taskx.WmsAction
 import com.synngate.synnframe.domain.usecase.wizard.FactLineWizardUseCases
 import com.synngate.synnframe.presentation.ui.taskx.wizard.WizardFactory
 import com.synngate.synnframe.presentation.ui.taskx.wizard.WizardStep
+import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -21,7 +24,8 @@ import java.util.UUID
  * Контроллер для управления процессом создания строки факта
  */
 class FactLineWizardController(
-    private val factLineWizardUseCases: FactLineWizardUseCases
+    private val factLineWizardUseCases: FactLineWizardUseCases,
+    private val factLineWizardViewModel: FactLineWizardViewModel
 ) {
     data class WizardState(
         val taskId: String = "",
@@ -80,7 +84,7 @@ class FactLineWizardController(
         val taskType = factLineWizardUseCases.getTaskType(task.taskTypeId) ?: return
 
         // Используем фабрику для создания шагов мастера
-        val factory = WizardFactory(factLineWizardUseCases.getWizardViewModel())
+        val factory = WizardFactory(factLineWizardViewModel)
         val steps = factory.createWizardSteps(taskType)
 
         if (steps.isEmpty()) {
@@ -100,6 +104,9 @@ class FactLineWizardController(
      */
     fun processStepResult(result: Any?) {
         val currentState = _wizardState.value ?: return
+        val currentStep = currentState.currentStep
+
+        Timber.d("Processing step result: ${currentStep?.title}, result: $result")
 
         if (result == null) {
             // Переход к предыдущему шагу
@@ -112,9 +119,31 @@ class FactLineWizardController(
         }
 
         // Сохранение результата текущего шага
-        val currentStep = currentState.currentStep ?: return
+        if (currentStep == null)
+            return
         val updatedResults = currentState.results.toMutableMap()
-        updatedResults[currentStep.id] = result
+
+        // Обработка специальных типов результатов
+        if (result is LocalDate) {
+            // Обработка даты срока годности
+            val storageProduct = updatedResults["STORAGE_PRODUCT"] as? TaskProduct
+            if (storageProduct != null) {
+                // Обновляем продукт с новым сроком годности
+                val updatedProduct = storageProduct.copy(expirationDate = result)
+                updatedResults["STORAGE_PRODUCT"] = updatedProduct
+            }
+        } else if (result is ProductStatus) {
+            // Обработка статуса товара
+            val storageProduct = updatedResults["STORAGE_PRODUCT"] as? TaskProduct
+            if (storageProduct != null) {
+                // Обновляем продукт с новым статусом
+                val updatedProduct = storageProduct.copy(status = result)
+                updatedResults["STORAGE_PRODUCT"] = updatedProduct
+            }
+        } else {
+            // Стандартная обработка
+            updatedResults[currentStep.id] = result
+        }
 
         // Проверка валидации
         if (!currentStep.validator(updatedResults)) {

@@ -22,6 +22,10 @@ class MockTaskXRepository(
     private val taskTypeXRepository: TaskTypeXRepository
 ) : TaskXRepository {
 
+    companion object {
+        private const val USER666ID = "8b858d00-f058-11ef-9bfd-000c2961fff3"
+    }
+
     private val tasksFlow = MutableStateFlow<Map<String, TaskX>>(createInitialTasks())
 
     override fun getTasks(): Flow<List<TaskX>> {
@@ -267,6 +271,7 @@ class MockTaskXRepository(
             taskTypeId = "7891011121314", // ID типа задания "Отбор заказа"
             status = TaskXStatus.TO_DO,
             createdAt = LocalDateTime.now().minusHours(3),
+            executorId = USER666ID,
             planLines = listOf(planLine1, planLine2)
         )
     }
@@ -314,6 +319,7 @@ class MockTaskXRepository(
             taskTypeId = "8910111213141", // ID типа задания "Перемещение"
             status = TaskXStatus.TO_DO,
             createdAt = LocalDateTime.now().minusHours(1),
+            executorId = USER666ID,
             planLines = listOf(planLine)
         )
     }
@@ -377,6 +383,7 @@ class MockTaskXRepository(
             taskTypeId = "6546513215648", // ID типа задания из примера
             status = TaskXStatus.TO_DO,
             createdAt = LocalDateTime.now().minusDays(1),
+            executorId = USER666ID,
             planLines = listOf(planLine1, planLine2)
         )
     }

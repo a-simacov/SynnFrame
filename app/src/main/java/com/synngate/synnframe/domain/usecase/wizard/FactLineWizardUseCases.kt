@@ -11,14 +11,12 @@ import com.synngate.synnframe.domain.repository.TaskTypeXRepository
 import com.synngate.synnframe.domain.service.FactLineDataCacheService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
-import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 import kotlinx.coroutines.flow.StateFlow
 
 class FactLineWizardUseCases(
     private val dataCacheService: FactLineDataCacheService,
     private val taskXUseCases: TaskXUseCases,
-    private val taskTypeXRepository: TaskTypeXRepository,
-    private val factLineWizardViewModel: FactLineWizardViewModel
+    private val taskTypeXRepository: TaskTypeXRepository
 ) : BaseUseCase {
 
     // Методы для работы с продуктами
@@ -90,9 +88,5 @@ class FactLineWizardUseCases(
 
     suspend fun getTaskType(taskTypeId: String): TaskTypeX? {
         return taskTypeXRepository.getTaskTypeById(taskTypeId)
-    }
-
-    fun getWizardViewModel(): FactLineWizardViewModel {
-        return factLineWizardViewModel
     }
 }

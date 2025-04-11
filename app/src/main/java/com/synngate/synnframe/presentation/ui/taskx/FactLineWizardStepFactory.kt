@@ -6,10 +6,12 @@ import com.synngate.synnframe.domain.entity.taskx.FactLineXActionType
 import com.synngate.synnframe.presentation.ui.taskx.components.BinSelectionStep
 import com.synngate.synnframe.presentation.ui.taskx.components.ClosePalletStep
 import com.synngate.synnframe.presentation.ui.taskx.components.CreatePalletStep
+import com.synngate.synnframe.presentation.ui.taskx.components.ExpirationDateStep
 import com.synngate.synnframe.presentation.ui.taskx.components.PalletSelectionStep
 import com.synngate.synnframe.presentation.ui.taskx.components.PrintLabelStep
 import com.synngate.synnframe.presentation.ui.taskx.components.ProductQuantityStep
 import com.synngate.synnframe.presentation.ui.taskx.components.ProductSelectionStep
+import com.synngate.synnframe.presentation.ui.taskx.components.ProductStatusStep
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
 /**
@@ -45,6 +47,8 @@ object FactLineWizardStepFactory {
             FactLineXActionType.CREATE_PALLET -> PalletCreationStrategy()
             FactLineXActionType.CLOSE_PALLET -> PalletClosingStrategy()
             FactLineXActionType.PRINT_LABEL -> LabelPrintingStrategy()
+            FactLineXActionType.ENTER_EXPIRATION_DATE -> EnterExpirationDateStrategy()
+            FactLineXActionType.SELECT_PRODUCT_STATUS -> ProductStatusSelectionStrategy()
         }
     }
 }
@@ -183,6 +187,40 @@ class LabelPrintingStrategy : WizardStepStrategy {
             promptText = action.promptText,
             intermediateResults = intermediateResults,
             onLabelPrinted = onStepComplete,
+            viewModel = wizardViewModel
+        )
+    }
+}
+
+class EnterExpirationDateStrategy : WizardStepStrategy {
+    @Composable
+    override fun CreateStepContent(
+        action: FactLineXAction,
+        intermediateResults: Map<String, Any?>,
+        onStepComplete: (Any?) -> Unit,
+        wizardViewModel: FactLineWizardViewModel
+    ) {
+        ExpirationDateStep(
+            promptText = action.promptText,
+            intermediateResults = intermediateResults,
+            onDateEntered = onStepComplete,
+            viewModel = wizardViewModel
+        )
+    }
+}
+
+class ProductStatusSelectionStrategy : WizardStepStrategy {
+    @Composable
+    override fun CreateStepContent(
+        action: FactLineXAction,
+        intermediateResults: Map<String, Any?>,
+        onStepComplete: (Any?) -> Unit,
+        wizardViewModel: FactLineWizardViewModel
+    ) {
+        ProductStatusStep(
+            promptText = action.promptText,
+            intermediateResults = intermediateResults,
+            onStatusSelected = onStepComplete,
             viewModel = wizardViewModel
         )
     }

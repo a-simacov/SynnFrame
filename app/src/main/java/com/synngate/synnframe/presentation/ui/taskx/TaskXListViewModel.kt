@@ -48,6 +48,7 @@ class TaskXListViewModel(
                     }
                 }.collect { filteredTasks ->
                     updateState {
+                        Timber.d("Uploaded tasks X: ${filteredTasks.size}")
                         it.copy(
                             tasks = filteredTasks,
                             isLoading = false,
@@ -61,11 +62,11 @@ class TaskXListViewModel(
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка загрузки заданий")
+                Timber.e(e, "Error uploading tasks")
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка загрузки заданий: ${e.message}"
+                        error = "Error uploading tasks: ${e.message}"
                     )
                 }
             }

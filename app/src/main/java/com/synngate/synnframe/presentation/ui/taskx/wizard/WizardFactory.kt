@@ -1,5 +1,14 @@
 package com.synngate.synnframe.presentation.ui.taskx.wizard
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.entity.taskx.FactLineXActionType
@@ -8,10 +17,12 @@ import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
 import com.synngate.synnframe.presentation.ui.taskx.components.BinSelectionStep
 import com.synngate.synnframe.presentation.ui.taskx.components.ClosePalletStep
 import com.synngate.synnframe.presentation.ui.taskx.components.CreatePalletStep
+import com.synngate.synnframe.presentation.ui.taskx.components.ExpirationDateStep
 import com.synngate.synnframe.presentation.ui.taskx.components.PalletSelectionStep
 import com.synngate.synnframe.presentation.ui.taskx.components.PrintLabelStep
 import com.synngate.synnframe.presentation.ui.taskx.components.ProductQuantityStep
 import com.synngate.synnframe.presentation.ui.taskx.components.ProductSelectionStep
+import com.synngate.synnframe.presentation.ui.taskx.components.ProductStatusStep
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 import timber.log.Timber
 
@@ -28,17 +39,25 @@ class WizardFactory(private val wizardViewModel: FactLineWizardViewModel) {
 
         // Преобразуем каждую группу действий в шаги мастера
         taskType.factLineActionGroups.forEach { actionGroup ->
+            Timber.d("Создание шагов для группы: ${actionGroup.name}")
+
             // Добавляем шаг для установки WMS-действия для текущей группы
             steps.add(createWmsActionStep(actionGroup))
 
             // Создаем шаги для каждого действия в группе
-            actionGroup.actions.forEach { action ->
+            actionGroup.actions.sortedBy { it.order }.forEach { action ->
                 try {
+                    Timber.d("Добавление шага: ${action.name}")
                     steps.add(createStepFromAction(action, actionGroup))
                 } catch (e: Exception) {
                     Timber.e(e, "Ошибка при создании шага для действия ${action.actionType}")
                 }
             }
+        }
+
+        Timber.d("Всего создано шагов: ${steps.size}")
+        steps.forEachIndexed { index, step ->
+            Timber.d("Шаг ${index + 1}: ${step.title}")
         }
 
         return steps
@@ -113,6 +132,20 @@ class WizardFactory(private val wizardViewModel: FactLineWizardViewModel) {
                         onLabelPrinted = { success -> context.onComplete(success) },
                         viewModel = wizardViewModel
                     )
+
+                    FactLineXActionType.SELECT_PRODUCT_STATUS -> ProductStatusStep(
+                        promptText = action.promptText,
+                        intermediateResults = context.results,
+                        onStatusSelected = { status -> context.onComplete(status) },
+                        viewModel = wizardViewModel
+                    )
+
+                    FactLineXActionType.ENTER_EXPIRATION_DATE -> ExpirationDateStep(
+                        promptText = action.promptText,
+                        intermediateResults = context.results,
+                        onDateEntered = { date -> context.onComplete(date) },
+                        viewModel = wizardViewModel
+                    )
                 }
             },
             validator = { results ->
@@ -132,13 +165,31 @@ class WizardFactory(private val wizardViewModel: FactLineWizardViewModel) {
             id = "WMS_ACTION_${actionGroup.id}",
             title = "Установка действия",
             content = { context ->
-                // Автоматически устанавливаем действие WMS
-                context.onComplete(actionGroup.wmsAction)
+                // Вместо автоматического вызова onComplete, отобразим UI для подтверждения
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Начало группы действий: ${actionGroup.name}",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
 
-                // Добавляем явное указание типа поля для сохранения WMS_ACTION
-                context.onComplete(mapOf(TaskXLineFieldType.WMS_ACTION to actionGroup.wmsAction))
+                    Button(
+                        onClick = {
+                            // При нажатии кнопки устанавливаем оба значения и переходим дальше
+                            val wmsAction = actionGroup.wmsAction
+                            context.onComplete(wmsAction)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Начать")
+                    }
+                }
             },
-            // Навигация назад не имеет смысла для автоматического шага
             canNavigateBack = false
         )
     }

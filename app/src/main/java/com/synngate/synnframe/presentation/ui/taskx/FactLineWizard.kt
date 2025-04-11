@@ -78,24 +78,29 @@ fun FactLineWizard(
                     }
                 }
 
-                // Прогресс
-                LinearProgressIndicator(
-                    progress = { wizardState!!.progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp)
-                )
+                // Прогресс - безопасно обращаемся к wizardState
+                wizardState?.let { state ->
+                    LinearProgressIndicator(
+                        progress = { state.progress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp)
+                    )
+                }
 
                 // Текущий шаг
-                val currentStep = wizardState!!.currentStep
+                val currentStep = wizardState?.currentStep
+                val isCompleted = wizardState?.isCompleted == true
 
-                if (currentStep == null || wizardState!!.isCompleted) {
+                if (currentStep == null || isCompleted) {
                     // Показываем итоговый экран с результатами
-                    SummaryStep(
-                        results = wizardState!!.results,
-                        onComplete = { viewModel.completeWizard() },
-                        onCancel = { viewModel.cancelWizard() }
-                    )
+                    wizardState?.let { state ->
+                        SummaryStep(
+                            results = state.results,
+                            onComplete = { viewModel.completeWizard() },
+                            onCancel = { viewModel.cancelWizard() }
+                        )
+                    }
                 } else {
                     // Показываем текущий шаг
                     Box(
@@ -104,7 +109,7 @@ fun FactLineWizard(
                             .weight(1f)
                     ) {
                         val context = WizardContext(
-                            results = wizardState!!.results,
+                            results = wizardState?.results ?: emptyMap(),
                             onComplete = { result ->
                                 viewModel.processWizardStep(result)
                             },
@@ -117,31 +122,33 @@ fun FactLineWizard(
                         currentStep.content(context)
                     }
 
-                    // Кнопки навигации
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = { viewModel.cancelWizard() },
-                            modifier = Modifier.weight(1f)
+                    // Кнопки навигации - безопасно обращаемся к wizardState
+                    wizardState?.let { state ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("Отмена")
-                        }
-
-                        if (wizardState!!.canGoBack) {
                             OutlinedButton(
-                                onClick = { viewModel.processWizardStep(null) },
+                                onClick = { viewModel.cancelWizard() },
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.ArrowBack,
-                                    contentDescription = null
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Назад")
+                                Text("Отмена")
+                            }
+
+                            if (state.canGoBack) {
+                                OutlinedButton(
+                                    onClick = { viewModel.processWizardStep(null) },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowBack,
+                                        contentDescription = null
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Назад")
+                                }
                             }
                         }
                     }
