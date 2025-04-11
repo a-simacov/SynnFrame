@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.model.wizard.WizardContext
+import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import com.synngate.synnframe.presentation.common.inputs.NumberTextField
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
@@ -31,7 +32,7 @@ class QuantityInputFactory(
         var quantity by remember { mutableStateOf("1.0") }
         var isError by remember { mutableStateOf(false) }
 
-        // Получаем текущий товар из структурированных результатов
+        // Получаем текущий товар из типизированной модели
         val taskProduct = wizardContext.results.storageProduct
 
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -75,11 +76,11 @@ class QuantityInputFactory(
                             // Обновляем текущий TaskProduct с новым количеством
                             if (taskProduct != null) {
                                 val updatedProduct = taskProduct.copy(quantity = numberValue)
-                                // Используем специализированный метод
+                                // Используем типизированный метод
                                 wizardContext.completeWithStorageProduct(updatedProduct)
                             } else {
                                 // Если нет TaskProduct, просто возвращаем число
-                                wizardContext.completeWithResult(numberValue)
+                                wizardContext.onComplete(numberValue)
                             }
                         } else {
                             isError = true
@@ -95,5 +96,11 @@ class QuantityInputFactory(
                 Text("Подтвердить")
             }
         }
+    }
+
+    override fun validateStepResult(action: FactLineXAction, results: WizardResultModel): Boolean {
+        val product = results.storageProduct
+        // Проверяем, что продукт установлен и количество больше 0
+        return product != null && product.quantity > 0
     }
 }

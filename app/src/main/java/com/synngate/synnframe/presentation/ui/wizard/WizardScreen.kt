@@ -28,10 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.synngate.synnframe.domain.entity.taskx.BinX
-import com.synngate.synnframe.domain.entity.taskx.Pallet
-import com.synngate.synnframe.domain.entity.taskx.TaskProduct
+import com.synngate.synnframe.domain.entity.taskx.WmsAction
 import com.synngate.synnframe.domain.model.wizard.WizardContext
+import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import com.synngate.synnframe.domain.model.wizard.WizardState
 import timber.log.Timber
 
@@ -179,7 +178,7 @@ fun WizardScreen(
 
 @Composable
 fun SummaryScreen(
-    results: Map<String, Any?>,
+    results: WizardResultModel,
     onComplete: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
@@ -192,7 +191,7 @@ fun SummaryScreen(
         )
 
         // Отображение продукта
-        val product = results.values.filterIsInstance<TaskProduct>().firstOrNull()
+        val product = results.storageProduct
         if (product != null) {
             Text(
                 text = "Товар: ${product.product.name}",
@@ -223,31 +222,56 @@ fun SummaryScreen(
             )
         }
 
-        // Отображение паллеты
-        val pallet = results.values.filterIsInstance<Pallet>().firstOrNull()
-        if (pallet != null) {
+        // Отображение паллеты хранения
+        val storagePallet = results.storagePallet
+        if (storagePallet != null) {
             Text(
-                text = "Паллета: ${pallet.code}",
+                text = "Паллета хранения: ${storagePallet.code}",
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
             Text(
-                text = "Статус: ${if (pallet.isClosed) "Закрыта" else "Открыта"}",
+                text = "Статус: ${if (storagePallet.isClosed) "Закрыта" else "Открыта"}",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
         }
 
-        // Отображение ячейки
-        val bin = results.values.filterIsInstance<BinX>().firstOrNull()
-        if (bin != null) {
+        // Отображение паллеты размещения
+        val placementPallet = results.placementPallet
+        if (placementPallet != null && placementPallet != storagePallet) {
             Text(
-                text = "Ячейка: ${bin.code}",
+                text = "Паллета размещения: ${placementPallet.code}",
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
             Text(
-                text = "Зона: ${bin.zone}",
+                text = "Статус: ${if (placementPallet.isClosed) "Закрыта" else "Открыта"}",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        // Отображение ячейки размещения
+        val placementBin = results.placementBin
+        if (placementBin != null) {
+            Text(
+                text = "Ячейка размещения: ${placementBin.code}",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            Text(
+                text = "Зона: ${placementBin.zone}",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        // Отображение действия WMS
+        val wmsAction = results.wmsAction
+        if (wmsAction != null) {
+            Text(
+                text = "Действие WMS: ${wmsActionToString(wmsAction)}",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -279,5 +303,18 @@ fun SummaryScreen(
                 )
             }
         }
+    }
+}
+
+// Вспомогательная функция для преобразования WmsAction в строку
+@Composable
+private fun wmsActionToString(action: WmsAction): String {
+    return when (action) {
+        WmsAction.PUT_INTO -> "Положить"
+        WmsAction.TAKE_FROM -> "Взять"
+        WmsAction.RECEIPT -> "Оприходовать"
+        WmsAction.EXPENSE -> "Списать"
+        WmsAction.RECOUNT -> "Пересчитать"
+        WmsAction.USE -> "Использовать"
     }
 }

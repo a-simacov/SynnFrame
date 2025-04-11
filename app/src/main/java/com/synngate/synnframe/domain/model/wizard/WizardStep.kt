@@ -17,44 +17,55 @@ data class WizardStep(
     val isAutoComplete: Boolean = false
 )
 
+/**
+ * Контекст для компонента шага с типизированными методами
+ */
 data class WizardContext(
     val results: WizardResultModel,
-    val stepResults: Map<String, Any?>, // Для обратной совместимости
-    val onComplete: (Any?) -> Unit,
+    val onUpdate: (WizardResultModel) -> Unit,
     val onBack: () -> Unit,
     val onSkip: (Any?) -> Unit,
     val onCancel: () -> Unit
 ) {
-
+    // Специализированные методы для завершения шага
     fun completeWithStorageProduct(product: TaskProduct) {
-        onComplete(product)
+        onUpdate(results.withStorageProduct(product))
     }
 
     fun completeWithStoragePallet(pallet: Pallet) {
-        onComplete(pallet)
+        onUpdate(results.withStoragePallet(pallet))
     }
 
     fun completeWithPlacementPallet(pallet: Pallet) {
-        onComplete(pallet)
+        onUpdate(results.withPlacementPallet(pallet))
     }
 
     fun completeWithPlacementBin(bin: BinX) {
-        onComplete(bin)
+        onUpdate(results.withPlacementBin(bin))
     }
 
     fun completeWithWmsAction(action: WmsAction) {
-        onComplete(action)
+        onUpdate(results.withWmsAction(action))
     }
 
-    fun goBack() {
-        onBack()
-    }
-
-    fun skip(value: Any? = null) {
-        onSkip(value)
-    }
-
-    fun cancel() {
-        onCancel()
+    // Общий метод для обратной совместимости
+    fun onComplete(result: Any?) {
+        when (result) {
+            is TaskProduct -> completeWithStorageProduct(result)
+            is Pallet -> {
+                // Попытка определить тип паллеты по текущим данным
+                if (results.storagePallet == null) completeWithStoragePallet(result)
+                else completeWithPlacementPallet(result)
+            }
+            is BinX -> completeWithPlacementBin(result)
+            is WmsAction -> completeWithWmsAction(result)
+            null -> onBack()
+            else -> {
+                // Для других типов данных используем общий механизм
+                val updated = results.copy()
+                updated.additionalData["generic_result"] = result
+                onUpdate(updated)
+            }
+        }
     }
 }

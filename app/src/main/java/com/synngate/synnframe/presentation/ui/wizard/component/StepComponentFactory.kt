@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.model.wizard.WizardContext
+import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 
 /**
  * Интерфейс фабрики компонентов шага визарда
@@ -22,5 +23,5 @@ interface StepComponentFactory {
     /**
      * Проверяет результат шага
      */
-    fun validateStepResult(action: FactLineXAction, results: Map<String, Any?>): Boolean = true
+    fun validateStepResult(action: FactLineXAction, results: WizardResultModel): Boolean = true
 }

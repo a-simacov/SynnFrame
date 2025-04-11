@@ -15,13 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
-import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
 import com.synngate.synnframe.domain.model.wizard.WizardContext
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
+import timber.log.Timber
 
-/**
- * Фабрика для шага закрытия паллеты
- */
 class PalletClosingFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
@@ -33,8 +31,15 @@ class PalletClosingFactory(
     ) {
         var isClosing by remember { mutableStateOf(false) }
 
-        // Получаем текущую паллету из промежуточных результатов
-        val pallet = findPalletFromResults(wizardContext.results, groupContext)
+        // Определяем, с какой паллетой работаем, на основе targetFieldType группы
+        val pallet = when (groupContext.targetFieldType) {
+            TaskXLineFieldType.STORAGE_PALLET -> wizardContext.results.storagePallet
+            TaskXLineFieldType.PLACEMENT_PALLET -> wizardContext.results.placementPallet
+            else -> {
+                // Если тип не определен, берем первую непустую паллету
+                wizardContext.results.storagePallet ?: wizardContext.results.placementPallet
+            }
+        }
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -63,13 +68,26 @@ class PalletClosingFactory(
                     pallet?.let { currentPallet ->
                         wizardViewModel.closePallet(currentPallet.code) { result ->
                             isClosing = false
-                            // Если успешно, возвращаем обновленную паллету
                             if (result.isSuccess) {
                                 val updatedPallet = currentPallet.copy(isClosed = true)
-                                wizardContext.onComplete(updatedPallet)
+
+                                // Определяем, куда записать обновленную паллету
+                                when (groupContext.targetFieldType) {
+                                    TaskXLineFieldType.STORAGE_PALLET ->
+                                        wizardContext.completeWithStoragePallet(updatedPallet)
+                                    TaskXLineFieldType.PLACEMENT_PALLET ->
+                                        wizardContext.completeWithPlacementPallet(updatedPallet)
+                                    else -> {
+                                        // Если тип не определен, обновляем по текущему состоянию
+                                        if (wizardContext.results.storagePallet != null)
+                                            wizardContext.completeWithStoragePallet(updatedPallet)
+                                        else
+                                            wizardContext.completeWithPlacementPallet(updatedPallet)
+                                    }
+                                }
                             } else {
-                                // В случае ошибки просто скипаем шаг,
-                                // возвращая текущую паллету
+                                // В случае ошибки просто идем дальше с текущей паллетой
+                                Timber.e("Не удалось закрыть паллету: ${result.exceptionOrNull()?.message}")
                                 wizardContext.onComplete(currentPallet)
                             }
                         }
@@ -84,32 +102,6 @@ class PalletClosingFactory(
             ) {
                 Text(if (isClosing) "Закрытие..." else "Закрыть паллету")
             }
-        }
-    }
-
-    /**
-     * Ищет паллету в результатах в зависимости от типа целевого поля группы
-     */
-    private fun findPalletFromResults(results: Map<String, Any?>, group: FactLineActionGroup): Pallet? {
-        // Пробуем найти паллету по ключу, соответствующему целевому полю группы
-        val palletKey = when(group.targetFieldType.toString()) {
-            "PLACEMENT_PALLET" -> "PLACEMENT_PALLET"
-            "STORAGE_PALLET" -> "STORAGE_PALLET"
-            else -> null
-        }
-
-        // Сначала ищем по ключу шага, затем по ключам группы, затем любую паллету
-        return if (palletKey != null && results.containsKey(palletKey)) {
-            results[palletKey] as? Pallet
-        } else {
-            // Пробуем найти паллету по любому ключу, который содержит "PALLET"
-            results.entries.firstOrNull {
-                (it.key.contains("PALLET", ignoreCase = true) ||
-                        it.key.contains("pallet", ignoreCase = true)) &&
-                        it.value is Pallet
-            }?.value as? Pallet
-            // Если не найдено, ищем по типу
-                ?: results.values.filterIsInstance<Pallet>().firstOrNull()
         }
     }
 }

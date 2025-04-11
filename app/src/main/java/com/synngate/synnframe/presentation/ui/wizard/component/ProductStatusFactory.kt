@@ -23,13 +23,9 @@ import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.entity.taskx.ProductStatus
-import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.model.wizard.WizardContext
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
-/**
- * Фабрика для шага выбора статуса товара
- */
 class ProductStatusFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
@@ -39,8 +35,8 @@ class ProductStatusFactory(
         groupContext: FactLineActionGroup,
         wizardContext: WizardContext
     ) {
-        // Получаем текущий товар из результатов
-        val storageProduct = wizardContext.results["STORAGE_PRODUCT"] as? TaskProduct
+        // Получаем текущий товар из типизированной модели
+        val storageProduct = wizardContext.results.storageProduct
 
         // Устанавливаем начальный статус
         var selectedStatus by remember {
@@ -99,7 +95,8 @@ class ProductStatusFactory(
                     if (storageProduct != null) {
                         // Обновляем существующий продукт с новым статусом
                         val updatedProduct = storageProduct.copy(status = selectedStatus)
-                        wizardContext.onComplete(updatedProduct)
+                        // Используем типизированный метод
+                        wizardContext.completeWithStorageProduct(updatedProduct)
                     } else {
                         // Если нет продукта, просто возвращаем статус
                         wizardContext.onComplete(selectedStatus)

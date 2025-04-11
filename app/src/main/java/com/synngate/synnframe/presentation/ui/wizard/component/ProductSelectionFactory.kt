@@ -21,10 +21,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
-import com.synngate.synnframe.domain.entity.taskx.ObjectSelectionCondition
 import com.synngate.synnframe.domain.entity.taskx.ProductStatus
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.model.wizard.WizardContext
+import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView
 import com.synngate.synnframe.presentation.ui.taskx.components.ProductItem
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
@@ -47,8 +47,8 @@ class ProductSelectionFactory(
         // Загрузка продуктов при изменении поискового запроса
         LaunchedEffect(action.selectionCondition, searchQuery) {
             // Получаем IDs продуктов из плана, если нужно
-            val planProductIds = if (action.selectionCondition == ObjectSelectionCondition.FROM_PLAN) {
-                wizardContext.stepResults["PLAN_PRODUCT_IDS"] as? Set<String>
+            val planProductIds = if (action.selectionCondition.toString() == "FROM_PLAN") {
+                wizardContext.results.additionalData["PLAN_PRODUCT_IDS"] as? Set<String>
             } else {
                 null
             }
@@ -74,7 +74,8 @@ class ProductSelectionFactory(
                                     quantity = 1f,
                                     status = ProductStatus.STANDARD
                                 )
-                                // Используем метод completeWithStorageProduct
+
+                                // Используем типизированный метод
                                 wizardContext.completeWithStorageProduct(taskProduct)
                             }
                         }
@@ -121,7 +122,8 @@ class ProductSelectionFactory(
                                     quantity = 1f,
                                     status = ProductStatus.STANDARD
                                 )
-                                // Используем метод для обновления продукта хранения
+
+                                // Используем типизированный метод
                                 wizardContext.completeWithStorageProduct(taskProduct)
                             }
                         )
@@ -129,5 +131,10 @@ class ProductSelectionFactory(
                 }
             }
         }
+    }
+
+    override fun validateStepResult(action: FactLineXAction, results: WizardResultModel): Boolean {
+        // Для выбора продукта проверяем, что продукт установлен
+        return results.storageProduct != null
     }
 }

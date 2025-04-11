@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.model.wizard.WizardContext
+import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView
 import com.synngate.synnframe.presentation.ui.taskx.components.BinItem
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
@@ -61,7 +62,7 @@ class BinSelectionFactory(
                     onBarcodeDetected = { barcode ->
                         wizardViewModel.findBinByCode(barcode) { bin ->
                             if (bin != null) {
-                                // Используем специализированный метод для ячейки размещения
+                                // Используем типизированный метод
                                 wizardContext.completeWithPlacementBin(bin)
                             }
                         }
@@ -103,7 +104,7 @@ class BinSelectionFactory(
                         BinItem(
                             bin = bin,
                             onClick = {
-                                // Используем метод для обновления ячейки размещения
+                                // Используем типизированный метод
                                 wizardContext.completeWithPlacementBin(bin)
                             }
                         )
@@ -111,5 +112,10 @@ class BinSelectionFactory(
                 }
             }
         }
+    }
+
+    override fun validateStepResult(action: FactLineXAction, results: WizardResultModel): Boolean {
+        // Проверяем, что ячейка выбрана
+        return results.placementBin != null
     }
 }

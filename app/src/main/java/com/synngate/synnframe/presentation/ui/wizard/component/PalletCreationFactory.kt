@@ -17,7 +17,9 @@ import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
 import com.synngate.synnframe.domain.model.wizard.WizardContext
+import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
+import timber.log.Timber
 
 class PalletCreationFactory(
     private val wizardViewModel: FactLineWizardViewModel
@@ -49,11 +51,16 @@ class PalletCreationFactory(
                     wizardViewModel.createPallet { result ->
                         isCreating = false
                         result.getOrNull()?.let { newPallet ->
-                            // Определяем тип паллеты на основе целевого поля группы
-                            if (groupContext.targetFieldType == TaskXLineFieldType.STORAGE_PALLET) {
-                                wizardContext.completeWithStoragePallet(newPallet)
-                            } else {
-                                wizardContext.completeWithPlacementPallet(newPallet)
+                            // Определяем, куда записать паллету на основе targetFieldType группы
+                            when (groupContext.targetFieldType) {
+                                TaskXLineFieldType.STORAGE_PALLET ->
+                                    wizardContext.completeWithStoragePallet(newPallet)
+                                TaskXLineFieldType.PLACEMENT_PALLET ->
+                                    wizardContext.completeWithPlacementPallet(newPallet)
+                                else -> {
+                                    Timber.w("Неизвестный тип целевого поля: ${groupContext.targetFieldType}")
+                                    wizardContext.onComplete(newPallet)
+                                }
                             }
                         }
                     }
@@ -63,6 +70,15 @@ class PalletCreationFactory(
             ) {
                 Text(if (isCreating) "Создание..." else "Создать паллету")
             }
+        }
+    }
+
+    override fun validateStepResult(action: FactLineXAction, results: WizardResultModel): Boolean {
+        // Проверяем, что паллета создана
+        return when (groupContext.targetFieldType) {
+            TaskXLineFieldType.STORAGE_PALLET -> results.storagePallet != null
+            TaskXLineFieldType.PLACEMENT_PALLET -> results.placementPallet != null
+            else -> true
         }
     }
 }

@@ -3,9 +3,7 @@ package com.synngate.synnframe.presentation.ui.wizard.component
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
@@ -29,8 +27,8 @@ import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
-import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.model.wizard.WizardContext
+import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 import java.time.LocalDate
 import java.time.ZoneId
@@ -40,29 +38,13 @@ class ExpirationDateFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
 
-    override fun validateStepResult(action: FactLineXAction, results: Map<String, Any?>): Boolean {
-        // Получаем выбранный товар из результатов предыдущих шагов
-        val product = results["STORAGE_PRODUCT"] as? TaskProduct
-
-        // Проверяем, учитывается ли товар по срокам годности
-        val accountingModel = product?.product?.accountingModel
-        var needsExpirationDate = false
-        if (accountingModel != null)
-            needsExpirationDate = accountingModel == AccountingModel.BATCH
-
-        // Если не требуется учет по срокам, считаем шаг "выполненным"
-        if (!needsExpirationDate) return true
-
-        // Иначе проверяем, установлена ли дата
-        return product?.hasExpirationDate() ?: false
-    }
-
     @Composable
     override fun createComponent(
         action: FactLineXAction,
         groupContext: FactLineActionGroup,
         wizardContext: WizardContext
     ) {
+        // Получаем текущий товар из типизированной модели
         val storageProduct = wizardContext.results.storageProduct
 
         // Выбираем начальную дату: или из существующего продукта, или +30 дней от текущей
@@ -94,8 +76,6 @@ class ExpirationDateFactory(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
             // Кнопки действий
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -109,10 +89,11 @@ class ExpirationDateFactory(
                             val updatedProduct = storageProduct.copy(
                                 expirationDate = LocalDate.of(1970, 1, 1)
                             )
+                            // Используем типизированный метод
                             wizardContext.completeWithStorageProduct(updatedProduct)
                         } else {
-                            // Просто передаем дату-заглушку
-                            wizardContext.completeWithResult(LocalDate.of(1970, 1, 1))
+                            // Просто идем дальше
+                            wizardContext.onSkip(LocalDate.of(1970, 1, 1))
                         }
                     },
                     modifier = Modifier.padding(end = 8.dp)
@@ -128,10 +109,11 @@ class ExpirationDateFactory(
                             val updatedProduct = storageProduct.copy(
                                 expirationDate = selectedDate
                             )
+                            // Используем типизированный метод
                             wizardContext.completeWithStorageProduct(updatedProduct)
                         } else {
-                            // Если нет продукта, просто возвращаем дату
-                            wizardContext.completeWithResult(selectedDate)
+                            // Просто передаем выбранную дату
+                            wizardContext.onComplete(selectedDate)
                         }
                     }
                 ) {
@@ -140,9 +122,24 @@ class ExpirationDateFactory(
             }
         }
     }
+
+    override fun validateStepResult(action: FactLineXAction, results: WizardResultModel): Boolean {
+        // Получаем выбранный товар из типизированной модели
+        val product = results.storageProduct
+
+        // Проверяем, учитывается ли товар по срокам годности
+        val accountingModel = product?.product?.accountingModel
+        val needsExpirationDate = accountingModel == AccountingModel.BATCH
+
+        // Если не требуется учет по срокам, считаем шаг "выполненным"
+        if (!needsExpirationDate) return true
+
+        // Иначе проверяем, установлена ли дата
+        return product?.hasExpirationDate() ?: false
+    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerView(
     selectedDate: LocalDate,
@@ -170,7 +167,7 @@ fun DatePickerView(
             }
         }
 
-        // Простые кнопки для быстрой корректировки даты
+        // Кнопки для быстрой корректировки даты
         Row(
             modifier = Modifier
                 .fillMaxWidth()

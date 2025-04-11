@@ -15,14 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
-import com.synngate.synnframe.domain.entity.taskx.Pallet
-import com.synngate.synnframe.domain.entity.taskx.TaskProduct
+import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
 import com.synngate.synnframe.domain.model.wizard.WizardContext
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
-/**
- * Фабрика для шага печати этикетки
- */
 class LabelPrintingFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
@@ -34,15 +30,18 @@ class LabelPrintingFactory(
     ) {
         var isPrinting by remember { mutableStateOf(false) }
 
-        // Получаем паллету в зависимости от типа группы
-        val pallet = when(groupContext.targetFieldType.toString()) {
-            "PLACEMENT_PALLET" -> wizardContext.results["PLACEMENT_PALLET"] as? Pallet
-            "STORAGE_PALLET" -> wizardContext.results["STORAGE_PALLET"] as? Pallet
-            else -> wizardContext.results.values.filterIsInstance<Pallet>().firstOrNull()
+        // Определяем, с какой паллетой работаем, на основе targetFieldType группы
+        val pallet = when (groupContext.targetFieldType) {
+            TaskXLineFieldType.PLACEMENT_PALLET -> wizardContext.results.placementPallet
+            TaskXLineFieldType.STORAGE_PALLET -> wizardContext.results.storagePallet
+            else -> {
+                // Если тип не определен, берем первую непустую паллету
+                wizardContext.results.placementPallet ?: wizardContext.results.storagePallet
+            }
         }
 
         // Получаем товар, если нет паллеты
-        val product = wizardContext.results["STORAGE_PRODUCT"] as? TaskProduct
+        val product = wizardContext.results.storageProduct
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -73,7 +72,14 @@ class LabelPrintingFactory(
                     pallet?.let { currentPallet ->
                         wizardViewModel.printPalletLabel(currentPallet.code) { result ->
                             isPrinting = false
-                            wizardContext.onComplete(currentPallet)
+                            // Просто продолжаем с текущей паллетой
+                            when (groupContext.targetFieldType) {
+                                TaskXLineFieldType.PLACEMENT_PALLET ->
+                                    wizardContext.completeWithPlacementPallet(currentPallet)
+                                TaskXLineFieldType.STORAGE_PALLET ->
+                                    wizardContext.completeWithStoragePallet(currentPallet)
+                                else -> wizardContext.onComplete(currentPallet)
+                            }
                         }
                     } ?: run {
                         // Если нет паллеты, просто имитируем успешную печать

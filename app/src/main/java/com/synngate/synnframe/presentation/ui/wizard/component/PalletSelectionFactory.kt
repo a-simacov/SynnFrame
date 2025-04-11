@@ -23,6 +23,7 @@ import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
 import com.synngate.synnframe.domain.model.wizard.WizardContext
+import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView
 import com.synngate.synnframe.presentation.ui.taskx.components.PalletItem
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
@@ -60,20 +61,15 @@ class PalletSelectionFactory(
                     onBarcodeDetected = { barcode ->
                         wizardViewModel.findPalletByCode(barcode) { pallet ->
                             if (pallet != null) {
-                                // Определяем, какую паллету обновляем на основе целевого поля группы
+                                // Определяем, куда записать паллету на основе targetFieldType группы
                                 when (groupContext.targetFieldType) {
-                                    TaskXLineFieldType.STORAGE_PALLET -> {
-                                        Timber.d("Completing with storage pallet: ${pallet.code}")
+                                    TaskXLineFieldType.STORAGE_PALLET ->
                                         wizardContext.completeWithStoragePallet(pallet)
-                                    }
-                                    TaskXLineFieldType.PLACEMENT_PALLET -> {
-                                        Timber.d("Completing with placement pallet: ${pallet.code}")
+                                    TaskXLineFieldType.PLACEMENT_PALLET ->
                                         wizardContext.completeWithPlacementPallet(pallet)
-                                    }
                                     else -> {
-                                        // По умолчанию считаем, что это паллета размещения
-                                        Timber.d("Completing with default placement pallet: ${pallet.code}")
-                                        wizardContext.completeWithPlacementPallet(pallet)
+                                        Timber.w("Неизвестный тип целевого поля: ${groupContext.targetFieldType}")
+                                        wizardContext.onComplete(pallet)
                                     }
                                 }
                             }
@@ -116,20 +112,15 @@ class PalletSelectionFactory(
                         PalletItem(
                             pallet = pallet,
                             onClick = {
-                                // Определяем, какую паллету обновляем на основе целевого поля группы
+                                // Определяем, куда записать паллету на основе targetFieldType группы
                                 when (groupContext.targetFieldType) {
-                                    TaskXLineFieldType.STORAGE_PALLET -> {
-                                        Timber.d("Selected storage pallet: ${pallet.code}")
+                                    TaskXLineFieldType.STORAGE_PALLET ->
                                         wizardContext.completeWithStoragePallet(pallet)
-                                    }
-                                    TaskXLineFieldType.PLACEMENT_PALLET -> {
-                                        Timber.d("Selected placement pallet: ${pallet.code}")
+                                    TaskXLineFieldType.PLACEMENT_PALLET ->
                                         wizardContext.completeWithPlacementPallet(pallet)
-                                    }
                                     else -> {
-                                        // По умолчанию считаем, что это паллета размещения
-                                        Timber.d("Selected default placement pallet: ${pallet.code}")
-                                        wizardContext.completeWithPlacementPallet(pallet)
+                                        Timber.w("Неизвестный тип целевого поля: ${groupContext.targetFieldType}")
+                                        wizardContext.onComplete(pallet)
                                     }
                                 }
                             }
@@ -137,6 +128,15 @@ class PalletSelectionFactory(
                     }
                 }
             }
+        }
+    }
+
+    override fun validateStepResult(action: FactLineXAction, results: WizardResultModel): Boolean {
+        // В зависимости от целевого поля проверяем соответствующую паллету
+        return when (groupContext.targetFieldType) {
+            TaskXLineFieldType.STORAGE_PALLET -> results.storagePallet != null
+            TaskXLineFieldType.PLACEMENT_PALLET -> results.placementPallet != null
+            else -> true // Для других типов не требуем паллету
         }
     }
 }
