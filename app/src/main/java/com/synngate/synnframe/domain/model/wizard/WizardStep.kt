@@ -1,22 +1,24 @@
-package com.synngate.synnframe.presentation.ui.taskx.wizard
+package com.synngate.synnframe.domain.model.wizard
 
 import androidx.compose.runtime.Composable
+import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 
 /**
- * Представляет отдельный шаг визарда
+ * Модель шага визарда
  */
 data class WizardStep(
     val id: String,
     val title: String,
+    val action: FactLineXAction? = null,
     val content: @Composable (WizardContext) -> Unit,
     val validator: (Map<String, Any?>) -> Boolean = { true },
     val canNavigateBack: Boolean = true
 )
 
 /**
- * Контекст выполнения шага мастера
+ * Контекст для компонента шага
  */
-class WizardContext(
+data class WizardContext(
     val results: Map<String, Any?>,
     val onComplete: (Any?) -> Unit,
     val onBack: () -> Unit

@@ -1,19 +1,27 @@
 package com.synngate.synnframe.presentation.ui.taskx
 
-import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.taskx.AvailableTaskAction
+import com.synngate.synnframe.domain.entity.taskx.FactLineXActionType
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
-import com.synngate.synnframe.domain.service.FactLineWizardController
+import com.synngate.synnframe.domain.service.WizardController
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
+import com.synngate.synnframe.presentation.ui.wizard.builder.WizardBuilder
+import com.synngate.synnframe.presentation.ui.wizard.component.BinSelectionFactory
+import com.synngate.synnframe.presentation.ui.wizard.component.ExpirationDateFactory
+import com.synngate.synnframe.presentation.ui.wizard.component.LabelPrintingFactory
+import com.synngate.synnframe.presentation.ui.wizard.component.PalletClosingFactory
+import com.synngate.synnframe.presentation.ui.wizard.component.PalletCreationFactory
+import com.synngate.synnframe.presentation.ui.wizard.component.PalletSelectionFactory
+import com.synngate.synnframe.presentation.ui.wizard.component.ProductSelectionFactory
+import com.synngate.synnframe.presentation.ui.wizard.component.ProductStatusFactory
+import com.synngate.synnframe.presentation.ui.wizard.component.QuantityInputFactory
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -23,22 +31,77 @@ class TaskXDetailViewModel(
     private val taskXUseCases: TaskXUseCases,
     private val userUseCases: UserUseCases,
     val factLineWizardViewModel: FactLineWizardViewModel,
-    val factLineWizardController: FactLineWizardController
+    val wizardController: WizardController  // Переименовываем с factLineWizardController на wizardController
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
 
+    private val wizardBuilder = WizardBuilder()
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+
 
     init {
         loadTask()
 
-        // Подписываемся на изменения состояния мастера
-        viewModelScope.launch {
-            factLineWizardController.wizardState.collectLatest { wizardState ->
-                // Обновляем UI при изменении состояния мастера
-                if (wizardState != null) {
-                    sendEvent(TaskXDetailEvent.ShowFactLineWizard)
-                }
+        // Регистрация фабрик компонентов
+        setupWizardBuilder()
+    }
+
+    private fun setupWizardBuilder() {
+        // Регистрация всех типов компонентов
+        wizardBuilder.registerStepComponent(
+            FactLineXActionType.SELECT_PRODUCT,
+            ProductSelectionFactory(factLineWizardViewModel)
+        )
+        wizardBuilder.registerStepComponent(
+            FactLineXActionType.ENTER_QUANTITY,
+            QuantityInputFactory(factLineWizardViewModel)
+        )
+        wizardBuilder.registerStepComponent(
+            FactLineXActionType.SELECT_BIN,
+            BinSelectionFactory(factLineWizardViewModel)
+        )
+        wizardBuilder.registerStepComponent(
+            FactLineXActionType.SELECT_PALLET,
+            PalletSelectionFactory(factLineWizardViewModel)
+        )
+        wizardBuilder.registerStepComponent(
+            FactLineXActionType.CREATE_PALLET,
+            PalletCreationFactory(factLineWizardViewModel)
+        )
+        wizardBuilder.registerStepComponent(
+            FactLineXActionType.CLOSE_PALLET,
+            PalletClosingFactory(factLineWizardViewModel)
+        )
+        wizardBuilder.registerStepComponent(
+            FactLineXActionType.PRINT_LABEL,
+            LabelPrintingFactory(factLineWizardViewModel)
+        )
+        wizardBuilder.registerStepComponent(
+            FactLineXActionType.SELECT_PRODUCT_STATUS,
+            ProductStatusFactory(factLineWizardViewModel)
+        )
+        wizardBuilder.registerStepComponent(
+            FactLineXActionType.ENTER_EXPIRATION_DATE,
+            ExpirationDateFactory(factLineWizardViewModel)
+        )
+    }
+
+    // Метод для запуска визарда
+    fun startAddFactLineWizard() {
+        launchIO {
+            val task = uiState.value.task ?: return@launchIO
+
+            if (task.status != TaskXStatus.IN_PROGRESS) {
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Добавление строк факта возможно только для задания в статусе 'Выполняется'"))
+                return@launchIO
             }
+
+            factLineWizardViewModel.clearCache()
+
+            // Инициализируем мастер с новым билдером
+            wizardController.initialize(task, wizardBuilder)
+
+            // Уведомляем UI о необходимости показать мастер
+            sendEvent(TaskXDetailEvent.ShowFactLineWizard)
         }
     }
 
@@ -278,49 +341,16 @@ class TaskXDetailViewModel(
         }
     }
 
-    fun startAddFactLineWizard() {
-        launchIO {
-            val task = uiState.value.task ?: return@launchIO
-
-            if (task.status != TaskXStatus.IN_PROGRESS) {
-                sendEvent(TaskXDetailEvent.ShowSnackbar("Добавление строк факта возможно только для задания в статусе 'Выполняется'"))
-                return@launchIO
-            }
-
-            factLineWizardViewModel.clearCache()
-
-            // Инициализируем мастер через контроллер
-            factLineWizardController.initialize(task)
-
-            // Уведомляем UI о необходимости показать мастер
-            sendEvent(TaskXDetailEvent.ShowFactLineWizard)
-        }
-    }
-
     fun processWizardStep(result: Any?) {
-        factLineWizardController.processStepResult(result)
+
     }
 
     fun completeWizard() {
-        launchIO {
-            val result = factLineWizardController.completeWizard()
 
-            if (result.isSuccess) {
-                // Перезагружаем задание для отображения новой строки факта
-                loadTask()
-                sendEvent(TaskXDetailEvent.ShowSnackbar("Строка факта успешно добавлена"))
-            } else {
-                updateState {
-                    it.copy(
-                        error = result.exceptionOrNull()?.message ?: "Ошибка при добавлении строки факта"
-                    )
-                }
-            }
-        }
     }
 
     fun cancelWizard() {
-        factLineWizardController.cancel()
+
     }
 
     fun showCompletionDialog() {

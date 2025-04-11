@@ -2,7 +2,6 @@ package com.synngate.synnframe.domain.usecase.wizard
 
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
-import com.synngate.synnframe.domain.entity.taskx.FactLineWizardState
 import com.synngate.synnframe.domain.entity.taskx.FactLineX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
@@ -68,14 +67,6 @@ class FactLineWizardUseCases(
 
     suspend fun printPalletLabel(code: String): Result<Boolean> {
         return dataCacheService.printPalletLabel(code)
-    }
-
-    // Методы для работы с визардом
-    suspend fun createFactLine(wizardState: FactLineWizardState): Result<FactLineX> {
-        val factLine = wizardState.createFactLine()
-            ?: return Result.failure(IllegalStateException("Не удалось создать строку факта"))
-
-        return Result.success(factLine)
     }
 
     suspend fun addFactLine(factLine: FactLineX): Result<TaskX> {

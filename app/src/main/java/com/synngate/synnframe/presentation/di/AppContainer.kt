@@ -65,7 +65,6 @@ import com.synngate.synnframe.domain.repository.WizardProductRepository
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.FactLineDataCacheService
-import com.synngate.synnframe.domain.service.FactLineWizardController
 import com.synngate.synnframe.domain.service.FileService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
@@ -74,6 +73,7 @@ import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.UpdateInstallerImpl
 import com.synngate.synnframe.domain.service.WebServerManager
+import com.synngate.synnframe.domain.service.WizardController
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
@@ -433,10 +433,10 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         )
     }
 
-    // Обновляем контроллер визарда
-    val factLineWizardController: FactLineWizardController by lazy {
-        FactLineWizardController(factLineWizardUseCases, createFactLineWizardViewModel())
+    val wizardController: WizardController by lazy {
+        WizardController(factLineWizardUseCases)
     }
+
 
     fun createFactLineWizardViewModel(): FactLineWizardViewModel {
         return FactLineWizardViewModel(factLineWizardUseCases)
@@ -624,7 +624,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 taskXUseCases = appContainer.taskXUseCases,
                 userUseCases = appContainer.userUseCases,
                 factLineWizardViewModel = createFactLineWizardViewModel(),
-                factLineWizardController = appContainer.factLineWizardController
+                wizardController = appContainer.wizardController
             )
         }
     }

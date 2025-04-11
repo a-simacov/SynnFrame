@@ -52,7 +52,7 @@ fun TaskXDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
-    val wizardState by viewModel.factLineWizardController.wizardState.collectAsState()
+    val wizardState by viewModel.wizardController.wizardState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val task = state.task
 
