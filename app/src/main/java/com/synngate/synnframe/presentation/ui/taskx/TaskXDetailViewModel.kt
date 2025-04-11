@@ -95,13 +95,32 @@ class TaskXDetailViewModel(
                 return@launchIO
             }
 
-            factLineWizardViewModel.clearCache()
+            updateState { it.copy(isProcessing = true) }
 
-            // Инициализируем мастер с новым билдером
-            wizardController.initialize(task, wizardBuilder)
+            try {
+                // Полная очистка перед запуском
+                factLineWizardViewModel.clearCache()
 
-            // Уведомляем UI о необходимости показать мастер
-            sendEvent(TaskXDetailEvent.ShowFactLineWizard)
+                // Даем время для очистки кэша
+                kotlinx.coroutines.delay(300)
+
+                // Инициализируем мастер
+                wizardController.initialize(task, wizardBuilder)
+
+                // Ещё немного ждем для убеждения в стабильности
+                kotlinx.coroutines.delay(300)
+
+                updateState { it.copy(isProcessing = false) }
+                sendEvent(TaskXDetailEvent.ShowFactLineWizard)
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при инициализации визарда")
+                updateState {
+                    it.copy(
+                        isProcessing = false,
+                        error = "Ошибка при инициализации визарда: ${e.message}"
+                    )
+                }
+            }
         }
     }
 
@@ -342,15 +361,81 @@ class TaskXDetailViewModel(
     }
 
     fun processWizardStep(result: Any?) {
-
+        wizardController.processStepResult(result)
     }
 
+    /**
+     * Завершение работы визарда и создание строки факта
+     */
+    /**
+     * Завершение работы визарда и создание строки факта
+     */
     fun completeWizard() {
+        launchIO {
+            updateState { it.copy(isProcessing = true) }
 
+            try {
+                val result = wizardController.completeWizard()
+
+                if (result.isSuccess) {
+                    val updatedTask = result.getOrNull()
+
+                    // Загружаем задание заново для обновления списка строк факта
+                    loadTask()
+
+                    updateState {
+                        it.copy(isProcessing = false)
+                    }
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Строка факта успешно добавлена"))
+
+                    // Не закрываем визард, чтобы можно было добавить еще строки
+                } else {
+                    val errorMessage = result.exceptionOrNull()?.message ?: "Ошибка при создании строки факта"
+                    updateState {
+                        it.copy(
+                            isProcessing = false,
+                            error = errorMessage
+                        )
+                    }
+                    sendEvent(TaskXDetailEvent.ShowSnackbar(errorMessage))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при завершении визарда")
+                updateState {
+                    it.copy(
+                        isProcessing = false,
+                        error = "Ошибка при создании строки факта: ${e.message}"
+                    )
+                }
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при создании строки факта"))
+            }
+        }
     }
 
     fun cancelWizard() {
+        launchIO {
+            try {
+                // Очищаем состояние визарда
+                wizardController.cancel()
 
+                // Очищаем кэш данных
+                factLineWizardViewModel.clearCache()
+
+                // Даем время для завершения очистки
+                kotlinx.coroutines.delay(200)
+
+                // Только после очистки отправляем событие скрытия UI
+                launchMain {
+                    sendEvent(TaskXDetailEvent.HideFactLineWizard)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при отмене визарда")
+                // Все равно пытаемся скрыть UI
+                launchMain {
+                    sendEvent(TaskXDetailEvent.HideFactLineWizard)
+                }
+            }
+        }
     }
 
     fun showCompletionDialog() {

@@ -73,7 +73,7 @@ class LabelPrintingFactory(
                     pallet?.let { currentPallet ->
                         wizardViewModel.printPalletLabel(currentPallet.code) { result ->
                             isPrinting = false
-                            wizardContext.onComplete(result.isSuccess)
+                            wizardContext.onComplete(currentPallet)
                         }
                     } ?: run {
                         // Если нет паллеты, просто имитируем успешную печать

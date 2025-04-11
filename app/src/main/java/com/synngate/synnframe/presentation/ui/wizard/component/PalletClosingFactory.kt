@@ -91,20 +91,25 @@ class PalletClosingFactory(
      * Ищет паллету в результатах в зависимости от типа целевого поля группы
      */
     private fun findPalletFromResults(results: Map<String, Any?>, group: FactLineActionGroup): Pallet? {
-        // Ищем поле паллеты в зависимости от целевого поля группы
+        // Пробуем найти паллету по ключу, соответствующему целевому полю группы
         val palletKey = when(group.targetFieldType.toString()) {
             "PLACEMENT_PALLET" -> "PLACEMENT_PALLET"
             "STORAGE_PALLET" -> "STORAGE_PALLET"
             else -> null
         }
 
-        // Ищем палету по ключу если он определен
-        return if (palletKey != null) {
-            // Ищем конкретно по ключу
+        // Сначала ищем по ключу шага, затем по ключам группы, затем любую паллету
+        return if (palletKey != null && results.containsKey(palletKey)) {
             results[palletKey] as? Pallet
         } else {
-            // Или просто первую паллету в результатах
-            results.values.filterIsInstance<Pallet>().firstOrNull()
+            // Пробуем найти паллету по любому ключу, который содержит "PALLET"
+            results.entries.firstOrNull {
+                (it.key.contains("PALLET", ignoreCase = true) ||
+                        it.key.contains("pallet", ignoreCase = true)) &&
+                        it.value is Pallet
+            }?.value as? Pallet
+            // Если не найдено, ищем по типу
+                ?: results.values.filterIsInstance<Pallet>().firstOrNull()
         }
     }
 }

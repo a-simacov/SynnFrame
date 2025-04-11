@@ -26,28 +26,16 @@ class WizardBuilder {
     suspend fun buildSteps(taskType: TaskTypeX): List<WizardStep> {
         val steps = mutableListOf<WizardStep>()
 
-        // Перебираем все группы действий в конфигурации
         taskType.factLineActionGroups.forEach { actionGroup ->
-            Timber.d("Создание шагов для группы: ${actionGroup.name}")
+            Timber.d("Steps creation for the group: ${actionGroup.name}")
 
-            // Создаем шаг для установки WMS-действия для текущей группы
-            steps.add(WizardStep(
-                id = "WMS_ACTION_${actionGroup.id}",
-                title = "Установка действия: ${actionGroup.name}",
-                content = { context ->
-                    // Автоматически устанавливаем WMS-действие группы и переходим дальше
-                    context.onComplete(actionGroup.wmsAction)
-                }
-            ))
-
-            // Создаем шаги для каждого действия в группе
             actionGroup.actions
                 .sortedBy { it.order }
                 .forEach { action ->
                     // Находим фабрику компонентов для типа действия
                     val componentFactory = stepComponentRegistry[action.actionType]
                         ?: run {
-                            Timber.e("Не найдена фабрика для типа действия: ${action.actionType}")
+                            Timber.e("Not found factory for the action type: ${action.actionType}")
                             return@forEach
                         }
 
@@ -72,7 +60,7 @@ class WizardBuilder {
                 }
         }
 
-        Timber.d("Всего создано шагов: ${steps.size}")
+        Timber.d("All steps created: ${steps.size}")
         return steps
     }
 }

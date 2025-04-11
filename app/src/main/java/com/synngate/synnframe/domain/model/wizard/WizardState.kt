@@ -5,6 +5,7 @@ import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
 import com.synngate.synnframe.domain.entity.taskx.WmsAction
+import timber.log.Timber
 import java.time.LocalDateTime
 
 /**
@@ -40,19 +41,46 @@ data class WizardState(
         // Обрабатываем специальные типы результатов
         results.forEach { (key, value) ->
             when {
-                value is TaskProduct ->
+                // Проверяем тип значения для объектов
+                value is TaskProduct -> {
                     data[TaskXLineFieldType.STORAGE_PRODUCT] = value
-                value is Pallet && key.contains("STORAGE_PALLET") ->
+                    Timber.d("Найден продукт: ${value.product.name}")
+                }
+                value is Pallet && (key.contains("STORAGE", ignoreCase = true)) -> {
                     data[TaskXLineFieldType.STORAGE_PALLET] = value
-                value is Pallet && key.contains("PLACEMENT_PALLET") ->
+                    Timber.d("Найдена паллета хранения: ${value.code}")
+                }
+                value is Pallet && (key.contains("PLACEMENT", ignoreCase = true)) -> {
                     data[TaskXLineFieldType.PLACEMENT_PALLET] = value
-                value is BinX ->
+                    Timber.d("Найдена паллета размещения: ${value.code}")
+                }
+                value is Pallet && !data.containsKey(TaskXLineFieldType.PLACEMENT_PALLET) &&
+                        !data.containsKey(TaskXLineFieldType.STORAGE_PALLET) -> {
+                    // Если не определили тип паллеты, считаем ее паллетой размещения
+                    data[TaskXLineFieldType.PLACEMENT_PALLET] = value
+                    Timber.d("Найдена паллета неопределенного типа: ${value.code}")
+                }
+                value is BinX -> {
                     data[TaskXLineFieldType.PLACEMENT_BIN] = value
-                value is WmsAction ->
-                    data[TaskXLineFieldType.WMS_ACTION] = value
+                    Timber.d("Найдена ячейка: ${value.code}")
+                }
+                value is WmsAction -> {
+                    // Если нашли действие WMS, сохраняем его, но не переписываем уже установленное
+                    if (!data.containsKey(TaskXLineFieldType.WMS_ACTION)) {
+                        data[TaskXLineFieldType.WMS_ACTION] = value
+                        Timber.d("Найдено действие WMS: $value")
+                    }
+                }
             }
         }
 
+        // Проверяем, что у нас есть WMS-действие, если нет - устанавливаем RECEIPT по умолчанию
+        if (!data.containsKey(TaskXLineFieldType.WMS_ACTION)) {
+            data[TaskXLineFieldType.WMS_ACTION] = WmsAction.RECEIPT
+            Timber.d("Установлено действие WMS по умолчанию: RECEIPT")
+        }
+
+        Timber.d("Собраны данные для строки факта: $data")
         return data
     }
 }
