@@ -27,11 +27,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.model.wizard.WizardContext
 import com.synngate.synnframe.domain.model.wizard.WizardState
+import timber.log.Timber
 
 @Composable
 fun WizardScreen(
@@ -41,9 +43,24 @@ fun WizardScreen(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (state == null) return
+    // Проверяем состояние и его инициализацию
+    if (state == null || !state.isInitialized) {
+        Timber.w("WizardScreen: state is null or not initialized")
+        return
+    }
 
-    Dialog(onDismissRequest = onCancel) {
+    Dialog(
+        onDismissRequest = {
+            // Добавляем логирование при закрытии
+            Timber.d("Dialog was closed by user")
+            onCancel()
+        },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false
+        )
+    ) {
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
             modifier = modifier.fillMaxSize(0.95f)
@@ -64,7 +81,10 @@ fun WizardScreen(
                         modifier = Modifier.weight(1f)
                     )
 
-                    IconButton(onClick = onCancel) {
+                    IconButton(onClick = {
+                        Timber.d("CLose wizard button was clicked")
+                        onCancel()
+                    }) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Закрыть"
@@ -80,34 +100,47 @@ fun WizardScreen(
                         .padding(vertical = 16.dp)
                 )
 
-                // Текущий шаг или итоговый экран
+                // Содержимое текущего шага (в безопасном блоке)
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
                 ) {
-                    val currentStep = state.currentStep
+                    //try {
+                        val currentStep = state.currentStep
 
-                    if (currentStep == null || state.isCompleted) {
-                        // Итоговый экран
-                        SummaryScreen(
-                            results = state.results,
-                            onComplete = onComplete,
-                            onCancel = onCancel
-                        )
-                    } else {
-                        // Текущий шаг
-                        val context = WizardContext(
-                            results = state.results,
-                            onComplete = onStepComplete,
-                            onBack = { onStepComplete(null) }
-                        )
+                        if (currentStep == null || state.isCompleted) {
+                            // Итоговый экран
+                            SummaryScreen(
+                                results = state.results,
+                                onComplete = {
+                                    Timber.d("Wizard complete button was clicked")
+                                    onComplete()
+                                },
+                                onCancel = {
+                                    Timber.d("Cancel button was pressed in summary screen")
+                                    onCancel()
+                                }
+                            )
+                        } else {
+                            // Текущий шаг
+                            val context = WizardContext(
+                                results = state.results,
+                                onComplete = { result ->
+                                    Timber.d("Completed step: ${currentStep.title}, result: $result")
+                                    onStepComplete(result)
+                                },
+                                onBack = {
+                                    Timber.d("Button 'Back' was pressed in step: ${currentStep.title}")
+                                    onStepComplete(null)
+                                }
+                            )
 
-                        currentStep.content(context)
-                    }
+                            currentStep.content(context)
+                        }
                 }
 
-                // Навигационные кнопки (только если не итоговый экран)
+                // Навигационные кнопки
                 if (state.currentStep != null && !state.isCompleted) {
                     Row(
                         modifier = Modifier
@@ -116,7 +149,10 @@ fun WizardScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OutlinedButton(
-                            onClick = onCancel,
+                            onClick = {
+                                Timber.d("Cancel button was pressed in navigation")
+                                onCancel()
+                            },
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Отмена")
@@ -124,7 +160,10 @@ fun WizardScreen(
 
                         if (state.canGoBack) {
                             OutlinedButton(
-                                onClick = { onStepComplete(null) },
+                                onClick = {
+                                    Timber.d("Back button was pressed in navigation")
+                                    onStepComplete(null)
+                                },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Icon(

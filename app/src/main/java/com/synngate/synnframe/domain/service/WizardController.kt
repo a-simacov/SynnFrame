@@ -20,77 +20,62 @@ import timber.log.Timber
 import java.time.LocalDateTime
 import java.util.UUID
 
-/**
- * Контроллер для управления процессом создания строки факта
- */
 class WizardController(
     private val factLineWizardUseCases: FactLineWizardUseCases
 ) {
     private val _wizardState = MutableStateFlow<WizardState?>(null)
     val wizardState: StateFlow<WizardState?> = _wizardState.asStateFlow()
 
-    /**
-     * Инициализация мастера на основе типа задания
-     */
     suspend fun initialize(task: TaskX, builder: WizardBuilder) {
-        // Сначала сбрасываем текущее состояние
-        _wizardState.value = null
+        try {
+            // Сначала сбрасываем текущее состояние и ждем обработки
+            _wizardState.value = null
 
-        // Небольшая задержка для обработки сброса состояния
-        kotlinx.coroutines.delay(200)
+            val taskType = factLineWizardUseCases.getTaskType(task.taskTypeId)
+                ?: throw IllegalStateException("Task type was not found: ${task.taskTypeId}")
 
-        val taskType = factLineWizardUseCases.getTaskType(task.taskTypeId) ?: return
-
-        // Используем билдер для создания шагов мастера
-        val steps = builder.buildSteps(taskType)
-
-        if (steps.isEmpty()) {
-            Timber.w("Для типа задания ${taskType.name} не определены действия для добавления строки факта")
-            return
-        }
-
-        // Заранее добавляем действия WMS в результаты
-        val initialResults = mutableMapOf<String, Any?>()
-        taskType.factLineActionGroups.forEach { group ->
-            // Используем ID группы + строку "WMS_ACTION" как ключ
-            initialResults["WMS_ACTION_${group.id}"] = group.wmsAction
-
-            // Для большей надежности также добавим по типу целевого поля
-            when (group.targetFieldType) {
-                TaskXLineFieldType.STORAGE_PRODUCT ->
-                    initialResults["STORAGE_WMS_ACTION"] = group.wmsAction
-                TaskXLineFieldType.PLACEMENT_BIN ->
-                    initialResults["PLACEMENT_WMS_ACTION"] = group.wmsAction
-                TaskXLineFieldType.PLACEMENT_PALLET ->
-                    initialResults["PLACEMENT_PALLET_WMS_ACTION"] = group.wmsAction
-                TaskXLineFieldType.STORAGE_PALLET ->
-                    initialResults["STORAGE_PALLET_WMS_ACTION"] = group.wmsAction
-                else -> { /* Игнорируем неизвестные типы */ }
+            val steps = builder.buildSteps(taskType)
+            if (steps.isEmpty()) {
+                throw IllegalStateException("Steps for wizard were not created")
             }
+
+            // Заранее добавляем действия WMS в результаты
+            val initialResults = mutableMapOf<String, Any?>()
+            taskType.factLineActionGroups.forEach { group ->
+                initialResults["WMS_ACTION_${group.id}"] = group.wmsAction
+
+                // Добавляем по типу целевого поля для надежности
+                when (group.targetFieldType) {
+                    TaskXLineFieldType.STORAGE_PRODUCT ->
+                        initialResults["STORAGE_WMS_ACTION"] = group.wmsAction
+                    TaskXLineFieldType.PLACEMENT_BIN ->
+                        initialResults["PLACEMENT_WMS_ACTION"] = group.wmsAction
+                    TaskXLineFieldType.PLACEMENT_PALLET ->
+                        initialResults["PLACEMENT_PALLET_WMS_ACTION"] = group.wmsAction
+                    TaskXLineFieldType.STORAGE_PALLET ->
+                        initialResults["STORAGE_PALLET_WMS_ACTION"] = group.wmsAction
+                    else -> { /* Игнорируем */ }
+                }
+            }
+
+            _wizardState.value = WizardState(
+                taskId = task.id,
+                steps = steps,
+                results = initialResults,
+                isInitialized = true
+            )
+        } catch (e: Exception) {
+            Timber.e(e, "Wizard init error")
+            _wizardState.value = null
+            throw e
         }
-
-        // Создаем новое состояние с предустановленными WMS-действиями
-        _wizardState.value = WizardState(
-            taskId = task.id,
-            steps = steps,
-            results = initialResults,
-            isInitialized = true
-        )
-
-        Timber.d("Инициализирован визард с ${steps.size} шагами и предустановленными WMS-действиями")
     }
 
-    /**
-     * Обработка результата текущего шага
-     */
     fun processStepResult(result: Any?) {
         val currentState = _wizardState.value ?: return
         val currentStep = currentState.currentStep
 
-        Timber.d("Processing step result: ${currentStep?.title}, result: $result")
-
         if (result == null) {
-            // Переход к предыдущему шагу
             if (currentState.canGoBack) {
                 _wizardState.value = currentState.copy(
                     currentStepIndex = currentState.currentStepIndex - 1
@@ -99,14 +84,12 @@ class WizardController(
             return
         }
 
-        // Сохранение результата текущего шага
         if (currentStep == null)
             return
 
         val updatedResults = currentState.results.toMutableMap()
         updatedResults[currentStep.id] = result
 
-        // Проверка валидации
         if (!currentStep.validator(updatedResults)) {
             val errors = currentState.errors.toMutableMap()
             errors[currentStep.id] = "Недопустимое значение"
@@ -114,32 +97,24 @@ class WizardController(
             return
         }
 
-        // Переход к следующему шагу
         _wizardState.value = currentState.copy(
             currentStepIndex = currentState.currentStepIndex + 1,
             results = updatedResults
         )
     }
 
-    /**
-     * Создание строки факта из результатов мастера
-     */
-    /**
-     * Создание строки факта из результатов мастера
-     */
     suspend fun completeWizard(): Result<TaskX> {
         val state = _wizardState.value ?: return Result.failure(
-            IllegalStateException("Состояние мастера не инициализировано")
+            IllegalStateException("Wizard state was not initialized")
         )
 
         if (!state.isCompleted) {
-            return Result.failure(IllegalStateException("Мастер не завершен"))
+            return Result.failure(IllegalStateException("Wizard was not completed"))
         }
 
         try {
             // Создание строки факта из состояния мастера
             val factLineData = state.getFactLineData()
-            Timber.d("Создание строки факта из данных: $factLineData")
 
             // Получаем данные для строки факта
             val storageProduct = factLineData[TaskXLineFieldType.STORAGE_PRODUCT] as? TaskProduct
@@ -150,8 +125,7 @@ class WizardController(
 
             // Проверка наличия обязательных данных
             if (storageProduct == null) {
-                Timber.w("Отсутствует товар в данных строки факта")
-                return Result.failure(IllegalStateException("Товар не указан"))
+                return Result.failure(IllegalStateException("Product was not specified"))
             }
 
             val factLine = FactLineX(
@@ -166,13 +140,8 @@ class WizardController(
                 completedAt = LocalDateTime.now()
             )
 
-            Timber.i("Добавление строки факта: ${factLine.id} для задания ${state.taskId}")
-
-            // Добавление строки факта в задание
             val result = factLineWizardUseCases.addFactLine(factLine)
 
-            // Не сбрасываем состояние, чтобы можно было продолжить добавление
-            // Просто сбрасываем индекс шага на начало
             _wizardState.value = state.copy(
                 currentStepIndex = 0,
                 results = emptyMap(),
@@ -181,28 +150,24 @@ class WizardController(
 
             return result
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при создании строки факта")
+            Timber.e(e, "Error on creating fact line")
             return Result.failure(e)
         }
     }
 
-    /**
-     * Отмена мастера
-     */
     fun cancel() {
         _wizardState.value = null
 
-        // Запускаем очистку кэша асинхронно
-        // Используем GlobalScope только здесь, так как WizardController не имеет собственного CoroutineScope
         GlobalScope.launch(Dispatchers.IO) {
             factLineWizardUseCases.clearCache()
         }
     }
 
-    /**
-     * Полный сброс состояния контроллера
-     */
     fun reset() {
         _wizardState.value = null
+
+        GlobalScope.launch(Dispatchers.IO) {
+            factLineWizardUseCases.clearCache()
+        }
     }
 }

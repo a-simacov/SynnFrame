@@ -31,7 +31,7 @@ class TaskXDetailViewModel(
     private val taskXUseCases: TaskXUseCases,
     private val userUseCases: UserUseCases,
     val factLineWizardViewModel: FactLineWizardViewModel,
-    val wizardController: WizardController  // Переименовываем с factLineWizardController на wizardController
+    val wizardController: WizardController
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
 
     private val wizardBuilder = WizardBuilder()
@@ -40,13 +40,10 @@ class TaskXDetailViewModel(
 
     init {
         loadTask()
-
-        // Регистрация фабрик компонентов
         setupWizardBuilder()
     }
 
     private fun setupWizardBuilder() {
-        // Регистрация всех типов компонентов
         wizardBuilder.registerStepComponent(
             FactLineXActionType.SELECT_PRODUCT,
             ProductSelectionFactory(factLineWizardViewModel)
@@ -85,7 +82,6 @@ class TaskXDetailViewModel(
         )
     }
 
-    // Метод для запуска визарда
     fun startAddFactLineWizard() {
         launchIO {
             val task = uiState.value.task ?: return@launchIO
@@ -98,26 +94,18 @@ class TaskXDetailViewModel(
             updateState { it.copy(isProcessing = true) }
 
             try {
-                // Полная очистка перед запуском
+                wizardController.reset()
                 factLineWizardViewModel.clearCache()
-
-                // Даем время для очистки кэша
-                kotlinx.coroutines.delay(300)
-
-                // Инициализируем мастер
                 wizardController.initialize(task, wizardBuilder)
-
-                // Ещё немного ждем для убеждения в стабильности
-                kotlinx.coroutines.delay(300)
 
                 updateState { it.copy(isProcessing = false) }
                 sendEvent(TaskXDetailEvent.ShowFactLineWizard)
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при инициализации визарда")
+                Timber.e(e, "Error initilizing wizard: ${e.message}")
                 updateState {
                     it.copy(
                         isProcessing = false,
-                        error = "Ошибка при инициализации визарда: ${e.message}"
+                        error = "Error initilizing wizard: ${e.message}"
                     )
                 }
             }
@@ -132,10 +120,7 @@ class TaskXDetailViewModel(
                 val task = taskXUseCases.getTaskById(taskId)
 
                 if (task != null) {
-                    // Загружаем тип задания
                     val taskType = taskXUseCases.getTaskType(task.taskTypeId)
-
-                    // Получаем текущего пользователя
                     val currentUser = userUseCases.getCurrentUser().first()
 
                     updateState {
@@ -151,16 +136,16 @@ class TaskXDetailViewModel(
                     updateState {
                         it.copy(
                             isLoading = false,
-                            error = "Задание с ID $taskId не найдено"
+                            error = "Task by ID $taskId was not found"
                         )
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка загрузки задания")
+                Timber.e(e, "Error loading task")
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка загрузки задания: ${e.message}"
+                        error = "Error loading task: ${e.message}"
                     )
                 }
             }
@@ -191,16 +176,16 @@ class TaskXDetailViewModel(
                     updateState {
                         it.copy(
                             isProcessing = false,
-                            error = result.exceptionOrNull()?.message ?: "Ошибка при начале выполнения задания"
+                            error = result.exceptionOrNull()?.message ?: "Error on starting task"
                         )
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при начале выполнения задания")
+                Timber.e(e, "Error on starting task")
                 updateState {
                     it.copy(
                         isProcessing = false,
-                        error = "Ошибка при начале выполнения задания: ${e.message}"
+                        error = "Error on starting task: ${e.message}"
                     )
                 }
             }
@@ -231,17 +216,17 @@ class TaskXDetailViewModel(
                         it.copy(
                             isProcessing = false,
                             showCompletionDialog = false,
-                            error = result.exceptionOrNull()?.message ?: "Ошибка при завершении задания"
+                            error = result.exceptionOrNull()?.message ?: "Error on completing task"
                         )
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при завершении задания")
+                Timber.e(e, "Error on completing task")
                 updateState {
                     it.copy(
                         isProcessing = false,
                         showCompletionDialog = false,
-                        error = "Ошибка при завершении задания: ${e.message}"
+                        error = "Error on completing task: ${e.message}"
                     )
                 }
             }
@@ -270,16 +255,16 @@ class TaskXDetailViewModel(
                     updateState {
                         it.copy(
                             isProcessing = false,
-                            error = result.exceptionOrNull()?.message ?: "Ошибка при приостановке задания"
+                            error = result.exceptionOrNull()?.message ?: "Error on pausing task"
                         )
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при приостановке задания")
+                Timber.e(e, "Error on pausing task")
                 updateState {
                     it.copy(
                         isProcessing = false,
-                        error = "Ошибка при приостановке задания: ${e.message}"
+                        error = "Error on pausing task: ${e.message}"
                     )
                 }
             }
@@ -308,16 +293,16 @@ class TaskXDetailViewModel(
                     updateState {
                         it.copy(
                             isProcessing = false,
-                            error = result.exceptionOrNull()?.message ?: "Ошибка при возобновлении задания"
+                            error = result.exceptionOrNull()?.message ?: "Error on resuming task"
                         )
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при возобновлении задания")
+                Timber.e(e, "Error on resuming task")
                 updateState {
                     it.copy(
                         isProcessing = false,
-                        error = "Ошибка при возобновлении задания: ${e.message}"
+                        error = "Error on resuming task: ${e.message}"
                     )
                 }
             }
@@ -334,7 +319,6 @@ class TaskXDetailViewModel(
                 val result = taskXUseCases.verifyTask(task.id, barcode)
 
                 if (result.isSuccess && result.getOrNull() == true) {
-                    // Перезагружаем задание, чтобы обновить поле isVerified
                     loadTask()
                     updateState { it.copy(showVerificationDialog = false) }
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Задание успешно верифицировано"))
@@ -348,12 +332,12 @@ class TaskXDetailViewModel(
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при верификации задания")
+                Timber.e(e, "Error on verification task")
                 updateState {
                     it.copy(
                         isProcessing = false,
                         showVerificationDialog = false,
-                        error = "Ошибка при верификации задания: ${e.message}"
+                        error = "Error on verification task: ${e.message}"
                     )
                 }
             }
@@ -364,12 +348,6 @@ class TaskXDetailViewModel(
         wizardController.processStepResult(result)
     }
 
-    /**
-     * Завершение работы визарда и создание строки факта
-     */
-    /**
-     * Завершение работы визарда и создание строки факта
-     */
     fun completeWizard() {
         launchIO {
             updateState { it.copy(isProcessing = true) }
@@ -378,19 +356,13 @@ class TaskXDetailViewModel(
                 val result = wizardController.completeWizard()
 
                 if (result.isSuccess) {
-                    val updatedTask = result.getOrNull()
-
-                    // Загружаем задание заново для обновления списка строк факта
                     loadTask()
-
                     updateState {
                         it.copy(isProcessing = false)
                     }
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Строка факта успешно добавлена"))
-
-                    // Не закрываем визард, чтобы можно было добавить еще строки
                 } else {
-                    val errorMessage = result.exceptionOrNull()?.message ?: "Ошибка при создании строки факта"
+                    val errorMessage = result.exceptionOrNull()?.message ?: "Error on creating fact row"
                     updateState {
                         it.copy(
                             isProcessing = false,
@@ -400,40 +372,32 @@ class TaskXDetailViewModel(
                     sendEvent(TaskXDetailEvent.ShowSnackbar(errorMessage))
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при завершении визарда")
+                Timber.e(e, "Error on completing wizard")
                 updateState {
                     it.copy(
                         isProcessing = false,
-                        error = "Ошибка при создании строки факта: ${e.message}"
+                        error = "Error on creating fact row: ${e.message}"
                     )
                 }
-                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при создании строки факта"))
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Error on creating fact row"))
             }
         }
     }
 
     fun cancelWizard() {
         launchIO {
+            sendEvent(TaskXDetailEvent.HideFactLineWizard)
+            cleanupWizardResources()
+        }
+    }
+
+    private fun cleanupWizardResources() {
+        launchIO {
             try {
-                // Очищаем состояние визарда
                 wizardController.cancel()
-
-                // Очищаем кэш данных
                 factLineWizardViewModel.clearCache()
-
-                // Даем время для завершения очистки
-                kotlinx.coroutines.delay(200)
-
-                // Только после очистки отправляем событие скрытия UI
-                launchMain {
-                    sendEvent(TaskXDetailEvent.HideFactLineWizard)
-                }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при отмене визарда")
-                // Все равно пытаемся скрыть UI
-                launchMain {
-                    sendEvent(TaskXDetailEvent.HideFactLineWizard)
-                }
+                Timber.e(e, "Error on clearing wizard resources")
             }
         }
     }
@@ -469,7 +433,7 @@ class TaskXDetailViewModel(
     }
 
     fun formatTaskType(taskTypeId: String): String {
-        return uiState.value.taskType?.name ?: "Неизвестный тип"
+        return uiState.value.taskType?.name ?: "Unknown type"
     }
 
     fun showPlanLines() {

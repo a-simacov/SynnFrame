@@ -1,7 +1,6 @@
 package com.synngate.synnframe.presentation.ui.taskx
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -15,24 +14,18 @@ fun FactLineWizard(
     wizardViewModel: FactLineWizardViewModel,
     modifier: Modifier = Modifier
 ) {
-    // Получаем состояние мастера из контроллера
     val wizardState by viewModel.wizardController.wizardState.collectAsState()
 
-    // Дополнительное логирование состояния
-    LaunchedEffect(wizardState) {
-        if (wizardState == null) {
-            Timber.d("Wizard state: null")
-        } else {
-            Timber.d("Wizard state: step ${wizardState!!.currentStepIndex + 1}/${wizardState!!.steps.size}, " +
-                    "current step: ${wizardState!!.currentStep?.title ?: "null"}")
-        }
-    }
-
-    // Отображаем экран визарда
     wizardState?.let { state ->
         WizardScreen(
             state = state,
-            onStepComplete = { result -> viewModel.processWizardStep(result) },
+            onStepComplete = { result ->
+                try {
+                    viewModel.processWizardStep(result)
+                } catch (e: Exception) {
+                    Timber.e(e, "Processing wizard step result error: ${e.message}")
+                }
+            },
             onComplete = { viewModel.completeWizard() },
             onCancel = { viewModel.cancelWizard() },
             modifier = modifier

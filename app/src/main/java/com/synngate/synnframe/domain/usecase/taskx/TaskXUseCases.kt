@@ -56,16 +56,16 @@ class TaskXUseCases(
     suspend fun startTask(id: String, executorId: String): Result<TaskX> {
         return try {
             val task = taskXRepository.getTaskById(id)
-                ?: return Result.failure(IllegalArgumentException("Задание не найдено"))
+                ?: return Result.failure(IllegalArgumentException("Task was not found"))
 
             if (task.status != TaskXStatus.TO_DO) {
-                Timber.w("Невозможно начать выполнение задания '${task.name}', текущий статус: ${task.status}")
-                return Result.failure(IllegalStateException("Задание не в статусе 'К выполнению'"))
+                Timber.w("It's impossible to start task '${task.name}', current status: ${task.status}")
+                return Result.failure(IllegalStateException("Task has no status 'TO DO'"))
             }
 
             if (task.executorId != null && task.executorId != executorId) {
-                Timber.w("Задание '${task.name}' назначено другому исполнителю: ${task.executorId}")
-                return Result.failure(IllegalStateException("Задание назначено другому исполнителю"))
+                Timber.w("Task '${task.name}' was assigned to another executor: ${task.executorId}")
+                return Result.failure(IllegalStateException("Task was assigned to another executor"))
             }
 
             // Если исполнитель не назначен, проверяем доступность задания
@@ -73,13 +73,13 @@ class TaskXUseCases(
                 try {
                     val availabilityResult = taskXRepository.checkTaskAvailability(id)
                     if (availabilityResult.isFailure || availabilityResult.getOrNull() != true) {
-                        Timber.w("Задание '${task.name}' недоступно")
-                        return Result.failure(IllegalStateException("Задание недоступно"))
+                        Timber.w("Task '${task.name}' is unavailable")
+                        return Result.failure(IllegalStateException("Task is unavailable"))
                     }
                 } catch (e: Exception) {
-                    Timber.e(e, "Ошибка при проверке доступности задания")
+                    Timber.e(e, "Error on checking of the task availability")
                     // Если ошибка соединения, считаем что задание доступно
-                    Timber.w("Нет подключения к серверу, задание взято в работу без проверки")
+                    Timber.w("No connection to the server, task started without checking availability")
                 }
             }
 
@@ -93,12 +93,12 @@ class TaskXUseCases(
             )
 
             taskXRepository.updateTask(updatedTask)
-            Timber.i("Начато выполнение задания: ${task.name}")
+            Timber.i("Task execution started: ${task.name}")
 
             // Возвращаем обновленное задание
             Result.success(taskXRepository.getTaskById(id)!!)
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при начале выполнения задания")
+            Timber.e(e, "Error on starting execution task")
             Result.failure(e)
         }
     }
@@ -107,20 +107,20 @@ class TaskXUseCases(
     suspend fun completeTask(id: String): Result<TaskX> {
         return try {
             val task = taskXRepository.getTaskById(id)
-                ?: return Result.failure(IllegalArgumentException("Задание не найдено"))
+                ?: return Result.failure(IllegalArgumentException("Task was not found"))
 
             val taskType = taskTypeXRepository.getTaskTypeById(task.taskTypeId)
-                ?: return Result.failure(IllegalArgumentException("Тип задания не найден"))
+                ?: return Result.failure(IllegalArgumentException("Task type was not found"))
 
             if (task.status != TaskXStatus.IN_PROGRESS) {
-                Timber.w("Невозможно завершить задание '${task.name}', текущий статус: ${task.status}")
-                return Result.failure(IllegalStateException("Задание не в статусе 'Выполняется'"))
+                Timber.w("Impossible to complete the task '${task.name}', current status: ${task.status}")
+                return Result.failure(IllegalStateException("The task is not in status 'In progress'"))
             }
 
             // Проверяем, есть ли строки факта или разрешено завершение без них
             if (task.factLines.isEmpty() && !taskType.allowCompletionWithoutFactLines) {
-                Timber.w("Невозможно завершить задание '${task.name}' без строк факта")
-                return Result.failure(IllegalStateException("Невозможно завершить задание без строк факта"))
+                Timber.w("Impossible to complete the task '${task.name}' without fact lines")
+                return Result.failure(IllegalStateException("Impossible to complete the task without fact lines"))
             }
 
             // Обновляем задание
@@ -132,12 +132,12 @@ class TaskXUseCases(
             )
 
             taskXRepository.updateTask(updatedTask)
-            Timber.i("Завершено выполнение задания: ${task.name}")
+            Timber.i("Finished task completion: ${task.name}")
 
             // Возвращаем обновленное задание
             Result.success(taskXRepository.getTaskById(id)!!)
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при завершении задания")
+            Timber.e(e, "Error on completion task")
             Result.failure(e)
         }
     }
@@ -146,11 +146,11 @@ class TaskXUseCases(
     suspend fun pauseTask(id: String): Result<TaskX> {
         return try {
             val task = taskXRepository.getTaskById(id)
-                ?: return Result.failure(IllegalArgumentException("Задание не найдено"))
+                ?: return Result.failure(IllegalArgumentException("Task was not found"))
 
             if (task.status != TaskXStatus.IN_PROGRESS) {
-                Timber.w("Невозможно приостановить задание '${task.name}', текущий статус: ${task.status}")
-                return Result.failure(IllegalStateException("Задание не в статусе 'Выполняется'"))
+                Timber.w("Impossible to pause the task '${task.name}', current status: ${task.status}")
+                return Result.failure(IllegalStateException("The task is not in the status 'In progress'"))
             }
 
             // Обновляем задание
@@ -161,12 +161,12 @@ class TaskXUseCases(
             )
 
             taskXRepository.updateTask(updatedTask)
-            Timber.i("Приостановлено выполнение задания: ${task.name}")
+            Timber.i("Task completion paused: ${task.name}")
 
             // Возвращаем обновленное задание
             Result.success(taskXRepository.getTaskById(id)!!)
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при приостановке задания")
+            Timber.e(e, "Error on pausing task")
             Result.failure(e)
         }
     }
@@ -175,11 +175,11 @@ class TaskXUseCases(
     suspend fun resumeTask(id: String): Result<TaskX> {
         return try {
             val task = taskXRepository.getTaskById(id)
-                ?: return Result.failure(IllegalArgumentException("Задание не найдено"))
+                ?: return Result.failure(IllegalArgumentException("Task not found"))
 
             if (task.status != TaskXStatus.PAUSED) {
-                Timber.w("Невозможно возобновить задание '${task.name}', текущий статус: ${task.status}")
-                return Result.failure(IllegalStateException("Задание не в статусе 'Приостановлено'"))
+                Timber.w("Impossible to resume the task '${task.name}', current status: ${task.status}")
+                return Result.failure(IllegalStateException("The task is not in the status 'Paused'"))
             }
 
             // Обновляем задание
@@ -190,12 +190,12 @@ class TaskXUseCases(
             )
 
             taskXRepository.updateTask(updatedTask)
-            Timber.i("Возобновлено выполнение задания: ${task.name}")
+            Timber.i("Task completion resumed: ${task.name}")
 
             // Возвращаем обновленное задание
             Result.success(taskXRepository.getTaskById(id)!!)
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при возобновлении задания")
+            Timber.e(e, "Error on resuming task")
             Result.failure(e)
         }
     }
@@ -204,14 +204,14 @@ class TaskXUseCases(
     suspend fun addFactLine(factLine: FactLineX): Result<TaskX> {
         return try {
             val task = taskXRepository.getTaskById(factLine.taskId)
-                ?: return Result.failure(IllegalArgumentException("Задание не найдено"))
+                ?: return Result.failure(IllegalArgumentException("Task was not found"))
 
             val taskType = taskTypeXRepository.getTaskTypeById(task.taskTypeId)
-                ?: return Result.failure(IllegalArgumentException("Тип задания не найден"))
+                ?: return Result.failure(IllegalArgumentException("Task type was not found"))
 
             if (task.status != TaskXStatus.IN_PROGRESS) {
-                Timber.w("Невозможно добавить строку факта к заданию '${task.name}', текущий статус: ${task.status}")
-                return Result.failure(IllegalStateException("Задание не в статусе 'Выполняется'"))
+                Timber.w("Impossible to add fact line in the task '${task.name}', current status: ${task.status}")
+                return Result.failure(IllegalStateException("The task is not in the status 'In progress'"))
             }
 
             // Проверка превышения планового количества, если это не разрешено
@@ -227,21 +227,21 @@ class TaskXUseCases(
                         factLine.storageProduct.quantity
 
                 if (factQuantity > planQuantity) {
-                    Timber.w("Превышение планового количества для товара ${product.name}")
+                    Timber.w("Plan qty is greater than fact qty for product ${product.name}")
                     return Result.failure(
-                        IllegalStateException("Превышение планового количества для товара ${product.name}")
+                        IllegalStateException("Plan qty is greater than fact qty for product ${product.name}")
                     )
                 }
             }
 
             // Добавляем строку факта
             taskXRepository.addFactLine(factLine)
-            Timber.i("Добавлена строка факта к заданию: ${task.name}")
+            Timber.i("Fact line added in the task: ${task.name}")
 
             // Возвращаем обновленное задание
             Result.success(taskXRepository.getTaskById(factLine.taskId)!!)
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при добавлении строки факта")
+            Timber.e(e, "Error on adding fact line")
             Result.failure(e)
         }
     }

@@ -58,8 +58,6 @@ fun TaskXDetailScreen(
 
     val wizardViewModel = viewModel.factLineWizardViewModel
 
-
-    // Обработка событий
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
@@ -69,17 +67,12 @@ fun TaskXDetailScreen(
                         duration = SnackbarDuration.Short
                     )
                 }
-                is TaskXDetailEvent.ShowFactLineWizard -> {
-                    // Обрабатывается через wizardState
-                }
-                is TaskXDetailEvent.HideFactLineWizard -> {
-                    viewModel.cancelWizard()
-                }
+                is TaskXDetailEvent.ShowFactLineWizard -> {}
+                is TaskXDetailEvent.HideFactLineWizard -> {}
             }
         }
     }
 
-    // Диалог подтверждения завершения задания
     if (state.showCompletionDialog) {
         ConfirmationDialog(
             title = stringResource(R.string.complete_task_confirmation),
@@ -89,7 +82,6 @@ fun TaskXDetailScreen(
         )
     }
 
-    // Диалог верификации задания
     if (state.showVerificationDialog) {
         TaskXVerificationDialog(
             onBarcodeScan = { barcode -> viewModel.verifyTask(barcode) },
@@ -97,7 +89,6 @@ fun TaskXDetailScreen(
         )
     }
 
-    // Если открыт мастер добавления строки факта, отображаем его
     if (wizardState != null) {
         FactLineWizard(
             viewModel = viewModel,
@@ -322,9 +313,7 @@ fun TaskXDetailScreen(
                             Text("Продолжить")
                         }
                     }
-                    else -> {
-                        // Для завершенных и отмененных заданий нет специфических действий
-                    }
+                    else -> {}
                 }
             }
 
