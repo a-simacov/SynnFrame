@@ -10,12 +10,56 @@ import com.synngate.synnframe.domain.entity.taskx.WmsAction
  */
 data class WizardResultModel(
     // Основные объекты для строки факта
-    var storageProduct: TaskProduct? = null,
-    var storagePallet: Pallet? = null,
-    var placementPallet: Pallet? = null,
-    var placementBin: BinX? = null,
-    var wmsAction: WmsAction? = null,
+    val storageProduct: TaskProduct? = null,
+    val storagePallet: Pallet? = null,
+    val placementPallet: Pallet? = null,
+    val placementBin: BinX? = null,
+    val wmsAction: WmsAction? = null,
 
     // Дополнительные метаданные (при необходимости)
-    val additionalData: MutableMap<String, Any?> = mutableMapOf()
-)
+    val additionalData: Map<String, Any?> = emptyMap()
+) {
+    /**
+     * Создает копию с обновленным продуктом хранения
+     */
+    fun withStorageProduct(product: TaskProduct?): WizardResultModel {
+        return copy(storageProduct = product)
+    }
+
+    /**
+     * Создает копию с обновленной паллетой хранения
+     */
+    fun withStoragePallet(pallet: Pallet?): WizardResultModel {
+        return copy(storagePallet = pallet)
+    }
+
+    /**
+     * Создает копию с обновленной паллетой размещения
+     */
+    fun withPlacementPallet(pallet: Pallet?): WizardResultModel {
+        return copy(placementPallet = pallet)
+    }
+
+    /**
+     * Создает копию с обновленной ячейкой размещения
+     */
+    fun withPlacementBin(bin: BinX?): WizardResultModel {
+        return copy(placementBin = bin)
+    }
+
+    /**
+     * Создает копию с обновленным действием WMS
+     */
+    fun withWmsAction(action: WmsAction?): WizardResultModel {
+        return copy(wmsAction = action)
+    }
+
+    /**
+     * Создает копию с добавленными дополнительными данными
+     */
+    fun withAdditionalData(key: String, value: Any?): WizardResultModel {
+        val updatedData = additionalData.toMutableMap()
+        updatedData[key] = value
+        return copy(additionalData = updatedData)
+    }
+}

@@ -7,9 +7,6 @@ import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.WmsAction
 
-/**
- * Модель шага визарда
- */
 data class WizardStep(
     val id: String,
     val title: String,
@@ -20,19 +17,15 @@ data class WizardStep(
     val isAutoComplete: Boolean = false
 )
 
-/**
- * Контекст для компонента шага
- */
 data class WizardContext(
     val results: WizardResultModel,
     val stepResults: Map<String, Any?>, // Для обратной совместимости
-    // Методы обработки результатов
     val onComplete: (Any?) -> Unit,
     val onBack: () -> Unit,
     val onSkip: (Any?) -> Unit,
     val onCancel: () -> Unit
 ) {
-    // Удобные методы для обновления конкретных полей
+
     fun completeWithStorageProduct(product: TaskProduct) {
         onComplete(product)
     }
@@ -53,8 +46,15 @@ data class WizardContext(
         onComplete(action)
     }
 
-    // Общий метод для обратной совместимости
-    fun completeWithResult(result: Any?) {
-        onComplete(result)
+    fun goBack() {
+        onBack()
+    }
+
+    fun skip(value: Any? = null) {
+        onSkip(value)
+    }
+
+    fun cancel() {
+        onCancel()
     }
 }

@@ -10,7 +10,7 @@ data class WizardState(
     val steps: List<WizardStep> = emptyList(),
     val currentStepIndex: Int = 0,
     val results: WizardResultModel = WizardResultModel(),
-    val stepResults: Map<String, Any?> = emptyMap(), // Сохраняем для обратной совместимости
+    val stepResults: Map<String, Any?> = emptyMap(), // Для обратной совместимости
     val startedAt: LocalDateTime = LocalDateTime.now(),
     val errors: Map<String, String> = emptyMap(),
     val isInitialized: Boolean = false
@@ -28,7 +28,7 @@ data class WizardState(
         get() = currentStepIndex > 0 && currentStep?.canNavigateBack ?: true
 
     /**
-     * Получает данные для создания строки факта из структурированной модели
+     * Получает данные для создания строки факта
      */
     fun getFactLineData(): Map<TaskXLineFieldType, Any?> {
         val data = mutableMapOf<TaskXLineFieldType, Any?>()

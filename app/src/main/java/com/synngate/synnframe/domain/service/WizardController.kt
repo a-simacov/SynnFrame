@@ -89,7 +89,7 @@ class WizardController(
         val currentStep = currentState.currentStep ?: return
 
         when (result) {
-            // Обработка null как команды "Назад"
+            // Навигация назад при null
             null -> {
                 if (currentState.canGoBack) {
                     _wizardState.value = currentState.copy(
@@ -100,102 +100,73 @@ class WizardController(
             }
 
             // Обработка StepResult
-            is StepResult -> {
-                when (result) {
-                    is StepResult.Data -> {
-                        processResultData(result.value, currentState, currentStep)
-                    }
+            is StepResult -> processStepResultImpl(result, currentState, currentStep)
 
-                    is StepResult.Back -> {
-                        // Переход к предыдущему шагу
-                        if (currentState.canGoBack) {
-                            _wizardState.value = currentState.copy(
-                                currentStepIndex = currentState.currentStepIndex - 1
-                            )
-                        }
-                    }
-
-                    is StepResult.Skip -> {
-                        // Пропуск текущего шага с опциональными данными
-                        if (result.value != null) {
-                            processResultData(result.value, currentState, currentStep)
-                        } else {
-                            // Просто переходим к следующему шагу
-                            _wizardState.value = currentState.copy(
-                                currentStepIndex = currentState.currentStepIndex + 1
-                            )
-                        }
-                    }
-
-                    is StepResult.Cancel -> {
-                        // Отмена всего визарда
-                        cancel()
-                    }
-                }
-                return
-            }
-
-            // Обычные объекты обрабатываем как данные
-            else -> {
-                processResultData(result, currentState, currentStep)
-            }
+            // Обработка обычных объектов
+            else -> processResultData(result, currentState, currentStep)
         }
     }
 
-    // Вынесем обработку результатов в отдельный метод
     private fun processResultData(data: Any, currentState: WizardState, currentStep: WizardStep) {
         // Копируем существующие результаты
-        val updatedResultModel = currentState.results.copy()
+        var updatedResultModel = currentState.results
         val updatedStepResults = currentState.stepResults.toMutableMap()
 
         // Обновляем соответствующее поле в зависимости от типа результата
         when (data) {
             is TaskProduct -> {
-                updatedResultModel.storageProduct = data
-                // Для обратной совместимости
+                updatedResultModel = updatedResultModel.withStorageProduct(data)
                 updatedStepResults[currentStep.id] = data
+                updatedStepResults["STORAGE_PRODUCT"] = data
             }
             is Pallet -> {
                 // Определяем тип паллеты по целевому полю группы действий
                 currentStep.action?.let { action ->
                     val group = action.additionalParams["groupId"]?.toString()
 
-                    // Пытаемся определить, какое поле обновлять, по контексту
-                    val targetField = currentState.results.run {
-                        when {
-                            storagePallet == null && storageProduct != null ->
-                            { updatedResultModel.storagePallet = data; "STORAGE_PALLET" }
-                            placementPallet == null && placementBin != null ->
-                            { updatedResultModel.placementPallet = data; "PLACEMENT_PALLET" }
-                            else ->
-                            { updatedResultModel.placementPallet = data; "PLACEMENT_PALLET" }
+                    val targetFieldType = currentStep.action?.let { action ->
+                        // Пытаемся найти группу для этого действия
+                        taskType?.factLineActionGroups?.find { it.actions.any { a -> a.id == action.id } }?.targetFieldType
+                    }
+
+                    when (targetFieldType) {
+                        TaskXLineFieldType.STORAGE_PALLET -> {
+                            updatedResultModel = updatedResultModel.withStoragePallet(data)
+                            updatedStepResults["STORAGE_PALLET"] = data
+                        }
+                        TaskXLineFieldType.PLACEMENT_PALLET -> {
+                            updatedResultModel = updatedResultModel.withPlacementPallet(data)
+                            updatedStepResults["PLACEMENT_PALLET"] = data
+                        }
+                        else -> {
+                            // Если не можем определить по группе, определяем по текущему контексту
+                            if (updatedResultModel.storageProduct != null && updatedResultModel.storagePallet == null) {
+                                updatedResultModel = updatedResultModel.withStoragePallet(data)
+                                updatedStepResults["STORAGE_PALLET"] = data
+                            } else {
+                                updatedResultModel = updatedResultModel.withPlacementPallet(data)
+                                updatedStepResults["PLACEMENT_PALLET"] = data
+                            }
                         }
                     }
 
-                    // Для обратной совместимости
+                    // Сохраняем результат и по ID шага
                     updatedStepResults[currentStep.id] = data
-                    updatedStepResults[targetField] = data
                 }
             }
             is BinX -> {
-                updatedResultModel.placementBin = data
-                // Для обратной совместимости
+                updatedResultModel = updatedResultModel.withPlacementBin(data)
                 updatedStepResults[currentStep.id] = data
                 updatedStepResults["PLACEMENT_BIN"] = data
             }
             is WmsAction -> {
-                updatedResultModel.wmsAction = data
-                // Для обратной совместимости
+                updatedResultModel = updatedResultModel.withWmsAction(data)
                 updatedStepResults[currentStep.id] = data
                 updatedStepResults["WMS_ACTION"] = data
             }
             else -> {
-                // Для всех остальных типов просто сохраняем в stepResults
+                // Для всех остальных типов просто сохраняем
                 updatedStepResults[currentStep.id] = data
-                // И если есть дополнительная информация, в additionalData
-                if (data !is Unit && data !is Boolean && data !is Number && data !is String) {
-                    updatedResultModel.additionalData[currentStep.id] = data
-                }
             }
         }
 
