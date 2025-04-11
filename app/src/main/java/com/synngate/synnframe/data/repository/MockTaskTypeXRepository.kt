@@ -78,16 +78,9 @@ class MockTaskTypeXRepository : TaskTypeXRepository {
                 ),
                 FactLineXAction(
                     id = UUID.randomUUID().toString(),
-                    name = "Ввести вес товара",
-                    actionType = FactLineXActionType.ENTER_QUANTITY,
-                    order = 4,
-                    promptText = "Введите вес товара"
-                ),
-                FactLineXAction(
-                    id = UUID.randomUUID().toString(),
                     name = "Ввести количество",
                     actionType = FactLineXActionType.ENTER_QUANTITY,
-                    order = 5,
+                    order = 4,
                     promptText = "Введите количество товара"
                 )
             )
