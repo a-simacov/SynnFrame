@@ -21,14 +21,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
+import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
 import com.synngate.synnframe.domain.model.wizard.WizardContext
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView
 import com.synngate.synnframe.presentation.ui.taskx.components.PalletItem
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
-/**
- * Фабрика для шага выбора паллеты
- */
 class PalletSelectionFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
@@ -61,7 +59,12 @@ class PalletSelectionFactory(
                     onBarcodeDetected = { barcode ->
                         wizardViewModel.findPalletByCode(barcode) { pallet ->
                             if (pallet != null) {
-                                wizardContext.onComplete(pallet)
+                                // Определяем тип паллеты на основе целевого поля группы
+                                if (groupContext.targetFieldType == TaskXLineFieldType.STORAGE_PALLET) {
+                                    wizardContext.completeWithStoragePallet(pallet)
+                                } else {
+                                    wizardContext.completeWithPlacementPallet(pallet)
+                                }
                             }
                         }
                     },
@@ -101,7 +104,14 @@ class PalletSelectionFactory(
                     items(pallets) { pallet ->
                         PalletItem(
                             pallet = pallet,
-                            onClick = { wizardContext.onComplete(pallet) }
+                            onClick = {
+                                // Определяем тип паллеты на основе целевого поля группы
+                                if (groupContext.targetFieldType == TaskXLineFieldType.STORAGE_PALLET) {
+                                    wizardContext.completeWithStoragePallet(pallet)
+                                } else {
+                                    wizardContext.completeWithPlacementPallet(pallet)
+                                }
+                            }
                         )
                     }
                 }

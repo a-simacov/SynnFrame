@@ -15,12 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
+import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
 import com.synngate.synnframe.domain.model.wizard.WizardContext
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
-/**
- * Фабрика для шага создания паллеты
- */
 class PalletCreationFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
@@ -51,7 +49,12 @@ class PalletCreationFactory(
                     wizardViewModel.createPallet { result ->
                         isCreating = false
                         result.getOrNull()?.let { newPallet ->
-                            wizardContext.onComplete(newPallet)
+                            // Определяем тип паллеты на основе целевого поля группы
+                            if (groupContext.targetFieldType == TaskXLineFieldType.STORAGE_PALLET) {
+                                wizardContext.completeWithStoragePallet(newPallet)
+                            } else {
+                                wizardContext.completeWithPlacementPallet(newPallet)
+                            }
                         }
                     }
                 },

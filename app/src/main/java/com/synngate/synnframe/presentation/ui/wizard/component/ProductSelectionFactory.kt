@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
+import com.synngate.synnframe.domain.entity.taskx.ObjectSelectionCondition
 import com.synngate.synnframe.domain.entity.taskx.ProductStatus
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.model.wizard.WizardContext
@@ -28,9 +29,6 @@ import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView
 import com.synngate.synnframe.presentation.ui.taskx.components.ProductItem
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
-/**
- * Фабрика для шага выбора товара
- */
 class ProductSelectionFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
@@ -49,8 +47,8 @@ class ProductSelectionFactory(
         // Загрузка продуктов при изменении поискового запроса
         LaunchedEffect(action.selectionCondition, searchQuery) {
             // Получаем IDs продуктов из плана, если нужно
-            val planProductIds = if (action.selectionCondition.toString() == "FROM_PLAN") {
-                wizardContext.results["PLAN_PRODUCT_IDS"] as? Set<String>
+            val planProductIds = if (action.selectionCondition == ObjectSelectionCondition.FROM_PLAN) {
+                wizardContext.stepResults["PLAN_PRODUCT_IDS"] as? Set<String>
             } else {
                 null
             }
@@ -76,7 +74,8 @@ class ProductSelectionFactory(
                                     quantity = 1f,
                                     status = ProductStatus.STANDARD
                                 )
-                                wizardContext.onComplete(taskProduct)
+                                // Используем метод completeWithStorageProduct
+                                wizardContext.completeWithStorageProduct(taskProduct)
                             }
                         }
                     },
@@ -122,7 +121,8 @@ class ProductSelectionFactory(
                                     quantity = 1f,
                                     status = ProductStatus.STANDARD
                                 )
-                                wizardContext.onComplete(taskProduct)
+                                // Используем метод для обновления продукта хранения
+                                wizardContext.completeWithStorageProduct(taskProduct)
                             }
                         )
                     }

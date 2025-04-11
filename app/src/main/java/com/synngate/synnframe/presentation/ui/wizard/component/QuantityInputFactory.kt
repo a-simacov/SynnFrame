@@ -15,14 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
-import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.model.wizard.WizardContext
 import com.synngate.synnframe.presentation.common.inputs.NumberTextField
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
-/**
- * Фабрика для шага ввода количества
- */
 class QuantityInputFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
@@ -35,8 +31,8 @@ class QuantityInputFactory(
         var quantity by remember { mutableStateOf("1.0") }
         var isError by remember { mutableStateOf(false) }
 
-        // Получаем текущий товар из промежуточных результатов
-        val taskProduct = wizardContext.results["STORAGE_PRODUCT"] as? TaskProduct
+        // Получаем текущий товар из структурированных результатов
+        val taskProduct = wizardContext.results.storageProduct
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -79,10 +75,11 @@ class QuantityInputFactory(
                             // Обновляем текущий TaskProduct с новым количеством
                             if (taskProduct != null) {
                                 val updatedProduct = taskProduct.copy(quantity = numberValue)
-                                wizardContext.onComplete(updatedProduct)
+                                // Используем специализированный метод
+                                wizardContext.completeWithStorageProduct(updatedProduct)
                             } else {
                                 // Если нет TaskProduct, просто возвращаем число
-                                wizardContext.onComplete(numberValue)
+                                wizardContext.completeWithResult(numberValue)
                             }
                         } else {
                             isError = true

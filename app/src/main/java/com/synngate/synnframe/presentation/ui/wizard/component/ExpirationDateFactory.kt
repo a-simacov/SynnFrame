@@ -63,7 +63,7 @@ class ExpirationDateFactory(
         groupContext: FactLineActionGroup,
         wizardContext: WizardContext
     ) {
-        val storageProduct = wizardContext.results["STORAGE_PRODUCT"] as? TaskProduct
+        val storageProduct = wizardContext.results.storageProduct
 
         // Выбираем начальную дату: или из существующего продукта, или +30 дней от текущей
         val initialDate = storageProduct?.takeIf { it.hasExpirationDate() }?.expirationDate
@@ -87,7 +87,7 @@ class ExpirationDateFactory(
                 )
             }
 
-            // Новый компонент выбора даты
+            // Компонент выбора даты
             DatePickerView(
                 selectedDate = selectedDate,
                 onDateSelected = { selectedDate = it },
@@ -109,10 +109,10 @@ class ExpirationDateFactory(
                             val updatedProduct = storageProduct.copy(
                                 expirationDate = LocalDate.of(1970, 1, 1)
                             )
-                            wizardContext.onComplete(updatedProduct)
+                            wizardContext.completeWithStorageProduct(updatedProduct)
                         } else {
                             // Просто передаем дату-заглушку
-                            wizardContext.onComplete(LocalDate.of(1970, 1, 1))
+                            wizardContext.completeWithResult(LocalDate.of(1970, 1, 1))
                         }
                     },
                     modifier = Modifier.padding(end = 8.dp)
@@ -128,10 +128,10 @@ class ExpirationDateFactory(
                             val updatedProduct = storageProduct.copy(
                                 expirationDate = selectedDate
                             )
-                            wizardContext.onComplete(updatedProduct)
+                            wizardContext.completeWithStorageProduct(updatedProduct)
                         } else {
                             // Если нет продукта, просто возвращаем дату
-                            wizardContext.onComplete(selectedDate)
+                            wizardContext.completeWithResult(selectedDate)
                         }
                     }
                 ) {

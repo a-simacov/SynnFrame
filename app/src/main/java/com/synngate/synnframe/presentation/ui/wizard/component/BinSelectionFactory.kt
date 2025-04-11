@@ -26,9 +26,6 @@ import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView
 import com.synngate.synnframe.presentation.ui.taskx.components.BinItem
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
-/**
- * Фабрика для шага выбора ячейки
- */
 class BinSelectionFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
@@ -64,7 +61,8 @@ class BinSelectionFactory(
                     onBarcodeDetected = { barcode ->
                         wizardViewModel.findBinByCode(barcode) { bin ->
                             if (bin != null) {
-                                wizardContext.onComplete(bin)
+                                // Используем специализированный метод для ячейки размещения
+                                wizardContext.completeWithPlacementBin(bin)
                             }
                         }
                     },
@@ -104,7 +102,10 @@ class BinSelectionFactory(
                     items(bins) { bin ->
                         BinItem(
                             bin = bin,
-                            onClick = { wizardContext.onComplete(bin) }
+                            onClick = {
+                                // Используем метод для обновления ячейки размещения
+                                wizardContext.completeWithPlacementBin(bin)
+                            }
                         )
                     }
                 }
