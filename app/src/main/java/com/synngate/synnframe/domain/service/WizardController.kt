@@ -7,11 +7,13 @@ import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
 import com.synngate.synnframe.domain.entity.taskx.WmsAction
+import com.synngate.synnframe.domain.model.wizard.StepResult
 import com.synngate.synnframe.domain.model.wizard.WizardState
 import com.synngate.synnframe.domain.usecase.wizard.FactLineWizardUseCases
 import com.synngate.synnframe.presentation.ui.wizard.builder.WizardBuilder
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +27,9 @@ class WizardController(
 ) {
     private val _wizardState = MutableStateFlow<WizardState?>(null)
     val wizardState: StateFlow<WizardState?> = _wizardState.asStateFlow()
+
+    private val coroutineJob = SupervisorJob()
+    private val coroutineScope = CoroutineScope(Dispatchers.IO + coroutineJob)
 
     suspend fun initialize(task: TaskX, builder: WizardBuilder) {
         try {
@@ -73,34 +78,91 @@ class WizardController(
 
     fun processStepResult(result: Any?) {
         val currentState = _wizardState.value ?: return
-        val currentStep = currentState.currentStep
+        val currentStep = currentState.currentStep ?: return
 
-        if (result == null) {
-            if (currentState.canGoBack) {
+        when (result) {
+            // Обработка null как команды "Назад"
+            null -> {
+                if (currentState.canGoBack) {
+                    _wizardState.value = currentState.copy(
+                        currentStepIndex = currentState.currentStepIndex - 1
+                    )
+                }
+                return
+            }
+
+            // Обработка StepResult
+            is StepResult -> {
+                when (result) {
+                    is StepResult.Data -> {
+                        // Обычный результат с данными
+                        val updatedResults = currentState.results.toMutableMap()
+                        updatedResults[currentStep.id] = result.value
+
+                        // Валидация
+                        if (!currentStep.validator(updatedResults)) {
+                            val errors = currentState.errors.toMutableMap()
+                            errors[currentStep.id] = "Недопустимое значение"
+                            _wizardState.value = currentState.copy(errors = errors)
+                            return
+                        }
+
+                        // Переход к следующему шагу
+                        _wizardState.value = currentState.copy(
+                            currentStepIndex = currentState.currentStepIndex + 1,
+                            results = updatedResults
+                        )
+                    }
+
+                    is StepResult.Back -> {
+                        // Переход к предыдущему шагу
+                        if (currentState.canGoBack) {
+                            _wizardState.value = currentState.copy(
+                                currentStepIndex = currentState.currentStepIndex - 1
+                            )
+                        }
+                    }
+
+                    is StepResult.Skip -> {
+                        // Пропуск текущего шага
+                        val updatedResults = currentState.results.toMutableMap()
+
+                        // Если в Skip есть данные, добавляем их в результаты
+                        result.value?.let { updatedResults[currentStep.id] = it }
+
+                        // Переход к следующему шагу
+                        _wizardState.value = currentState.copy(
+                            currentStepIndex = currentState.currentStepIndex + 1,
+                            results = updatedResults
+                        )
+                    }
+
+                    is StepResult.Cancel -> {
+                        // Отмена всего визарда
+                        cancel()
+                    }
+                }
+                return
+            }
+
+            // Обратная совместимость: обработка обычных объектов как Data
+            else -> {
+                val updatedResults = currentState.results.toMutableMap()
+                updatedResults[currentStep.id] = result
+
+                if (!currentStep.validator(updatedResults)) {
+                    val errors = currentState.errors.toMutableMap()
+                    errors[currentStep.id] = "Недопустимое значение"
+                    _wizardState.value = currentState.copy(errors = errors)
+                    return
+                }
+
                 _wizardState.value = currentState.copy(
-                    currentStepIndex = currentState.currentStepIndex - 1
+                    currentStepIndex = currentState.currentStepIndex + 1,
+                    results = updatedResults
                 )
             }
-            return
         }
-
-        if (currentStep == null)
-            return
-
-        val updatedResults = currentState.results.toMutableMap()
-        updatedResults[currentStep.id] = result
-
-        if (!currentStep.validator(updatedResults)) {
-            val errors = currentState.errors.toMutableMap()
-            errors[currentStep.id] = "Недопустимое значение"
-            _wizardState.value = currentState.copy(errors = errors)
-            return
-        }
-
-        _wizardState.value = currentState.copy(
-            currentStepIndex = currentState.currentStepIndex + 1,
-            results = updatedResults
-        )
     }
 
     suspend fun completeWizard(): Result<TaskX> {
@@ -158,16 +220,12 @@ class WizardController(
     fun cancel() {
         _wizardState.value = null
 
-        GlobalScope.launch(Dispatchers.IO) {
+        coroutineScope.launch(Dispatchers.IO) {
             factLineWizardUseCases.clearCache()
         }
     }
 
-    fun reset() {
-        _wizardState.value = null
-
-        GlobalScope.launch(Dispatchers.IO) {
-            factLineWizardUseCases.clearCache()
-        }
+    fun dispose() {
+        coroutineJob.cancel()
     }
 }

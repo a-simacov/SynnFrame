@@ -92,7 +92,6 @@ fun TaskXDetailScreen(
     if (wizardState != null) {
         FactLineWizard(
             viewModel = viewModel,
-            wizardViewModel = wizardViewModel,
             modifier = Modifier.fillMaxSize()
         )
     }

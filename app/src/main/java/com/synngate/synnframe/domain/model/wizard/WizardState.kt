@@ -8,9 +8,6 @@ import com.synngate.synnframe.domain.entity.taskx.WmsAction
 import timber.log.Timber
 import java.time.LocalDateTime
 
-/**
- * Состояние визарда создания строки факта
- */
 data class WizardState(
     val taskId: String = "",
     val steps: List<WizardStep> = emptyList(),
@@ -33,54 +30,94 @@ data class WizardState(
         get() = currentStepIndex > 0 && currentStep?.canNavigateBack ?: true
 
     /**
-     * Получает данные для создания строки факта
+     * Получает данные для создания строки факта на основе последних результатов каждого типа
      */
     fun getFactLineData(): Map<TaskXLineFieldType, Any?> {
         val data = mutableMapOf<TaskXLineFieldType, Any?>()
 
-        // Обрабатываем специальные типы результатов
-        results.forEach { (key, value) ->
-            when {
-                // Проверяем тип значения для объектов
-                value is TaskProduct -> {
-                    data[TaskXLineFieldType.STORAGE_PRODUCT] = value
-                    Timber.d("Found product: ${value.product.name}")
-                }
-                value is Pallet && (key.contains("STORAGE", ignoreCase = true)) -> {
-                    data[TaskXLineFieldType.STORAGE_PALLET] = value
-                    Timber.d("Found storage pallet: ${value.code}")
-                }
-                value is Pallet && (key.contains("PLACEMENT", ignoreCase = true)) -> {
+        // Получаем записи последнего состояния каждого типа объекта
+        // Сначала получаем все записи для каждого типа
+        val productEntries = results.entries
+            .filter { it.value is TaskProduct }
+            .sortedBy { it.key } // Сортируем по ключу, предполагая что более поздние имеют больший ID
+
+        val storagePalletEntries = results.entries
+            .filter { it.value is Pallet && (it.key.contains("STORAGE", ignoreCase = true)) }
+            .sortedBy { it.key }
+
+        val placementPalletEntries = results.entries
+            .filter { it.value is Pallet && (it.key.contains("PLACEMENT", ignoreCase = true)) }
+            .sortedBy { it.key }
+
+        val unspecifiedPalletEntries = results.entries
+            .filter {
+                it.value is Pallet &&
+                        !it.key.contains("STORAGE", ignoreCase = true) &&
+                        !it.key.contains("PLACEMENT", ignoreCase = true)
+            }
+            .sortedBy { it.key }
+
+        val binEntries = results.entries
+            .filter { it.value is BinX }
+            .sortedBy { it.key }
+
+        val actionEntries = results.entries
+            .filter { it.value is WmsAction }
+            .sortedBy { it.key }
+
+        // Берем последний объект каждого типа (последний элемент в отсортированном списке)
+        productEntries.lastOrNull()?.let { (key, value) ->
+            if (value is TaskProduct) {
+                data[TaskXLineFieldType.STORAGE_PRODUCT] = value
+                Timber.d("Using latest product: ${value.product.name}, quantity: ${value.quantity}")
+            }
+        }
+
+        storagePalletEntries.lastOrNull()?.let { (key, value) ->
+            if (value is Pallet) {
+                data[TaskXLineFieldType.STORAGE_PALLET] = value
+                Timber.d("Using latest storage pallet: ${value.code}, closed: ${value.isClosed}")
+            }
+        }
+
+        placementPalletEntries.lastOrNull()?.let { (key, value) ->
+            if (value is Pallet) {
+                data[TaskXLineFieldType.PLACEMENT_PALLET] = value
+                Timber.d("Using latest placement pallet: ${value.code}, closed: ${value.isClosed}")
+            }
+        }
+
+        // Если нет явно указанных паллет размещения, используем неопределенные
+        if (!data.containsKey(TaskXLineFieldType.PLACEMENT_PALLET)) {
+            unspecifiedPalletEntries.lastOrNull()?.let { (key, value) ->
+                if (value is Pallet) {
                     data[TaskXLineFieldType.PLACEMENT_PALLET] = value
-                    Timber.d("Found placement pallet: ${value.code}")
-                }
-                value is Pallet && !data.containsKey(TaskXLineFieldType.PLACEMENT_PALLET) &&
-                        !data.containsKey(TaskXLineFieldType.STORAGE_PALLET) -> {
-                    // Если не определили тип паллеты, считаем ее паллетой размещения
-                    data[TaskXLineFieldType.PLACEMENT_PALLET] = value
-                    Timber.d("Found pallet of unknown type: ${value.code}")
-                }
-                value is BinX -> {
-                    data[TaskXLineFieldType.PLACEMENT_BIN] = value
-                    Timber.d("Found bin: ${value.code}")
-                }
-                value is WmsAction -> {
-                    // Если нашли действие WMS, сохраняем его, но не переписываем уже установленное
-                    if (!data.containsKey(TaskXLineFieldType.WMS_ACTION)) {
-                        data[TaskXLineFieldType.WMS_ACTION] = value
-                        Timber.d("Found action WMS: $value")
-                    }
+                    Timber.d("Using latest unspecified pallet as placement: ${value.code}, closed: ${value.isClosed}")
                 }
             }
         }
 
-        // Проверяем, что у нас есть WMS-действие, если нет - устанавливаем RECEIPT по умолчанию
-        if (!data.containsKey(TaskXLineFieldType.WMS_ACTION)) {
-            data[TaskXLineFieldType.WMS_ACTION] = WmsAction.RECEIPT
-            Timber.d("Default WMS action was set: RECEIPT")
+        binEntries.lastOrNull()?.let { (key, value) ->
+            if (value is BinX) {
+                data[TaskXLineFieldType.PLACEMENT_BIN] = value
+                Timber.d("Using latest bin: ${value.code}")
+            }
         }
 
-        Timber.d("Fact row data was collected: $data")
+        actionEntries.lastOrNull()?.let { (key, value) ->
+            if (value is WmsAction) {
+                data[TaskXLineFieldType.WMS_ACTION] = value
+                Timber.d("Using latest WMS action: $value")
+            }
+        }
+
+        // Если нет действия WMS, устанавливаем значение по умолчанию
+        if (!data.containsKey(TaskXLineFieldType.WMS_ACTION)) {
+            data[TaskXLineFieldType.WMS_ACTION] = WmsAction.RECEIPT
+            Timber.d("Using default WMS action: RECEIPT")
+        }
+
+        Timber.d("Final data for fact line: $data")
         return data
     }
 }

@@ -94,7 +94,7 @@ class TaskXDetailViewModel(
             updateState { it.copy(isProcessing = true) }
 
             try {
-                wizardController.reset()
+                wizardController.cancel()
                 factLineWizardViewModel.clearCache()
                 wizardController.initialize(task, wizardBuilder)
 
@@ -451,5 +451,10 @@ class TaskXDetailViewModel(
     fun isActionAvailable(action: AvailableTaskAction): Boolean {
         val taskType = uiState.value.taskType ?: return false
         return action in taskType.availableActions
+    }
+
+    override fun dispose() {
+        super.dispose()
+        wizardController.dispose()
     }
 }

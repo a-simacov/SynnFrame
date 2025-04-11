@@ -39,6 +39,7 @@ import timber.log.Timber
 fun WizardScreen(
     state: WizardState?,
     onStepComplete: (Any?) -> Unit,
+    onStepSkip: (Any?) -> Unit,  // Новый параметр
     onComplete: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
@@ -106,38 +107,33 @@ fun WizardScreen(
                         .weight(1f)
                         .fillMaxWidth()
                 ) {
-                    //try {
-                        val currentStep = state.currentStep
+                    val currentStep = state.currentStep
 
-                        if (currentStep == null || state.isCompleted) {
-                            // Итоговый экран
-                            SummaryScreen(
-                                results = state.results,
-                                onComplete = {
-                                    Timber.d("Wizard complete button was clicked")
-                                    onComplete()
-                                },
-                                onCancel = {
-                                    Timber.d("Cancel button was pressed in summary screen")
-                                    onCancel()
-                                }
-                            )
-                        } else {
-                            // Текущий шаг
-                            val context = WizardContext(
-                                results = state.results,
-                                onComplete = { result ->
-                                    Timber.d("Completed step: ${currentStep.title}, result: $result")
-                                    onStepComplete(result)
-                                },
-                                onBack = {
-                                    Timber.d("Button 'Back' was pressed in step: ${currentStep.title}")
-                                    onStepComplete(null)
-                                }
-                            )
+                    if (currentStep == null || state.isCompleted) {
+                        // Итоговый экран
+                        SummaryScreen(
+                            results = state.results,
+                            onComplete = {
+                                Timber.d("Wizard complete button was clicked")
+                                onComplete()
+                            },
+                            onCancel = {
+                                Timber.d("Cancel button was pressed in summary screen")
+                                onCancel()
+                            }
+                        )
+                    } else {
+                        // Текущий шаг
+                        val context = WizardContext(
+                            results = state.results,
+                            onComplete = { result -> onStepComplete(result) },
+                            onBack = { onStepComplete(null) },
+                            onSkip = { result -> onStepSkip(result) },
+                            onCancel = { onCancel() }
+                        )
 
-                            currentStep.content(context)
-                        }
+                        currentStep.content(context)
+                    }
                 }
 
                 // Навигационные кнопки

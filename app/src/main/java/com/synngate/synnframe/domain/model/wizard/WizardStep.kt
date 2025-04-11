@@ -21,6 +21,10 @@ data class WizardStep(
  */
 data class WizardContext(
     val results: Map<String, Any?>,
+    // Обновленные сигнатуры методов
     val onComplete: (Any?) -> Unit,
-    val onBack: () -> Unit
+    val onBack: () -> Unit,
+    // Новые методы
+    val onSkip: (Any?) -> Unit,
+    val onCancel: () -> Unit
 )

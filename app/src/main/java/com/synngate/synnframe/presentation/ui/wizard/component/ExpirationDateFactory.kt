@@ -7,10 +7,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,20 +26,37 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.model.wizard.WizardContext
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/**
- * Фабрика для шага ввода срока годности
- */
 class ExpirationDateFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
+
+    override fun validateStepResult(action: FactLineXAction, results: Map<String, Any?>): Boolean {
+        // Получаем выбранный товар из результатов предыдущих шагов
+        val product = results["STORAGE_PRODUCT"] as? TaskProduct
+
+        // Проверяем, учитывается ли товар по срокам годности
+        val accountingModel = product?.product?.accountingModel
+        var needsExpirationDate = false
+        if (accountingModel != null)
+            needsExpirationDate = accountingModel == AccountingModel.BATCH
+
+        // Если не требуется учет по срокам, считаем шаг "выполненным"
+        if (!needsExpirationDate) return true
+
+        // Иначе проверяем, установлена ли дата
+        return product?.hasExpirationDate() ?: false
+    }
+
     @Composable
     override fun createComponent(
         action: FactLineXAction,
@@ -63,45 +87,12 @@ class ExpirationDateFactory(
                 )
             }
 
-            // Упрощенный компонент выбора даты (в реальности здесь был бы DatePicker)
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Выбранная дата: ${selectedDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Кнопки для манипуляции датой
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = { selectedDate = selectedDate.minusDays(1) },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("-1 день")
-                }
-
-                Button(
-                    onClick = { selectedDate = selectedDate.plusDays(1) },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("+1 день")
-                }
-
-                Button(
-                    onClick = { selectedDate = selectedDate.plusMonths(1) },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("+1 месяц")
-                }
-            }
+            // Новый компонент выбора даты
+            DatePickerView(
+                selectedDate = selectedDate,
+                onDateSelected = { selectedDate = it },
+                modifier = Modifier.fillMaxWidth()
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -114,13 +105,14 @@ class ExpirationDateFactory(
                 OutlinedButton(
                     onClick = {
                         if (storageProduct != null) {
-                            // Если есть продукт, обновляем без срока годности
-                            wizardContext.onComplete(
-                                storageProduct.copy(expirationDate = LocalDate.of(1970, 1, 1))
+                            // Используем дату-заглушку, но не null
+                            val updatedProduct = storageProduct.copy(
+                                expirationDate = LocalDate.of(1970, 1, 1)
                             )
+                            wizardContext.onComplete(updatedProduct)
                         } else {
-                            // Если нет продукта, просто идем дальше
-                            wizardContext.onComplete(null)
+                            // Просто передаем дату-заглушку
+                            wizardContext.onComplete(LocalDate.of(1970, 1, 1))
                         }
                     },
                     modifier = Modifier.padding(end = 8.dp)
@@ -133,7 +125,9 @@ class ExpirationDateFactory(
                     onClick = {
                         if (storageProduct != null) {
                             // Обновляем существующий продукт с новой датой
-                            val updatedProduct = storageProduct.copy(expirationDate = selectedDate)
+                            val updatedProduct = storageProduct.copy(
+                                expirationDate = selectedDate
+                            )
                             wizardContext.onComplete(updatedProduct)
                         } else {
                             // Если нет продукта, просто возвращаем дату
@@ -143,6 +137,99 @@ class ExpirationDateFactory(
                 ) {
                     Text("Подтвердить")
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerView(
+    selectedDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier) {
+        // Кнопка для отображения текущей выбранной даты
+        OutlinedButton(
+            onClick = { showDatePicker = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(selectedDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Выбрать дату"
+                )
+            }
+        }
+
+        // Простые кнопки для быстрой корректировки даты
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = { onDateSelected(selectedDate.minusDays(1)) },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("-1 день")
+            }
+
+            Button(
+                onClick = { onDateSelected(selectedDate.plusDays(1)) },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("+1 день")
+            }
+
+            Button(
+                onClick = { onDateSelected(selectedDate.plusMonths(1)) },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("+1 месяц")
+            }
+        }
+
+        // Диалог выбора даты
+        if (showDatePicker) {
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault())
+                    .toInstant().toEpochMilli()
+            )
+
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            datePickerState.selectedDateMillis?.let { dateMillis ->
+                                val localDate = java.time.Instant.ofEpochMilli(dateMillis)
+                                    .atZone(ZoneId.systemDefault())
+                                    .toLocalDate()
+                                onDateSelected(localDate)
+                            }
+                            showDatePicker = false
+                        }
+                    ) {
+                        Text("OK")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { showDatePicker = false }) {
+                        Text("Отмена")
+                    }
+                }
+            ) {
+                DatePicker(state = datePickerState)
             }
         }
     }
