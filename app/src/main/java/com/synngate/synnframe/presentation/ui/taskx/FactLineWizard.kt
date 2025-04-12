@@ -20,10 +20,8 @@ fun FactLineWizard(
             state = state,
             onStepComplete = { result ->
                 try {
-                    // Преобразуем обычный результат в StepResult.Data
-                    viewModel.processWizardStep(
-                        if (result != null) StepResult.Data(result) else StepResult.Back
-                    )
+                    // Прямая передача результата в контроллер
+                    viewModel.processWizardStep(result)
                 } catch (e: Exception) {
                     Timber.e(e, "Processing wizard step result error: ${e.message}")
                 }

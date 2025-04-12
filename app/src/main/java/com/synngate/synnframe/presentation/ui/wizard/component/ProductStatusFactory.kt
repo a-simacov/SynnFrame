@@ -24,6 +24,7 @@ import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.entity.taskx.ProductStatus
 import com.synngate.synnframe.domain.model.wizard.WizardContext
+import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
 class ProductStatusFactory(
@@ -107,5 +108,10 @@ class ProductStatusFactory(
                 Text("Подтвердить")
             }
         }
+    }
+
+    override fun validateStepResult(action: FactLineXAction, results: WizardResultModel): Boolean {
+        // Проверяем, что товар имеет статус
+        return results.storageProduct != null
     }
 }

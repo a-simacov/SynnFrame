@@ -125,10 +125,10 @@ fun WizardScreen(
                         // Текущий шаг
                         val context = WizardContext(
                             results = state.results,
-                            onComplete = { result -> onStepComplete(result) },
+                            onUpdate = { updatedResults -> onStepComplete(updatedResults) },
                             onBack = { onStepComplete(null) },
                             onSkip = { result -> onStepSkip(result) },
-                            onCancel = { onCancel() }
+                            onCancel = onCancel
                         )
 
                         currentStep.content(context)

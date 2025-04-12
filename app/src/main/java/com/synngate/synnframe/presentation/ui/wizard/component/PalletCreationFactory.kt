@@ -24,12 +24,18 @@ import timber.log.Timber
 class PalletCreationFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
+    // Сохраняем ссылку на groupContext
+    private lateinit var groupContext: FactLineActionGroup
+
     @Composable
     override fun createComponent(
         action: FactLineXAction,
         groupContext: FactLineActionGroup,
         wizardContext: WizardContext
     ) {
+        // Сохраняем groupContext для использования в validator
+        this.groupContext = groupContext
+
         var isCreating by remember { mutableStateOf(false) }
 
         Column(modifier = Modifier.fillMaxWidth()) {

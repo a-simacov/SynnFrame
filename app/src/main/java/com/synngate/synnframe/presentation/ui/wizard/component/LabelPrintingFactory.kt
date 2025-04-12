@@ -17,17 +17,24 @@ import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
 import com.synngate.synnframe.domain.model.wizard.WizardContext
+import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
 class LabelPrintingFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
+    // Сохраняем ссылку на groupContext
+    private lateinit var groupContext: FactLineActionGroup
+
     @Composable
     override fun createComponent(
         action: FactLineXAction,
         groupContext: FactLineActionGroup,
         wizardContext: WizardContext
     ) {
+        // Сохраняем groupContext для использования в validator
+        this.groupContext = groupContext
+
         var isPrinting by remember { mutableStateOf(false) }
 
         // Определяем, с какой паллетой работаем, на основе targetFieldType группы
@@ -93,5 +100,10 @@ class LabelPrintingFactory(
                 Text(if (isPrinting) "Печать..." else "Напечатать этикетку")
             }
         }
+    }
+
+    override fun validateStepResult(action: FactLineXAction, results: WizardResultModel): Boolean {
+        // Для печати этикетки не требуется строгая валидация
+        return true
     }
 }

@@ -93,6 +93,21 @@ class WizardController(
                 }
             }
 
+            // ВАЖНО: WizardResultModel теперь обрабатывается напрямую
+            is WizardResultModel -> {
+                // Прямое обновление результатов
+                if (currentStep.validator(result)) {
+                    _wizardState.value = currentState.copy(
+                        currentStepIndex = currentState.currentStepIndex + 1,
+                        results = result
+                    )
+                } else {
+                    val errors = currentState.errors.toMutableMap()
+                    errors[currentStep.id] = "Недопустимое значение"
+                    _wizardState.value = currentState.copy(errors = errors)
+                }
+            }
+
             else -> handleDataResult(currentState, currentStep, result)
         }
     }
@@ -243,10 +258,10 @@ class WizardController(
             val result = factLineWizardUseCases.addFactLine(factLine)
 
             // Сбрасываем состояние визарда для следующей строки
+            // ИСПРАВЛЕНО: удалено stepResults
             _wizardState.value = state.copy(
                 currentStepIndex = 0,
                 results = WizardResultModel(),
-                stepResults = emptyMap(),
                 startedAt = LocalDateTime.now()
             )
 

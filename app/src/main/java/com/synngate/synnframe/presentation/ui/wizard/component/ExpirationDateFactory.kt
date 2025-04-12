@@ -37,7 +37,6 @@ import java.time.format.DateTimeFormatter
 class ExpirationDateFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
-
     @Composable
     override fun createComponent(
         action: FactLineXAction,

@@ -12,7 +12,7 @@ data class WizardStep(
     val title: String,
     val action: FactLineXAction? = null,
     val content: @Composable (WizardContext) -> Unit,
-    val validator: (Map<String, Any?>) -> Boolean = { true },
+    val validator: (WizardResultModel) -> Boolean = { true },
     val canNavigateBack: Boolean = true,
     val isAutoComplete: Boolean = false
 )

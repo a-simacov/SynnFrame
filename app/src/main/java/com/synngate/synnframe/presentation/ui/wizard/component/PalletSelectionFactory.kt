@@ -32,12 +32,18 @@ import timber.log.Timber
 class PalletSelectionFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
+    // Сохраняем ссылку на groupContext
+    private lateinit var groupContext: FactLineActionGroup
+
     @Composable
     override fun createComponent(
         action: FactLineXAction,
         groupContext: FactLineActionGroup,
         wizardContext: WizardContext
     ) {
+        // Сохраняем groupContext для использования в validator
+        this.groupContext = groupContext
+
         var searchQuery by remember { mutableStateOf("") }
         var showScanner by remember { mutableStateOf(false) }
 

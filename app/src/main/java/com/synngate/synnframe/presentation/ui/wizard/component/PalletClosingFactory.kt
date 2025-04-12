@@ -17,18 +17,25 @@ import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
 import com.synngate.synnframe.domain.model.wizard.WizardContext
+import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 import timber.log.Timber
 
 class PalletClosingFactory(
     private val wizardViewModel: FactLineWizardViewModel
 ) : StepComponentFactory {
+    // Сохраняем ссылку на groupContext
+    private lateinit var groupContext: FactLineActionGroup
+
     @Composable
     override fun createComponent(
         action: FactLineXAction,
         groupContext: FactLineActionGroup,
         wizardContext: WizardContext
     ) {
+        // Сохраняем groupContext для использования в validator
+        this.groupContext = groupContext
+
         var isClosing by remember { mutableStateOf(false) }
 
         // Определяем, с какой паллетой работаем, на основе targetFieldType группы
@@ -103,5 +110,17 @@ class PalletClosingFactory(
                 Text(if (isClosing) "Закрытие..." else "Закрыть паллету")
             }
         }
+    }
+
+    override fun validateStepResult(action: FactLineXAction, results: WizardResultModel): Boolean {
+        // Проверка успешного закрытия паллеты
+        val pallet = when (groupContext.targetFieldType) {
+            TaskXLineFieldType.STORAGE_PALLET -> results.storagePallet
+            TaskXLineFieldType.PLACEMENT_PALLET -> results.placementPallet
+            else -> null
+        }
+
+        // Если паллета не требуется или она уже закрыта, считаем шаг успешным
+        return pallet == null || pallet.isClosed
     }
 }
