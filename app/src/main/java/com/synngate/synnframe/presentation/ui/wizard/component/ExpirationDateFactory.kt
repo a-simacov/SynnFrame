@@ -29,14 +29,12 @@ import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.model.wizard.WizardContext
 import com.synngate.synnframe.domain.model.wizard.WizardResultModel
-import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class ExpirationDateFactory(
-    private val wizardViewModel: FactLineWizardViewModel
-) : StepComponentFactory {
+class ExpirationDateFactory : StepComponentFactory {
+
     @Composable
     override fun createComponent(
         action: FactLineXAction,

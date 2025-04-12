@@ -14,7 +14,8 @@ data class WizardStep(
     val content: @Composable (WizardContext) -> Unit,
     val validator: (WizardResultModel) -> Boolean = { true },
     val canNavigateBack: Boolean = true,
-    val isAutoComplete: Boolean = false
+    val isAutoComplete: Boolean = false,
+    val shouldShow: (WizardResultModel) -> Boolean = { true }
 )
 
 /**

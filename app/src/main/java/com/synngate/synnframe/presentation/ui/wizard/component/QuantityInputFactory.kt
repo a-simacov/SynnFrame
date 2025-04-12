@@ -18,11 +18,8 @@ import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.model.wizard.WizardContext
 import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import com.synngate.synnframe.presentation.common.inputs.NumberTextField
-import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 
-class QuantityInputFactory(
-    private val wizardViewModel: FactLineWizardViewModel
-) : StepComponentFactory {
+class QuantityInputFactory : StepComponentFactory {
     @Composable
     override fun createComponent(
         action: FactLineXAction,
