@@ -50,7 +50,7 @@ class TaskXDetailViewModel(
         )
         wizardBuilder.registerStepComponent(
             FactLineXActionType.ENTER_QUANTITY,
-            QuantityInputFactory(factLineWizardViewModel)
+            QuantityInputFactory()
         )
         wizardBuilder.registerStepComponent(
             FactLineXActionType.SELECT_BIN,
@@ -78,7 +78,7 @@ class TaskXDetailViewModel(
         )
         wizardBuilder.registerStepComponent(
             FactLineXActionType.ENTER_EXPIRATION_DATE,
-            ExpirationDateFactory(factLineWizardViewModel)
+            ExpirationDateFactory()
         )
     }
 
