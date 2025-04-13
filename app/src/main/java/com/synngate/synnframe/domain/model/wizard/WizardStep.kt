@@ -15,7 +15,7 @@ data class WizardStep(
     val validator: (WizardResultModel) -> Boolean = { true },
     val canNavigateBack: Boolean = true,
     val isAutoComplete: Boolean = false,
-    val shouldShow: (WizardResultModel) -> Boolean = { true }
+    val shouldShow: (WizardResultModel) -> Boolean = { true } // Новое поле
 )
 
 /**

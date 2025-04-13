@@ -3,9 +3,17 @@ package com.synngate.synnframe.presentation.ui.wizard
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.ProductStatus
+import com.synngate.synnframe.domain.entity.taskx.TaskProduct
+import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
+import com.synngate.synnframe.domain.model.wizard.WizardResultModel
+import com.synngate.synnframe.domain.model.wizard.WizardStep
+import com.synngate.synnframe.domain.service.ActionHandlerService
+import com.synngate.synnframe.domain.service.WizardStepValidator
 import com.synngate.synnframe.domain.usecase.wizard.FactLineWizardUseCases
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import timber.log.Timber
+import java.time.LocalDate
 
 class FactLineWizardViewModel(
     private val factLineWizardUseCases: FactLineWizardUseCases
@@ -15,6 +23,10 @@ class FactLineWizardViewModel(
     val products = factLineWizardUseCases.getProductsFlow()
     val bins = factLineWizardUseCases.getBinsFlow()
     val pallets = factLineWizardUseCases.getPalletsFlow()
+
+    // Валидатор шагов и обработчик действий
+    private val stepValidator = WizardStepValidator()
+    private val actionHandler = ActionHandlerService(factLineWizardUseCases)
 
     // Методы для загрузки данных
     fun loadProducts(query: String? = null, planProductIds: Set<String>? = null) {
@@ -100,7 +112,7 @@ class FactLineWizardViewModel(
     fun createPallet(onResult: (Result<Pallet>) -> Unit) {
         launchIO {
             try {
-                val result = factLineWizardUseCases.createPallet()
+                val result = actionHandler.createPallet()
                 launchMain {
                     onResult(result)
                 }
@@ -116,7 +128,7 @@ class FactLineWizardViewModel(
     fun closePallet(code: String, onResult: (Result<Boolean>) -> Unit) {
         launchIO {
             try {
-                val result = factLineWizardUseCases.closePallet(code)
+                val result = actionHandler.closePallet(code)
                 launchMain {
                     onResult(result)
                 }
@@ -132,7 +144,7 @@ class FactLineWizardViewModel(
     fun printPalletLabel(code: String, onResult: (Result<Boolean>) -> Unit) {
         launchIO {
             try {
-                val result = factLineWizardUseCases.printPalletLabel(code)
+                val result = actionHandler.printPalletLabel(code)
                 launchMain {
                     onResult(result)
                 }
@@ -143,6 +155,32 @@ class FactLineWizardViewModel(
                 }
             }
         }
+    }
+
+    // Методы для работы с продуктами
+    fun createTaskProduct(product: Product): TaskProduct {
+        return actionHandler.handleProductSelection(product)
+    }
+
+    fun updateProductQuantity(product: TaskProduct, quantity: Float): TaskProduct {
+        return actionHandler.updateProductQuantity(product, quantity)
+    }
+
+    fun updateExpirationDate(product: TaskProduct, date: LocalDate): TaskProduct {
+        return actionHandler.updateProductExpirationDate(product, date)
+    }
+
+    fun updateProductStatus(product: TaskProduct, status: ProductStatus): TaskProduct {
+        return actionHandler.updateProductStatus(product, status)
+    }
+
+    // Методы валидации
+    fun validateStep(step: WizardStep, results: WizardResultModel): Pair<Boolean, String?> {
+        return stepValidator.validateStep(step, results)
+    }
+
+    fun shouldShowStep(step: WizardStep, results: WizardResultModel, taskType: TaskTypeX?): Boolean {
+        return stepValidator.shouldShowStep(step, results, taskType)
     }
 
     // Методы для очистки кэша
