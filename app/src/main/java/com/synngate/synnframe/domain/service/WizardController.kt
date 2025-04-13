@@ -1,6 +1,7 @@
 package com.synngate.synnframe.domain.service
 
 import com.synngate.synnframe.domain.entity.taskx.BinX
+import com.synngate.synnframe.domain.entity.taskx.FactLineX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskX
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
+import java.util.UUID
 
 class WizardController(
     private val factLineWizardUseCases: FactLineWizardUseCases
@@ -67,7 +69,6 @@ class WizardController(
     }
 
     // Обновляем метод обработки результатов шага
-// Добавить в WizardController.kt
     fun processStepResult(result: Any?) {
         val currentState = _wizardState.value ?: return
         val currentStep = currentState.currentStep ?: return
@@ -96,21 +97,8 @@ class WizardController(
             is WizardResultModel -> {
                 // Прямое обновление результатов
                 if (currentStep.validator(result)) {
-                    // Поиск следующего шага, который должен быть показан
-                    var nextIndex = currentState.currentStepIndex + 1
-                    while (nextIndex < currentState.steps.size) {
-                        val nextStep = currentState.steps[nextIndex]
-                        // Проверяем условие отображения шага
-                        if (!nextStep.shouldShow(result)) {
-                            Timber.d("Skipping step: ${nextStep.title} - condition not met")
-                            nextIndex++
-                            continue
-                        }
-                        break
-                    }
-
                     _wizardState.value = currentState.copy(
-                        currentStepIndex = nextIndex,
+                        currentStepIndex = currentState.currentStepIndex + 1,
                         results = result
                     )
                 } else {
@@ -240,20 +228,37 @@ class WizardController(
         }
 
         try {
-            // Используем FactLineService
-            val factLineService = FactLineService(factLineWizardUseCases)
+            // Создание строки факта из структурированного состояния мастера
+            val factLineData = state.getFactLineData()
 
-            // Создаем строку факта
-            val factLine = factLineService.createFactLineFromResults(
+            // Получаем данные для строки факта
+            val storageProduct = factLineData[TaskXLineFieldType.STORAGE_PRODUCT] as? TaskProduct
+            val storagePallet = factLineData[TaskXLineFieldType.STORAGE_PALLET] as? Pallet
+            val placementPallet = factLineData[TaskXLineFieldType.PLACEMENT_PALLET] as? Pallet
+            val placementBin = factLineData[TaskXLineFieldType.PLACEMENT_BIN] as? BinX
+            val wmsAction = factLineData[TaskXLineFieldType.WMS_ACTION] as? WmsAction ?: WmsAction.RECEIPT
+
+            // Проверка наличия обязательных данных
+            if (storageProduct == null) {
+                return Result.failure(IllegalStateException("Product was not specified"))
+            }
+
+            val factLine = FactLineX(
+                id = UUID.randomUUID().toString(),
                 taskId = state.taskId,
-                results = state.results,
-                startTime = state.startedAt
+                storageProduct = storageProduct,
+                storagePallet = storagePallet,
+                wmsAction = wmsAction,
+                placementPallet = placementPallet,
+                placementBin = placementBin,
+                startedAt = state.startedAt,
+                completedAt = LocalDateTime.now()
             )
 
-            // Сохраняем строку факта
-            val result = factLineService.addFactLineToTask(factLine)
+            val result = factLineWizardUseCases.addFactLine(factLine)
 
             // Сбрасываем состояние визарда для следующей строки
+            // ИСПРАВЛЕНО: удалено stepResults
             _wizardState.value = state.copy(
                 currentStepIndex = 0,
                 results = WizardResultModel(),
