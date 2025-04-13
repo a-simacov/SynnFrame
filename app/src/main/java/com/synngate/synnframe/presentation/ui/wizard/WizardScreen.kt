@@ -63,7 +63,7 @@ fun WizardScreen(
     ) {
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
-            modifier = modifier.fillMaxSize(0.95f)
+            modifier = modifier.fillMaxSize()
         ) {
             Column(
                 modifier = Modifier
@@ -103,7 +103,7 @@ fun WizardScreen(
                 // Содержимое текущего шага (в безопасном блоке)
                 Box(
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(0.5f)
                         .fillMaxWidth()
                 ) {
                     val currentStep = state.currentStep
@@ -171,6 +171,8 @@ fun WizardScreen(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.weight(0.05f).height(8.dp))
             }
         }
     }
