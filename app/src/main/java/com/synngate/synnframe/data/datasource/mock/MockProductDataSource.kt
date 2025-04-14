@@ -22,7 +22,22 @@ class MockProductDataSource : ProductDataSource {
             mainUnitId = "u2",
             units = emptyList()
         ),
-        // Можно добавить больше тестовых данных
+        Product(
+            id = "p3",
+            name = "Телевизор 55\"",
+            accountingModel = com.synngate.synnframe.domain.entity.AccountingModel.QTY,
+            articleNumber = "TV-55001",
+            mainUnitId = "u3",
+            units = emptyList()
+        ),
+        Product(
+            id = "p4",
+            name = "Смартфон",
+            accountingModel = com.synngate.synnframe.domain.entity.AccountingModel.QTY,
+            articleNumber = "PH-12345",
+            mainUnitId = "u4",
+            units = emptyList()
+        )
     )
 
     override suspend fun getProducts(query: String?): List<Product> {

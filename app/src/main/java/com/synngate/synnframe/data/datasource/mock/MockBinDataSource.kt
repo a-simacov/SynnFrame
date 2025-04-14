@@ -28,8 +28,24 @@ class MockBinDataSource : BinDataSource {
             rack = "02",
             tier = "1",
             position = "1"
+        ),
+        BinX(
+            code = "C00311",
+            zone = "Отбор",
+            line = "C",
+            rack = "03",
+            tier = "1",
+            position = "1"
+        ),
+        BinX(
+            code = "C00312",
+            zone = "Отбор",
+            line = "C",
+            rack = "03",
+            tier = "1",
+            position = "2"
         )
-        // Можно добавить больше тестовых данных
+
     )
 
     override suspend fun getBins(query: String?, zone: String?): List<BinX> {

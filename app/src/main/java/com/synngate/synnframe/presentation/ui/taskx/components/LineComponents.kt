@@ -274,6 +274,22 @@ fun ComparedLineItem(
                 style = MaterialTheme.typography.bodyMedium
             )
 
+            comparedLine.planBinCode?.let {
+                Text(
+                    text = "Ячейка плана: $it",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+
+            comparedLine.factBinCode?.let {
+                Text(
+                    text = "Ячейка факта: $it",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
             val progress = if (comparedLine.planQuantity > 0)
                 (comparedLine.factQuantity / comparedLine.planQuantity * 100).toInt()
             else 0
@@ -292,7 +308,9 @@ data class ComparedLine(
     val productName: String,
     val articleNumber: String,
     val planQuantity: Float,
-    val factQuantity: Float
+    val factQuantity: Float,
+    val planBinCode: String?,
+    val factBinCode: String?
 )
 
 // Функция объединения строк плана и факта
@@ -311,7 +329,9 @@ fun compareLines(
                 productName = product.product.name,
                 articleNumber = product.product.articleNumber,
                 planQuantity = product.quantity,
-                factQuantity = 0f
+                factQuantity = 0f,
+                planBinCode = planLine.placementBin?.code,
+                factBinCode = null
             )
         }
     }
@@ -325,7 +345,8 @@ fun compareLines(
             if (existing != null) {
                 // Обновляем существующую строку
                 result[productId] = existing.copy(
-                    factQuantity = existing.factQuantity + product.quantity
+                    factQuantity = existing.factQuantity + product.quantity,
+                    factBinCode = factLine.placementBin?.code ?: existing.factBinCode
                 )
             } else {
                 // Создаем новую строку (если товар есть только в факте)
@@ -334,7 +355,9 @@ fun compareLines(
                     productName = product.product.name,
                     articleNumber = product.product.articleNumber,
                     planQuantity = 0f,
-                    factQuantity = product.quantity
+                    factQuantity = product.quantity,
+                    planBinCode = null,
+                    factBinCode = factLine.placementBin?.code
                 )
             }
         }

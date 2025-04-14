@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -104,7 +106,18 @@ fun TaskXDetailScreen(
         notification = state.error?.let {
             Pair(it, StatusType.ERROR)
         },
-        isLoading = state.isLoading
+        isLoading = state.isLoading,
+        floatingActionButton = {
+            if (task?.status == TaskXStatus.IN_PROGRESS && task.canAddFactLines()) {
+                FloatingActionButton(
+                    onClick = { viewModel.startAddFactLineWizard() },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Добавить строку факта")
+                }
+            }
+        }
     ) { paddingValues ->
         if (task == null) {
             EmptyScreenContent(
@@ -269,82 +282,107 @@ fun TaskXDetailScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Кнопки действий
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Добавляем блок с кнопками управления статусом
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
             ) {
-                when (task.status) {
-                    TaskXStatus.TO_DO -> {
-                        Button(
-                            onClick = { viewModel.startTask() },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = task.canStart() && !state.isProcessing
-                        ) {
-                            Text(stringResource(R.string.start_task))
-                        }
-                    }
-                    TaskXStatus.IN_PROGRESS -> {
-                        Button(
-                            onClick = { viewModel.showCompletionDialog() },
-                            modifier = Modifier.weight(1f),
-                            enabled = task.canComplete() && !state.isProcessing
-                        ) {
-                            Text(stringResource(R.string.complete_task))
-                        }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Управление статусом",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
 
-                        Button(
-                            onClick = { viewModel.startAddFactLineWizard() },
-                            modifier = Modifier.weight(1f),
-                            enabled = task.canAddFactLines() && !state.isProcessing
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Добавить факт")
+                    when (task.status) {
+                        TaskXStatus.TO_DO -> {
+                            Button(
+                                onClick = { viewModel.startTask() },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = task.canStart() && !state.isProcessing
+                            ) {
+                                Text(stringResource(R.string.start_task))
+                            }
                         }
-                    }
-                    TaskXStatus.PAUSED -> {
-                        Button(
-                            onClick = { viewModel.resumeTask() },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = task.canResume() && !state.isProcessing
-                        ) {
-                            Text("Продолжить")
+                        TaskXStatus.IN_PROGRESS -> {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = { viewModel.showCompletionDialog() },
+                                    modifier = Modifier.weight(1f),
+                                    enabled = task.canComplete() && !state.isProcessing
+                                ) {
+                                    Text(stringResource(R.string.complete_task))
+                                }
+
+                                if (viewModel.isActionAvailable(AvailableTaskAction.PAUSE)) {
+                                    FilledTonalButton(
+                                        onClick = { viewModel.pauseTask() },
+                                        modifier = Modifier.weight(1f),
+                                        enabled = !state.isProcessing
+                                    ) {
+                                        Text("Приостановить")
+                                    }
+                                }
+                            }
                         }
+                        TaskXStatus.PAUSED -> {
+                            Button(
+                                onClick = { viewModel.resumeTask() },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = task.canResume() && !state.isProcessing
+                            ) {
+                                Text("Продолжить")
+                            }
+                        }
+                        else -> {}
                     }
-                    else -> {}
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Дополнительные действия
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+// Отдельный блок для дополнительных действий
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
             ) {
-                if (task.status == TaskXStatus.IN_PROGRESS &&
-                    viewModel.isActionAvailable(AvailableTaskAction.PAUSE)) {
-                    FilledTonalButton(
-                        onClick = { viewModel.pauseTask() },
-                        modifier = Modifier.weight(1f),
-                        enabled = !state.isProcessing
-                    ) {
-                        Text("Приостановить")
-                    }
-                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Дополнительные действия",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
 
-                if (!task.isVerified &&
-                    viewModel.isActionAvailable(AvailableTaskAction.VERIFY_TASK)) {
-                    FilledTonalButton(
-                        onClick = { viewModel.showVerificationDialog() },
-                        modifier = Modifier.weight(1f),
-                        enabled = !state.isProcessing
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Верифицировать")
+                        if (!task.isVerified && viewModel.isActionAvailable(AvailableTaskAction.VERIFY_TASK)) {
+                            FilledTonalButton(
+                                onClick = { viewModel.showVerificationDialog() },
+                                modifier = Modifier.weight(1f),
+                                enabled = !state.isProcessing
+                            ) {
+                                Text("Верифицировать")
+                            }
+                        }
+
+                        // Другие дополнительные действия...
                     }
                 }
             }
+
         }
     }
 }

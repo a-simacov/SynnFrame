@@ -175,17 +175,9 @@ class MockTaskTypeXRepository : TaskTypeXRepository {
             actions = listOf(
                 FactLineXAction(
                     id = UUID.randomUUID().toString(),
-                    name = "Выбрать ячейку",
-                    actionType = FactLineXActionType.SELECT_BIN,
-                    order = 1,
-                    selectionCondition = ObjectSelectionCondition.FROM_PLAN,
-                    promptText = "Отсканируйте или выберите ячейку"
-                ),
-                FactLineXAction(
-                    id = UUID.randomUUID().toString(),
                     name = "Выбрать товар",
                     actionType = FactLineXActionType.SELECT_PRODUCT,
-                    order = 2,
+                    order = 1,
                     selectionCondition = ObjectSelectionCondition.FROM_PLAN,
                     promptText = "Выберите товар"
                 ),
@@ -193,7 +185,7 @@ class MockTaskTypeXRepository : TaskTypeXRepository {
                     id = UUID.randomUUID().toString(),
                     name = "Введите количество",
                     actionType = FactLineXActionType.ENTER_QUANTITY,
-                    order = 3,
+                    order = 2,
                     promptText = "Введите количество товара"
                 )
             )
@@ -205,16 +197,17 @@ class MockTaskTypeXRepository : TaskTypeXRepository {
             name = "Выбрать ячейку размещения",
             order = 2,
             targetFieldType = TaskXLineFieldType.PLACEMENT_BIN,
-            wmsAction = WmsAction.PUT_INTO,
+            wmsAction = WmsAction.TAKE_FROM,
             resultType = "BinX",
             actions = listOf(
                 FactLineXAction(
                     id = UUID.randomUUID().toString(),
-                    name = "Выбрать ячейку размещения",
+                    name = "Выбрать ячейку",
                     actionType = FactLineXActionType.SELECT_BIN,
                     order = 1,
-                    promptText = "Отсканируйте или выберите ячейку для размещения товара"
-                )
+                    selectionCondition = ObjectSelectionCondition.FROM_PLAN,
+                    promptText = "Отсканируйте или выберите ячейку"
+                ),
             )
         )
 
@@ -233,7 +226,7 @@ class MockTaskTypeXRepository : TaskTypeXRepository {
                 AvailableTaskAction.COMPARE_LINES,
                 AvailableTaskAction.VERIFY_TASK
             ),
-            factLineActionGroups = listOf(takeProdGroup, selectPlaceBinGroup),
+            factLineActionGroups = listOf(selectPlaceBinGroup, takeProdGroup),
             finalActions = emptyList()
         )
     }
