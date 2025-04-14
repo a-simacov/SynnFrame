@@ -20,15 +20,20 @@ fun FactLineWizard(
             state = state,
             onStepComplete = { result ->
                 try {
-                    // Прямая передача результата в контроллер
-                    viewModel.processWizardStep(result)
+                    // Проверяем, является ли это нажатием кнопки "Назад" из итогового экрана
+                    if (result == null && state.isCompleted) {
+                        Timber.d("FactLineWizard: Detected back from summary")
+                        viewModel.returnFromSummaryScreen()
+                    } else {
+                        // Стандартная обработка
+                        viewModel.processWizardStep(result)
+                    }
                 } catch (e: Exception) {
                     Timber.e(e, "Processing wizard step result error: ${e.message}")
                 }
             },
             onStepSkip = { result ->
                 try {
-                    // Преобразуем в StepResult.Skip
                     viewModel.processWizardStep(StepResult.Skip(result))
                 } catch (e: Exception) {
                     Timber.e(e, "Processing wizard skip error: ${e.message}")

@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -52,7 +51,6 @@ class MainActivity : ComponentActivity() {
         Timber.d("MainActivity onCreate, startDestination=$startDestination, fromSplash=$fromSplash")
 
         setContent {
-
             val themeMode by app.appContainer.appSettingsDataStore.themeMode
                 .collectAsState(initial = ThemeMode.SYSTEM)
 

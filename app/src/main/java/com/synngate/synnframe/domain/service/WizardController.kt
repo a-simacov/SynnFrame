@@ -73,6 +73,42 @@ class WizardController(
         val currentState = _wizardState.value ?: return
         val currentStep = currentState.currentStep ?: return
 
+        // Для null результата (нажатие "Назад")
+        if (result == null) {
+            // ВАЖНО: здесь ключевое изменение
+            Timber.d("Processing BACK navigation: currentStepIndex=${currentState.currentStepIndex}, stepsSize=${currentState.steps.size}")
+
+            // Проверка на итоговый экран
+            if (currentState.isCompleted || currentState.currentStepIndex >= currentState.steps.size) {
+                // Переход к последнему шагу с предыдущего экрана
+                val lastStepIndex = currentState.steps.size - 1
+                if (lastStepIndex >= 0) {
+                    Timber.d("Returning from summary to last step: $lastStepIndex")
+
+                    // Создаем полностью новое состояние с нужным индексом
+                    _wizardState.value = WizardState(
+                        taskId = currentState.taskId,
+                        taskType = currentState.taskType,
+                        steps = currentState.steps,
+                        currentStepIndex = lastStepIndex,
+                        results = currentState.results,
+                        startedAt = currentState.startedAt,
+                        errors = currentState.errors,
+                        isInitialized = true
+                    )
+
+                    Timber.d("New wizardState set with index: ${_wizardState.value?.currentStepIndex}")
+                }
+            } else if (currentState.canGoBack) {
+                val newIndex = currentState.currentStepIndex - 1
+                Timber.d("Going back to step: $newIndex")
+                _wizardState.value = currentState.copy(
+                    currentStepIndex = newIndex
+                )
+            }
+            return
+        }
+
         when (result) {
             null -> {
                 // Обработка навигации назад
@@ -282,5 +318,42 @@ class WizardController(
 
     fun dispose() {
         coroutineJob.cancel()
+    }
+
+    // WizardController.kt
+// Добавьте этот новый метод
+
+    fun returnFromSummaryScreen() {
+        val currentState = _wizardState.value ?: return
+
+        Timber.d("Explicit return from summary screen requested")
+
+        // Проверяем, что есть хотя бы один шаг
+        if (currentState.steps.isEmpty()) {
+            Timber.w("Cannot return from summary: no steps available")
+            return
+        }
+
+        // Устанавливаем индекс на последний шаг
+        val lastStepIndex = currentState.steps.size - 1
+
+        Timber.d("Setting currentStepIndex from ${currentState.currentStepIndex} to $lastStepIndex")
+
+        // Создаем полностью новое состояние
+        val newState = WizardState(
+            taskId = currentState.taskId,
+            taskType = currentState.taskType,
+            steps = currentState.steps,
+            currentStepIndex = lastStepIndex,
+            results = currentState.results,
+            startedAt = currentState.startedAt,
+            errors = currentState.errors,
+            isInitialized = true
+        )
+
+        // Важно: непосредственно устанавливаем новое состояние
+        _wizardState.value = newState
+
+        Timber.d("New state set: currentStepIndex=${_wizardState.value?.currentStepIndex}, isCompleted=${_wizardState.value?.isCompleted}")
     }
 }

@@ -38,7 +38,7 @@ import timber.log.Timber
 fun WizardScreen(
     state: WizardState?,
     onStepComplete: (Any?) -> Unit,
-    onStepSkip: (Any?) -> Unit,  // Новый параметр
+    onStepSkip: (Any?) -> Unit,
     onComplete: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
@@ -49,15 +49,34 @@ fun WizardScreen(
         return
     }
 
-    Dialog(
-        onDismissRequest = {
-            // Добавляем логирование при закрытии
-            Timber.d("Dialog was closed by user")
+    // Обработчик действий при нажатии на "Назад"
+    val handleBack = {
+        Timber.d("WizardScreen: handleBack called, isCompleted=${state.isCompleted}, canGoBack=${state.canGoBack}")
+
+        if (state.isCompleted) {
+            // На итоговом экране
+            Timber.d("handleBack: returning from final screen")
+            onStepComplete(null)
+        } else if (state.canGoBack) {
+            // На промежуточном шаге с возможностью возврата
+            Timber.d("handleBack: going to previous step")
+            onStepComplete(null)
+        } else {
+            // На первом шаге - закрываем визард
+            Timber.d("handleBack: cancelling wizard")
             onCancel()
+        }
+    }
+
+    Dialog(
+        // При нажатии системной кнопки "Назад" вызовется onDismissRequest
+        onDismissRequest = {
+            Timber.d("Dialog onDismissRequest triggered - handling system back button")
+            handleBack()
         },
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
-            dismissOnBackPress = true,
+            dismissOnBackPress = true, // ВАЖНО: включаем стандартную обработку
             dismissOnClickOutside = false
         )
     ) {
@@ -82,7 +101,7 @@ fun WizardScreen(
                     )
 
                     IconButton(onClick = {
-                        Timber.d("CLose wizard button was clicked")
+                        Timber.d("Close wizard button was clicked")
                         onCancel()
                     }) {
                         Icon(
@@ -100,10 +119,10 @@ fun WizardScreen(
                         .padding(vertical = 16.dp)
                 )
 
-                // Содержимое текущего шага (в безопасном блоке)
+                // Содержимое текущего шага
                 Box(
                     modifier = Modifier
-                        .weight(0.5f)
+                        .weight(1f)
                         .fillMaxWidth()
                 ) {
                     val currentStep = state.currentStep
@@ -116,9 +135,10 @@ fun WizardScreen(
                                 Timber.d("Wizard complete button was clicked")
                                 onComplete()
                             },
-                            onCancel = {
-                                Timber.d("Cancel button was pressed in summary screen")
-                                onCancel()
+                            onBack = {
+                                // Используем общий обработчик
+                                Timber.d("Back button was pressed in summary screen")
+                                handleBack()
                             }
                         )
                     } else {
@@ -126,7 +146,10 @@ fun WizardScreen(
                         val context = WizardContext(
                             results = state.results,
                             onUpdate = { updatedResults -> onStepComplete(updatedResults) },
-                            onBack = { onStepComplete(null) },
+                            onBack = {
+                                Timber.d("Step requested navigation back")
+                                handleBack()
+                            },
                             onSkip = { result -> onStepSkip(result) },
                             onCancel = onCancel
                         )
@@ -135,44 +158,31 @@ fun WizardScreen(
                     }
                 }
 
-                // Навигационные кнопки
-                if (state.currentStep != null && !state.isCompleted) {
-                    Row(
+                // Навигационные кнопки - только кнопка назад, если это возможно
+                if (state.currentStep != null && !state.isCompleted && state.canGoBack) {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        contentAlignment = Alignment.CenterStart
                     ) {
                         OutlinedButton(
                             onClick = {
-                                Timber.d("Cancel button was pressed in navigation")
-                                onCancel()
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Отмена")
-                        }
-
-                        if (state.canGoBack) {
-                            OutlinedButton(
-                                onClick = {
-                                    Timber.d("Back button was pressed in navigation")
-                                    onStepComplete(null)
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ArrowBack,
-                                    contentDescription = null
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Назад")
+                                Timber.d("Back button was pressed in navigation")
+                                handleBack()
                             }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = null
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Назад")
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.weight(0.05f).height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
@@ -182,7 +192,7 @@ fun WizardScreen(
 fun SummaryScreen(
     results: WizardResultModel,
     onComplete: () -> Unit,
-    onCancel: () -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -287,10 +297,18 @@ fun SummaryScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedButton(
-                onClick = onCancel,
+                onClick = {
+                    Timber.d("Back button in summary screen clicked")
+                    onBack()
+                },
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Отмена")
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Назад")
             }
 
             Button(

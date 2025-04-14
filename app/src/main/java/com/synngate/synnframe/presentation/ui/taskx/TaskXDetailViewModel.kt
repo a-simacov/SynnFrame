@@ -344,7 +344,19 @@ class TaskXDetailViewModel(
         }
     }
 
+    // Метод для обработки результатов визарда
     fun processWizardStep(result: Any?) {
+        if (result == null) {
+            // Проверяем, находится ли визард на итоговом экране
+            val state = wizardController.wizardState.value
+            if (state != null && state.isCompleted) {
+                Timber.d("TaskXDetailViewModel: detected back from summary, using special method")
+                returnFromSummaryScreen()
+                return
+            }
+        }
+
+        // Стандартная обработка для всех других случаев
         wizardController.processStepResult(result)
     }
 
@@ -456,5 +468,13 @@ class TaskXDetailViewModel(
     override fun dispose() {
         super.dispose()
         wizardController.dispose()
+    }
+
+    // TaskXDetailViewModel.kt
+
+    // Добавьте метод для явного возврата с итогового экрана
+    fun returnFromSummaryScreen() {
+        Timber.d("TaskXDetailViewModel: explicit return from summary screen")
+        wizardController.returnFromSummaryScreen()
     }
 }
