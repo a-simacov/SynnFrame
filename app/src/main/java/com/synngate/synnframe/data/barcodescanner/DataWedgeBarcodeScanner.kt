@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
+
 class DataWedgeBarcodeScanner(
     private val context: Context
 ) : BarcodeScanner, DataWedgeReceiver.ScanListener {
@@ -31,14 +32,35 @@ class DataWedgeBarcodeScanner(
         const val PROFILE_NAME = "SynnFrameProfile"
     }
 
+    private fun disableAutoScan() {
+        try {
+            // Отправляем команду на отключение автоматического сканирования
+            val disableAutoIntent = Intent("com.symbol.datawedge.api.ACTION")
+            disableAutoIntent.putExtra("com.symbol.datawedge.api.SCANNER_INPUT_PLUGIN", "DISABLE_PLUGIN")
+            context.sendBroadcast(disableAutoIntent)
+
+            // Для точного контроля можно также отключить триггер
+            val disableTriggerIntent = Intent("com.symbol.datawedge.api.ACTION")
+            disableTriggerIntent.putExtra("com.symbol.datawedge.api.SOFT_SCAN_TRIGGER", "DISABLE_HARDWARE")
+            context.sendBroadcast(disableTriggerIntent)
+
+            Timber.d("DataWedge auto scan disabled")
+        } catch (e: Exception) {
+            Timber.e(e, "Error disabling auto scan: ${e.message}")
+        }
+    }
+
     override suspend fun initialize(): Result<Unit> = withContext(Dispatchers.IO) {
         if (isInitializedState) {
             return@withContext Result.success(Unit)
         }
 
         return@withContext try {
-            // Создаем профиль DataWedge для нашего приложения
+            // Создаем профиль DataWedge
             createDataWedgeProfile()
+
+            // Важно! Отключаем автоматическое сканирование
+            disableAutoScan()
 
             isInitializedState = true
             Result.success(Unit)
@@ -66,11 +88,13 @@ class DataWedgeBarcodeScanner(
         scanListener = listener
 
         return@withContext try {
-            // Регистрируем слушателя в DataWedgeReceiver
+            // Регистрируем слушателя
             DataWedgeReceiver.addListener(this@DataWedgeBarcodeScanner)
 
-            // Активируем сканирование через DataWedge API
-            enableScanner()
+            // Явно включаем сканер только когда это запрошено
+            val enableScanIntent = Intent("com.symbol.datawedge.api.ACTION")
+            enableScanIntent.putExtra("com.symbol.datawedge.api.SCANNER_INPUT_PLUGIN", "ENABLE_PLUGIN")
+            context.sendBroadcast(enableScanIntent)
 
             isEnabledState = true
             Result.success(Unit)
@@ -142,7 +166,7 @@ class DataWedgeBarcodeScanner(
             // Профильные настройки
             configBundle.putString("PROFILE_NAME", PROFILE_NAME)
             configBundle.putString("PROFILE_ENABLED", "true")
-            configBundle.putString("CONFIG_MODE", "UPDATE")
+            configBundle.putString("CONFIG_MODE", "UPDATE") // "CREATE_IF_NOT_EXIST"
 
             // Настройка плагина сканера
             val barcodeConfig = Bundle()
@@ -170,16 +194,30 @@ class DataWedgeBarcodeScanner(
             intentConfig.putString("RESET_CONFIG", "true")
 
             // Параметры Intent
-            val intentParams = Bundle()
-            intentParams.putString("intent_output_enabled", "true")
-            intentParams.putString("intent_action", "com.symbol.datawedge.api.RESULT_ACTION")
-            intentParams.putString("intent_delivery", "2") // 0-запуск activity, 1-сервис, 2-бродкаст
+            val intentProps = Bundle()
+            intentProps.putString("intent_output_enabled", "true")
+            intentProps.putString("intent_action", "com.symbol.datawedge.api.RESULT_ACTION")
+            intentProps.putString("intent_category", "android.intent.category.DEFAULT")
+            intentProps.putString("intent_delivery", "2") // 2 = Broadcast intent
+            // Указываем компонент явно
+            intentProps.putString("intent_component_name", "com.synngate.synnframe")//context.packageName + "/com.synngate.synnframe.data.barcodescanner.DataWedgeReceiver")
 
-            // ВАЖНО: добавляем информацию о компоненте
-            intentParams.putString("intent_component_name", context.packageName + "/.data.barcodescanner.DataWedgeReceiver")
-            intentParams.putString("intent_component_package", context.packageName)
+            val bundleComponentInfo = ArrayList<Bundle>()
 
-            intentConfig.putBundle("PARAM_LIST", intentParams)
+            val component0 = Bundle()
+            component0.putString("PACKAGE_NAME", "com.synngate.synnframe")
+            component0.putString("SIGNATURE", "E22084421EAE1A65EEBCB68D4341FE3C2BB6BEC9D")
+            bundleComponentInfo.add(component0)
+
+            intentProps.putParcelableArrayList("intent_component_info", bundleComponentInfo)
+
+            // Ставим отдельно параметры intent output
+
+            intentConfig.putBundle("PARAM_LIST", intentProps)
+
+            val pluginList = ArrayList<Bundle>()
+            pluginList.add(intentConfig)
+            pluginList.add(barcodeConfig)
 
             // Настройка списка приложений
             val appConfig = Bundle()
@@ -188,7 +226,7 @@ class DataWedgeBarcodeScanner(
 
             // Добавляем конфигурации в профиль
             configBundle.putParcelableArray("APP_LIST", arrayOf(appConfig))
-            configBundle.putParcelableArray("PLUGIN_CONFIG", arrayOf(barcodeConfig, intentConfig))
+            configBundle.putParcelableArrayList("PLUGIN_CONFIG", pluginList)
 
             // Отправляем конфигурацию
             val configIntent = Intent(ACTION_DATAWEDGE)
