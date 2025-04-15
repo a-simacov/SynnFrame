@@ -1,5 +1,6 @@
 package com.synngate.synnframe.data.repository
 
+import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.data.datastore.AppSettingsDataStore
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.api.AppUpdateApi
@@ -59,4 +60,8 @@ class SettingsRepositoryImpl(
     override suspend fun setLogLevel(level: LogLevel) {
         appSettingsDataStore.setLogLevel(level)
     }
+
+    override fun getDeviceType(): Flow<DeviceType> = appSettingsDataStore.deviceType
+
+    override suspend fun setDeviceType(type: DeviceType) = appSettingsDataStore.setDeviceType(type)
 }

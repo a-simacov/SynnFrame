@@ -1,5 +1,6 @@
 package com.synngate.synnframe.domain.repository
 
+import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.dto.AppVersionDto
 import com.synngate.synnframe.presentation.theme.ThemeMode
@@ -30,4 +31,10 @@ interface SettingsRepository {
 
     suspend fun setBinCodePattern(pattern: String)
     suspend fun setLogLevel(level: LogLevel)
+
+    // Получить тип устройства
+    fun getDeviceType(): Flow<DeviceType>
+
+    // Установить тип устройства
+    suspend fun setDeviceType(type: DeviceType)
 }

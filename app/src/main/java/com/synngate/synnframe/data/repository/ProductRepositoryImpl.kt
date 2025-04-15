@@ -40,8 +40,19 @@ class ProductRepositoryImpl(
 
     override suspend fun getProductsByIds(ids: Set<String>): List<Product> {
         return withContext(Dispatchers.IO) {
-            val productEntities = productDao.getProductEntitiesByIds(ids)
-            buildProductsWithDetails(productEntities)
+            val BATCH_SIZE = 400
+            val resultProducts = mutableListOf<Product>()
+
+            // Разбиваем множество ID на батчи
+            val idBatches = ids.chunked(BATCH_SIZE)
+
+            for (idBatch in idBatches) {
+                val productEntities = productDao.getProductEntitiesByIds(idBatch.toSet())
+                val batchProducts = buildProductsWithDetails(productEntities)
+                resultProducts.addAll(batchProducts)
+            }
+
+            resultProducts
         }
     }
 
@@ -138,26 +149,37 @@ class ProductRepositoryImpl(
     private suspend fun buildProductsWithDetails(productEntities: List<ProductEntity>): List<Product> {
         if (productEntities.isEmpty()) return emptyList()
 
-        val productIds = productEntities.map { it.id }
+        // Максимальный безопасный размер батча (меньше лимита SQLite)
+        val BATCH_SIZE = 400
 
-        val allUnits = productDao.getProductUnitsForProducts(productIds)
+        val resultProducts = mutableListOf<Product>()
 
-        val unitIds = allUnits.map { it.id }
+        // Разбиваем список товаров на батчи
+        val productBatches = productEntities.chunked(BATCH_SIZE)
 
-        val allBarcodes = productDao.getBarcodesForUnits(productIds, unitIds)
+        for (batch in productBatches) {
+            val productIds = batch.map { it.id }
 
-        val unitsMap = allUnits.groupBy { it.productId }
-        val barcodesMap = allBarcodes.groupBy { "${it.productId}:${it.productUnitId}" }
+            val allUnits = productDao.getProductUnitsForProducts(productIds)
+            val unitIds = allUnits.map { it.id }
+            val allBarcodes = productDao.getBarcodesForUnits(productIds, unitIds)
 
-        return productEntities.map { productEntity ->
-            val units = unitsMap[productEntity.id]?.map { unitEntity ->
-                val barcodes = barcodesMap["${productEntity.id}:${unitEntity.id}"]?.map { it.code }
-                    ?: emptyList()
+            val unitsMap = allUnits.groupBy { it.productId }
+            val barcodesMap = allBarcodes.groupBy { "${it.productId}:${it.productUnitId}" }
 
-                unitEntity.toDomainModel(barcodes)
-            } ?: emptyList()
+            val batchProducts = batch.map { productEntity ->
+                val units = unitsMap[productEntity.id]?.map { unitEntity ->
+                    val barcodes = barcodesMap["${productEntity.id}:${unitEntity.id}"]?.map { it.code }
+                        ?: emptyList()
+                    unitEntity.toDomainModel(barcodes)
+                } ?: emptyList()
 
-            productEntity.toDomainModel(units)
+                productEntity.toDomainModel(units)
+            }
+
+            resultProducts.addAll(batchProducts)
         }
+
+        return resultProducts
     }
 }

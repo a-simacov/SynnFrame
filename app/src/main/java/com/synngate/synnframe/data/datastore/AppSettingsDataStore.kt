@@ -4,14 +4,18 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import com.synngate.synnframe.util.logging.LogLevel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
+import java.io.IOException
 
 class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
 
@@ -31,6 +35,7 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
         const val DEFAULT_BIN_PATTERN = "^[a-zA-Z][0-9][0-9]{2}[1-9][1-9]$"
         private val LOG_LEVEL = stringPreferencesKey("log_level")
         const val DEFAULT_LOG_LEVEL = "FULL"
+        private val deviceTypeKey = stringPreferencesKey("device_type")
     }
 
     val showServersOnStartup: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -88,6 +93,30 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
                 LogLevel.FULL
             }
         }
+
+    val deviceType: Flow<DeviceType> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                Timber.e(exception, "Error reading settings")
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            val deviceTypeValue = preferences[deviceTypeKey] ?: DeviceType.STANDARD.name
+            try {
+                DeviceType.valueOf(deviceTypeValue)
+            } catch (e: IllegalArgumentException) {
+                DeviceType.STANDARD
+            }
+        }
+
+    suspend fun setDeviceType(type: DeviceType) {
+        dataStore.edit { preferences ->
+            preferences[deviceTypeKey] = type.name
+        }
+    }
 
     suspend fun setShowServersOnStartup(show: Boolean) {
         dataStore.edit { preferences ->

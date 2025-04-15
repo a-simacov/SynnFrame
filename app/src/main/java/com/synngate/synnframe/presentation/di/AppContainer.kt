@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.synngate.synnframe.data.barcodescanner.BarcodeScannerFactory
+import com.synngate.synnframe.data.barcodescanner.ScannerService
 import com.synngate.synnframe.data.datasource.BinDataSource
 import com.synngate.synnframe.data.datasource.PalletDataSource
 import com.synngate.synnframe.data.datasource.ProductDataSource
@@ -447,9 +449,27 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         return createChildContainer { NavigationContainer(this) }
     }
 
+    // Фабрика для создания сканеров
+    val barcodeScannerFactory by lazy {
+        BarcodeScannerFactory(applicationContext, settingsRepository)
+    }
+
+    // Сервис управления сканером
+    val scannerService by lazy {
+        ScannerService(barcodeScannerFactory).also {
+            // Автоматически инициализируем сканер при создании сервиса
+            it.initialize()
+        }
+    }
+
     init {
         // Инициализация каналов уведомлений
         notificationChannelManager.createNotificationChannels()
+    }
+
+    override fun dispose() {
+        super.dispose()
+        scannerService.dispose()
     }
 }
 

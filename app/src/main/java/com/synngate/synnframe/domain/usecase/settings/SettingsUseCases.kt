@@ -2,6 +2,7 @@ package com.synngate.synnframe.domain.usecase.settings
 
 import android.content.Context
 import com.synngate.synnframe.BuildConfig
+import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.domain.service.FileService
@@ -27,6 +28,8 @@ class SettingsUseCases(
 
     val binCodePattern = settingsRepository.getBinCodePattern()
     val logLevel: Flow<LogLevel> = settingsRepository.logLevel
+
+    val deviceType = settingsRepository.getDeviceType()
 
     suspend fun setShowServersOnStartup(show: Boolean): Result<Unit> {
         return try {
@@ -191,5 +194,10 @@ class SettingsUseCases(
             Timber.e(e, "Error updating log level")
             Result.failure(e)
         }
+    }
+
+    suspend fun setDeviceType(type: DeviceType) {
+        settingsRepository.setDeviceType(type)
+        Timber.i("Device type set to: $type")
     }
 }

@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.settings.model
 
+import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.data.datastore.AppSettingsDataStore
 import com.synngate.synnframe.data.local.entity.OperationType
 import com.synngate.synnframe.data.sync.RetrySettings
@@ -72,4 +73,6 @@ data class SettingsState(
 
     val binCodePattern: String = AppSettingsDataStore.DEFAULT_BIN_PATTERN,
     val logLevel: LogLevel = LogLevel.FULL,
+
+    val deviceType: DeviceType = DeviceType.STANDARD
 )

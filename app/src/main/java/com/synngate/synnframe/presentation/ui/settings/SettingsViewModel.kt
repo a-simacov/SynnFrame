@@ -2,6 +2,7 @@ package com.synngate.synnframe.presentation.ui.settings
 
 import android.content.Intent
 import androidx.lifecycle.viewModelScope
+import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.UpdateInstallerImpl
@@ -49,6 +50,7 @@ class SettingsViewModel(
                 val activeServer = serverUseCases.getActiveServer().first()
                 val binCodePattern = settingsUseCases.binCodePattern.first()
                 val logLevel = settingsUseCases.logLevel.first()
+                val deviceType = settingsUseCases.deviceType.first()
 
                 // Обновляем состояние с загруженными данными
                 updateState {
@@ -62,7 +64,8 @@ class SettingsViewModel(
                         activeServer = activeServer,
                         isLoading = false,
                         binCodePattern = binCodePattern,
-                        logLevel = logLevel
+                        logLevel = logLevel,
+                        deviceType = deviceType
                     )
                 }
 
@@ -135,6 +138,12 @@ class SettingsViewModel(
         viewModelScope.launch {
             settingsUseCases.logLevel.collect { level ->
                 updateState { it.copy(logLevel = level) }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsUseCases.deviceType.collect { deviceType ->
+                updateState { it.copy(deviceType = deviceType) }
             }
         }
     }
@@ -856,6 +865,18 @@ class SettingsViewModel(
                     )
                 }
                 sendEvent(SettingsEvent.ShowSnackbar("Ошибка обновления уровня логирования"))
+            }
+        }
+    }
+
+    fun setDeviceType(type: DeviceType) {
+        launchIO {
+            try {
+                settingsUseCases.setDeviceType(type)
+                sendEvent(SettingsEvent.ShowSnackbar("Тип устройства изменен на ${type.name}"))
+            } catch (e: Exception) {
+                Timber.e(e, "Error setting device type")
+                sendEvent(SettingsEvent.ShowSnackbar("Ошибка при изменении типа устройства: ${e.message}"))
             }
         }
     }

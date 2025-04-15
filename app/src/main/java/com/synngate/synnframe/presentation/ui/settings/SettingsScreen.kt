@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.R
+import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.buttons.BooleanButton
@@ -56,6 +57,7 @@ import com.synngate.synnframe.presentation.common.inputs.NumberTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.InfoCard
 import com.synngate.synnframe.presentation.common.scaffold.ScrollableScreenContent
+import com.synngate.synnframe.presentation.common.scaffold.SectionHeader
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsEvent
@@ -248,6 +250,14 @@ fun SettingsScreen(
                 onClick = { viewModel.onSyncHistoryClick() },
                 icon = Icons.Filled.History,
                 contentDescription = stringResource(id = R.string.sync_history)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            DeviceTypeSection(
+                state = state,
+                onDeviceTypeChange = { viewModel.setDeviceType(it) },
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -876,7 +886,7 @@ fun LoggingSettingsSection(
         )
 
         CarouselValueButton(
-            values = LogLevel.values().toList(),
+            values = LogLevel.entries,
             currentValue = state.logLevel,
             onValueChange = onLogLevelChange,
             valueToString = { logLevel ->
@@ -902,6 +912,37 @@ fun LoggingSettingsSection(
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun DeviceTypeSection(
+    state: SettingsState,
+    onDeviceTypeChange: (DeviceType) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Секция настроек устройства
+    SectionHeader(title = stringResource(R.string.device_settings))
+
+    InfoCard(
+        title = stringResource(R.string.device_settings),
+        modifier = modifier
+    ) {
+        val types = DeviceType.entries
+
+        CarouselValueButton(
+            values = types,
+            currentValue = state.deviceType,
+            onValueChange = { onDeviceTypeChange(it) },
+            valueToString = { deviceType ->
+                when (deviceType) {
+                    DeviceType.STANDARD -> stringResource(R.string.device_type_standard)
+                    DeviceType.ZEBRA -> stringResource(R.string.device_type_zebra)
+                }
+            },
+            labelText = stringResource(R.string.device_type),
+            modifier = modifier
         )
     }
 }

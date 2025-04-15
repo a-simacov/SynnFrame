@@ -626,4 +626,19 @@
     <string name="taskx_resumed">Задание возобновлено</string>
     <string name="taskx_verified">Задание успешно верифицировано</string>
     <string name="taskx_cannot_add_fact">Добавление строк факта возможно только для задания в статусе \'Выполняется\'</string>
+
+    <!-- Строки для сканера -->
+    <string name="scanner_uninitialized">Сканер не инициализирован</string>
+    <string name="scanner_initializing">Инициализация сканера…</string>
+    <string name="scanner_initialized">Сканер готов</string>
+    <string name="scanner_enabling">Активация сканера…</string>
+    <string name="scanner_enabled">Сканер активен</string>
+    <string name="scanner_disabled">Сканер отключен</string>
+    <string name="scanner_error">Ошибка сканера</string>
+
+    <!-- Строки для настроек устройства -->
+    <string name="device_settings">Настройки устройства</string>
+    <string name="device_type">Тип устройства</string>
+    <string name="device_type_standard">Стандартное</string>
+    <string name="device_type_zebra">Zebra</string>
 </resources>
