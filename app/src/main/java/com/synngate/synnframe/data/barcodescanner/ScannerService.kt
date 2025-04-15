@@ -101,7 +101,10 @@ class ScannerService(
 
     // Метод для обновления LifecycleOwner (используется при изменении)
     fun updateLifecycleOwner(owner: LifecycleOwner) {
-        val wasEnabled = _scannerState.value == ScannerState.Enabled
+        val currentState = _scannerState.value
+        val wasEnabled = currentState == ScannerState.Enabled
+
+        Timber.d("Updating lifecycleOwner, current scanner type: ${scanner?.getManufacturer()}, state: $currentState")
 
         // Если это DefaultBarcodeScanner, обновляем его LifecycleOwner
         if (scanner is DefaultBarcodeScanner) {
@@ -121,6 +124,7 @@ class ScannerService(
             }
         } else {
             // Для других типов сканеров просто сохраняем LifecycleOwner для будущего использования
+            Timber.d("Scanner is not DefaultBarcodeScanner, just storing lifecycleOwner")
             lifecycleOwner = owner
         }
     }

@@ -5,7 +5,6 @@ import com.symbol.emdk.EMDKManager
 import com.symbol.emdk.barcode.BarcodeManager
 import com.symbol.emdk.barcode.ScanDataCollection
 import com.symbol.emdk.barcode.Scanner
-import com.symbol.emdk.barcode.ScannerConfig
 import com.symbol.emdk.barcode.StatusData
 import com.synngate.synnframe.domain.common.BarcodeScanner
 import com.synngate.synnframe.domain.common.BarcodeType
@@ -58,6 +57,21 @@ class ZebraBarcodeScanner(
                                 // Получаем BarcodeManager
                                 barcodeManager = manager.getInstance(EMDKManager.FEATURE_TYPE.BARCODE) as? BarcodeManager
                                 if (barcodeManager != null) {
+                                    // Перечисляем доступные устройства сканера
+                                    try {
+                                        val deviceList = barcodeManager?.getSupportedDevicesInfo()
+                                        if (deviceList != null && deviceList.isNotEmpty()) {
+                                            Timber.d("Available scanner devices:")
+                                            for (device in deviceList) {
+                                                Timber.d("Device: ${device.friendlyName}, ID: ${device.deviceIdentifier}")
+                                            }
+                                        } else {
+                                            Timber.w("No scanner devices available")
+                                        }
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "Error getting device list")
+                                    }
+
                                     isInitializedState = true
                                     continuation.resume(Result.success(Unit))
                                 } else {
@@ -92,9 +106,31 @@ class ZebraBarcodeScanner(
     private fun isEmdkAvailable(): Boolean {
         return try {
             val emdkClass = Class.forName("com.symbol.emdk.EMDKManager")
-            true
+            Timber.d("EMDK classes are available on this device")
+
+            // Дополнительная проверка - можем ли мы создать экземпляр EMDK Manager
+            try {
+                EMDKManager.getEMDKManager(context, object : EMDKManager.EMDKListener {
+                    override fun onOpened(manager: EMDKManager?) {
+                        if (manager != null) {
+                            Timber.d("EMDK Manager successfully opened")
+                            manager.release() // Освобождаем сразу после теста
+                        } else {
+                            Timber.w("EMDK Manager is null after opening")
+                        }
+                    }
+
+                    override fun onClosed() {
+                        Timber.d("EMDK Manager closed")
+                    }
+                })
+                true
+            } catch (e: Exception) {
+                Timber.e(e, "Error getting EMDK Manager")
+                false
+            }
         } catch (e: ClassNotFoundException) {
-            Timber.w("EMDK not available on this device")
+            Timber.w("EMDK classes not available on this device")
             false
         }
     }
@@ -129,18 +165,20 @@ class ZebraBarcodeScanner(
 
             scanListener = listener
 
-            // Создаем сканер с настройками
-            val scannerConfig = ScannerConfig()
-            scannerConfig.decoderParams.code128.enabled = true
-            scannerConfig.decoderParams.ean13.enabled = true
-            scannerConfig.decoderParams.qrCode.enabled = true
-            scannerConfig.scanParams.decodeHapticFeedback = true
+            // Используем INTERNAL_IMAGER1 вместо DEFAULT
+            Timber.d("Trying to get scanner with identifier: INTERNAL_IMAGER1")
+            scanner = barcodeManager?.getDevice(BarcodeManager.DeviceIdentifier.INTERNAL_IMAGER1)
 
-            scanner = barcodeManager?.getDevice(BarcodeManager.DeviceIdentifier.DEFAULT)
+            if (scanner == null) {
+                Timber.e("Could not get scanner device with INTERNAL_IMAGER1")
+                return@withContext Result.failure(Exception("Could not get scanner device"))
+            }
 
-            scanner?.let {
+            try {
+                // Создаем и сохраняем слушатели
                 dataListener = object : Scanner.DataListener {
                     override fun onData(scanDataCollection: ScanDataCollection?) {
+                        Timber.d("Zebra scanner onData called")
                         if (scanDataCollection != null) {
                             val scanData = scanDataCollection.scanData
                             if (scanData != null && scanData.size > 0) {
@@ -148,22 +186,29 @@ class ZebraBarcodeScanner(
                                 val barcodeData = data.data
                                 val labelType = convertLabelType(data.labelType)
 
+                                Timber.d("Zebra scanner detected barcode: $barcodeData")
                                 scanListener?.onScanSuccess(
                                     ScanResult(
                                         barcode = barcodeData,
                                         type = labelType
                                     )
                                 )
+                            } else {
+                                Timber.d("Zebra scanner received empty scan data")
                             }
+                        } else {
+                            Timber.d("Zebra scanner received null scanDataCollection")
                         }
                     }
                 }
 
                 statusListener = object : Scanner.StatusListener {
                     override fun onStatus(statusData: StatusData?) {
+                        Timber.d("Zebra scanner onStatus called: ${statusData?.state}")
                         statusData?.let { status ->
                             when (status.state) {
                                 StatusData.ScannerStates.ERROR -> {
+                                    Timber.e("Scanner error: ${status.friendlyName}")
                                     scanListener?.onScanError(
                                         ScanError(
                                             code = status.friendlyName.hashCode(),
@@ -172,24 +217,28 @@ class ZebraBarcodeScanner(
                                     )
                                 }
                                 else -> {
-                                    // Обработка других статусов при необходимости
+                                    Timber.d("Scanner status changed: ${status.state}, ${status.friendlyName}")
                                 }
                             }
                         }
                     }
                 }
 
-                it.addDataListener(dataListener)
-                it.addStatusListener(statusListener)
+                // Добавляем слушатели
+                scanner!!.addDataListener(dataListener)
+                scanner!!.addStatusListener(statusListener)
 
-                // Применение конфигурации
-                it.config = scannerConfig
                 // Включение сканера
-                it.enable()
+                Timber.d("Enabling scanner...")
+                scanner!!.enable()
+                Timber.d("Scanner enabled successfully")
 
                 isEnabledState = true
                 Result.success(Unit)
-            } ?: Result.failure(Exception("Could not get scanner device"))
+            } catch (e: Exception) {
+                Timber.e(e, "Error configuring scanner: ${e.message}")
+                Result.failure(e)
+            }
         } catch (e: Exception) {
             Timber.e(e, "Error enabling Zebra scanner")
             Result.failure(e)
@@ -201,9 +250,16 @@ class ZebraBarcodeScanner(
 
         try {
             scanner?.let {
+                // Деактивируем сканер
                 it.disable()
-                it.removeDataListener(dataListener)
-                it.removeStatusListener(statusListener)
+
+                // Удаляем слушателей
+                dataListener?.let { listener -> it.removeDataListener(listener) }
+                statusListener?.let { listener -> it.removeStatusListener(listener) }
+
+                // Очищаем ссылки на слушателей
+                dataListener = null
+                statusListener = null
             }
         } catch (e: Exception) {
             Timber.e(e, "Error disabling Zebra scanner")
