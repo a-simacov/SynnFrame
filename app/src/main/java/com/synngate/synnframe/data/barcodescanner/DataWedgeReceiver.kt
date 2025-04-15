@@ -37,6 +37,7 @@ class DataWedgeReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        Timber.d("DataWedgeReceiver received intent: ${intent.action}")
         if (intent.action == ACTION_DATAWEDGE_SCAN) {
             Timber.d("DataWedge scan received with action: ${intent.action}")
 

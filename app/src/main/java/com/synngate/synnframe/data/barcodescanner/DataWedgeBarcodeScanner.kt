@@ -1,7 +1,11 @@
 package com.synngate.synnframe.data.barcodescanner
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import com.synngate.synnframe.domain.common.BarcodeScanner
 import com.synngate.synnframe.domain.common.BarcodeType
@@ -11,6 +15,7 @@ import com.synngate.synnframe.domain.common.ScannerManufacturer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.security.MessageDigest
 
 
 class DataWedgeBarcodeScanner(
@@ -19,6 +24,9 @@ class DataWedgeBarcodeScanner(
     private var isInitializedState = false
     private var isEnabledState = false
     private var scanListener: ScanResultListener? = null
+
+    private var dataWedgeReceiver: BroadcastReceiver? = null
+    private var isReceiverRegistered = false
 
     // Константы для работы с DataWedge
     companion object {
@@ -91,6 +99,31 @@ class DataWedgeBarcodeScanner(
             // Регистрируем слушателя
             DataWedgeReceiver.addListener(this@DataWedgeBarcodeScanner)
 
+            // Создаем и регистрируем receiver динамически
+            if (dataWedgeReceiver == null) {
+                dataWedgeReceiver = DataWedgeReceiver()
+                val intentFilter = IntentFilter("com.symbol.datawedge.api.RESULT_ACTION")
+                intentFilter.addCategory(Intent.CATEGORY_DEFAULT)
+
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
+                        context.registerReceiver(
+                            dataWedgeReceiver,
+                            intentFilter,
+                            Context.RECEIVER_NOT_EXPORTED
+                        )
+                        isReceiverRegistered = true
+                    } else {
+                        context.registerReceiver(dataWedgeReceiver, intentFilter)
+                        isReceiverRegistered = true
+                    }
+                    Timber.d("DataWedge receiver registered dynamically")
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to register DataWedge receiver")
+                    isReceiverRegistered = false
+                }
+            }
+
             // Явно включаем сканер только когда это запрошено
             val enableScanIntent = Intent("com.symbol.datawedge.api.ACTION")
             enableScanIntent.putExtra("com.symbol.datawedge.api.SCANNER_INPUT_PLUGIN", "ENABLE_PLUGIN")
@@ -110,6 +143,24 @@ class DataWedgeBarcodeScanner(
         try {
             // Деактивируем сканирование
             disableScanner()
+
+            if (dataWedgeReceiver != null && isReceiverRegistered) {
+                try {
+                    context.unregisterReceiver(dataWedgeReceiver)
+                    isReceiverRegistered = false
+                    Timber.d("DataWedge receiver unregistered")
+                } catch (e: IllegalArgumentException) {
+                    // Приемник не был зарегистрирован - просто логируем это
+                    Timber.w("DataWedge receiver was not registered or already unregistered")
+                    isReceiverRegistered = false
+                } catch (e: Exception) {
+                    // Другие ошибки
+                    Timber.e(e, "Error unregistering DataWedge receiver")
+                    isReceiverRegistered = false
+                }
+            }
+
+            dataWedgeReceiver = null
 
             // Удаляем слушателя
             DataWedgeReceiver.removeListener(this)
@@ -204,9 +255,12 @@ class DataWedgeBarcodeScanner(
 
             val bundleComponentInfo = ArrayList<Bundle>()
 
+            val signature = getSHA1Signature(context) ?: "E22084421EAE1A65EEBCB68D4341FE3C2BB6BEC9D" // Default as fallback
+
             val component0 = Bundle()
-            component0.putString("PACKAGE_NAME", "com.synngate.synnframe")
-            component0.putString("SIGNATURE", "E22084421EAE1A65EEBCB68D4341FE3C2BB6BEC9D")
+            component0.putString("PACKAGE_NAME", context.packageName)
+            //todo заменить на реальный SHA1 приложения, текущий - недействительный
+            component0.putString("SIGNATURE", signature)
             bundleComponentInfo.add(component0)
 
             intentProps.putParcelableArrayList("intent_component_info", bundleComponentInfo)
@@ -270,5 +324,35 @@ class DataWedgeBarcodeScanner(
             "PDF417", "PDF-417" -> BarcodeType.PDF417
             else -> BarcodeType.UNKNOWN
         }
+    }
+
+    private fun getSHA1Signature(context: Context): String? {
+        try {
+            val packageInfo = context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.GET_SIGNING_CERTIFICATES
+            )
+            if (packageInfo.signingInfo != null) {
+                val signatures = if (packageInfo.signingInfo!!.hasMultipleSigners()) {
+                    packageInfo.signingInfo!!.apkContentsSigners
+                } else {
+                    packageInfo.signingInfo!!.signingCertificateHistory
+                }
+
+                if (signatures.isNotEmpty()) {
+                    val cert = signatures[0].toByteArray()
+                    val md = MessageDigest.getInstance("SHA1")
+                    val digest = md.digest(cert)
+                    val sb = StringBuilder()
+                    for (b in digest) {
+                        sb.append(String.format("%02X", b))
+                    }
+                    return sb.toString()
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error getting app SHA1 signature")
+        }
+        return null
     }
 }

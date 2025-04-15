@@ -1,6 +1,8 @@
 package com.synngate.synnframe.presentation.ui
 
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import com.synngate.synnframe.SynnFrameApplication
+import com.synngate.synnframe.data.barcodescanner.DataWedgeReceiver
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.di.AppContainer
 import com.synngate.synnframe.presentation.navigation.AppNavigation
@@ -25,6 +28,9 @@ import timber.log.Timber
 class MainActivity : ComponentActivity() {
 
     private lateinit var appContainer: AppContainer
+
+    private val dataWedgeReceiver = DataWedgeReceiver()
+    private var receiverRegistered = false
 
     companion object {
         const val EXTRA_SHOW_SERVERS_SCREEN = "extra_show_servers_screen"
@@ -52,6 +58,8 @@ class MainActivity : ComponentActivity() {
 
         Timber.d("MainActivity onCreate, startDestination=$startDestination, fromSplash=$fromSplash")
 
+        registerDataWedgeReceiver()
+
         setContent {
             val themeMode by app.appContainer.appSettingsDataStore.themeMode
                 .collectAsState(initial = ThemeMode.SYSTEM)
@@ -75,6 +83,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun registerDataWedgeReceiver() {
+        try {
+            // Регистрируем receiver динамически
+            val intentFilter = IntentFilter().apply {
+                addAction("com.symbol.datawedge.api.RESULT_ACTION")
+                addCategory(Intent.CATEGORY_DEFAULT)
+            }
+            registerReceiver(dataWedgeReceiver, intentFilter)
+            receiverRegistered = true
+            Timber.d("DataWedgeReceiver registered dynamically")
+        } catch (e: Exception) {
+            Timber.e(e, "Error registering DataWedgeReceiver dynamically: ${e.message}")
+        }
+    }
+
+
     // В MainActivity.kt
     override fun attachBaseContext(newBase: Context) {
         // Получаем сохраненный код языка (можно использовать другой способ хранения)
@@ -87,8 +111,16 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        // Обязательно отменяем регистрацию при уничтожении активности
+        if (receiverRegistered) {
+            try {
+                unregisterReceiver(dataWedgeReceiver)
+                receiverRegistered = false
+                Timber.d("DataWedgeReceiver unregistered")
+            } catch (e: Exception) {
+                Timber.e(e, "Error unregistering DataWedgeReceiver: ${e.message}")
+            }
+        }
         super.onDestroy()
-        // Очистка ресурсов при необходимости
-        Timber.d("MainActivity onDestroy")
     }
 }
