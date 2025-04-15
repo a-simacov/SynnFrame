@@ -1,5 +1,6 @@
 package com.synngate.synnframe.data.barcodescanner
 
+import androidx.lifecycle.LifecycleOwner
 import com.synngate.synnframe.domain.common.BarcodeScanner
 import com.synngate.synnframe.domain.common.ScanError
 import com.synngate.synnframe.domain.common.ScanResult
@@ -23,21 +24,30 @@ class ScannerService(
     private val _scannerState = MutableStateFlow<ScannerState>(ScannerState.Uninitialized)
     val scannerState = _scannerState.asStateFlow()
 
-    // Инициализация сканера
-    fun initialize() {
+    private var lifecycleOwner: LifecycleOwner? = null
+
+    // Обновленная инициализация сканера с поддержкой LifecycleOwner
+    fun initialize(lifecycleOwner: LifecycleOwner? = null) {
         if (_scannerState.value != ScannerState.Uninitialized) return
 
+        this.lifecycleOwner = lifecycleOwner
         _scannerState.value = ScannerState.Initializing
 
         coroutineScope.launch {
             try {
-                val scanner = scannerFactory.createScanner()
+                // Создаем сканер с lifecycleOwner
+                val scanner = scannerFactory.createScanner(lifecycleOwner)
                 val result = scanner.initialize()
 
                 if (result.isSuccess) {
                     this@ScannerService.scanner = scanner
                     _scannerState.value = ScannerState.Initialized
                     Timber.i("Scanner initialized: ${scanner.getManufacturer()}")
+
+                    // Если есть слушатели, автоматически активируем сканер
+                    if (listeners.isNotEmpty()) {
+                        enable()
+                    }
                 } else {
                     _scannerState.value = ScannerState.Error(result.exceptionOrNull()?.message ?: "Unknown error")
                     Timber.e(result.exceptionOrNull(), "Failed to initialize scanner")
@@ -86,6 +96,32 @@ class ScannerService(
                 _scannerState.value = ScannerState.Error(e.message ?: "Unknown error")
                 Timber.e(e, "Exception during scanner enabling")
             }
+        }
+    }
+
+    // Метод для обновления LifecycleOwner (используется при изменении)
+    fun updateLifecycleOwner(owner: LifecycleOwner) {
+        val wasEnabled = _scannerState.value == ScannerState.Enabled
+
+        // Если это DefaultBarcodeScanner, обновляем его LifecycleOwner
+        if (scanner is DefaultBarcodeScanner) {
+            coroutineScope.launch {
+                // Если сканер был активен, сначала деактивируем его
+                if (wasEnabled) {
+                    disable()
+                }
+
+                (scanner as DefaultBarcodeScanner).setLifecycleOwner(owner)
+                lifecycleOwner = owner
+
+                // Если сканер был активен, активируем его снова с новым LifecycleOwner
+                if (wasEnabled) {
+                    enable()
+                }
+            }
+        } else {
+            // Для других типов сканеров просто сохраняем LifecycleOwner для будущего использования
+            lifecycleOwner = owner
         }
     }
 

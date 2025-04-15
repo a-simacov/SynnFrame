@@ -34,6 +34,9 @@ class ZebraBarcodeScanner(
     private var isEnabledState = false
     private var scanListener: ScanResultListener? = null
 
+    private var dataListener: Scanner.DataListener? = null
+    private var statusListener: Scanner.StatusListener? = null
+
     override suspend fun initialize(): Result<Unit> = withContext(Dispatchers.IO) {
         return@withContext try {
             // Проверяем наличие EMDK
@@ -136,7 +139,7 @@ class ZebraBarcodeScanner(
             scanner = barcodeManager?.getDevice(BarcodeManager.DeviceIdentifier.DEFAULT)
 
             scanner?.let {
-                it.addDataListener(object : Scanner.DataListener {
+                dataListener = object : Scanner.DataListener {
                     override fun onData(scanDataCollection: ScanDataCollection?) {
                         if (scanDataCollection != null) {
                             val scanData = scanDataCollection.scanData
@@ -154,9 +157,9 @@ class ZebraBarcodeScanner(
                             }
                         }
                     }
-                })
+                }
 
-                it.addStatusListener(object : Scanner.StatusListener {
+                statusListener = object : Scanner.StatusListener {
                     override fun onStatus(statusData: StatusData?) {
                         statusData?.let { status ->
                             when (status.state) {
@@ -174,7 +177,10 @@ class ZebraBarcodeScanner(
                             }
                         }
                     }
-                })
+                }
+
+                it.addDataListener(dataListener)
+                it.addStatusListener(statusListener)
 
                 // Применение конфигурации
                 it.config = scannerConfig
@@ -196,8 +202,8 @@ class ZebraBarcodeScanner(
         try {
             scanner?.let {
                 it.disable()
-                it.removeDataListeners()
-                it.removeStatusListeners()
+                it.removeDataListener(dataListener)
+                it.removeStatusListener(statusListener)
             }
         } catch (e: Exception) {
             Timber.e(e, "Error disabling Zebra scanner")

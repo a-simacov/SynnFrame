@@ -53,7 +53,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.synngate.synnframe.R
-import com.synngate.synnframe.presentation.common.inputs.QuantityTextField
 import com.synngate.synnframe.util.scanner.BarcodeAnalyzer
 import timber.log.Timber
 import java.util.concurrent.Executors
@@ -299,77 +298,6 @@ fun BarcodeScannerDialog(
 
                 Spacer(modifier = Modifier.weight(0.05f).height(8.dp))
             }
-        }
-    }
-}
-
-/**
- * Компонент для ввода количества товара
- */
-@Composable
-fun QuantityInputRow(
-    currentQuantity: Float,
-    onQuantityChanged: (Float) -> Unit
-) {
-    var additionalQuantity by remember { mutableStateOf("") }
-    var isError by remember { mutableStateOf(false) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = stringResource(id = R.string.task_scan_current_quantity, currentQuantity),
-            style = MaterialTheme.typography.bodyLarge
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        QuantityTextField(
-            value = additionalQuantity,
-            onValueChange = { additionalQuantity = it },
-            label = stringResource(id = R.string.task_scan_add_quantity),
-            isError = isError,
-            errorText = if (isError) "Неверное значение" else null,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        val totalQuantity = try {
-            currentQuantity + (additionalQuantity.toFloatOrNull() ?: 0f)
-        } catch (e: Exception) {
-            currentQuantity
-        }
-
-        Text(
-            text = stringResource(id = R.string.task_scan_total_quantity, totalQuantity),
-            style = MaterialTheme.typography.bodyLarge
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        androidx.compose.material3.Button(
-            onClick = {
-                try {
-                    val addValue = additionalQuantity.toFloatOrNull() ?: 0f
-                    if (addValue != 0f) {
-                        onQuantityChanged(currentQuantity + addValue)
-                        additionalQuantity = "" // Сбрасываем поле после изменения
-                        isError = false
-                    } else {
-                        isError = true
-                    }
-                } catch (e: Exception) {
-                    isError = true
-                }
-            },
-            enabled = additionalQuantity.isNotEmpty(),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = stringResource(id = R.string.task_scan_modify))
         }
     }
 }

@@ -7,11 +7,13 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import com.synngate.synnframe.SynnFrameApplication
+import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.di.AppContainer
 import com.synngate.synnframe.presentation.navigation.AppNavigation
 import com.synngate.synnframe.presentation.navigation.Screen
@@ -60,10 +62,14 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // Основная навигация приложения
-                    AppNavigation(
-                        startDestination = startDestination
-                    )
+                    CompositionLocalProvider(
+                        LocalScannerService provides app.appContainer.scannerService
+                    ) {
+                        // Основная навигация приложения
+                        AppNavigation(
+                            startDestination = startDestination
+                        )
+                    }
                 }
             }
         }

@@ -289,30 +289,30 @@ class ProductListViewModel(
         sendEvent(ProductListEvent.NavigateToProductDetail(productId))
     }
 
-    fun findProductByBarcode(barcode: String, onProductFound: (Product?) -> Unit = {}) {
+    fun findProductByBarcode(barcode: String, onResult: (Product?) -> Unit) {
         launchIO {
-            updateState { it.copy(isLoading = true) }
-
             try {
                 val product = productUseCases.findProductByBarcode(barcode)
 
                 if (product != null) {
                     playSuccessSound(barcode)
-                    launchMain { onProductFound(product) }
+                    launchMain {
+                        onResult(product)
+                    }
                 } else {
                     playErrorSound(barcode)
+                    sendEvent(ProductListEvent.ShowSnackbar("Товар со штрихкодом $barcode не найден"))
+                    launchMain {
+                        onResult(null)
+                    }
                 }
-
-                updateState { it.copy(isLoading = false) }
             } catch (e: Exception) {
-                Timber.e(e, "Error finding product by barcode: ${e.message}")
-
-                // Воспроизводим звук неуспешного сканирования с дебаунсингом
+                Timber.e(e, "Error finding product by barcode")
                 playErrorSound(barcode)
-
-                updateState { it.copy(isLoading = false) }
-                // Вызываем колбэк с null в случае ошибки
-                launchMain { onProductFound(null) }
+                sendEvent(ProductListEvent.ShowSnackbar("Ошибка при поиске товара: ${e.message}"))
+                launchMain {
+                    onResult(null)
+                }
             }
         }
     }

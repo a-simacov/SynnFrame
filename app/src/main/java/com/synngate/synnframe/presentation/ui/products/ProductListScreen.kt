@@ -29,6 +29,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,23 +38,29 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.synngate.synnframe.R
+import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerDialog
+import com.synngate.synnframe.presentation.common.scanner.ScannerListener
+import com.synngate.synnframe.presentation.common.scanner.ScannerStatusIndicator
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.products.components.BatchScannerDialog
 import com.synngate.synnframe.presentation.ui.products.model.ProductListEvent
 import com.synngate.synnframe.presentation.ui.products.model.ProductListItemUiModel
 import com.synngate.synnframe.presentation.ui.products.model.SortOrder
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @Composable
@@ -69,6 +76,9 @@ fun ProductListScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     var showSortMenu by remember { mutableStateOf(false) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
@@ -92,6 +102,38 @@ fun ProductListScreen(
             }
         }
     }
+
+    val scannerService = LocalScannerService.current
+
+    // Используем ScannerService, если он доступен
+    scannerService?.let { service ->
+        // Обновляем lifecycleOwner для сканера
+        LaunchedEffect(lifecycleOwner) {
+            service.updateLifecycleOwner(lifecycleOwner)
+        }
+
+        // Обработчик результатов сканирования
+        ScannerListener(
+            scannerService = service,
+            onScanResult = { result ->
+                // Поиск товара по штрихкоду
+                viewModel.findProductByBarcode(result.barcode) { product ->
+                    product?.let { navigateToProductDetail(it.id) }
+                }
+            },
+            onScanError = { error ->
+                // Обработка ошибки сканирования
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = "Ошибка сканирования: ${error.message}",
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            },
+            showStatus = false // Статус будем показывать в actions
+        )
+    }
+
 
     // Диалоги без изменений
     if (state.showBatchScannerDialog) {
@@ -127,6 +169,14 @@ fun ProductListScreen(
             Pair(it, StatusType.ERROR)
         },
         actions = {
+            scannerService?.let { service ->
+                ScannerStatusIndicator(
+                    scannerService = service,
+                    showText = false,
+                    showIcon = true
+                )
+            }
+
             // Заменяем простую кнопку на кнопку с индикатором прогресса
             IconButton(
                 onClick = { viewModel.syncProducts() },
