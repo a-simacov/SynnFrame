@@ -869,14 +869,17 @@ class SettingsViewModel(
         }
     }
 
-    fun setDeviceType(type: DeviceType) {
+    fun setDeviceType(deviceType: DeviceType) {
         launchIO {
             try {
-                settingsUseCases.setDeviceType(type)
-                sendEvent(SettingsEvent.ShowSnackbar("Тип устройства изменен на ${type.name}"))
+                settingsUseCases.setDeviceType(deviceType)
+                Timber.i("Device type set to: $deviceType")
+
+                // Уведомляем пользователя о необходимости перезапуска
+                sendEvent(SettingsEvent.ShowSnackbar("Тип сканера изменен. Требуется перезапуск приложения для применения изменений."))
             } catch (e: Exception) {
                 Timber.e(e, "Error setting device type")
-                sendEvent(SettingsEvent.ShowSnackbar("Ошибка при изменении типа устройства: ${e.message}"))
+                sendEvent(SettingsEvent.ShowSnackbar("Ошибка при установке типа устройства: ${e.message}"))
             }
         }
     }

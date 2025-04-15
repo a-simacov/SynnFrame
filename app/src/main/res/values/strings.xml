@@ -641,4 +641,11 @@
     <string name="device_type">Тип устройства</string>
     <string name="device_type_standard">Стандартное</string>
     <string name="device_type_zebra">Zebra</string>
+
+    <string name="scanner_settings">Настройки сканера</string>
+    <string name="scanner_type">Тип сканера</string>
+    <string name="scanner_type_camera">Камера устройства</string>
+    <string name="scanner_type_emdk">Zebra EMDK</string>
+    <string name="scanner_type_datawedge">Zebra DataWedge</string>
+    <string name="scanner_restart_notice">После изменения типа сканера требуется перезапуск приложения</string>
 </resources>

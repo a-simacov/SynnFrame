@@ -939,10 +939,19 @@ fun DeviceTypeSection(
                 when (deviceType) {
                     DeviceType.STANDARD -> stringResource(R.string.device_type_standard)
                     DeviceType.ZEBRA -> stringResource(R.string.device_type_zebra)
+                    DeviceType.ZEBRA_DATAWEDGE -> stringResource(R.string.scanner_type_datawedge)
                 }
             },
             labelText = stringResource(R.string.device_type),
             modifier = modifier
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = stringResource(R.string.scanner_restart_notice),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

@@ -23,7 +23,10 @@ class BarcodeScannerFactory(
                 Timber.d("Creating ZebraBarcodeScanner")
                 ZebraBarcodeScanner(context)
             }
-            // В будущем можно добавить другие типы устройств
+            DeviceType.ZEBRA_DATAWEDGE -> {
+                Timber.d("Creating DataWedgeBarcodeScanner")
+                DataWedgeBarcodeScanner(context)
+            }
             else -> {
                 Timber.d("Creating DefaultBarcodeScanner")
                 val scanner = DefaultBarcodeScanner(context)
@@ -40,5 +43,6 @@ class BarcodeScannerFactory(
 enum class DeviceType {
     STANDARD, // Обычное Android-устройство
     ZEBRA,    // Устройство Zebra
+    ZEBRA_DATAWEDGE
     // Другие производители можно добавить в будущем
 }
