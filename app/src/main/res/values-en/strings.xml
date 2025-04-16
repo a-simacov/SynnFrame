@@ -50,6 +50,7 @@
     <string name="server_test_connection">Test connection</string>
     <string name="server_status">Status: waiting for connection</string>
     <string name="server_active">Active</string>
+    <string name="server_inactive">Inactive</string>
     <string name="server_active_yes">Yes</string>
     <string name="server_active_no">No</string>
     <string name="server_delete_confirm">Are you sure you want to delete this server?</string>
@@ -157,7 +158,6 @@
     <string name="accounting_model_qty">By quantity only</string>
     <string name="filter_accounting_model">Filter by accounting model</string>
     <string name="all_models">All models</string>
-    <string name="scan_barcode">Scan barcode</string>
     <string name="sort">Sort</string>
     <string name="show_filters">Show filters</string>
     <string name="hide_filters">Hide filters</string>
@@ -193,6 +193,7 @@
     <string name="no_scanned_items">No scanned products</string>
     <string name="product_not_found">Product not found</string>
     <string name="searching_product">Searching product by barcode %s...</string>
+    <string name="scan_barcode">Scan barcode</string>
     <string name="scan_barcode_instruction">Scan product barcode to add to the list</string>
     <string name="clear_all">Clear all</string>
     <string name="finish_scanning">Finish</string>
@@ -328,8 +329,6 @@
     <string name="no_tasks_with_filter">No tasks found with the specified filters</string>
     <string name="sync_tasks">Sync tasks</string>
     <string name="create_task">Create task</string>
-
-    <!-- Task statuses -->
 
     <!-- Task types -->
     <string name="all_types">All types</string>
@@ -506,6 +505,7 @@
 
     <string name="matching_lines_count">Matching lines: %1$d of %2$d</string>
     <string name="product_id">ID: %s</string>
+    <string name="product_id_title">Identifier</string>
     <string name="product_unit">Unit: %s</string>
 
     <string name="select_product_first">Select product</string>
@@ -514,7 +514,6 @@
     <string name="sort_by_name_desc">By description (Z-A)</string>
     <string name="sort_by_article_asc">By article (asc.)</string>
     <string name="sort_by_article_desc">By article (desc.)</string>
-    <string name="product_id_title">Identifier</string>
     <string name="cleanup_logs_title">Clean old logs</string>
     <string name="cleanup_logs_message">Delete logs older than days number specified</string>
     <string name="days_to_keep">Number of days for storage</string>
@@ -524,6 +523,8 @@
     <string name="delete_task_title">Deletion of task</string>
     <string name="delete_task_message">Are you sure you want to delete the task? It cannot be canceled</string>
     <string name="reupload_task">Reupload task</string>
+
+    <!-- Bin settings -->
     <string name="bin_settings">Bins settings</string>
     <string name="bin_code_pattern">Bin code template</string>
     <string name="product_first">Product first</string>
@@ -553,6 +554,8 @@
     <string name="no_products_found">No products found</string>
     <string name="filtering_by_plan">Only planned products are shown</string>
     <string name="article_fmt">Article: %s</string>
+
+    <!-- Logging settings -->
     <string name="logging_settings">Logging settings</string>
     <string name="log_level_selection">Log level</string>
     <string name="log_level_full">Full</string>
@@ -560,65 +563,102 @@
     <string name="log_level_warning">Warning</string>
     <string name="log_level_error">Errors</string>
     <string name="log_level_full_description">Saves all logs including debug info</string>
-    <string name="log_level_info_description">Saves info messages, warnings and erros</string>
+    <string name="log_level_info_description">Saves info messages, warnings and errors</string>
     <string name="log_level_warning_description">Saves warnings and errors only</string>
     <string name="log_level_error_description">Saves error messages only</string>
-    <string name="server_inactive">Inactive</string>
 
-    <!-- TaskX screens and features -->
+    <!-- Extended Tasks (TaskX) -->
     <string name="taskx_title">Extended Tasks</string>
+    <string name="taskx_menu_title">Extended Tasks</string>
+    <string name="taskx_empty">No extended tasks found</string>
+    <string name="taskx_detail_title">Extended Task Details</string>
+    <string name="taskx_search_hint">Search task</string>
     <string name="taskx_list">Tasks List</string>
     <string name="taskx_details">Task Details</string>
-    <string name="taskx_search_hint">Search tasks by name or barcode</string>
-    <string name="taskx_empty">No tasks found</string>
 
-    <!-- TaskX actions -->
+    <!-- Fact lines -->
+    <string name="fact_line_wizard_title">Add Fact Line</string>
+    <string name="fact_line_summary">Check information before completion</string>
+    <string name="fact_line_confirm">Confirm</string>
+    <string name="fact_line_back">Back</string>
+    <string name="fact_line_next">Next</string>
+    <string name="fact_line_finish">Finish</string>
+    <string name="fact_line_cancel">Cancel</string>
+    <string name="fact_line_added">Fact line successfully added</string>
+    <string name="fact_line_error">Error adding fact line</string>
+
+    <!-- Wizard actions -->
+    <string name="action_select_product">Select product</string>
+    <string name="action_enter_quantity">Enter quantity</string>
+    <string name="action_select_bin">Select bin</string>
+    <string name="action_select_pallet">Select pallet</string>
+    <string name="action_create_pallet">Create pallet</string>
+    <string name="action_close_pallet">Close pallet</string>
+    <string name="action_print_label">Print label</string>
+
+    <!-- Field types -->
+    <string name="field_storage_product">Storage product</string>
+    <string name="field_storage_pallet">Storage pallet</string>
+    <string name="field_placement_pallet">Placement pallet</string>
+    <string name="field_placement_bin">Placement bin</string>
+
+    <!-- Task statuses and actions -->
     <string name="pause_task">Pause</string>
     <string name="resume_task">Resume</string>
     <string name="verify_task">Verify</string>
     <string name="add_fact_line">Add Fact Line</string>
-
-    <!-- TaskX views -->
     <string name="plan_and_fact">Plan/Fact</string>
     <string name="plan">Plan</string>
     <string name="fact">Fact</string>
-
-    <!-- TaskX fact line wizard -->
-    <string name="fact_line_title">Add Fact Line</string>
-    <string name="select_bin">Select Bin</string>
-    <string name="select_pallet">Select Pallet</string>
-    <string name="create_pallet">Create Pallet</string>
-    <string name="close_pallet">Close Pallet</string>
-    <string name="print_label">Print Label</string>
-
-    <!-- TaskX summary and completion -->
     <string name="summary_check">Check information before completion</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
     <string name="finish">Finish</string>
-
-    <!-- TaskX statuses -->
     <string name="status_to_do">To Do</string>
     <string name="status_in_progress">In Progress</string>
     <string name="status_paused">Paused</string>
     <string name="status_completed">Completed</string>
     <string name="status_cancelled">Cancelled</string>
-
-    <!-- TaskX types -->
     <string name="type_receipt">Receipt</string>
     <string name="type_placement">Placement</string>
     <string name="type_replenishment">Replenishment</string>
     <string name="type_picking">Picking</string>
     <string name="type_movement">Movement</string>
     <string name="type_inventory">Inventory</string>
-
-    <!-- TaskX dialog messages -->
     <string name="verify_task_title">Task Verification</string>
     <string name="verify_task_message">Scan or enter the task barcode to verify</string>
     <string name="verify_task_success">Task successfully verified</string>
     <string name="verify_task_failure">Incorrect barcode for verification</string>
-
-    <!-- Main menu integration -->
     <string name="extended_tasks">Extended Tasks</string>
     <string name="extended_tasks_desc">WMS task management with extended functionality</string>
+
+    <!-- Task notifications -->
+    <string name="taskx_started">Task started</string>
+    <string name="taskx_completed">Task completed</string>
+    <string name="taskx_paused">Task paused</string>
+    <string name="taskx_resumed">Task resumed</string>
+    <string name="taskx_verified">Task successfully verified</string>
+    <string name="taskx_cannot_add_fact">Adding fact lines is only possible for tasks with status \'In Progress\'</string>
+
+    <!-- Scanner strings -->
+    <string name="scanner_uninitialized">Scanner not initialized</string>
+    <string name="scanner_initializing">Initializing scanner…</string>
+    <string name="scanner_initialized">Scanner ready</string>
+    <string name="scanner_enabling">Enabling scanner…</string>
+    <string name="scanner_enabled">Scanner enabled</string>
+    <string name="scanner_disabled">Scanner disabled</string>
+    <string name="scanner_error">Scanner error</string>
+
+    <!-- Device settings -->
+    <string name="device_settings">Device settings</string>
+    <string name="device_type">Device type</string>
+    <string name="device_type_standard">Standard</string>
+    <string name="device_type_zebra">Zebra</string>
+
+    <string name="scanner_settings">Scanner settings</string>
+    <string name="scanner_type">Scanner type</string>
+    <string name="scanner_type_camera">Device camera</string>
+    <string name="scanner_type_emdk">Zebra EMDK</string>
+    <string name="scanner_type_datawedge">Zebra DataWedge</string>
+    <string name="scanner_restart_notice">After changing scanner type, app restart is required</string>
 </resources>
