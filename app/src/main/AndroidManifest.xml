@@ -15,8 +15,6 @@
     <!-- Для WorkManager -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <uses-permission android:name="com.symbol.emdk.permission.EMDK" />
-
     <!-- Features -->
     <uses-feature
         android:name="android.hardware.camera"
@@ -35,9 +33,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SynnFrame"
         tools:targetApi="tiramisu">
-
-        <uses-library android:name="com.symbol.emdk" />
-        <meta-data android:name="com.symbol.emdk.api.version" android:value="7.0" />
 
         <!-- Splash Activity -->
         <activity

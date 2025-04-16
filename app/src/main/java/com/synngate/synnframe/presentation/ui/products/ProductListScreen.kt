@@ -29,7 +29,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,6 +52,7 @@ import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerDialog
+import com.synngate.synnframe.presentation.common.scanner.ScanButton
 import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.scanner.ScannerStatusIndicator
 import com.synngate.synnframe.presentation.common.status.StatusType
@@ -60,7 +60,6 @@ import com.synngate.synnframe.presentation.ui.products.components.BatchScannerDi
 import com.synngate.synnframe.presentation.ui.products.model.ProductListEvent
 import com.synngate.synnframe.presentation.ui.products.model.ProductListItemUiModel
 import com.synngate.synnframe.presentation.ui.products.model.SortOrder
-import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @Composable
@@ -105,34 +104,17 @@ fun ProductListScreen(
 
     val scannerService = LocalScannerService.current
 
-    // Используем ScannerService, если он доступен
-    scannerService?.let { service ->
-        // Обновляем lifecycleOwner для сканера
-        LaunchedEffect(lifecycleOwner) {
-            service.updateLifecycleOwner(lifecycleOwner)
+    // Слушатель сканирования
+    ScannerListener(
+        onBarcodeScanned = { barcode ->
+            // Обрабатываем штрихкод
+            viewModel.findProductByBarcode(barcode) { product ->
+                if (product != null) {
+                    navigateToProductDetail(product.id)
+                }
+            }
         }
-
-        // Обработчик результатов сканирования
-        ScannerListener(
-            scannerService = service,
-            onScanResult = { result ->
-                // Поиск товара по штрихкоду
-                viewModel.findProductByBarcode(result.barcode) { product ->
-                    product?.let { navigateToProductDetail(it.id) }
-                }
-            },
-            onScanError = { error ->
-                // Обработка ошибки сканирования
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar(
-                        message = "Ошибка сканирования: ${error.message}",
-                        duration = SnackbarDuration.Short
-                    )
-                }
-            },
-            showStatus = false // Статус будем показывать в actions
-        )
-    }
+    )
 
 
     // Диалоги без изменений
@@ -174,6 +156,12 @@ fun ProductListScreen(
                     scannerService = service,
                     showText = false,
                     showIcon = true
+                )
+                ScanButton(
+                    onClick = {
+                        // Программно запускаем сканирование
+                        scannerService.triggerScan()
+                    }
                 )
             }
 

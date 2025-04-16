@@ -7,6 +7,8 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import com.synngate.synnframe.domain.common.BarcodeScanner
 import com.synngate.synnframe.domain.common.BarcodeType
 import com.synngate.synnframe.domain.common.ScanResult
@@ -259,7 +261,6 @@ class DataWedgeBarcodeScanner(
 
             val component0 = Bundle()
             component0.putString("PACKAGE_NAME", context.packageName)
-            //todo заменить на реальный SHA1 приложения, текущий - недействительный
             component0.putString("SIGNATURE", signature)
             bundleComponentInfo.add(component0)
 
@@ -354,5 +355,27 @@ class DataWedgeBarcodeScanner(
             Timber.e(e, "Error getting app SHA1 signature")
         }
         return null
+    }
+
+    // Метод для программного запуска сканирования
+    fun triggerScan() {
+        try {
+            val dwIntent = Intent()
+            dwIntent.action = ACTION_DATAWEDGE
+            dwIntent.putExtra(EXTRA_SOFT_SCAN_TRIGGER, "START_SCANNING")
+            context.sendBroadcast(dwIntent)
+            Timber.d("DataWedge scan triggered programmatically")
+
+            // Запускаем отложенную задачу для остановки сканирования через 5 секунд
+            Handler(Looper.getMainLooper()).postDelayed({
+                val stopIntent = Intent()
+                stopIntent.action = ACTION_DATAWEDGE
+                stopIntent.putExtra(EXTRA_SOFT_SCAN_TRIGGER, "STOP_SCANNING")
+                context.sendBroadcast(stopIntent)
+                Timber.d("DataWedge auto-stop scan after timeout")
+            }, 5000)
+        } catch (e: Exception) {
+            Timber.e(e, "Error triggering DataWedge scan")
+        }
     }
 }

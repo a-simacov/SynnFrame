@@ -19,10 +19,6 @@ class BarcodeScannerFactory(
         Timber.d("Device type from settings: $deviceType")
 
         return when (deviceType) {
-            DeviceType.ZEBRA -> {
-                Timber.d("Creating ZebraBarcodeScanner")
-                ZebraBarcodeScanner(context)
-            }
             DeviceType.ZEBRA_DATAWEDGE -> {
                 Timber.d("Creating DataWedgeBarcodeScanner")
                 DataWedgeBarcodeScanner(context)
@@ -42,7 +38,6 @@ class BarcodeScannerFactory(
  */
 enum class DeviceType {
     STANDARD, // Обычное Android-устройство
-    ZEBRA,    // Устройство Zebra
     ZEBRA_DATAWEDGE
     // Другие производители можно добавить в будущем
 }

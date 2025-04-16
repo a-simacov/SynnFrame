@@ -1,67 +1,42 @@
-// Файл: app/src/main/java/com/synngate/synnframe/presentation/common/scanner/ScannerListener.kt
-
 package com.synngate.synnframe.presentation.common.scanner
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import com.synngate.synnframe.data.barcodescanner.ScannerService
-import com.synngate.synnframe.data.barcodescanner.ScannerState
-import com.synngate.synnframe.domain.common.ScanError
-import com.synngate.synnframe.domain.common.ScanResult
-import com.synngate.synnframe.domain.common.ScanResultListener
+import com.synngate.synnframe.presentation.common.LocalScannerService
 
+/**
+ * Компонент для простой интеграции сканера в любой экран
+ */
 @Composable
 fun ScannerListener(
-    scannerService: ScannerService,
-    onScanResult: (ScanResult) -> Unit,
-    onScanError: ((ScanError) -> Unit)? = null,
-    showStatus: Boolean = false,
-    statusOnlyOnError: Boolean = false,
+    onBarcodeScanned: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val scannerState by scannerService.scannerState.collectAsState()
+    // Получаем доступ к сервису сканера через CompositionLocal
+    val scannerService = LocalScannerService.current
 
-    // Эффект для управления подключением к сканеру при монтировании/размонтировании компонента
-    DisposableEffect(scannerService) {
-        val listener = object : ScanResultListener {
-            override fun onScanSuccess(result: ScanResult) {
-                onScanResult(result)
-            }
+    scannerService?.ScannerEffect(onScanResult = onBarcodeScanned)
+}
 
-            override fun onScanError(error: ScanError) {
-                onScanError?.invoke(error)
-            }
-        }
-
-        // Добавляем слушателя при монтировании
-        scannerService.addListener(listener)
-
-        // Удаляем слушателя при размонтировании
-        onDispose {
-            scannerService.removeListener(listener)
-        }
-    }
-
-    Column(modifier = modifier) {
-        // Отображаем статус сканера, если это включено
-        if (showStatus) {
-            // Если включен режим "только при ошибке", проверяем состояние
-            val shouldShowStatus = if (statusOnlyOnError) {
-                scannerState is ScannerState.Error
-            } else {
-                true
-            }
-
-            if (shouldShowStatus) {
-                ScannerStatusIndicator(
-                    scannerService = scannerService,
-                    showText = true
-                )
-            }
-        }
+/**
+ * Компонент для отображения кнопки сканирования
+ */
+@Composable
+fun ScanButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier
+    ) {
+        Icon(
+            imageVector = Icons.Default.QrCodeScanner,
+            contentDescription = "Scan Barcode"
+        )
     }
 }
