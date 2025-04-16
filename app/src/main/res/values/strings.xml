@@ -648,4 +648,36 @@
     <string name="scanner_type_emdk">Zebra EMDK</string>
     <string name="scanner_type_datawedge">Zebra DataWedge</string>
     <string name="scanner_restart_notice">После изменения типа сканера требуется перезапуск приложения</string>
+
+    <!-- Строки, которые необходимо добавить в английский перевод (values-en/strings.xml) -->
+    <string name="taskx_list">Tasks List</string>
+    <string name="taskx_details">Task Details</string>
+    <string name="pause_task">Pause</string>
+    <string name="resume_task">Resume</string>
+    <string name="verify_task">Verify</string>
+    <string name="add_fact_line">Add Fact Line</string>
+    <string name="plan_and_fact">Plan/Fact</string>
+    <string name="plan">Plan</string>
+    <string name="fact">Fact</string>
+    <string name="summary_check">Check information before completion</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="finish">Finish</string>
+    <string name="status_to_do">To Do</string>
+    <string name="status_in_progress">In Progress</string>
+    <string name="status_paused">Paused</string>
+    <string name="status_completed">Completed</string>
+    <string name="status_cancelled">Cancelled</string>
+    <string name="type_receipt">Receipt</string>
+    <string name="type_placement">Placement</string>
+    <string name="type_replenishment">Replenishment</string>
+    <string name="type_picking">Picking</string>
+    <string name="type_movement">Movement</string>
+    <string name="type_inventory">Inventory</string>
+    <string name="verify_task_title">Task Verification</string>
+    <string name="verify_task_message">Scan or enter the task barcode to verify</string>
+    <string name="verify_task_success">Task successfully verified</string>
+    <string name="verify_task_failure">Incorrect barcode for verification</string>
+    <string name="extended_tasks">Extended Tasks</string>
+    <string name="extended_tasks_desc">WMS task management with extended functionality</string>
 </resources>
