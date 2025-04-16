@@ -28,13 +28,10 @@ class SynchronizationService : BaseForegroundService() {
         (application as SynnFrameApplication).appContainer.synchronizationController
     }
 
-    // Текущий прогресс синхронизации
     private var currentProgress: SyncProgress? = null
 
-    // Форматер для даты и времени в уведомлении
     private val dateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")
 
-    // Метаданные сервиса
     override val serviceName: String = "SynchronizationService"
     override val notificationId: Int = NotificationChannelManager.NOTIFICATION_ID_SYNCHRONIZATION
 

@@ -12,9 +12,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * Базовый абстрактный класс для всех foreground-сервисов приложения
- */
 abstract class BaseForegroundService : Service() {
 
     // Scope для запуска корутин сервиса
@@ -23,13 +20,10 @@ abstract class BaseForegroundService : Service() {
     // Биндер для связи с клиентами сервиса
     private val binder = LocalBinder()
 
-    // Название сервиса для логов
     protected abstract val serviceName: String
 
-    // ID для уведомления
     protected abstract val notificationId: Int
 
-    // Флаг, указывающий, запущен ли сервис
     protected var isServiceRunning = false
 
     override fun onCreate() {
@@ -62,9 +56,6 @@ abstract class BaseForegroundService : Service() {
         super.onDestroy()
     }
 
-    /**
-     * Запуск сервиса в режиме foreground
-     */
     protected open fun startForegroundService() {
         Timber.d("$serviceName: Starting foreground service")
 
@@ -84,9 +75,6 @@ abstract class BaseForegroundService : Service() {
         }
     }
 
-    /**
-     * Остановка foreground-сервиса
-     */
     protected open fun stopForegroundService() {
         Timber.d("$serviceName: Stopping foreground service")
 
@@ -107,9 +95,6 @@ abstract class BaseForegroundService : Service() {
         stopSelf()
     }
 
-    /**
-     * Создание уведомления для foreground-сервиса
-     */
     protected abstract fun createNotification(): Notification
 
     /**
@@ -122,9 +107,6 @@ abstract class BaseForegroundService : Service() {
      */
     protected abstract suspend fun onServiceStop()
 
-    /**
-     * Биндер для связи с сервисом
-     */
     inner class LocalBinder : Binder() {
         fun getService(): BaseForegroundService = this@BaseForegroundService
     }
@@ -136,9 +118,6 @@ abstract class BaseForegroundService : Service() {
     }
 }
 
-/**
- * Безопасный запуск корутины с обработкой ошибок
- */
 fun CoroutineScope.launchSafely(block: suspend () -> Unit) {
     launch {
         try {

@@ -1,8 +1,5 @@
 package com.synngate.synnframe.presentation.service.webserver
 
-/**
- * Константы для работы с локальным веб-сервером
- */
 object WebServerConstants {
     // Маршруты API
     const val ROUTE_ECHO = "/echo"
@@ -26,12 +23,7 @@ object WebServerConstants {
     const val LOG_PRODUCTS_RECEIVED = "Получено %d товаров через локальный веб-сервер. Добавлено новых: %d, обновлено: %d. Время обработки: %dмс"
     const val LOG_PRODUCTS_FULL_UPDATE = "Полное обновление справочника товаров через локальный веб-сервер: %d товаров"
     const val LOG_TASK_TYPES_RECEIVED = "Получено %d типов заданий через локальный веб-сервер. Время обработки: %dмс"
-    const val LOG_ERROR_TASKS = "Ошибка обработки заданий: %s"
-    const val LOG_ERROR_PRODUCTS = "Ошибка обработки товаров: %s"
     const val LOG_ERROR_TASK_TYPES = "Ошибка обработки типов заданий: %s"
-
-    // Имена параметров для Intent
-    const val EXTRA_PORT = "extra_port"
 
     // Операции
     const val OPERATION_TASKS_RECEIVED = "Получены задания через локальный веб-сервер"

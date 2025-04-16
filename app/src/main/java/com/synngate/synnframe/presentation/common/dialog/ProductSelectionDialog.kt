@@ -45,18 +45,6 @@ import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.Product
 import kotlinx.coroutines.delay
 
-/**
- * Переиспользуемый диалог для выбора товара.
- *
- * @param products Список товаров для выбора
- * @param onProductSelected Обработчик выбора товара
- * @param onDismiss Обработчик закрытия диалога
- * @param initialFilter Начальное значение фильтра
- * @param isLoading Флаг загрузки данных
- * @param title Заголовок диалога
- * @param planProductIds Набор ID товаров из плана для фильтрации (null если нет ограничений)
- * @param onFilterChanged Обработчик изменения фильтра
- */
 @Composable
 fun ProductSelectionDialog(
     products: List<Product>,

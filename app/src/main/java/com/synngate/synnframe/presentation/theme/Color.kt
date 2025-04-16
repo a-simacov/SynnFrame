@@ -29,7 +29,6 @@ val md_theme_light_outline = Color(0xFF73777F)
 val md_theme_light_inverseOnSurface = Color(0xFFF1F0F4)
 val md_theme_light_inverseSurface = Color(0xFF2F3033)
 val md_theme_light_inversePrimary = Color(0xFF9ECAFF)
-val md_theme_light_shadow = Color(0xFF000000)
 val md_theme_light_surfaceTint = Color(0xFF0061A4)
 val md_theme_light_outlineVariant = Color(0xFFC3C7CF)
 val md_theme_light_scrim = Color(0xFF000000)
@@ -61,17 +60,6 @@ val md_theme_dark_outline = Color(0xFF8D9199)
 val md_theme_dark_inverseOnSurface = Color(0xFF1A1C1E)
 val md_theme_dark_inverseSurface = Color(0xFFE2E2E6)
 val md_theme_dark_inversePrimary = Color(0xFF0061A4)
-val md_theme_dark_shadow = Color(0xFF000000)
 val md_theme_dark_surfaceTint = Color(0xFF9ECAFF)
 val md_theme_dark_outlineVariant = Color(0xFF43474E)
 val md_theme_dark_scrim = Color(0xFF000000)
-
-// Custom colors for task states
-val taskNotStarted = Color(0xFFE65100)  // Orange
-val taskInProgress = Color(0xFF1976D2)  // Blue
-val taskCompleted = Color(0xFF388E3C)   // Green
-
-// Log types colors
-val logInfo = Color(0xFF1976D2)      // Blue
-val logWarning = Color(0xFFFFA000)   // Amber
-val logError = Color(0xFFD32F2F)     // Red

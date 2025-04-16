@@ -6,14 +6,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 
-/**
- * Класс для проверки учетных данных при аутентификации в локальном веб-сервере
- */
 class WebServerAuthProvider(private val serverRepository: ServerRepository) {
 
-    /**
-     * Проверка учетных данных для доступа к API веб-сервера
-     */
     fun validateCredentials(username: String, password: String): Boolean {
         // Получаем активный сервер из репозитория
         val activeServer = runBlocking {
@@ -35,9 +29,6 @@ class WebServerAuthProvider(private val serverRepository: ServerRepository) {
         return validateWithActiveServer(activeServer, username, password)
     }
 
-    /**
-     * Проверка учетных данных с использованием активного сервера
-     */
     private fun validateWithActiveServer(activeServer: Server, username: String, password: String): Boolean {
         // Проверяем, совпадают ли учетные данные с учетными данными активного сервера
         val loginMatches = username == activeServer.login

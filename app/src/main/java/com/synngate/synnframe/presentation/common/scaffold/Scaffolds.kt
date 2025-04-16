@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -396,49 +395,6 @@ fun ErrorScreenContent(
     }
 }
 
-/**
- * Компонент для отображения двухколоночного режима (master-detail)
- */
-@Composable
-fun SplitScreenContent(
-    masterContent: @Composable () -> Unit,
-    detailContent: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
-    masterWeight: Float = 0.3f,
-    detailWeight: Float = 0.7f,
-    showDivider: Boolean = true
-) {
-    Row(modifier = modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .weight(masterWeight)
-                .fillMaxSize()
-        ) {
-            masterContent()
-        }
-
-        if (showDivider) {
-            HorizontalDivider(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .width(1.dp),
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .weight(detailWeight)
-                .fillMaxSize()
-        ) {
-            detailContent()
-        }
-    }
-}
-
-/**
- * Компонент для прокручиваемого содержимого с отступами
- */
 @Composable
 fun ScrollableScreenContent(
     modifier: Modifier = Modifier,
@@ -460,9 +416,6 @@ fun ScrollableScreenContent(
     }
 }
 
-/**
- * Компонент для отображения информации о элементе с заголовком и значением
- */
 @Composable
 fun InfoRow(
     label: String,
@@ -491,9 +444,6 @@ fun InfoRow(
     }
 }
 
-/**
- * Компонент для отображения заголовка секции
- */
 @Composable
 fun SectionHeader(
     title: String,
@@ -518,9 +468,6 @@ fun SectionHeader(
     }
 }
 
-/**
- * Компонент для отображения информационной карточки
- */
 @Composable
 fun InfoCard(
     modifier: Modifier = Modifier,

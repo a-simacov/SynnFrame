@@ -57,9 +57,6 @@ import com.synngate.synnframe.util.scanner.BarcodeAnalyzer
 import timber.log.Timber
 import java.util.concurrent.Executors
 
-/**
- * Компонент для сканирования штрихкодов с помощью ZXing
- */
 @Composable
 fun BarcodeScannerView(
     onBarcodeDetected: (String) -> Unit,

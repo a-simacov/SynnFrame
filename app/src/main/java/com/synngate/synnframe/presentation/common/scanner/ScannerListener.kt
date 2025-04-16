@@ -22,9 +22,6 @@ fun ScannerListener(
     scannerService?.ScannerEffect(onScanResult = onBarcodeScanned)
 }
 
-/**
- * Компонент для отображения кнопки сканирования
- */
 @Composable
 fun ScanButton(
     onClick: () -> Unit,

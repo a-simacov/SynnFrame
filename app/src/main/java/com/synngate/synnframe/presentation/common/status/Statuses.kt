@@ -33,19 +33,12 @@ import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.domain.entity.TaskStatus
 
-/**
- * Тип статуса уведомления
- */
 enum class StatusType {
     INFO,
     WARNING,
     ERROR
 }
 
-/**
- * Компонент панели уведомлений, который отображается
- * с анимацией появления и исчезновения
- */
 @Composable
 fun NotificationBar(
     visible: Boolean,
@@ -104,9 +97,6 @@ fun NotificationBar(
     }
 }
 
-/**
- * Компонент для отображения статуса синхронизации
- */
 @Composable
 fun SyncStatusIndicator(
     isSyncing: Boolean,
@@ -148,18 +138,6 @@ fun TaskStatusIndicator(
     status: TaskStatus,
     modifier: Modifier = Modifier
 ) {
-    val color = when (status) {
-        TaskStatus.TO_DO -> MaterialTheme.colorScheme.primaryContainer
-        TaskStatus.IN_PROGRESS -> MaterialTheme.colorScheme.tertiaryContainer
-        TaskStatus.COMPLETED -> MaterialTheme.colorScheme.secondaryContainer
-    }
-
-    val textColor = when (status) {
-        TaskStatus.TO_DO -> MaterialTheme.colorScheme.onPrimaryContainer
-        TaskStatus.IN_PROGRESS -> MaterialTheme.colorScheme.onTertiaryContainer
-        TaskStatus.COMPLETED -> MaterialTheme.colorScheme.onSecondaryContainer
-    }
-
     val icon = when (status) {
         TaskStatus.TO_DO -> Icons.Default.Schedule
         TaskStatus.IN_PROGRESS -> Icons.Default.SyncAlt
@@ -172,25 +150,13 @@ fun TaskStatusIndicator(
         TaskStatus.COMPLETED -> Color.DarkGray
     }
 
-//    Box(
-//        modifier = modifier
-//            .background(
-//                color = color,
-//                shape = MaterialTheme.shapes.small
-//            )
-//            .padding(horizontal = 8.dp, vertical = 4.dp)
-//    ) {
     Icon(
         imageVector = icon,
         tint = iconTint,
         contentDescription = status.name
     )
-//    }
 }
 
-/**
- * Компонент для отображения типа лога в виде иконки
- */
 @Composable
 fun LogTypeIndicator(
     type: LogType,
@@ -201,7 +167,6 @@ fun LogTypeIndicator(
         LogType.INFO -> Icons.Default.Info to MaterialTheme.colorScheme.primary
         LogType.WARNING -> Icons.Default.Warning to MaterialTheme.colorScheme.tertiary
         LogType.ERROR -> Icons.Default.Error to MaterialTheme.colorScheme.error
-        else -> Icons.Default.Info to MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     // Отображаем иконку в круглом контейнере

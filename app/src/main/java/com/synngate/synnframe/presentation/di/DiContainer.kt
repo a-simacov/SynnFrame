@@ -59,17 +59,3 @@ abstract class DiContainer : Disposable {
         viewModels.clear()
     }
 }
-
-/**
- * Базовый класс для ViewModel с поддержкой освобождения ресурсов
- */
-abstract class DisposableViewModel : ViewModel(), Disposable {
-    override fun dispose() {
-        // Переопределяется в подклассах при необходимости
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        dispose()
-    }
-}

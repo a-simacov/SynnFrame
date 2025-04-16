@@ -74,9 +74,6 @@ class ProductsController(
                 for (product in updatedProducts) {
                     productRepository.updateProduct(product)
                 }
-//                logger.logInfo(
-//                    String.format(WebServerConstants.LOG_PRODUCTS_RECEIVED, products.size, newProducts.size, updatedProducts.size)
-//                )
             }
 
             // Вычисляем время выполнения

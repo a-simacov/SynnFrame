@@ -49,9 +49,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
-/**
- * Диалог подтверждения действия
- */
 @Composable
 fun ConfirmationDialog(
     title: String,
@@ -85,9 +82,6 @@ fun ConfirmationDialog(
     )
 }
 
-/**
- * Диалог прогресса операции
- */
 @Composable
 fun ProgressDialog(
     message: String,
@@ -133,126 +127,6 @@ fun ProgressDialog(
     }
 }
 
-/**
- * Диалог строки факта для задания
- */
-@Composable
-fun FactLineDialog(
-    productName: String,
-    currentQuantity: Float,
-    onQuantityChange: (Float) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var additionalQuantity = ""
-    var isError = false
-
-    Dialog(
-        onDismissRequest = onDismiss
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.material3.MaterialTheme.shapes.medium
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = productName,
-                    style = androidx.compose.material3.MaterialTheme.typography.headlineSmall
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(
-                            id = R.string.task_scan_current_quantity,
-                            currentQuantity
-                        ),
-                        style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = stringResource(id = R.string.task_scan_add_quantity),
-                        style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    com.synngate.synnframe.presentation.common.inputs.QuantityTextField(
-                        value = additionalQuantity,
-                        onValueChange = { additionalQuantity = it },
-                        label = "",
-                        isError = isError,
-                        errorText = if (isError) "Неверное значение" else null,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    val totalQuantity = try {
-                        currentQuantity + (additionalQuantity.toFloatOrNull() ?: 0f)
-                    } catch (e: Exception) {
-                        currentQuantity
-                    }
-
-                    Text(
-                        text = stringResource(
-                            id = R.string.task_scan_total_quantity,
-                            totalQuantity
-                        ),
-                        style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss
-                    ) {
-                        Text(text = stringResource(id = R.string.cancel))
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Button(
-                        onClick = {
-                            try {
-                                val addValue = additionalQuantity.toFloatOrNull() ?: 0f
-                                if (addValue != 0f) {
-                                    onQuantityChange(currentQuantity + addValue)
-                                    onDismiss()
-                                } else {
-                                    isError = true
-                                }
-                            } catch (e: Exception) {
-                                isError = true
-                            }
-                        },
-                        enabled = additionalQuantity.isNotEmpty()
-                    ) {
-                        Text(text = stringResource(id = R.string.task_scan_modify))
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Предустановленные периоды фильтрации
- */
 enum class DateFilterPreset {
     LAST_5_MINUTES,
     LAST_30_MINUTES,
@@ -279,34 +153,6 @@ enum class DateFilterPreset {
     }
 }
 
-
-@Composable
-@androidx.compose.ui.tooling.preview.Preview(
-    name = "Date Time Filter Dialog",
-    showBackground = true,
-    backgroundColor = 0xFFFFFFFF
-)
-fun DateTimeFilterDialogPreview() {
-    // Используем текущую дату и время для превью
-    val currentDateTime = LocalDateTime.now()
-    val fromDate = currentDateTime.minusHours(1)
-    val toDate = currentDateTime
-
-    MaterialTheme {
-        Surface {
-            DateTimeFilterDialog(
-                fromDate = fromDate,
-                toDate = toDate,
-                onApply = { _, _ -> /* Ничего не делаем в превью */ },
-                onDismiss = { /* Ничего не делаем в превью */ }
-            )
-        }
-    }
-}
-
-/**
- * Диалог выбора периода фильтрации логов с поддержкой пикеров даты и времени
- */
 @Composable
 fun DateTimeFilterDialog(
     fromDate: LocalDateTime?,
@@ -564,9 +410,6 @@ fun DateTimeFilterDialog(
     }
 }
 
-/**
- * Диалог выбора даты
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomDatePickerDialog(
@@ -605,9 +448,6 @@ fun CustomDatePickerDialog(
     }
 }
 
-/**
- * Диалог выбора времени
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomTimePickerDialog(
@@ -677,9 +517,6 @@ fun CustomTimePickerDialog(
     }
 }
 
-/**
- * Компонент для отображения выбранного периода фильтрации
- */
 @Composable
 fun DateFilterSummary(
     fromDate: LocalDateTime?,
