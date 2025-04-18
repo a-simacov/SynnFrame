@@ -20,13 +20,18 @@ data class TaskXDetailState(
     val activeView: TaskXDetailView = TaskXDetailView.COMPARED_LINES,
     val showVerificationDialog: Boolean = false,
     val currentUserId: String? = null,
-    val showCompletionDialog: Boolean = false
+    val showCompletionDialog: Boolean = false,
+    val showActionWizard: Boolean = false,
 )
 
 sealed class TaskXDetailEvent {
     data class ShowSnackbar(val message: String) : TaskXDetailEvent()
     data object ShowFactLineWizard : TaskXDetailEvent()
     data object HideFactLineWizard : TaskXDetailEvent()
+
+    // Добавляем новые события для работы с визардом действий
+    object ShowActionWizard : TaskXDetailEvent()
+    object HideActionWizard : TaskXDetailEvent()
 }
 
 data class FactLineWizardUiState(

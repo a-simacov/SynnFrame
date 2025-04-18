@@ -33,7 +33,7 @@ class MockTaskXRepository(
         private const val USER666ID = "8b858d00-f058-11ef-9bfd-000c2961fff3"
     }
 
-    private val tasksFlow = MutableStateFlow<Map<String, TaskX>>(createInitialTasks())
+    private val tasksFlow = MutableStateFlow(createInitialTasks())
 
     override fun getTasks(): Flow<List<TaskX>> {
         return tasksFlow.map { it.values.toList() }
@@ -239,16 +239,6 @@ class MockTaskXRepository(
         val movePalletTask = createMovePalletTask()
         tasks[movePalletTask.id] = movePalletTask
 
-        // Добавляем ещё тестовые задания из старого кода
-        val receiptTask = createReceiptTask()
-        tasks[receiptTask.id] = receiptTask
-
-        val pickingTask = createPickingTask()
-        tasks[pickingTask.id] = pickingTask
-
-        val movementTask = createMovementTask()
-        tasks[movementTask.id] = movementTask
-
         return tasks
     }
 
@@ -420,128 +410,6 @@ class MockTaskXRepository(
             factActions = emptyList(),
             finalActions = emptyList(),
             allowCompletionWithoutFactActions = false
-        )
-    }
-
-    // Сохраняем методы из старой реализации для других тестовых заданий
-    private fun createReceiptTask(): TaskX {
-        // ... код старого метода для совместимости ...
-        // Создаем продукты для строк плана
-        val productHeadphones = Product(
-            id = "p1",
-            name = "Наушники вкладыши",
-            accountingModel = AccountingModel.QTY,
-            articleNumber = "H-12345",
-            mainUnitId = "u1",
-            units = emptyList()
-        )
-
-        val productMilk = Product(
-            id = "p2",
-            name = "Молоко",
-            accountingModel = AccountingModel.QTY,
-            articleNumber = "M-67890",
-            mainUnitId = "u2",
-            units = emptyList()
-        )
-
-        // Создаем товары задания для строк плана
-        val taskProductHeadphones = TaskProduct(
-            product = productHeadphones,
-            quantity = 26f
-        )
-
-        val taskProductMilk = TaskProduct(
-            product = productMilk,
-            quantity = 18f
-        )
-
-        // Создаем задание (с новыми полями)
-        return TaskX(
-            id = "task1",
-            barcode = "03165467987",
-            name = "Принять задание по монопалетам от Клиента 1",
-            taskTypeId = "6546513215648", // ID типа задания из примера
-            status = TaskXStatus.TO_DO,
-            createdAt = LocalDateTime.now().minusDays(1),
-            executorId = USER666ID,
-            plannedActions = emptyList(), // Пустые списки для совместимости
-            factActions = emptyList(),
-            finalActions = emptyList()
-        )
-    }
-
-    private fun createPickingTask(): TaskX {
-        // ... код старого метода для совместимости ...
-        // Создаем продукты для строк плана
-        val productTV = Product(
-            id = "p3",
-            name = "Телевизор 55\"",
-            accountingModel = AccountingModel.QTY,
-            articleNumber = "TV-55001",
-            mainUnitId = "u3",
-            units = emptyList()
-        )
-
-        val productPhone = Product(
-            id = "p4",
-            name = "Смартфон",
-            accountingModel = AccountingModel.QTY,
-            articleNumber = "PH-12345",
-            mainUnitId = "u4",
-            units = emptyList()
-        )
-
-        // Создаем товары задания для строк плана
-        val taskProductTV = TaskProduct(
-            product = productTV,
-            quantity = 2f
-        )
-
-        val taskProductPhone = TaskProduct(
-            product = productPhone,
-            quantity = 5f
-        )
-
-        // Создаем задание (с новыми полями)
-        return TaskX(
-            id = "task2",
-            barcode = "03165467988",
-            name = "Отбор заказа №12345",
-            taskTypeId = "7891011121314", // ID типа задания "Отбор заказа"
-            status = TaskXStatus.TO_DO,
-            createdAt = LocalDateTime.now().minusHours(3),
-            executorId = USER666ID,
-            plannedActions = emptyList(), // Пустые списки для совместимости
-            factActions = emptyList(),
-            finalActions = emptyList()
-        )
-    }
-
-    private fun createMovementTask(): TaskX {
-        // ... код старого метода для совместимости ...
-        // Создаем продукт для строк плана
-        val productLaptop = Product(
-            id = "p5",
-            name = "Ноутбук",
-            accountingModel = AccountingModel.QTY,
-            articleNumber = "LT-9876",
-            mainUnitId = "u5",
-            units = emptyList()
-        )
-
-        // Создаем задание (с новыми полями)
-        return TaskX(
-            id = "task3",
-            barcode = "03165467989",
-            name = "Перемещение товара",
-            taskTypeId = "8910111213141", // ID типа задания "Перемещение"
-            status = TaskXStatus.TO_DO,
-            createdAt = LocalDateTime.now().minusHours(1),
-            executorId = USER666ID,
-            plannedActions = emptyList(), // Пустые списки для совместимости
-            factActions = emptyList(),
-            finalActions = emptyList()
         )
     }
 }

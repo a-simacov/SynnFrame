@@ -3,6 +3,8 @@ package com.synngate.synnframe.presentation.ui.taskx
 import com.synngate.synnframe.domain.entity.taskx.AvailableTaskAction
 import com.synngate.synnframe.domain.entity.taskx.FactLineXActionType
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
+import com.synngate.synnframe.domain.service.ActionWizardContextFactory
+import com.synngate.synnframe.domain.service.ActionWizardController
 import com.synngate.synnframe.domain.service.WizardController
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
@@ -10,6 +12,7 @@ import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
+import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
 import com.synngate.synnframe.presentation.ui.wizard.builder.WizardBuilder
 import com.synngate.synnframe.presentation.ui.wizard.component.BinSelectionFactory
 import com.synngate.synnframe.presentation.ui.wizard.component.ExpirationDateFactory
@@ -31,7 +34,11 @@ class TaskXDetailViewModel(
     private val taskXUseCases: TaskXUseCases,
     private val userUseCases: UserUseCases,
     val factLineWizardViewModel: FactLineWizardViewModel,
-    val wizardController: WizardController
+    val wizardController: WizardController,
+    // Новые зависимости
+    val actionWizardController: ActionWizardController,
+    val actionWizardContextFactory: ActionWizardContextFactory,
+    val actionStepFactoryRegistry: ActionStepFactoryRegistry
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
 
     private val wizardBuilder = WizardBuilder()
@@ -80,6 +87,48 @@ class TaskXDetailViewModel(
             FactLineXActionType.ENTER_EXPIRATION_DATE,
             ExpirationDateFactory()
         )
+    }
+
+    // В TaskXDetailViewModel
+    fun startActionExecution(actionId: String) {
+        launchIO {
+            try {
+                val result = actionWizardController.initialize(taskId, actionId)
+                if (result.isSuccess) {
+                    // Обновляем состояние вместо отправки события
+                    updateState { it.copy(showActionWizard = true) }
+                } else {
+                    updateState { it.copy(error = "Ошибка при инициализации действия: ${result.exceptionOrNull()?.message}") }
+                }
+            } catch (e: Exception) {
+                updateState { it.copy(error = "Ошибка при инициализации действия: ${e.message}") }
+            }
+        }
+    }
+
+    // И добавим метод для скрытия визарда
+    fun hideActionWizard() {
+        updateState { it.copy(showActionWizard = false) }
+
+        // Отменяем визард при скрытии
+        actionWizardController.cancel()
+    }
+
+    // Метод для завершения визарда
+    fun completeActionWizard() {
+        launchIO {
+            try {
+                val result = actionWizardController.complete()
+                if (result.isSuccess) {
+                    loadTask() // Перезагрузка задания
+                    updateState { it.copy(showActionWizard = false) }
+                } else {
+                    updateState { it.copy(error = "Ошибка при выполнении действия: ${result.exceptionOrNull()?.message}") }
+                }
+            } catch (e: Exception) {
+                updateState { it.copy(error = "Ошибка при завершении действия: ${e.message}") }
+            }
+        }
     }
 
     fun startAddFactLineWizard() {

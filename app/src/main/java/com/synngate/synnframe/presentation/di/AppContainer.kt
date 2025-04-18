@@ -28,6 +28,7 @@ import com.synngate.synnframe.data.remote.service.ApiService
 import com.synngate.synnframe.data.remote.service.ApiServiceImpl
 import com.synngate.synnframe.data.remote.service.ServerProvider
 import com.synngate.synnframe.data.repository.LogRepositoryImpl
+import com.synngate.synnframe.data.repository.MockActionTemplateRepository
 import com.synngate.synnframe.data.repository.MockBinXRepository
 import com.synngate.synnframe.data.repository.MockPalletRepository
 import com.synngate.synnframe.data.repository.MockTaskTypeXRepository
@@ -50,6 +51,8 @@ import com.synngate.synnframe.data.service.SoundServiceImpl
 import com.synngate.synnframe.data.service.SynchronizationControllerImpl
 import com.synngate.synnframe.data.service.WebServerControllerImpl
 import com.synngate.synnframe.data.service.WebServerManagerImpl
+import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
+import com.synngate.synnframe.domain.repository.ActionTemplateRepository
 import com.synngate.synnframe.domain.repository.BinXRepository
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.PalletRepository
@@ -64,6 +67,11 @@ import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.repository.WizardBinRepository
 import com.synngate.synnframe.domain.repository.WizardPalletRepository
 import com.synngate.synnframe.domain.repository.WizardProductRepository
+import com.synngate.synnframe.domain.service.ActionDataCacheService
+import com.synngate.synnframe.domain.service.ActionExecutionService
+import com.synngate.synnframe.domain.service.ActionStepExecutionService
+import com.synngate.synnframe.domain.service.ActionWizardContextFactory
+import com.synngate.synnframe.domain.service.ActionWizardController
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.FactLineDataCacheService
@@ -74,6 +82,7 @@ import com.synngate.synnframe.domain.service.SoundService
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.UpdateInstallerImpl
+import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.domain.service.WebServerManager
 import com.synngate.synnframe.domain.service.WizardController
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
@@ -102,6 +111,10 @@ import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXListViewModel
 import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
+import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
+import com.synngate.synnframe.presentation.ui.wizard.action.BinSelectionStepFactory
+import com.synngate.synnframe.presentation.ui.wizard.action.PalletSelectionStepFactory
+import com.synngate.synnframe.presentation.ui.wizard.action.ProductSelectionStepFactory
 import com.synngate.synnframe.util.network.NetworkMonitor
 import com.synngate.synnframe.util.resources.ResourceProvider
 import com.synngate.synnframe.util.resources.ResourceProviderImpl
@@ -358,6 +371,52 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         )
     }
 
+    // Сервисы для работы с визардом действий
+    val validationService by lazy {
+        Timber.d("Creating ValidationService")
+        ValidationService()
+    }
+
+    val actionDataCacheService by lazy {
+        Timber.d("Creating ActionDataCacheService")
+        ActionDataCacheService(
+            productRepository = wizardProductRepository,
+            binRepository = wizardBinRepository,
+            palletRepository = wizardPalletRepository
+        )
+    }
+
+    val actionExecutionService by lazy {
+        Timber.d("Creating ActionExecutionService")
+        ActionExecutionService(
+            taskXRepository = taskXRepository,
+            validationService = validationService
+        )
+    }
+
+    val actionStepExecutionService by lazy {
+        Timber.d("Creating ActionStepExecutionService")
+        ActionStepExecutionService(
+            taskXRepository = taskXRepository,
+            validationService = validationService,
+            actionDataCacheService = actionDataCacheService
+        )
+    }
+
+    val actionWizardController by lazy {
+        Timber.d("Creating ActionWizardController")
+        ActionWizardController(
+            taskXRepository = taskXRepository,
+            actionExecutionService = actionExecutionService,
+            actionStepExecutionService = actionStepExecutionService
+        )
+    }
+
+    val actionWizardContextFactory by lazy {
+        Timber.d("Creating ActionWizardContextFactory")
+        ActionWizardContextFactory()
+    }
+
     // Use Cases
     val serverUseCases by lazy {
         ServerUseCases(serverRepository, serverCoordinator)
@@ -388,14 +447,19 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     // Репозитории для заданий X
-    val taskXRepository: TaskXRepository by lazy {
-        Timber.d("Creating TaskXRepository")
-        MockTaskXRepository(taskTypeXRepository)
+    val actionTemplateRepository: ActionTemplateRepository by lazy {
+        Timber.d("Creating ActionTemplateRepository")
+        MockActionTemplateRepository()
     }
 
     val taskTypeXRepository: TaskTypeXRepository by lazy {
         Timber.d("Creating TaskTypeXRepository")
-        MockTaskTypeXRepository()
+        MockTaskTypeXRepository(actionTemplateRepository)
+    }
+
+    val taskXRepository: TaskXRepository by lazy {
+        Timber.d("Creating TaskXRepository")
+        MockTaskXRepository(taskTypeXRepository)
     }
 
     val binXRepository: BinXRepository by lazy {
@@ -639,8 +703,44 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 taskXUseCases = appContainer.taskXUseCases,
                 userUseCases = appContainer.userUseCases,
                 factLineWizardViewModel = createFactLineWizardViewModel(),
-                wizardController = appContainer.wizardController
+                wizardController = appContainer.wizardController,
+                // Добавляем новые зависимости
+                actionWizardController = appContainer.actionWizardController,
+                actionWizardContextFactory = appContainer.actionWizardContextFactory,
+                actionStepFactoryRegistry = createActionStepFactoryRegistry()
             )
         }
+    }
+
+    // Создаем реестр фабрик компонентов шагов
+    fun createActionStepFactoryRegistry(): ActionStepFactoryRegistry {
+        // Создаем реестр напрямую, а не через getOrCreateViewModel
+        val registry = ActionStepFactoryRegistry()
+
+        // Получаем ViewModel для фабрик
+        val factLineWizardViewModel = createFactLineWizardViewModel()
+
+        // Регистрируем фабрики для различных типов объектов
+        registry.registerFactory(
+            ActionObjectType.CLASSIFIER_PRODUCT,
+            ProductSelectionStepFactory(factLineWizardViewModel)
+        )
+
+        registry.registerFactory(
+            ActionObjectType.TASK_PRODUCT,
+            ProductSelectionStepFactory(factLineWizardViewModel)
+        )
+
+        registry.registerFactory(
+            ActionObjectType.PALLET,
+            PalletSelectionStepFactory(factLineWizardViewModel)
+        )
+
+        registry.registerFactory(
+            ActionObjectType.BIN,
+            BinSelectionStepFactory(factLineWizardViewModel)
+        )
+
+        return registry
     }
 }

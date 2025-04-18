@@ -58,61 +58,8 @@ class MockTaskTypeXRepository(
             )
         )
 
-        // Сохраняем другие типы заданий из старого кода для совместимости
-        val receiptTaskType = TaskTypeX(
-            id = "6546513215648",
-            name = "Приемка по монопалетам",
-            wmsOperation = WmsOperation.RECEIPT,
-            canBeCreatedInApp = false,
-            allowCompletionWithoutFactActions = false,
-            allowExceedPlanQuantity = false,
-            availableActions = listOf(
-                AvailableTaskAction.PAUSE,
-                AvailableTaskAction.RESUME,
-                AvailableTaskAction.SHOW_PLAN_LINES,
-                AvailableTaskAction.SHOW_FACT_LINES,
-                AvailableTaskAction.COMPARE_LINES
-            )
-        )
-
-        val pickingTaskType = TaskTypeX(
-            id = "7891011121314",
-            name = "Отбор заказа",
-            wmsOperation = WmsOperation.PICKING,
-            canBeCreatedInApp = false,
-            allowCompletionWithoutFactActions = false,
-            allowExceedPlanQuantity = false,
-            availableActions = listOf(
-                AvailableTaskAction.PAUSE,
-                AvailableTaskAction.RESUME,
-                AvailableTaskAction.SHOW_PLAN_LINES,
-                AvailableTaskAction.SHOW_FACT_LINES,
-                AvailableTaskAction.COMPARE_LINES,
-                AvailableTaskAction.VERIFY_TASK
-            )
-        )
-
-        val movementTaskType = TaskTypeX(
-            id = "8910111213141",
-            name = "Перемещение",
-            wmsOperation = WmsOperation.MOVEMENT,
-            canBeCreatedInApp = false,
-            allowCompletionWithoutFactActions = false,
-            allowExceedPlanQuantity = false,
-            availableActions = listOf(
-                AvailableTaskAction.PAUSE,
-                AvailableTaskAction.RESUME,
-                AvailableTaskAction.SHOW_PLAN_LINES,
-                AvailableTaskAction.SHOW_FACT_LINES,
-                AvailableTaskAction.COMPARE_LINES
-            )
-        )
-
         // Добавляем типы заданий в результирующую карту
         taskTypes[movePalletTaskType.id] = movePalletTaskType
-        taskTypes[receiptTaskType.id] = receiptTaskType
-        taskTypes[pickingTaskType.id] = pickingTaskType
-        taskTypes[movementTaskType.id] = movementTaskType
 
         return taskTypes
     }

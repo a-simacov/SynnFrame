@@ -136,12 +136,12 @@ class ActionExecutionService(
         stepResults: Map<String, Any>
     ): TaskProduct? {
         // Проверяем, есть ли товар в результатах шагов
-        for (entry in stepResults) {
-            if (entry.value is TaskProduct) {
-                return entry.value
-            } else if (entry.value is Product) {
+        for ((_, value) in stepResults) {
+            if (value is TaskProduct) {
+                return value
+            } else if (value is Product) {
                 // Если в результатах есть Product, преобразуем его в TaskProduct
-                return TaskProduct(product = entry.value)
+                return TaskProduct(product = value)
             }
         }
 
@@ -159,16 +159,16 @@ class ActionExecutionService(
         // Проверяем, указан ли тип объекта хранения как паллета
         if (action.actionTemplate.storageObjectType == ActionObjectType.PALLET) {
             // Ищем в результатах шагов с пометкой "storage"
-            for (entry in stepResults) {
-                if (entry.value is Pallet && entry.key.contains("storage", ignoreCase = true)) {
-                    return entry.value
+            for ((key, value) in stepResults) {
+                if (value is Pallet && key.contains("storage", ignoreCase = true)) {
+                    return value
                 }
             }
 
             // Ищем любую паллету в результатах
-            for (entry in stepResults) {
-                if (entry.value is Pallet) {
-                    return entry.value
+            for ((_, value) in stepResults) {
+                if (value is Pallet) {
+                    return value
                 }
             }
         }
@@ -187,17 +187,17 @@ class ActionExecutionService(
         // Проверяем, указан ли тип объекта размещения как паллета
         if (action.actionTemplate.placementObjectType == ActionObjectType.PALLET) {
             // Ищем в результатах шагов с пометкой "placement"
-            for (entry in stepResults) {
-                if (entry.value is Pallet && entry.key.contains("placement", ignoreCase = true)) {
-                    return entry.value
+            for ((key, value) in stepResults) {
+                if (value is Pallet && key.contains("placement", ignoreCase = true)) {
+                    return value
                 }
             }
 
             // Если нет явной пометки "placement", но есть паллета, которая отличается от паллеты хранения
             val storagePallet = extractStoragePallet(action, stepResults)
-            for (entry in stepResults) {
-                if (entry.value is Pallet && entry.value != storagePallet) {
-                    return entry.value
+            for ((_, value) in stepResults) {
+                if (value is Pallet && value != storagePallet) {
+                    return value
                 }
             }
         }
@@ -216,9 +216,9 @@ class ActionExecutionService(
         // Проверяем, указан ли тип объекта размещения как ячейка
         if (action.actionTemplate.placementObjectType == ActionObjectType.BIN) {
             // Ищем в результатах шагов
-            for (entry in stepResults) {
-                if (entry.value is BinX) {
-                    return entry.value
+            for ((_, value) in stepResults) {
+                if (value is BinX) {
+                    return value
                 }
             }
         }
