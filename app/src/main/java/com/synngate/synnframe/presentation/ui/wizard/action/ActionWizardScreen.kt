@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.wizard.action
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,10 +14,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -57,14 +56,10 @@ fun ActionWizardScreen(
     val state by actionWizardController.wizardState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
+    Timber.d("ActionWizardScreen: state=$state")
+
     state?.let { wizardState ->
-        // Обработчик действий при нажатии на "Назад"
-        val handleBack = {
-            Timber.d("ActionWizardScreen: handleBack called")
-            coroutineScope.launch {
-                actionWizardController.processStepResult(null)
-            }
-        }
+        Timber.d("ActionWizardScreen: currentStep=${wizardState.currentStep}, action=${wizardState.action != null}")
 
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
@@ -76,26 +71,11 @@ fun ActionWizardScreen(
                     .padding(16.dp)
             ) {
                 // Заголовок
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = wizardState.action?.actionTemplate?.name ?: "Выполнение действия",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    IconButton(onClick = {
-                        Timber.d("Close wizard button was clicked")
-                        onCancel()
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Закрыть"
-                        )
-                    }
-                }
+                Text(
+                    text = wizardState.action?.actionTemplate?.name ?: "Выполнение действия",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
                 // Прогресс
                 LinearProgressIndicator(
@@ -108,53 +88,57 @@ fun ActionWizardScreen(
                 // Содержимое текущего шага
                 Box(
                     modifier = Modifier
-                        .weight(1f)
                         .fillMaxWidth()
+                        .height(400.dp) // Фиксированная высота вместо weight
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(16.dp) // Добавляем видимый padding
                 ) {
                     val currentStep = wizardState.currentStep
+                    val action = wizardState.action
 
                     if (currentStep == null || wizardState.isCompleted) {
                         // Итоговый экран
-                        ActionSummaryScreen(
-                            state = wizardState,
-                            onComplete = {
-                                Timber.d("Action complete button was clicked")
-                                onComplete()
-                            },
-                            onBack = {
-                                Timber.d("Back button was pressed in summary screen")
-                                handleBack()
-                            }
-                        )
-                    } else {
-                        val action = wizardState.action
-                        if (action != null) {
-                            // Находим ActionStep для текущего шага визарда
-                            val actionStep = findActionStepForWizardStep(action, currentStep.id)
+                        Text("Итоговый экран действия")
+                    } else if (action != null) {
+                        // Находим ActionStep для текущего шага визарда
+                        val actionStep = findActionStepForWizardStep(action, currentStep.id)
 
-                            if (actionStep != null) {
-                                // Находим фабрику для типа объекта
-                                val factory = actionStepFactoryRegistry.getFactory(actionStep.objectType)
+                        Timber.d("Step: ${currentStep.id}, found actionStep: ${actionStep?.id}")
 
-                                if (factory != null) {
-                                    // Создаем контекст для шага
-                                    val context = actionWizardContextFactory.createContext(
-                                        state = wizardState,
-                                        onStepComplete = { result ->
-                                            coroutineScope.launch {
-                                                actionWizardController.processStepResult(result)
-                                            }
-                                        },
-                                        onBack = { // Это должна быть лямбда без аргументов
-                                            handleBack()
-                                        },
-                                        onSkip = { result ->
-                                            // TODO: Реализовать пропуск шага
-                                            coroutineScope.launch {
-                                                // Заглушка, реализация будет добавлена позже
-                                            }
-                                        },
-                                        onCancel = onCancel
+                        if (actionStep != null) {
+                            // Находим фабрику для типа объекта
+                            val factory = actionStepFactoryRegistry.getFactory(actionStep.objectType)
+
+                            Timber.d("Object type: ${actionStep.objectType}, factory: ${factory != null}")
+
+                            if (factory != null) {
+                                // Создаем контекст для шага
+                                val context = actionWizardContextFactory.createContext(
+                                    state = wizardState,
+                                    onStepComplete = { result ->
+                                        Timber.d("Step completed with result: $result")
+                                        coroutineScope.launch {
+                                            actionWizardController.processStepResult(result)
+                                        }
+                                    },
+                                    onBack = {
+                                        Timber.d("Back navigation requested")
+                                        coroutineScope.launch {
+                                            actionWizardController.processStepResult(null)
+                                        }
+                                    },
+                                    onSkip = { result ->
+                                        Timber.d("Skip requested with result: $result")
+                                    },
+                                    onCancel = onCancel
+                                )
+
+                                // ВАЖНО: добавляем отладочную информацию
+                                Column {
+                                    Text(
+                                        text = "Шаг: ${actionStep.name}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.padding(bottom = 8.dp)
                                     )
 
                                     // Создаем компонент шага
@@ -163,61 +147,96 @@ fun ActionWizardScreen(
                                         action = action,
                                         context = context
                                     )
-                                } else {
-                                    // Фабрика не найдена для типа объекта
-                                    Text(
-                                        text = "Нет компонента для типа объекта: ${actionStep.objectType}",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
                                 }
                             } else {
-                                // ActionStep не найден для текущего шага
+                                // Фабрика не найдена
                                 Text(
-                                    text = "Шаг не найден: ${currentStep.id}",
+                                    text = "Ошибка: Нет компонента для типа объекта: ${actionStep.objectType}",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.error
                                 )
                             }
                         } else {
-                            // Действие не найдено в состоянии
+                            // ActionStep не найден
                             Text(
-                                text = "Действие не найдено",
+                                text = "Ошибка: Шаг не найден: ${currentStep.id}",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.error
                             )
                         }
+                    } else {
+                        // Действие не найдено
+                        Text(
+                            text = "Ошибка: Действие не найдено",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
 
-                // Навигационные кнопки - только кнопка назад, если это возможно
-                if (wizardState.currentStep != null && !wizardState.isCompleted && wizardState.canGoBack) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp),
-                        contentAlignment = Alignment.CenterStart
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Кнопки действий
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Button(
+                        onClick = onCancel,
+                        modifier = Modifier.weight(1f)
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                Timber.d("Back button was pressed in navigation")
-                                handleBack()
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = null
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Назад")
-                        }
+                        Text("Отмена")
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Button(
+                        onClick = onComplete,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Завершить")
                     }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
             }
         }
+    } ?: run {
+        // Если состояние null, показываем сообщение об ошибке
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Ошибка: Визард не инициализирован",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
     }
+}
+
+// Улучшенная функция для поиска ActionStep
+private fun findActionStepForWizardStep(
+    action: PlannedAction,
+    stepId: String
+): ActionStep? {
+    Timber.d("Finding action step for wizard step: $stepId")
+    Timber.d("Storage steps: ${action.actionTemplate.storageSteps.map { it.id }}")
+    Timber.d("Placement steps: ${action.actionTemplate.placementSteps.map { it.id }}")
+
+    // Ищем в шагах хранения
+    action.actionTemplate.storageSteps.find { it.id == stepId }?.let {
+        Timber.d("Found in storage steps: ${it.id}")
+        return it
+    }
+
+    // Ищем в шагах размещения
+    action.actionTemplate.placementSteps.find { it.id == stepId }?.let {
+        Timber.d("Found in placement steps: ${it.id}")
+        return it
+    }
+
+    Timber.w("Action step not found for wizard step: $stepId")
+    return null
 }
 
 /**
@@ -330,22 +349,6 @@ fun ActionSummaryScreen(
             }
         }
     }
-}
-
-/**
- * Находит шаг действия для шага визарда
- */
-private fun findActionStepForWizardStep(
-    action: PlannedAction,
-    stepId: String
-): ActionStep? {
-    // Ищем в шагах хранения
-    action.actionTemplate.storageSteps.find { it.id == stepId }?.let { return it }
-
-    // Ищем в шагах размещения
-    action.actionTemplate.placementSteps.find { it.id == stepId }?.let { return it }
-
-    return null
 }
 
 /**

@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.taskx.AvailableTaskAction
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
@@ -95,14 +98,28 @@ fun TaskXDetailScreen(
 
     // Показываем визард действий, если он активен
     if (state.showActionWizard && wizardState != null) {
-        ActionWizardScreen(
-            actionWizardController = viewModel.actionWizardController,
-            actionWizardContextFactory = viewModel.actionWizardContextFactory,
-            actionStepFactoryRegistry = viewModel.actionStepFactoryRegistry,
-            onComplete = { viewModel.completeActionWizard() },
-            onCancel = { viewModel.hideActionWizard() },
-            modifier = Modifier.fillMaxSize()
-        )
+        Dialog(
+            onDismissRequest = { viewModel.hideActionWizard() },
+            properties = DialogProperties(
+                dismissOnBackPress = true,
+                dismissOnClickOutside = false,
+                usePlatformDefaultWidth = false
+            )
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                ActionWizardScreen(
+                    actionWizardController = viewModel.actionWizardController,
+                    actionWizardContextFactory = viewModel.actionWizardContextFactory,
+                    actionStepFactoryRegistry = viewModel.actionStepFactoryRegistry,
+                    onComplete = { viewModel.completeActionWizard() },
+                    onCancel = { viewModel.hideActionWizard() },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
     }
 
     AppScaffold(

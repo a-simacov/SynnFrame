@@ -34,11 +34,14 @@ class TaskXDetailViewModel(
     fun startActionExecution(actionId: String) {
         launchIO {
             try {
+                Timber.d("Starting action execution for actionId: $actionId")
                 val result = actionWizardController.initialize(taskId, actionId)
                 if (result.isSuccess) {
+                    Timber.d("Action wizard initialized successfully")
                     // Обновляем состояние, чтобы показать визард
                     updateState { it.copy(showActionWizard = true) }
                 } else {
+                    Timber.e("Failed to initialize action wizard: ${result.exceptionOrNull()?.message}")
                     updateState { it.copy(error = "Ошибка при инициализации действия: ${result.exceptionOrNull()?.message}") }
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось начать выполнение действия"))
                 }

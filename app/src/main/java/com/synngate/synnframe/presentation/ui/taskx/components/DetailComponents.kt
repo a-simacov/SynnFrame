@@ -33,9 +33,6 @@ import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import java.time.LocalDateTime
 
-/**
- * Компонент для отображения списка запланированных действий
- */
 @Composable
 fun PlannedActionsView(
     plannedActions: List<PlannedAction>,
@@ -66,9 +63,6 @@ fun PlannedActionsView(
     }
 }
 
-/**
- * Компонент для отображения списка фактических действий
- */
 @Composable
 fun FactActionsView(
     factActions: List<FactAction>,
@@ -99,9 +93,6 @@ fun FactActionsView(
     }
 }
 
-/**
- * Компонент для отображения элемента запланированного действия
- */
 @Composable
 fun PlannedActionItem(
     action: PlannedAction,
@@ -209,9 +200,6 @@ fun PlannedActionItem(
     }
 }
 
-/**
- * Компонент для отображения элемента фактического действия
- */
 @Composable
 fun FactActionItem(
     action: FactAction,
@@ -235,19 +223,11 @@ fun FactActionItem(
                 style = MaterialTheme.typography.titleSmall
             )
 
-            // Отображение товара, если есть
-            action.storageProduct?.let { showStorageProduct(it) }
+            action.storageProduct?.let { ShowStorageProduct(it) }
+            action.storagePallet?.let { ShowPallet("Паллета хранения", it) }
+            action.placementBin?.let { ShowBin(it) }
+            action.placementPallet?.let { ShowPallet("Паллета размещения", it) }
 
-            // Отображение паллеты хранения, если есть
-            action.storagePallet?.let { showPallet("Паллета хранения", it) }
-
-            // Отображение ячейки размещения, если есть
-            action.placementBin?.let { showBin(it) }
-
-            // Отображение паллеты размещения, если есть
-            action.placementPallet?.let { showPallet("Паллета размещения", it) }
-
-            // Время
             Text(
                 text = "Начато: ${formatDate(action.startedAt)}",
                 style = MaterialTheme.typography.bodySmall
@@ -261,11 +241,8 @@ fun FactActionItem(
     }
 }
 
-/**
- * Отображение информации о товаре
- */
 @Composable
-private fun showStorageProduct(product: TaskProduct) {
+private fun ShowStorageProduct(product: TaskProduct) {
     Text(
         text = "Товар: ${product.product.name}",
         style = MaterialTheme.typography.bodyMedium
@@ -294,11 +271,8 @@ private fun showStorageProduct(product: TaskProduct) {
     )
 }
 
-/**
- * Отображение информации о паллете
- */
 @Composable
-private fun showPallet(title: String, pallet: Pallet) {
+private fun ShowPallet(title: String, pallet: Pallet) {
     Text(
         text = "$title: ${pallet.code}",
         style = MaterialTheme.typography.bodyMedium
@@ -310,11 +284,8 @@ private fun showPallet(title: String, pallet: Pallet) {
     )
 }
 
-/**
- * Отображение информации о ячейке
- */
 @Composable
-private fun showBin(bin: BinX) {
+private fun ShowBin(bin: BinX) {
     Text(
         text = "Ячейка: ${bin.code}",
         style = MaterialTheme.typography.bodyMedium

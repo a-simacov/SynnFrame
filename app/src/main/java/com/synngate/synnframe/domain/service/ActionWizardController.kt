@@ -45,6 +45,11 @@ class ActionWizardController(
             // Создаем шаги для визарда на основе шаблона действия
             val steps = createStepsFromAction(action)
 
+            if (steps.isEmpty()) {
+                Timber.w("No steps created for action ${action.id}")
+                return Result.failure(IllegalStateException("No steps created for this action"))
+            }
+
             // Создаем начальное состояние
             _wizardState.value = ActionWizardState(
                 taskId = taskId,
@@ -59,9 +64,55 @@ class ActionWizardController(
             Timber.d("Wizard initialized successfully with ${steps.size} steps")
             Result.success(true)
         } catch (e: Exception) {
-            Timber.e(e, "Error initializing wizard")
+            Timber.e(e, "Error initializing wizard: ${e.message}")
             Result.failure(e)
         }
+    }
+
+    /**
+     * Создает шаги визарда на основе шаблона действия
+     */
+    private fun createStepsFromAction(action: PlannedAction): List<WizardStep> {
+        val steps = mutableListOf<WizardStep>()
+        val template = action.actionTemplate
+
+        Timber.d("Creating steps from action template: ${template.name}")
+
+        // Проверяем наличие шагов в шаблоне
+        if (template.storageSteps.isEmpty() && template.placementSteps.isEmpty()) {
+            Timber.w("Action template has no steps: ${template.id}")
+            return emptyList()
+        }
+
+        // Добавляем шаги для объекта хранения
+        template.storageSteps.sortedBy { it.order }.forEach { actionStep ->
+            Timber.d("Adding storage step: ${actionStep.id}")
+            steps.add(createWizardStep(actionStep))
+        }
+
+        // Добавляем шаги для объекта размещения
+        template.placementSteps.sortedBy { it.order }.forEach { actionStep ->
+            Timber.d("Adding placement step: ${actionStep.id}")
+            steps.add(createWizardStep(actionStep))
+        }
+
+        return steps
+    }
+
+    /**
+     * Создает шаг визарда на основе шага действия
+     * Не заполняет содержимое, это будет сделано в UI
+     */
+    private fun createWizardStep(actionStep: ActionStep): WizardStep {
+        return WizardStep(
+            id = actionStep.id,
+            title = actionStep.name,
+            // Пустая функция для содержимого, будет заполнена в UI
+            content = { _ -> /* Заполняется в ActionWizardScreen */ },
+            canNavigateBack = true,
+            isAutoComplete = false,
+            shouldShow = { true }
+        )
     }
 
     /**
@@ -157,39 +208,5 @@ class ActionWizardController(
             Timber.e(e, "Error completing action")
             return Result.failure(e)
         }
-    }
-
-    /**
-     * Создает шаги визарда на основе шаблона действия
-     */
-    private fun createStepsFromAction(action: PlannedAction): List<WizardStep> {
-        val steps = mutableListOf<WizardStep>()
-        val template = action.actionTemplate
-
-        // Добавляем шаги для объекта хранения
-        template.storageSteps.sortedBy { it.order }.forEach { actionStep ->
-            steps.add(createWizardStep(actionStep))
-        }
-
-        // Добавляем шаги для объекта размещения
-        template.placementSteps.sortedBy { it.order }.forEach { actionStep ->
-            steps.add(createWizardStep(actionStep))
-        }
-
-        return steps
-    }
-
-    /**
-     * Создает шаг визарда на основе шага действия
-     */
-    private fun createWizardStep(actionStep: ActionStep): WizardStep {
-        return WizardStep(
-            id = actionStep.id,
-            title = actionStep.name,
-            content = { /* Будет заполнено в UI */ },
-            canNavigateBack = true,
-            isAutoComplete = false,
-            shouldShow = { true }
-        )
     }
 }
