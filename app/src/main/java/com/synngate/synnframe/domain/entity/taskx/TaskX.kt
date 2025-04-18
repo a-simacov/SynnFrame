@@ -1,5 +1,7 @@
 package com.synngate.synnframe.domain.entity.taskx
 
+import com.synngate.synnframe.domain.entity.taskx.action.FactAction
+import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.util.serialization.LocalDateTimeSerializer
 import kotlinx.serialization.Serializable
 import java.time.LocalDateTime
@@ -21,18 +23,18 @@ data class TaskX(
     val lastModifiedAt: LocalDateTime? = null, // Дата и время последнего изменения
     @Serializable(with = LocalDateTimeSerializer::class)
     val completedAt: LocalDateTime? = null,   // Дата и время завершения
-    val planLines: List<PlanLineX> = emptyList(), // Строки плана
-    val factLines: List<FactLineX> = emptyList(), // Строки факта
-    val finalFactLine: FactLineX? = null,      // Финальная строка факта
-    val allowCompletionWithoutFactLines: Boolean = false // Добавляем это свойство
+    val plannedActions: List<PlannedAction> = emptyList(), // Запланированные действия
+    val factActions: List<FactAction> = emptyList(),       // Фактические действия
+    val finalActions: List<FactAction> = emptyList(),      // Финальные действия
+    val allowCompletionWithoutFactActions: Boolean = false // Разрешить завершение без факт. действий
 ) {
     // Можно ли начать выполнение задания
     fun canStart(): Boolean = status == TaskXStatus.TO_DO
 
-    // Можно ли завершить задание (изменена логика без использования getTaskType)
+    // Можно ли завершить задание (изменена логика)
     fun canComplete(): Boolean {
         return status == TaskXStatus.IN_PROGRESS &&
-                (factLines.isNotEmpty() || allowCompletionWithoutFactLines)
+                (factActions.isNotEmpty() || allowCompletionWithoutFactActions)
     }
 
     // Можно ли приостановить задание
@@ -41,6 +43,11 @@ data class TaskX(
     // Можно ли возобновить задание
     fun canResume(): Boolean = status == TaskXStatus.PAUSED
 
-    // Можно ли добавлять строки факта
-    fun canAddFactLines(): Boolean = status == TaskXStatus.IN_PROGRESS
+    // Можно ли добавлять факт. действия
+    fun canAddFactActions(): Boolean = status == TaskXStatus.IN_PROGRESS
+
+    // Получить следующее запланированное действие
+    fun getNextAction(): PlannedAction? {
+        return plannedActions.firstOrNull { !it.isCompleted && !it.isSkipped }
+    }
 }

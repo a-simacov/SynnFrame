@@ -6,7 +6,8 @@ enum class WmsAction {
     RECEIPT,      // Оприходовать
     EXPENSE,      // Списать
     RECOUNT,      // Пересчитать
-    USE;          // Использовать
+    USE,          // Использовать
+    ASSERT;       // Подтверждение
 
     companion object {
         fun fromString(value: String): WmsAction {
@@ -17,6 +18,7 @@ enum class WmsAction {
                 "EXPENSE", "СПИСАТЬ" -> EXPENSE
                 "RECOUNT", "ПЕРЕСЧИТАТЬ" -> RECOUNT
                 "USE", "ИСПОЛЬЗОВАТЬ" -> USE
+                "ASSERT", "ПОДТВЕРЖДЕНИЕ" -> ASSERT
                 else -> PUT_INTO
             }
         }
