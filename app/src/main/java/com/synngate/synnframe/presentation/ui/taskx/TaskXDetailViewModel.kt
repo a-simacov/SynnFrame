@@ -31,7 +31,6 @@ class TaskXDetailViewModel(
         loadTask()
     }
 
-    // Метод для запуска визарда выполнения действия
     fun startActionExecution(actionId: String) {
         launchIO {
             try {

@@ -5,6 +5,7 @@ import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
+import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.repository.BinXRepository
 import com.synngate.synnframe.domain.repository.PalletRepository
 import com.synngate.synnframe.domain.repository.TaskTypeXRepository
@@ -117,7 +118,7 @@ class TaskXUseCases(
             }
 
             // Проверяем, есть ли строки факта или разрешено завершение без них
-            if (task.factLines.isEmpty() && !taskType.allowCompletionWithoutFactLines) {
+            if (task.factActions.isEmpty() && !taskType.allowCompletionWithoutFactActions) {
                 Timber.w("Impossible to complete the task '${task.name}' without fact lines")
                 return Result.failure(IllegalStateException("Impossible to complete the task without fact lines"))
             }
@@ -200,47 +201,53 @@ class TaskXUseCases(
     }
 
     // Добавление строки факта
-    suspend fun addFactLine(factLine: FactLineX): Result<TaskX> {
+    suspend fun addFactAction(factAction: FactAction): Result<TaskX> {
         return try {
-            val task = taskXRepository.getTaskById(factLine.taskId)
+            val task = taskXRepository.getTaskById(factAction.taskId)
                 ?: return Result.failure(IllegalArgumentException("Task was not found"))
 
             val taskType = taskTypeXRepository.getTaskTypeById(task.taskTypeId)
                 ?: return Result.failure(IllegalArgumentException("Task type was not found"))
 
             if (task.status != TaskXStatus.IN_PROGRESS) {
-                Timber.w("Impossible to add fact line in the task '${task.name}', current status: ${task.status}")
+                Timber.w("Impossible to add fact action in the task '${task.name}', current status: ${task.status}")
                 return Result.failure(IllegalStateException("The task is not in the status 'In progress'"))
             }
 
             // Проверка превышения планового количества, если это не разрешено
-            if (!taskType.allowExceedPlanQuantity && factLine.storageProduct != null) {
-                val product = factLine.storageProduct.product
-                val planQuantity = task.planLines
-                    .filter { it.storageProduct?.product?.id == product.id }
-                    .sumOf { it.storageProduct?.quantity?.toDouble() ?: 0.0 }
+            if (!taskType.allowExceedPlanQuantity && factAction.storageProduct != null) {
+                val product = factAction.storageProduct.product
 
-                val factQuantity = task.factLines
+                // Получаем плановые и фактические количества для данного продукта
+                val plannedActions = task.plannedActions.filter {
+                    it.storageProduct?.product?.id == product.id
+                }
+
+                val planQuantity = plannedActions
+                    .mapNotNull { it.storageProduct?.quantity }
+                    .sum()
+
+                val factQuantity = task.factActions
                     .filter { it.storageProduct?.product?.id == product.id }
-                    .sumOf { it.storageProduct?.quantity?.toDouble() ?: 0.0 } +
-                        factLine.storageProduct.quantity
+                    .mapNotNull { it.storageProduct?.quantity }
+                    .sum() + (factAction.storageProduct.quantity)
 
                 if (factQuantity > planQuantity) {
-                    Timber.w("Plan qty is greater than fact qty for product ${product.name}")
+                    Timber.w("Plan qty exceeded for product ${product.name}")
                     return Result.failure(
-                        IllegalStateException("Plan qty is greater than fact qty for product ${product.name}")
+                        IllegalStateException("Plan qty exceeded for product ${product.name}")
                     )
                 }
             }
 
-            // Добавляем строку факта
-            taskXRepository.addFactLine(factLine)
-            Timber.i("Fact line added in the task: ${task.name}")
+            // Добавляем действие факта
+            taskXRepository.addFactAction(factAction)
+            Timber.i("Fact action added in the task: ${task.name}")
 
             // Возвращаем обновленное задание
-            Result.success(taskXRepository.getTaskById(factLine.taskId)!!)
+            Result.success(taskXRepository.getTaskById(factAction.taskId)!!)
         } catch (e: Exception) {
-            Timber.e(e, "Error on adding fact line")
+            Timber.e(e, "Error on adding fact action")
             Result.failure(e)
         }
     }

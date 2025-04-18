@@ -73,7 +73,6 @@ fun TaskXDetailScreen(
                 is TaskXDetailEvent.HideActionWizard -> {
                     // Обработка будет через state.showActionWizard
                 }
-                else -> {}
             }
         }
     }
@@ -219,15 +218,6 @@ fun TaskXDetailScreen(
                                 )
                             }
                         }
-                    }
-
-                    // Исполнитель
-                    task.executorId?.let {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Исполнитель: ${it}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
                     }
                 }
             }

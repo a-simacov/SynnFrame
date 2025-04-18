@@ -74,7 +74,6 @@ import com.synngate.synnframe.domain.service.ActionWizardContextFactory
 import com.synngate.synnframe.domain.service.ActionWizardController
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
-import com.synngate.synnframe.domain.service.FactLineDataCacheService
 import com.synngate.synnframe.domain.service.FileService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
@@ -84,7 +83,6 @@ import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.UpdateInstallerImpl
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.domain.service.WebServerManager
-import com.synngate.synnframe.domain.service.WizardController
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
@@ -93,7 +91,6 @@ import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
-import com.synngate.synnframe.domain.usecase.wizard.FactLineWizardUseCases
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.ui.login.LoginViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModel
@@ -110,7 +107,7 @@ import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModel
 import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXListViewModel
-import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
+import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
 import com.synngate.synnframe.presentation.ui.wizard.action.BinSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.PalletSelectionStepFactory
@@ -483,26 +480,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         )
     }
 
-    val factLineDataCacheService by lazy {
-        FactLineDataCacheService(
-            wizardProductRepository,
-            wizardBinRepository,
-            wizardPalletRepository
-        )
-    }
-
-    val factLineWizardUseCases by lazy {
-        FactLineWizardUseCases(
-            factLineDataCacheService,
-            taskXUseCases,
-            taskTypeXRepository
-        )
-    }
-
-    val wizardController: WizardController by lazy {
-        WizardController(factLineWizardUseCases)
-    }
-
     // Создание контейнера для уровня навигации
     fun createNavigationContainer(): NavigationContainer {
         return createChildContainer { NavigationContainer(this) }
@@ -687,14 +664,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         }
     }
 
-    fun createFactLineWizardViewModel(): FactLineWizardViewModel {
-        return getOrCreateViewModel("FactLineWizardViewModel") {
-            FactLineWizardViewModel(
-                factLineWizardUseCases = appContainer.factLineWizardUseCases
-            )
-        }
-    }
-
     // Обновленный метод для TaskXDetailViewModel
     fun createTaskXDetailViewModel(taskId: String): TaskXDetailViewModel {
         return getOrCreateViewModel("TaskXDetailViewModel_$taskId") {
@@ -702,12 +671,17 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 taskId = taskId,
                 taskXUseCases = appContainer.taskXUseCases,
                 userUseCases = appContainer.userUseCases,
-                factLineWizardViewModel = createFactLineWizardViewModel(),
-                wizardController = appContainer.wizardController,
-                // Добавляем новые зависимости
                 actionWizardController = appContainer.actionWizardController,
                 actionWizardContextFactory = appContainer.actionWizardContextFactory,
                 actionStepFactoryRegistry = createActionStepFactoryRegistry()
+            )
+        }
+    }
+
+    fun createActionDataViewModel(): ActionDataViewModel {
+        return getOrCreateViewModel("ActionDataViewModel") {
+            ActionDataViewModel(
+                actionDataCacheService = appContainer.actionDataCacheService
             )
         }
     }
@@ -717,28 +691,28 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         // Создаем реестр напрямую, а не через getOrCreateViewModel
         val registry = ActionStepFactoryRegistry()
 
-        // Получаем ViewModel для фабрик
-        val factLineWizardViewModel = createFactLineWizardViewModel()
+        // Получаем ViewModel для фабрик - обновлено название метода
+        val actionDataViewModel = createActionDataViewModel()
 
         // Регистрируем фабрики для различных типов объектов
         registry.registerFactory(
             ActionObjectType.CLASSIFIER_PRODUCT,
-            ProductSelectionStepFactory(factLineWizardViewModel)
+            ProductSelectionStepFactory(actionDataViewModel)
         )
 
         registry.registerFactory(
             ActionObjectType.TASK_PRODUCT,
-            ProductSelectionStepFactory(factLineWizardViewModel)
+            ProductSelectionStepFactory(actionDataViewModel)
         )
 
         registry.registerFactory(
             ActionObjectType.PALLET,
-            PalletSelectionStepFactory(factLineWizardViewModel)
+            PalletSelectionStepFactory(actionDataViewModel)
         )
 
         registry.registerFactory(
             ActionObjectType.BIN,
-            BinSelectionStepFactory(factLineWizardViewModel)
+            BinSelectionStepFactory(actionDataViewModel)
         )
 
         return registry

@@ -4,16 +4,13 @@ import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
-import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.repository.TaskTypeXRepository
-import com.synngate.synnframe.domain.service.FactLineDataCacheService
+import com.synngate.synnframe.domain.service.ActionDataCacheService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
-import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import kotlinx.coroutines.flow.StateFlow
 
-class FactLineWizardUseCases(
-    private val dataCacheService: FactLineDataCacheService,
-    private val taskXUseCases: TaskXUseCases,
+class ActionDataUseCases(
+    private val dataCacheService: ActionDataCacheService,
     private val taskTypeXRepository: TaskTypeXRepository
 ) : BaseUseCase {
 
@@ -66,10 +63,6 @@ class FactLineWizardUseCases(
 
     suspend fun printPalletLabel(code: String): Result<Boolean> {
         return dataCacheService.printPalletLabel(code)
-    }
-
-    suspend fun addFactLine(factLine: FactLineX): Result<TaskX> {
-        return taskXUseCases.addFactLine(factLine)
     }
 
     fun clearCache() {

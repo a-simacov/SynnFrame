@@ -3,24 +3,27 @@ package com.synngate.synnframe.presentation.ui.wizard
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
-import com.synngate.synnframe.domain.usecase.wizard.FactLineWizardUseCases
+import com.synngate.synnframe.domain.service.ActionDataCacheService
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import timber.log.Timber
 
-class FactLineWizardViewModel(
-    private val factLineWizardUseCases: FactLineWizardUseCases
+/**
+ * ViewModel для доступа к данным, используемым в визарде действий
+ */
+class ActionDataViewModel(
+    private val actionDataCacheService: ActionDataCacheService
 ) : BaseViewModel<Unit, Unit>(Unit) {
 
-    // Проксируем потоки данных из UseCase
-    val products = factLineWizardUseCases.getProductsFlow()
-    val bins = factLineWizardUseCases.getBinsFlow()
-    val pallets = factLineWizardUseCases.getPalletsFlow()
+    // Проксируем потоки данных из сервиса кэша
+    val products = actionDataCacheService.products
+    val bins = actionDataCacheService.bins
+    val pallets = actionDataCacheService.pallets
 
     // Методы для загрузки данных
     fun loadProducts(query: String? = null, planProductIds: Set<String>? = null) {
         launchIO {
             try {
-                factLineWizardUseCases.loadProducts(query, planProductIds)
+                actionDataCacheService.loadProducts(query, planProductIds)
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при загрузке продуктов")
             }
@@ -30,7 +33,7 @@ class FactLineWizardViewModel(
     fun loadBins(query: String? = null, zone: String? = null) {
         launchIO {
             try {
-                factLineWizardUseCases.loadBins(query, zone)
+                actionDataCacheService.loadBins(query, zone)
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при загрузке ячеек")
             }
@@ -40,7 +43,7 @@ class FactLineWizardViewModel(
     fun loadPallets(query: String? = null) {
         launchIO {
             try {
-                factLineWizardUseCases.loadPallets(query)
+                actionDataCacheService.loadPallets(query)
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при загрузке паллет")
             }
@@ -51,7 +54,7 @@ class FactLineWizardViewModel(
     fun findProductByBarcode(barcode: String, onResult: (Product?) -> Unit) {
         launchIO {
             try {
-                val product = factLineWizardUseCases.findProductByBarcode(barcode)
+                val product = actionDataCacheService.findProductByBarcode(barcode)
                 launchMain {
                     onResult(product)
                 }
@@ -67,7 +70,7 @@ class FactLineWizardViewModel(
     fun findBinByCode(code: String, onResult: (BinX?) -> Unit) {
         launchIO {
             try {
-                val bin = factLineWizardUseCases.findBinByCode(code)
+                val bin = actionDataCacheService.findBinByCode(code)
                 launchMain {
                     onResult(bin)
                 }
@@ -83,7 +86,7 @@ class FactLineWizardViewModel(
     fun findPalletByCode(code: String, onResult: (Pallet?) -> Unit) {
         launchIO {
             try {
-                val pallet = factLineWizardUseCases.findPalletByCode(code)
+                val pallet = actionDataCacheService.findPalletByCode(code)
                 launchMain {
                     onResult(pallet)
                 }
@@ -100,7 +103,7 @@ class FactLineWizardViewModel(
     fun createPallet(onResult: (Result<Pallet>) -> Unit) {
         launchIO {
             try {
-                val result = factLineWizardUseCases.createPallet()
+                val result = actionDataCacheService.createPallet()
                 launchMain {
                     onResult(result)
                 }
@@ -116,7 +119,7 @@ class FactLineWizardViewModel(
     fun closePallet(code: String, onResult: (Result<Boolean>) -> Unit) {
         launchIO {
             try {
-                val result = factLineWizardUseCases.closePallet(code)
+                val result = actionDataCacheService.closePallet(code)
                 launchMain {
                     onResult(result)
                 }
@@ -132,7 +135,7 @@ class FactLineWizardViewModel(
     fun printPalletLabel(code: String, onResult: (Result<Boolean>) -> Unit) {
         launchIO {
             try {
-                val result = factLineWizardUseCases.printPalletLabel(code)
+                val result = actionDataCacheService.printPalletLabel(code)
                 launchMain {
                     onResult(result)
                 }
@@ -148,7 +151,7 @@ class FactLineWizardViewModel(
     // Методы для очистки кэша
     fun clearCache() {
         launchIO {
-            factLineWizardUseCases.clearCache()
+            actionDataCacheService.clearCache()
         }
     }
 }

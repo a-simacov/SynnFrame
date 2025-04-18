@@ -403,7 +403,7 @@ class MockTaskXRepository(
             barcode = "03165467987",
             name = "Принять задание по монопалетам от Клиента 1",
             taskTypeId = "task_type_move_pallet",
-            executorId = "admin",
+            executorId = "8b858d00-f058-11ef-9bfd-000c2961fff3",
             status = TaskXStatus.TO_DO,
             createdAt = LocalDateTime.now().minusDays(1),
             plannedActions = plannedActions,

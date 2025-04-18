@@ -25,13 +25,13 @@ import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView
 import com.synngate.synnframe.presentation.ui.taskx.components.PalletItem
-import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
+import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
 
 /**
  * Фабрика компонентов для шага выбора паллеты
  */
 class PalletSelectionStepFactory(
-    private val wizardViewModel: FactLineWizardViewModel
+    private val wizardViewModel: ActionDataViewModel
 ) : ActionStepFactory {
 
     @Composable
