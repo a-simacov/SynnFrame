@@ -241,6 +241,8 @@ fun ActionWizardScreen(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.weight(0.5f))
             }
         }
     } ?: run {

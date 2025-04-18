@@ -426,38 +426,6 @@ fun TaskXDetailScreen(
                                 }
                             }
 
-                            TaskXStatus.IN_PROGRESS -> {
-                                Button(
-                                    onClick = { viewModel.showCompletionDialog() },
-                                    enabled = task.canComplete() && !state.isProcessing,
-                                    modifier = Modifier.padding(horizontal = 8.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = "Завершить",
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Финиш")
-                                }
-
-                                if (viewModel.isActionAvailable(AvailableTaskAction.PAUSE)) {
-                                    Button(
-                                        onClick = { viewModel.pauseTask() },
-                                        enabled = !state.isProcessing,
-                                        modifier = Modifier.padding(horizontal = 8.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Pause,
-                                            contentDescription = "Приостановить",
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Пауза")
-                                    }
-                                }
-                            }
-
                             TaskXStatus.PAUSED -> {
                                 Button(
                                     onClick = { viewModel.resumeTask() },
@@ -470,7 +438,7 @@ fun TaskXDetailScreen(
                                         modifier = Modifier.size(28.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Старт")
+                                    Text("Продолжить")
                                 }
                             }
 
