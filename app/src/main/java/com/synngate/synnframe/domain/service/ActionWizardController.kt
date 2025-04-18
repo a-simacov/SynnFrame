@@ -27,208 +27,100 @@ class ActionWizardController(
      * Инициализирует визард для выполнения действия
      * @param taskId Идентификатор задания
      * @param actionId Идентификатор действия
+     * @return Результат инициализации
      */
-    suspend fun initialize(taskId: String, actionId: String): Result<Unit> {
-        try {
-            Timber.d("Initializing wizard for task: $taskId, action: $actionId")
+    suspend fun initialize(taskId: String, actionId: String): Result<Boolean> {
+        return try {
+            Timber.d("Initializing wizard for task $taskId, action $actionId")
+            // Сначала сбрасываем текущее состояние
+            _wizardState.value = null
 
-            // Получение задания и действия
+            // Получаем задание и запланированное действие
             val task = taskXRepository.getTaskById(taskId)
                 ?: return Result.failure(IllegalArgumentException("Task not found: $taskId"))
 
             val action = task.plannedActions.find { it.id == actionId }
                 ?: return Result.failure(IllegalArgumentException("Action not found: $actionId"))
 
-            // Если действие уже выполнено или пропущено, возвращаем ошибку
-            if (action.isCompleted || action.isSkipped) {
-                return Result.failure(IllegalStateException("Action is already completed or skipped"))
-            }
+            // Создаем шаги для визарда на основе шаблона действия
+            val steps = createStepsFromAction(action)
 
-            // Создание шагов для визарда
-            val steps = createWizardSteps(action)
-
-            // Создание состояния визарда
-            val initialState = ActionWizardState(
+            // Создаем начальное состояние
+            _wizardState.value = ActionWizardState(
                 taskId = taskId,
                 actionId = actionId,
                 action = action,
                 steps = steps,
+                results = mapOf(),
                 startedAt = LocalDateTime.now(),
                 isInitialized = true
             )
 
-            _wizardState.value = initialState
-            Timber.d("Wizard initialized with ${steps.size} steps")
-
-            return Result.success(Unit)
+            Timber.d("Wizard initialized successfully with ${steps.size} steps")
+            Result.success(true)
         } catch (e: Exception) {
             Timber.e(e, "Error initializing wizard")
-            return Result.failure(e)
+            Result.failure(e)
         }
     }
 
     /**
-     * Обрабатывает результат шага визарда
-     * @param stepResult Результат выполнения шага
+     * Обрабатывает результат выполнения шага
+     * @param result Результат выполнения шага или null для шага назад
      */
-    suspend fun processStepResult(stepResult: Any?) {
-        val currentState = _wizardState.value ?: return
-        val currentStepIndex = currentState.currentStepIndex
-        val currentStep = currentState.currentStep
-
-        if (currentStep == null) {
-            Timber.w("No current step to process result")
-            return
-        }
-
-        // Если результат null, это может означать навигацию назад
-        if (stepResult == null) {
-            processBackNavigation(currentState)
-            return
-        }
+    suspend fun processStepResult(result: Any?) {
+        val state = _wizardState.value ?: return
+        val currentStep = state.currentStep
 
         try {
-            // Выполнение шага
-            val action = currentState.action ?: throw IllegalStateException("No action in current state")
-            val actionStep = getActionStepForWizardStep(action, currentStep)
+            // Если результат null, это означает шаг назад
+            if (result == null) {
+                handleBackStep(state)
+                return
+            }
 
-            val executionResult = actionStepExecutionService.executeStep(
-                taskId = currentState.taskId,
-                action = action,
-                step = actionStep,
-                value = stepResult,
-                contextData = currentState.results
-            )
+            // Обработка результата шага
+            if (currentStep != null && !state.isCompleted) {
+                // Обновляем результаты
+                val updatedResults = state.results.toMutableMap()
+                updatedResults[currentStep.id] = result
 
-            // Обработка результата выполнения шага
-            when (executionResult) {
-                is StepExecutionResult.Success -> {
-                    // Добавляем результат шага в общие результаты
-                    val updatedResults = currentState.results.toMutableMap()
-                    updatedResults[executionResult.stepId] = executionResult.value
+                // Переходим к следующему шагу
+                _wizardState.value = state.copy(
+                    currentStepIndex = state.currentStepIndex + 1,
+                    results = updatedResults
+                )
 
-                    // Переходим к следующему шагу
-                    _wizardState.value = currentState.copy(
-                        currentStepIndex = currentStepIndex + 1,
-                        results = updatedResults,
-                        errors = emptyMap()
-                    )
-                }
-                is StepExecutionResult.Error -> {
-                    // Добавляем ошибку в состояние
-                    val updatedErrors = currentState.errors.toMutableMap()
-                    updatedErrors[currentStep.id] = executionResult.message
-
-                    _wizardState.value = currentState.copy(
-                        errors = updatedErrors
-                    )
-                }
-                is StepExecutionResult.Skipped -> {
-                    // Переходим к следующему шагу
-                    _wizardState.value = currentState.copy(
-                        currentStepIndex = currentStepIndex + 1,
-                        errors = emptyMap()
-                    )
-                }
+                Timber.d("Step completed, moving to next step (${state.currentStepIndex + 1})")
             }
         } catch (e: Exception) {
             Timber.e(e, "Error processing step result")
-
-            // Добавляем ошибку в состояние
-            val updatedErrors = currentState.errors.toMutableMap()
-            updatedErrors[currentStep.id] = e.message ?: "Unknown error"
-
-            _wizardState.value = currentState.copy(
-                errors = updatedErrors
-            )
         }
     }
 
     /**
-     * Обрабатывает навигацию назад
+     * Обрабатывает шаг назад
      */
-    private fun processBackNavigation(currentState: ActionWizardState) {
-        if (currentState.currentStepIndex > 0) {
-            // Переходим к предыдущему шагу
-            _wizardState.value = currentState.copy(
-                currentStepIndex = currentState.currentStepIndex - 1,
-                errors = emptyMap()
-            )
-        } else if (currentState.isCompleted) {
-            // Если визард уже завершен, возвращаемся к последнему шагу
-            val lastStepIndex = currentState.steps.size - 1
-            if (lastStepIndex >= 0) {
-                _wizardState.value = currentState.copy(
-                    currentStepIndex = lastStepIndex,
-                    errors = emptyMap()
+    private fun handleBackStep(state: ActionWizardState) {
+        if (state.isCompleted) {
+            // Возврат из итогового экрана к последнему шагу
+            if (state.steps.isNotEmpty()) {
+                _wizardState.value = state.copy(
+                    currentStepIndex = state.steps.size - 1
                 )
+                Timber.d("Returning from summary to last step")
             }
-        } else {
-            // Если мы на первом шаге и не можем вернуться назад,
-            // отменяем визард
-            cancel()
-        }
-    }
-
-    /**
-     * Завершает визард и выполняет действие
-     */
-    suspend fun complete(): Result<TaskX> {
-        val currentState = _wizardState.value
-            ?: return Result.failure(IllegalStateException("Wizard not initialized"))
-
-        if (!currentState.isCompleted) {
-            return Result.failure(IllegalStateException("Wizard is not completed"))
-        }
-
-        try {
-            // Выполнение действия
-            val result = actionExecutionService.executeAction(
-                taskId = currentState.taskId,
-                actionId = currentState.actionId,
-                stepResults = currentState.results
+        } else if (state.canGoBack) {
+            // Возврат к предыдущему шагу
+            _wizardState.value = state.copy(
+                currentStepIndex = state.currentStepIndex - 1
             )
-
-            if (result.isSuccess) {
-                // Сбрасываем состояние визарда
-                _wizardState.value = null
-            }
-
-            return result
-        } catch (e: Exception) {
-            Timber.e(e, "Error completing wizard")
-            return Result.failure(e)
+            Timber.d("Going back to previous step")
         }
     }
 
     /**
-     * Пропускает текущее действие
-     */
-    suspend fun skip(): Result<TaskX> {
-        val currentState = _wizardState.value
-            ?: return Result.failure(IllegalStateException("Wizard not initialized"))
-
-        try {
-            // Пропуск действия
-            val result = actionExecutionService.skipAction(
-                taskId = currentState.taskId,
-                actionId = currentState.actionId
-            )
-
-            if (result.isSuccess) {
-                // Сбрасываем состояние визарда
-                _wizardState.value = null
-            }
-
-            return result
-        } catch (e: Exception) {
-            Timber.e(e, "Error skipping action")
-            return Result.failure(e)
-        }
-    }
-
-    /**
-     * Отменяет визард
+     * Отменяет выполнение визарда
      */
     fun cancel() {
         Timber.d("Cancelling wizard")
@@ -236,64 +128,68 @@ class ActionWizardController(
     }
 
     /**
-     * Создает шаги визарда из действия
+     * Завершает выполнение действия и создает фактическое действие
+     * @return Результат с обновленным заданием
      */
-    private fun createWizardSteps(action: PlannedAction): List<WizardStep> {
-        val steps = mutableListOf<WizardStep>()
+    suspend fun complete(): Result<TaskX> {
+        val state = _wizardState.value
+            ?: return Result.failure(IllegalStateException("Wizard is not initialized"))
 
-        // Добавляем шаги хранения
-        action.actionTemplate.storageSteps.forEach { actionStep ->
-            steps.add(createWizardStep(actionStep, action, true))
+        if (!state.isCompleted) {
+            return Result.failure(IllegalStateException("Wizard is not completed"))
         }
 
-        // Добавляем шаги размещения
-        action.actionTemplate.placementSteps.forEach { actionStep ->
-            steps.add(createWizardStep(actionStep, action, false))
-        }
+        try {
+            Timber.d("Completing action ${state.actionId} for task ${state.taskId}")
 
-        // Сортируем шаги по порядку
-        return steps.sortedBy { step ->
-            // Получаем оригинальный ActionStep и его order
-            val originalStep = getActionStepForWizardStep(action, step)
-            originalStep.order
+            // Выполняем действие через сервис
+            val result = actionExecutionService.executeAction(
+                state.taskId,
+                state.actionId,
+                state.results
+            )
+
+            // Сбрасываем состояние визарда
+            _wizardState.value = null
+
+            return result
+        } catch (e: Exception) {
+            Timber.e(e, "Error completing action")
+            return Result.failure(e)
         }
     }
 
     /**
-     * Создает шаг визарда из шага действия
+     * Создает шаги визарда на основе шаблона действия
      */
-    private fun createWizardStep(
-        actionStep: ActionStep,
-        action: PlannedAction,
-        isStorage: Boolean
-    ): WizardStep {
+    private fun createStepsFromAction(action: PlannedAction): List<WizardStep> {
+        val steps = mutableListOf<WizardStep>()
+        val template = action.actionTemplate
+
+        // Добавляем шаги для объекта хранения
+        template.storageSteps.sortedBy { it.order }.forEach { actionStep ->
+            steps.add(createWizardStep(actionStep))
+        }
+
+        // Добавляем шаги для объекта размещения
+        template.placementSteps.sortedBy { it.order }.forEach { actionStep ->
+            steps.add(createWizardStep(actionStep))
+        }
+
+        return steps
+    }
+
+    /**
+     * Создает шаг визарда на основе шага действия
+     */
+    private fun createWizardStep(actionStep: ActionStep): WizardStep {
         return WizardStep(
             id = actionStep.id,
             title = actionStep.name,
-            content = { context ->
-                // Фактическое содержимое будет определено в UI
-                // здесь мы просто создаем шаг-заглушку
-            },
-            validator = { results ->
-                // Проверка валидности результата будет определена в UI
-                true
-            },
+            content = { /* Будет заполнено в UI */ },
             canNavigateBack = true,
             isAutoComplete = false,
             shouldShow = { true }
         )
-    }
-
-    /**
-     * Находит шаг действия для шага визарда
-     */
-    private fun getActionStepForWizardStep(action: PlannedAction, step: WizardStep): ActionStep {
-        // Ищем в шагах хранения
-        action.actionTemplate.storageSteps.find { it.id == step.id }?.let { return it }
-
-        // Ищем в шагах размещения
-        action.actionTemplate.placementSteps.find { it.id == step.id }?.let { return it }
-
-        throw IllegalArgumentException("Step not found: ${step.id}")
     }
 }

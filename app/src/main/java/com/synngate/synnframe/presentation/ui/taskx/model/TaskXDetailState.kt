@@ -1,6 +1,5 @@
 package com.synngate.synnframe.presentation.ui.taskx.model
 
-import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import java.time.LocalDateTime

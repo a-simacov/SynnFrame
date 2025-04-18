@@ -2,7 +2,6 @@ package com.synngate.synnframe.domain.model.wizard
 
 import androidx.compose.runtime.Composable
 import com.synngate.synnframe.domain.entity.taskx.BinX
-import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.WmsAction

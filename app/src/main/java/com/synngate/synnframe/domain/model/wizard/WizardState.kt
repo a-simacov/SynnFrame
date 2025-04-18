@@ -1,7 +1,6 @@
 package com.synngate.synnframe.domain.model.wizard
 
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
-import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
 import com.synngate.synnframe.domain.entity.taskx.WmsAction
 import timber.log.Timber
 import java.time.LocalDateTime

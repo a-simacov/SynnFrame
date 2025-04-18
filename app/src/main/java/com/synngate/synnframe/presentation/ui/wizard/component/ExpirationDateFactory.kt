@@ -25,8 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.AccountingModel
-import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
-import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.model.wizard.WizardContext
 import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import java.time.LocalDate

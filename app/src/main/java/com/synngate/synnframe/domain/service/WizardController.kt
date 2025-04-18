@@ -1,13 +1,10 @@
 package com.synngate.synnframe.domain.service
 
 import com.synngate.synnframe.domain.entity.taskx.BinX
-import com.synngate.synnframe.domain.entity.taskx.FactLineX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskX
-import com.synngate.synnframe.domain.entity.taskx.TaskXLineFieldType
 import com.synngate.synnframe.domain.entity.taskx.WmsAction
-import com.synngate.synnframe.domain.model.wizard.StepResult
 import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import com.synngate.synnframe.domain.model.wizard.WizardState
 import com.synngate.synnframe.domain.model.wizard.WizardStep

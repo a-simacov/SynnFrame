@@ -1,7 +1,6 @@
 package com.synngate.synnframe.domain.usecase.taskx
 
 import com.synngate.synnframe.domain.entity.taskx.BinX
-import com.synngate.synnframe.domain.entity.taskx.FactLineX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX

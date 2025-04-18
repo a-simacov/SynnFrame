@@ -1,28 +1,15 @@
 package com.synngate.synnframe.presentation.ui.taskx
 
 import com.synngate.synnframe.domain.entity.taskx.AvailableTaskAction
-import com.synngate.synnframe.domain.entity.taskx.FactLineXActionType
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.service.ActionWizardContextFactory
 import com.synngate.synnframe.domain.service.ActionWizardController
-import com.synngate.synnframe.domain.service.WizardController
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
-import com.synngate.synnframe.presentation.ui.wizard.FactLineWizardViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
-import com.synngate.synnframe.presentation.ui.wizard.builder.WizardBuilder
-import com.synngate.synnframe.presentation.ui.wizard.component.BinSelectionFactory
-import com.synngate.synnframe.presentation.ui.wizard.component.ExpirationDateFactory
-import com.synngate.synnframe.presentation.ui.wizard.component.LabelPrintingFactory
-import com.synngate.synnframe.presentation.ui.wizard.component.PalletClosingFactory
-import com.synngate.synnframe.presentation.ui.wizard.component.PalletCreationFactory
-import com.synngate.synnframe.presentation.ui.wizard.component.PalletSelectionFactory
-import com.synngate.synnframe.presentation.ui.wizard.component.ProductSelectionFactory
-import com.synngate.synnframe.presentation.ui.wizard.component.ProductStatusFactory
-import com.synngate.synnframe.presentation.ui.wizard.component.QuantityInputFactory
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
@@ -33,83 +20,40 @@ class TaskXDetailViewModel(
     private val taskId: String,
     private val taskXUseCases: TaskXUseCases,
     private val userUseCases: UserUseCases,
-    val factLineWizardViewModel: FactLineWizardViewModel,
-    val wizardController: WizardController,
-    // Новые зависимости
     val actionWizardController: ActionWizardController,
     val actionWizardContextFactory: ActionWizardContextFactory,
     val actionStepFactoryRegistry: ActionStepFactoryRegistry
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
 
-    private val wizardBuilder = WizardBuilder()
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
-
 
     init {
         loadTask()
-        setupWizardBuilder()
     }
 
-    private fun setupWizardBuilder() {
-        wizardBuilder.registerStepComponent(
-            FactLineXActionType.SELECT_PRODUCT,
-            ProductSelectionFactory(factLineWizardViewModel)
-        )
-        wizardBuilder.registerStepComponent(
-            FactLineXActionType.ENTER_QUANTITY,
-            QuantityInputFactory()
-        )
-        wizardBuilder.registerStepComponent(
-            FactLineXActionType.SELECT_BIN,
-            BinSelectionFactory(factLineWizardViewModel)
-        )
-        wizardBuilder.registerStepComponent(
-            FactLineXActionType.SELECT_PALLET,
-            PalletSelectionFactory(factLineWizardViewModel)
-        )
-        wizardBuilder.registerStepComponent(
-            FactLineXActionType.CREATE_PALLET,
-            PalletCreationFactory(factLineWizardViewModel)
-        )
-        wizardBuilder.registerStepComponent(
-            FactLineXActionType.CLOSE_PALLET,
-            PalletClosingFactory(factLineWizardViewModel)
-        )
-        wizardBuilder.registerStepComponent(
-            FactLineXActionType.PRINT_LABEL,
-            LabelPrintingFactory(factLineWizardViewModel)
-        )
-        wizardBuilder.registerStepComponent(
-            FactLineXActionType.SELECT_PRODUCT_STATUS,
-            ProductStatusFactory(factLineWizardViewModel)
-        )
-        wizardBuilder.registerStepComponent(
-            FactLineXActionType.ENTER_EXPIRATION_DATE,
-            ExpirationDateFactory()
-        )
-    }
-
-    // В TaskXDetailViewModel
+    // Метод для запуска визарда выполнения действия
     fun startActionExecution(actionId: String) {
         launchIO {
             try {
                 val result = actionWizardController.initialize(taskId, actionId)
                 if (result.isSuccess) {
-                    // Обновляем состояние вместо отправки события
+                    // Обновляем состояние, чтобы показать визард
                     updateState { it.copy(showActionWizard = true) }
                 } else {
                     updateState { it.copy(error = "Ошибка при инициализации действия: ${result.exceptionOrNull()?.message}") }
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось начать выполнение действия"))
                 }
             } catch (e: Exception) {
+                Timber.e(e, "Error initializing action wizard")
                 updateState { it.copy(error = "Ошибка при инициализации действия: ${e.message}") }
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось начать выполнение действия"))
             }
         }
     }
 
-    // И добавим метод для скрытия визарда
+    // Метод для скрытия визарда
     fun hideActionWizard() {
         updateState { it.copy(showActionWizard = false) }
-
         // Отменяем визард при скрытии
         actionWizardController.cancel()
     }
@@ -122,41 +66,15 @@ class TaskXDetailViewModel(
                 if (result.isSuccess) {
                     loadTask() // Перезагрузка задания
                     updateState { it.copy(showActionWizard = false) }
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
                 } else {
                     updateState { it.copy(error = "Ошибка при выполнении действия: ${result.exceptionOrNull()?.message}") }
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось выполнить действие"))
                 }
             } catch (e: Exception) {
+                Timber.e(e, "Error completing action wizard")
                 updateState { it.copy(error = "Ошибка при завершении действия: ${e.message}") }
-            }
-        }
-    }
-
-    fun startAddFactLineWizard() {
-        launchIO {
-            val task = uiState.value.task ?: return@launchIO
-
-            if (task.status != TaskXStatus.IN_PROGRESS) {
-                sendEvent(TaskXDetailEvent.ShowSnackbar("Добавление строк факта возможно только для задания в статусе 'Выполняется'"))
-                return@launchIO
-            }
-
-            updateState { it.copy(isProcessing = true) }
-
-            try {
-                wizardController.cancel()
-                factLineWizardViewModel.clearCache()
-                wizardController.initialize(task, wizardBuilder)
-
-                updateState { it.copy(isProcessing = false) }
-                sendEvent(TaskXDetailEvent.ShowFactLineWizard)
-            } catch (e: Exception) {
-                Timber.e(e, "Error initilizing wizard: ${e.message}")
-                updateState {
-                    it.copy(
-                        isProcessing = false,
-                        error = "Error initilizing wizard: ${e.message}"
-                    )
-                }
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось выполнить действие"))
             }
         }
     }
@@ -393,76 +311,6 @@ class TaskXDetailViewModel(
         }
     }
 
-    // Метод для обработки результатов визарда
-    fun processWizardStep(result: Any?) {
-        if (result == null) {
-            // Проверяем, находится ли визард на итоговом экране
-            val state = wizardController.wizardState.value
-            if (state != null && state.isCompleted) {
-                Timber.d("TaskXDetailViewModel: detected back from summary, using special method")
-                returnFromSummaryScreen()
-                return
-            }
-        }
-
-        // Стандартная обработка для всех других случаев
-        wizardController.processStepResult(result)
-    }
-
-    fun completeWizard() {
-        launchIO {
-            updateState { it.copy(isProcessing = true) }
-
-            try {
-                val result = wizardController.completeWizard()
-
-                if (result.isSuccess) {
-                    loadTask()
-                    updateState {
-                        it.copy(isProcessing = false)
-                    }
-                    sendEvent(TaskXDetailEvent.ShowSnackbar("Строка факта успешно добавлена"))
-                } else {
-                    val errorMessage = result.exceptionOrNull()?.message ?: "Error on creating fact row"
-                    updateState {
-                        it.copy(
-                            isProcessing = false,
-                            error = errorMessage
-                        )
-                    }
-                    sendEvent(TaskXDetailEvent.ShowSnackbar(errorMessage))
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error on completing wizard")
-                updateState {
-                    it.copy(
-                        isProcessing = false,
-                        error = "Error on creating fact row: ${e.message}"
-                    )
-                }
-                sendEvent(TaskXDetailEvent.ShowSnackbar("Error on creating fact row"))
-            }
-        }
-    }
-
-    fun cancelWizard() {
-        launchIO {
-            sendEvent(TaskXDetailEvent.HideFactLineWizard)
-            cleanupWizardResources()
-        }
-    }
-
-    private fun cleanupWizardResources() {
-        launchIO {
-            try {
-                wizardController.cancel()
-                factLineWizardViewModel.clearCache()
-            } catch (e: Exception) {
-                Timber.e(e, "Error on clearing wizard resources")
-            }
-        }
-    }
-
     fun showCompletionDialog() {
         updateState { it.copy(showCompletionDialog = true) }
     }
@@ -494,19 +342,16 @@ class TaskXDetailViewModel(
     }
 
     fun formatTaskType(taskTypeId: String): String {
-        return uiState.value.taskType?.name ?: "Unknown type"
+        return uiState.value.taskType?.name ?: "Неизвестный тип"
     }
 
-    fun showPlanLines() {
-        updateState { it.copy(activeView = TaskXDetailView.PLAN_LINES) }
+    // Методы для переключения видов
+    fun showPlannedActions() {
+        updateState { it.copy(activeView = TaskXDetailView.PLANNED_ACTIONS) }
     }
 
-    fun showFactLines() {
-        updateState { it.copy(activeView = TaskXDetailView.FACT_LINES) }
-    }
-
-    fun showComparedLines() {
-        updateState { it.copy(activeView = TaskXDetailView.COMPARED_LINES) }
+    fun showFactActions() {
+        updateState { it.copy(activeView = TaskXDetailView.FACT_ACTIONS) }
     }
 
     fun isActionAvailable(action: AvailableTaskAction): Boolean {
@@ -516,14 +361,5 @@ class TaskXDetailViewModel(
 
     override fun dispose() {
         super.dispose()
-        wizardController.dispose()
-    }
-
-    // TaskXDetailViewModel.kt
-
-    // Добавьте метод для явного возврата с итогового экрана
-    fun returnFromSummaryScreen() {
-        Timber.d("TaskXDetailViewModel: explicit return from summary screen")
-        wizardController.returnFromSummaryScreen()
     }
 }

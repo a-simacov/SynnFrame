@@ -12,8 +12,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.synngate.synnframe.domain.entity.taskx.FactLineX
-import com.synngate.synnframe.domain.entity.taskx.PlanLineX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import java.time.LocalDateTime

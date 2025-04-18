@@ -19,8 +19,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.synngate.synnframe.domain.entity.taskx.FactLineActionGroup
-import com.synngate.synnframe.domain.entity.taskx.FactLineXAction
 import com.synngate.synnframe.domain.model.wizard.WizardContext
 import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView

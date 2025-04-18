@@ -19,7 +19,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -39,13 +39,13 @@ import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.status.StatusType
-import com.synngate.synnframe.presentation.ui.taskx.components.ComparedLinesView
-import com.synngate.synnframe.presentation.ui.taskx.components.FactLinesView
-import com.synngate.synnframe.presentation.ui.taskx.components.PlanLinesView
+import com.synngate.synnframe.presentation.ui.taskx.components.FactActionsView
+import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionsView
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXStatusIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXVerificationDialog
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
+import com.synngate.synnframe.presentation.ui.wizard.action.ActionWizardScreen
 
 @Composable
 fun TaskXDetailScreen(
@@ -54,11 +54,9 @@ fun TaskXDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
-    val wizardState by viewModel.wizardController.wizardState.collectAsState()
+    val wizardState by viewModel.actionWizardController.wizardState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val task = state.task
-
-    val wizardViewModel = viewModel.factLineWizardViewModel
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -69,8 +67,13 @@ fun TaskXDetailScreen(
                         duration = SnackbarDuration.Short
                     )
                 }
-                is TaskXDetailEvent.ShowFactLineWizard -> {}
-                is TaskXDetailEvent.HideFactLineWizard -> {}
+                is TaskXDetailEvent.ShowActionWizard -> {
+                    // Обработка будет через state.showActionWizard
+                }
+                is TaskXDetailEvent.HideActionWizard -> {
+                    // Обработка будет через state.showActionWizard
+                }
+                else -> {}
             }
         }
     }
@@ -91,9 +94,14 @@ fun TaskXDetailScreen(
         )
     }
 
-    if (wizardState != null) {
-        FactLineWizard(
-            viewModel = viewModel,
+    // Показываем визард действий, если он активен
+    if (state.showActionWizard && wizardState != null) {
+        ActionWizardScreen(
+            actionWizardController = viewModel.actionWizardController,
+            actionWizardContextFactory = viewModel.actionWizardContextFactory,
+            actionStepFactoryRegistry = viewModel.actionStepFactoryRegistry,
+            onComplete = { viewModel.completeActionWizard() },
+            onCancel = { viewModel.hideActionWizard() },
             modifier = Modifier.fillMaxSize()
         )
     }
@@ -108,13 +116,19 @@ fun TaskXDetailScreen(
         },
         isLoading = state.isLoading,
         floatingActionButton = {
-            if (task?.status == TaskXStatus.IN_PROGRESS && task.canAddFactLines()) {
+            // Кнопка добавления действия показывается только для задания в статусе "Выполняется"
+            if (task?.status == TaskXStatus.IN_PROGRESS) {
                 FloatingActionButton(
-                    onClick = { viewModel.startAddFactLineWizard() },
+                    onClick = {
+                        // Получаем первое невыполненное действие и запускаем его
+                        task.getNextAction()?.let { action ->
+                            viewModel.startActionExecution(action.id)
+                        }
+                    },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Добавить строку факта")
+                    Icon(Icons.Default.Add, contentDescription = "Добавить действие")
                 }
             }
         }
@@ -134,7 +148,7 @@ fun TaskXDetailScreen(
                 .padding(16.dp)
         ) {
             // Информация о задании
-            OutlinedCard(
+            Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -225,33 +239,20 @@ fun TaskXDetailScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                if (viewModel.isActionAvailable(AvailableTaskAction.COMPARE_LINES)) {
-                    FilledTonalButton(
-                        onClick = { viewModel.showComparedLines() },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("План/Факт")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
+                FilledTonalButton(
+                    onClick = { viewModel.showPlannedActions() },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Запланировано")
                 }
 
-                if (viewModel.isActionAvailable(AvailableTaskAction.SHOW_PLAN_LINES)) {
-                    FilledTonalButton(
-                        onClick = { viewModel.showPlanLines() },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("План")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
+                Spacer(modifier = Modifier.width(8.dp))
 
-                if (viewModel.isActionAvailable(AvailableTaskAction.SHOW_FACT_LINES)) {
-                    FilledTonalButton(
-                        onClick = { viewModel.showFactLines() },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Факт")
-                    }
+                FilledTonalButton(
+                    onClick = { viewModel.showFactActions() },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Выполнено")
                 }
             }
 
@@ -260,20 +261,19 @@ fun TaskXDetailScreen(
             // Содержимое в зависимости от выбранного вида
             Box(modifier = Modifier.weight(1f)) {
                 when (state.activeView) {
-                    TaskXDetailView.COMPARED_LINES -> {
-                        ComparedLinesView(
-                            task = task,
-                            formatDate = viewModel::formatDate
+                    TaskXDetailView.PLANNED_ACTIONS -> {
+                        PlannedActionsView(
+                            plannedActions = task.plannedActions,
+                            onActionClick = { action ->
+                                if (!action.isCompleted && !action.isSkipped) {
+                                    viewModel.startActionExecution(action.id)
+                                }
+                            }
                         )
                     }
-                    TaskXDetailView.PLAN_LINES -> {
-                        PlanLinesView(
-                            planLines = task.planLines
-                        )
-                    }
-                    TaskXDetailView.FACT_LINES -> {
-                        FactLinesView(
-                            factLines = task.factLines,
+                    TaskXDetailView.FACT_ACTIONS -> {
+                        FactActionsView(
+                            factActions = task.factActions,
                             formatDate = viewModel::formatDate
                         )
                     }
@@ -347,7 +347,7 @@ fun TaskXDetailScreen(
                 }
             }
 
-// Отдельный блок для дополнительных действий
+            // Отдельный блок для дополнительных действий
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -369,7 +369,7 @@ fun TaskXDetailScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         if (!task.isVerified && viewModel.isActionAvailable(AvailableTaskAction.VERIFY_TASK)) {
-                            FilledTonalButton(
+                            OutlinedButton(
                                 onClick = { viewModel.showVerificationDialog() },
                                 modifier = Modifier.weight(1f),
                                 enabled = !state.isProcessing
@@ -382,7 +382,6 @@ fun TaskXDetailScreen(
                     }
                 }
             }
-
         }
     }
 }

@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import com.synngate.synnframe.domain.model.wizard.StepResult
 import com.synngate.synnframe.presentation.ui.wizard.WizardScreen
 import timber.log.Timber
 
