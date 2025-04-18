@@ -1,13 +1,21 @@
 package com.synngate.synnframe.data.repository
 
+import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
-import com.synngate.synnframe.domain.entity.taskx.FactLineX
-import com.synngate.synnframe.domain.entity.taskx.PlanLineX
+import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.entity.taskx.WmsAction
+import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
+import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
+import com.synngate.synnframe.domain.entity.taskx.action.ActionTemplate
+import com.synngate.synnframe.domain.entity.taskx.action.FactAction
+import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
+import com.synngate.synnframe.domain.entity.taskx.validation.ValidationRule
+import com.synngate.synnframe.domain.entity.taskx.validation.ValidationRuleItem
+import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.repository.TaskTypeXRepository
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import kotlinx.coroutines.delay
@@ -16,7 +24,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
 import java.time.LocalDateTime
-import java.util.UUID
 
 class MockTaskXRepository(
     private val taskTypeXRepository: TaskTypeXRepository
@@ -61,8 +68,6 @@ class MockTaskXRepository(
     }
 
     override fun getTasksCountForCurrentUser(): Flow<Int> {
-        // Здесь можно использовать какой-то текущий ID пользователя,
-        // но для упрощения просто вернем количество заданий в статусе TO_DO
         return tasksFlow.map { tasks ->
             tasks.values.count { it.status == TaskXStatus.TO_DO }
         }
@@ -75,7 +80,7 @@ class MockTaskXRepository(
     }
 
     override suspend fun updateTask(task: TaskX) {
-        addTask(task) // Same implementation for mock
+        addTask(task)
     }
 
     override suspend fun deleteTask(id: String) {
@@ -99,20 +104,6 @@ class MockTaskXRepository(
             executorId = executorId,
             lastModifiedAt = LocalDateTime.now()
         )
-        updateTask(updatedTask)
-    }
-
-    override suspend fun addFactLine(factLine: FactLineX) {
-        val task = tasksFlow.value[factLine.taskId] ?: return
-
-        val updatedFactLines = task.factLines.toMutableList()
-        updatedFactLines.add(factLine)
-
-        val updatedTask = task.copy(
-            factLines = updatedFactLines,
-            lastModifiedAt = LocalDateTime.now()
-        )
-
         updateTask(updatedTask)
     }
 
@@ -180,15 +171,78 @@ class MockTaskXRepository(
         return Result.success(isVerified)
     }
 
-    // Обновим метод createInitialTasks в MockTaskXRepository
+    // Новые методы для работы с действиями
+
+    override suspend fun addFactAction(factAction: FactAction) {
+        val task = tasksFlow.value[factAction.taskId] ?: return
+
+        val updatedFactActions = task.factActions.toMutableList()
+        updatedFactActions.add(factAction)
+
+        val updatedTask = task.copy(
+            factActions = updatedFactActions,
+            lastModifiedAt = LocalDateTime.now()
+        )
+
+        updateTask(updatedTask)
+    }
+
+    override suspend fun getPlannedActionById(taskId: String, actionId: String): PlannedAction? {
+        val task = tasksFlow.value[taskId] ?: return null
+        return task.plannedActions.find { it.id == actionId }
+    }
+
+    override suspend fun updatePlannedAction(taskId: String, action: PlannedAction) {
+        val task = tasksFlow.value[taskId] ?: return
+
+        val updatedPlannedActions = task.plannedActions.toMutableList()
+        val index = updatedPlannedActions.indexOfFirst { it.id == action.id }
+
+        if (index != -1) {
+            updatedPlannedActions[index] = action
+
+            val updatedTask = task.copy(
+                plannedActions = updatedPlannedActions,
+                lastModifiedAt = LocalDateTime.now()
+            )
+
+            updateTask(updatedTask)
+        }
+    }
+
+    override suspend fun markPlannedActionCompleted(taskId: String, actionId: String, isCompleted: Boolean) {
+        val task = tasksFlow.value[taskId] ?: return
+        val action = task.plannedActions.find { it.id == actionId } ?: return
+
+        val updatedAction = action.copy(isCompleted = isCompleted)
+        updatePlannedAction(taskId, updatedAction)
+    }
+
+    override suspend fun markPlannedActionSkipped(taskId: String, actionId: String, isSkipped: Boolean) {
+        val task = tasksFlow.value[taskId] ?: return
+        val action = task.plannedActions.find { it.id == actionId } ?: return
+
+        val updatedAction = action.copy(isSkipped = isSkipped)
+        updatePlannedAction(taskId, updatedAction)
+    }
+
+    override suspend fun getNextPlannedAction(taskId: String): PlannedAction? {
+        val task = tasksFlow.value[taskId] ?: return null
+        return task.plannedActions.firstOrNull { !it.isCompleted && !it.isSkipped }
+    }
+
+    // Метод создания тестовых заданий
     private fun createInitialTasks(): Map<String, TaskX> {
         val tasks = mutableMapOf<String, TaskX>()
 
-        // Добавим тестовое задание по приемке из примера
+        // Создаем задание "Перемещение паллеты с подтверждением товара" из примера
+        val movePalletTask = createMovePalletTask()
+        tasks[movePalletTask.id] = movePalletTask
+
+        // Добавляем ещё тестовые задания из старого кода
         val receiptTask = createReceiptTask()
         tasks[receiptTask.id] = receiptTask
 
-        // Добавим еще несколько тестовых заданий разных типов
         val pickingTask = createPickingTask()
         tasks[pickingTask.id] = pickingTask
 
@@ -198,139 +252,185 @@ class MockTaskXRepository(
         return tasks
     }
 
-    // Создание задания "Отбор заказа"
-    private fun createPickingTask(): TaskX {
-        // Создаем продукты для строк плана
-        val productTV = Product(
-            id = "p3",
-            name = "Телевизор 55\"",
-            accountingModel = com.synngate.synnframe.domain.entity.AccountingModel.QTY,
-            articleNumber = "TV-55001",
-            mainUnitId = "u3",
-            units = emptyList()
-        )
-
-        val productPhone = Product(
-            id = "p4",
-            name = "Смартфон",
-            accountingModel = com.synngate.synnframe.domain.entity.AccountingModel.QTY,
-            articleNumber = "PH-12345",
-            mainUnitId = "u4",
-            units = emptyList()
-        )
-
-        // Создаем товары задания для строк плана
-        val taskProductTV = TaskProduct(
-            product = productTV,
-            quantity = 2f
-        )
-
-        val taskProductPhone = TaskProduct(
-            product = productPhone,
-            quantity = 5f
-        )
-
-        // Создаем строки плана
-        val planLine1 = PlanLineX(
-            id = UUID.randomUUID().toString(),
-            taskId = "task2",
-            executionOrder = 1,
-            storageProduct = taskProductTV,
-            wmsAction = WmsAction.TAKE_FROM,
-            placementBin = BinX(
-                code = "C00311",
-                zone = "Отбор",
-                line = "C",
-                rack = "03",
-                tier = "1",
-                position = "1"
+    // Создание задания "Перемещение паллеты с подтверждением товара" из примера
+    private fun createMovePalletTask(): TaskX {
+        // Подготовим правила валидации
+        val fromPlanValidationRule = ValidationRule(
+            name = "Из плана",
+            rules = listOf(
+                ValidationRuleItem(
+                    type = ValidationType.FROM_PLAN,
+                    errorMessage = "Выберите объект из плана"
+                ),
+                ValidationRuleItem(
+                    type = ValidationType.NOT_EMPTY,
+                    errorMessage = "Объект не должен быть пустым"
+                )
             )
         )
 
-        val planLine2 = PlanLineX(
-            id = UUID.randomUUID().toString(),
-            taskId = "task2",
-            executionOrder = 2,
-            storageProduct = taskProductPhone,
-            wmsAction = WmsAction.TAKE_FROM,
-            placementBin = BinX(
-                code = "C00312",
-                zone = "Отбор",
-                line = "C",
-                rack = "03",
-                tier = "1",
-                position = "2"
+        val notEmptyValidationRule = ValidationRule(
+            name = "Заполнена",
+            rules = listOf(
+                ValidationRuleItem(
+                    type = ValidationType.NOT_EMPTY,
+                    errorMessage = "Объект не должен быть пустым"
+                )
             )
         )
 
-        // Создаем задание
+        // Шаблоны действий
+        val takePalletTemplate = ActionTemplate(
+            id = "template_take_pallet",
+            name = "Взять определенную паллету из определенной ячейки",
+            wmsAction = WmsAction.TAKE_FROM,
+            storageObjectType = ActionObjectType.PALLET,
+            placementObjectType = ActionObjectType.BIN,
+            storageSteps = listOf(
+                ActionStep(
+                    id = "step_select_planned_pallet",
+                    order = 1,
+                    name = "Выберите паллету из запланированного действия",
+                    promptText = "Выберите паллету из запланированного действия",
+                    objectType = ActionObjectType.PALLET,
+                    validationRules = fromPlanValidationRule,
+                    isRequired = true,
+                    canSkip = false
+                )
+            ),
+            placementSteps = listOf(
+                ActionStep(
+                    id = "step_select_planned_bin",
+                    order = 2,
+                    name = "Выберите ячейку из запланированного действия",
+                    promptText = "Выберите ячейку из запланированного действия",
+                    objectType = ActionObjectType.BIN,
+                    validationRules = fromPlanValidationRule,
+                    isRequired = true,
+                    canSkip = false
+                )
+            )
+        )
+
+        val confirmProductTemplate = ActionTemplate(
+            id = "template_confirm_product",
+            name = "Подтвердить наличие товара",
+            wmsAction = WmsAction.ASSERT,
+            storageObjectType = ActionObjectType.CLASSIFIER_PRODUCT,
+            placementObjectType = null,
+            storageSteps = listOf(
+                ActionStep(
+                    id = "step_confirm_product",
+                    order = 1,
+                    name = "Подтвердите наличие товара",
+                    promptText = "Подтвердите наличие товара",
+                    objectType = ActionObjectType.CLASSIFIER_PRODUCT,
+                    validationRules = fromPlanValidationRule,
+                    isRequired = true,
+                    canSkip = false
+                )
+            ),
+            placementSteps = emptyList()
+        )
+
+        val putPalletTemplate = ActionTemplate(
+            id = "template_put_pallet",
+            name = "Положить определенную паллету в ячейку хранения",
+            wmsAction = WmsAction.PUT_INTO,
+            storageObjectType = ActionObjectType.PALLET,
+            placementObjectType = ActionObjectType.BIN,
+            storageSteps = listOf(
+                ActionStep(
+                    id = "step_select_planned_pallet",
+                    order = 1,
+                    name = "Выберите паллету из запланированного действия",
+                    promptText = "Выберите паллету из запланированного действия",
+                    objectType = ActionObjectType.PALLET,
+                    validationRules = fromPlanValidationRule,
+                    isRequired = true,
+                    canSkip = false
+                )
+            ),
+            placementSteps = listOf(
+                ActionStep(
+                    id = "step_select_bin",
+                    order = 2,
+                    name = "Выберите ячейку",
+                    promptText = "Выберите ячейку",
+                    objectType = ActionObjectType.BIN,
+                    validationRules = notEmptyValidationRule,
+                    isRequired = true,
+                    canSkip = false
+                )
+            )
+        )
+
+        // Запланированные действия
+        val plannedActions = listOf(
+            PlannedAction(
+                id = "action1",
+                order = 1,
+                actionTemplate = takePalletTemplate,
+                storagePallet = Pallet(code = "IN00000000003", isClosed = false),
+                wmsAction = WmsAction.TAKE_FROM,
+                placementBin = BinX(
+                    code = "R30111",
+                    zone = "Хранение",
+                    line = "R",
+                    rack = "3",
+                    tier = "01",
+                    position = "11"
+                )
+            ),
+            PlannedAction(
+                id = "action2",
+                order = 2,
+                actionTemplate = confirmProductTemplate,
+                storageProduct = TaskProduct(
+                    product = Product(
+                        id = "p_gel",
+                        name = "Гель для стирки Active Universal 4,5 L",
+                        accountingModel = AccountingModel.QTY,
+                        articleNumber = "G-12345",
+                        mainUnitId = "u_gel",
+                        units = emptyList()
+                    )
+                ),
+                wmsAction = WmsAction.ASSERT
+            ),
+            PlannedAction(
+                id = "action3",
+                order = 3,
+                actionTemplate = putPalletTemplate,
+                storagePallet = Pallet(code = "IN00000000003", isClosed = false),
+                wmsAction = WmsAction.PUT_INTO
+            )
+        )
+
+        // Создание задания
         return TaskX(
-            id = "task2",
-            barcode = "03165467988",
-            name = "Отбор заказа №12345",
-            taskTypeId = "7891011121314", // ID типа задания "Отбор заказа"
+            id = "task_move_pallet",
+            barcode = "03165467987",
+            name = "Принять задание по монопалетам от Клиента 1",
+            taskTypeId = "task_type_move_pallet",
+            executorId = "admin",
             status = TaskXStatus.TO_DO,
-            createdAt = LocalDateTime.now().minusHours(3),
-            executorId = USER666ID,
-            planLines = listOf(planLine1, planLine2)
+            createdAt = LocalDateTime.now().minusDays(1),
+            plannedActions = plannedActions,
+            factActions = emptyList(),
+            finalActions = emptyList(),
+            allowCompletionWithoutFactActions = false
         )
     }
 
-    // Создание задания "Перемещение"
-    private fun createMovementTask(): TaskX {
-        // Создаем продукт для строк плана
-        val productLaptop = Product(
-            id = "p5",
-            name = "Ноутбук",
-            accountingModel = com.synngate.synnframe.domain.entity.AccountingModel.QTY,
-            articleNumber = "LT-9876",
-            mainUnitId = "u5",
-            units = emptyList()
-        )
-
-        // Создаем товар задания для строк плана
-        val taskProductLaptop = TaskProduct(
-            product = productLaptop,
-            quantity = 10f
-        )
-
-        // Создаем строку плана
-        val planLine = PlanLineX(
-            id = UUID.randomUUID().toString(),
-            taskId = "task3",
-            executionOrder = 0,
-            storageProduct = taskProductLaptop,
-            wmsAction = WmsAction.TAKE_FROM,
-            placementBin = BinX(
-                code = "B00211",
-                zone = "Хранение",
-                line = "B",
-                rack = "02",
-                tier = "1",
-                position = "1"
-            )
-        )
-
-        // Создаем задание
-        return TaskX(
-            id = "task3",
-            barcode = "03165467989",
-            name = "Перемещение товара",
-            taskTypeId = "8910111213141", // ID типа задания "Перемещение"
-            status = TaskXStatus.TO_DO,
-            createdAt = LocalDateTime.now().minusHours(1),
-            executorId = USER666ID,
-            planLines = listOf(planLine)
-        )
-    }
-
-    // Создание задания "Приемка по монопалетам" из примера
+    // Сохраняем методы из старой реализации для других тестовых заданий
     private fun createReceiptTask(): TaskX {
+        // ... код старого метода для совместимости ...
         // Создаем продукты для строк плана
         val productHeadphones = Product(
             id = "p1",
             name = "Наушники вкладыши",
-            accountingModel = com.synngate.synnframe.domain.entity.AccountingModel.QTY,
+            accountingModel = AccountingModel.QTY,
             articleNumber = "H-12345",
             mainUnitId = "u1",
             units = emptyList()
@@ -339,7 +439,7 @@ class MockTaskXRepository(
         val productMilk = Product(
             id = "p2",
             name = "Молоко",
-            accountingModel = com.synngate.synnframe.domain.entity.AccountingModel.QTY,
+            accountingModel = AccountingModel.QTY,
             articleNumber = "M-67890",
             mainUnitId = "u2",
             units = emptyList()
@@ -356,26 +456,7 @@ class MockTaskXRepository(
             quantity = 18f
         )
 
-        // Создаем строки плана
-        val planLine1 = PlanLineX(
-            id = UUID.randomUUID().toString(),
-            taskId = "task1",
-            executionOrder = 0,
-            storageProduct = taskProductHeadphones,
-            wmsAction = WmsAction.RECEIPT,
-            placementBin = null // В примере указано "Ячейка с условием (из зоны приемки)"
-        )
-
-        val planLine2 = PlanLineX(
-            id = UUID.randomUUID().toString(),
-            taskId = "task1",
-            executionOrder = 0,
-            storageProduct = taskProductMilk,
-            wmsAction = WmsAction.RECEIPT,
-            placementBin = null // В примере указано "Ячейка с условием (из зоны приемки)"
-        )
-
-        // Создаем задание
+        // Создаем задание (с новыми полями)
         return TaskX(
             id = "task1",
             barcode = "03165467987",
@@ -384,7 +465,83 @@ class MockTaskXRepository(
             status = TaskXStatus.TO_DO,
             createdAt = LocalDateTime.now().minusDays(1),
             executorId = USER666ID,
-            planLines = listOf(planLine1, planLine2)
+            plannedActions = emptyList(), // Пустые списки для совместимости
+            factActions = emptyList(),
+            finalActions = emptyList()
+        )
+    }
+
+    private fun createPickingTask(): TaskX {
+        // ... код старого метода для совместимости ...
+        // Создаем продукты для строк плана
+        val productTV = Product(
+            id = "p3",
+            name = "Телевизор 55\"",
+            accountingModel = AccountingModel.QTY,
+            articleNumber = "TV-55001",
+            mainUnitId = "u3",
+            units = emptyList()
+        )
+
+        val productPhone = Product(
+            id = "p4",
+            name = "Смартфон",
+            accountingModel = AccountingModel.QTY,
+            articleNumber = "PH-12345",
+            mainUnitId = "u4",
+            units = emptyList()
+        )
+
+        // Создаем товары задания для строк плана
+        val taskProductTV = TaskProduct(
+            product = productTV,
+            quantity = 2f
+        )
+
+        val taskProductPhone = TaskProduct(
+            product = productPhone,
+            quantity = 5f
+        )
+
+        // Создаем задание (с новыми полями)
+        return TaskX(
+            id = "task2",
+            barcode = "03165467988",
+            name = "Отбор заказа №12345",
+            taskTypeId = "7891011121314", // ID типа задания "Отбор заказа"
+            status = TaskXStatus.TO_DO,
+            createdAt = LocalDateTime.now().minusHours(3),
+            executorId = USER666ID,
+            plannedActions = emptyList(), // Пустые списки для совместимости
+            factActions = emptyList(),
+            finalActions = emptyList()
+        )
+    }
+
+    private fun createMovementTask(): TaskX {
+        // ... код старого метода для совместимости ...
+        // Создаем продукт для строк плана
+        val productLaptop = Product(
+            id = "p5",
+            name = "Ноутбук",
+            accountingModel = AccountingModel.QTY,
+            articleNumber = "LT-9876",
+            mainUnitId = "u5",
+            units = emptyList()
+        )
+
+        // Создаем задание (с новыми полями)
+        return TaskX(
+            id = "task3",
+            barcode = "03165467989",
+            name = "Перемещение товара",
+            taskTypeId = "8910111213141", // ID типа задания "Перемещение"
+            status = TaskXStatus.TO_DO,
+            createdAt = LocalDateTime.now().minusHours(1),
+            executorId = USER666ID,
+            plannedActions = emptyList(), // Пустые списки для совместимости
+            factActions = emptyList(),
+            finalActions = emptyList()
         )
     }
 }
