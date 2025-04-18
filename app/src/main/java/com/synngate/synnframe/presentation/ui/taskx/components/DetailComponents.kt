@@ -1,5 +1,7 @@
 package com.synngate.synnframe.presentation.ui.taskx.components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,11 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.NoEncryption
 import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -36,6 +40,7 @@ import java.time.LocalDateTime
 fun PlannedActionsView(
     plannedActions: List<PlannedAction>,
     onActionClick: (PlannedAction) -> Unit,
+    nextActionId: String? = null, // Добавлен параметр для идентификации следующего действия
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -46,7 +51,8 @@ fun PlannedActionsView(
                 items(plannedActions.sortedBy { it.order }) { action ->
                     PlannedActionItem(
                         action = action,
-                        onClick = { onActionClick(action) }
+                        onClick = { onActionClick(action) },
+                        isNextAction = action.id == nextActionId // Передаем флаг для выделения
                     )
                 }
             }
@@ -80,12 +86,22 @@ fun FactActionsView(
 fun PlannedActionItem(
     action: PlannedAction,
     onClick: () -> Unit,
+    isNextAction: Boolean = false, // Новый параметр для выделения
     modifier: Modifier = Modifier
 ) {
+    // Определяем цвет и стиль карточки в зависимости от статуса
     val backgroundColor = when {
         action.isCompleted -> MaterialTheme.colorScheme.secondaryContainer
         action.isSkipped -> MaterialTheme.colorScheme.tertiaryContainer
+        isNextAction -> MaterialTheme.colorScheme.primaryContainer // Выделение для следующего действия
         else -> MaterialTheme.colorScheme.surface
+    }
+
+    // Определяем границу карточки - только для следующего действия
+    val border = if (isNextAction) {
+        BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+    } else {
+        null
     }
 
     Card(
@@ -95,13 +111,43 @@ fun PlannedActionItem(
             .clickable(enabled = !action.isCompleted && !action.isSkipped, onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
-        )
+        ),
+        border = border // Применяем границу (если задана)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
+            // Добавляем индикатор "Следующее действие", если это требуется
+            if (isNextAction) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            shape = MaterialTheme.shapes.small
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowForward,
+                        contentDescription = "Следующее действие",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Следующее действие",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
+            }
+
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {

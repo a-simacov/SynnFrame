@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QrCode
@@ -51,6 +52,8 @@ import androidx.compose.ui.window.DialogProperties
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.taskx.AvailableTaskAction
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
+import com.synngate.synnframe.presentation.common.components.ExpandableFab
+import com.synngate.synnframe.presentation.common.components.FabItem
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
@@ -82,6 +85,18 @@ fun TaskXDetailScreen(
         !it.isVerified && viewModel.isActionAvailable(AvailableTaskAction.VERIFY_TASK) ||
                 viewModel.isActionAvailable(AvailableTaskAction.PRINT_TASK_LABEL)
     } ?: false
+
+    val nextActionId = if (task != null && state.taskType?.strictActionOrder == true) {
+        // Для заданий со строгим порядком находим первое не выполненное действие
+        task.plannedActions
+            .sortedBy { it.order }
+            .firstOrNull { !it.isCompleted && !it.isSkipped }
+            ?.id
+    } else {
+        // Для заданий без строгого порядка не выделяем никакое действие
+        null
+    }
+
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -157,366 +172,439 @@ fun TaskXDetailScreen(
         }
     }
 
-    AppScaffold(
-        title = task?.name ?: stringResource(R.string.task_details),
-        // Убран subtitle со штрихкодом задания
-        onNavigateBack = navigateBack,
-        snackbarHostState = snackbarHostState,
-        notification = state.error?.let {
-            Pair(it, StatusType.ERROR)
-        },
-        isLoading = state.isLoading,
-        floatingActionButton = {
-            // Кнопка добавления действия показывается только для задания в статусе "Выполняется"
-            if (task?.status == TaskXStatus.IN_PROGRESS) {
-                val isStrictOrder = state.taskType?.strictActionOrder == true
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        AppScaffold(
+            title = task?.name ?: stringResource(R.string.task_details),
+            // Убран subtitle со штрихкодом задания
+            onNavigateBack = navigateBack,
+            snackbarHostState = snackbarHostState,
+            notification = state.error?.let {
+                Pair(it, StatusType.ERROR)
+            },
+            isLoading = state.isLoading,
+            floatingActionButton = {
+                // Кнопка добавления действия показывается только для задания в статусе "Выполняется"
+                if (task?.status == TaskXStatus.IN_PROGRESS) {
+                    val isStrictOrder = state.taskType?.strictActionOrder == true
 
-                if (isStrictOrder) {
-                    // Для заданий со строгим порядком выполнения - кнопка с текстом
-                    ExtendedFloatingActionButton(
-                        onClick = {
-                            // Получаем первое невыполненное действие
-                            task.getNextAction()?.let { action ->
-                                viewModel.startActionExecution(action.id)
-                            }
-                        },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = null
-                            )
-                        },
-                        text = { Text("Выполнить действие") }
-                    )
-                } else {
-                    // Для заданий с произвольным порядком - обычная кнопка с плюсом
-                    FloatingActionButton(
-                        onClick = {
-                            // Получаем первое невыполненное действие и запускаем его
-                            task.getNextAction()?.let { action ->
-                                viewModel.startActionExecution(action.id)
-                            }
-                        },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Добавить действие")
-                    }
-                }
-            }
-        }
-    ) { paddingValues ->
-        if (task == null) {
-            EmptyScreenContent(
-                message = stringResource(R.string.loading_task),
-                modifier = Modifier.padding(paddingValues)
-            )
-            return@AppScaffold
-        }
-
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-        ) {
-            // Информация о задании
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    // Заголовок и статус
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = viewModel.formatTaskType(task.taskTypeId),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-
-                            // Добавлен штрихкод задания
-                            Text(
-                                text = "Штрихкод: ${task.barcode}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            if (task.isVerified) {
-                                Text(
-                                    text = "Верифицировано",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-
-                        TaskXStatusIndicator(
-                            status = task.status,
-                            formatStatus = viewModel::formatTaskStatus
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Только даты начала и изменения
-                    Row(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        task.startedAt?.let {
-                            Text(
-                                text = "Начато: ${viewModel.formatDate(it)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-
-                        task.lastModifiedAt?.let {
-                            Text(
-                                text = "Изменено: ${viewModel.formatDate(it)}",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Панель переключения вида
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                FilledTonalButton(
-                    onClick = { viewModel.showPlannedActions() },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = if (state.activeView == TaskXDetailView.PLANNED_ACTIONS)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Text("Запланировано")
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                FilledTonalButton(
-                    onClick = { viewModel.showFactActions() },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = if (state.activeView == TaskXDetailView.FACT_ACTIONS)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Text("Выполнено")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Содержимое в зависимости от выбранного вида
-            Box(modifier = Modifier.weight(1f)) {
-                when (state.activeView) {
-                    TaskXDetailView.PLANNED_ACTIONS -> {
-                        PlannedActionsView(
-                            plannedActions = task.plannedActions,
-                            onActionClick = { action ->
-                                // Проверяем, что задание в статусе "Выполняется"
-                                if (task.status == TaskXStatus.IN_PROGRESS &&
-                                    !action.isCompleted &&
-                                    !action.isSkipped) {
-
-                                    // Проверяем строгий порядок выполнения
-                                    val isStrictOrder = state.taskType?.strictActionOrder == true
-
-                                    if (isStrictOrder) {
-                                        // Если порядок строгий, проверяем, что это первое не выполненное действие
-                                        val firstNotCompletedAction = task.plannedActions
-                                            .sortedBy { it.order }
-                                            .firstOrNull { !it.isCompleted && !it.isSkipped }
-
-                                        if (firstNotCompletedAction?.id == action.id) {
-                                            viewModel.startActionExecution(action.id)
-                                        } else {
-                                            // Показываем сообщение, что нужно выполнять действия по порядку
-                                            viewModel.showOrderRequiredMessage()
-                                        }
-                                    } else {
-                                        // Если порядок не строгий, разрешаем выполнять любое действие
-                                        viewModel.startActionExecution(action.id)
-                                    }
+                    if (isStrictOrder) {
+                        // Для заданий со строгим порядком выполнения - кнопка с текстом
+                        ExtendedFloatingActionButton(
+                            onClick = {
+                                // Получаем первое невыполненное действие
+                                task.getNextAction()?.let { action ->
+                                    viewModel.startActionExecution(action.id)
                                 }
-                            }
-                        )
-                    }
-                    TaskXDetailView.FACT_ACTIONS -> {
-                        FactActionsView(
-                            factActions = task.factActions,
-                            formatDate = viewModel::formatDate
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Уменьшенный блок с кнопками управления статусом с иконками и кратким текстом
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    when (task.status) {
-                        TaskXStatus.TO_DO -> {
-                            Button(
-                                onClick = { viewModel.startTask() },
-                                enabled = task.canStart() && !state.isProcessing,
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                            ) {
+                            },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            icon = {
                                 Icon(
                                     imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Начать выполнение",
-                                    modifier = Modifier.size(28.dp)
+                                    contentDescription = null
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Старт")
-                            }
-                        }
-                        TaskXStatus.IN_PROGRESS -> {
-                            Button(
-                                onClick = { viewModel.showCompletionDialog() },
-                                enabled = task.canComplete() && !state.isProcessing,
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = "Завершить",
-                                    modifier = Modifier.size(28.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Финиш")
-                            }
-
-                            if (viewModel.isActionAvailable(AvailableTaskAction.PAUSE)) {
-                                Button(
-                                    onClick = { viewModel.pauseTask() },
-                                    enabled = !state.isProcessing,
-                                    modifier = Modifier.padding(horizontal = 8.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Pause,
-                                        contentDescription = "Приостановить",
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Пауза")
+                            },
+                            text = { Text("Выполнить действие") }
+                        )
+                    } else {
+                        // Для заданий с произвольным порядком - обычная кнопка с плюсом
+                        FloatingActionButton(
+                            onClick = {
+                                // Получаем первое невыполненное действие и запускаем его
+                                task.getNextAction()?.let { action ->
+                                    viewModel.startActionExecution(action.id)
                                 }
-                            }
+                            },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Добавить действие")
                         }
-                        TaskXStatus.PAUSED -> {
-                            Button(
-                                onClick = { viewModel.resumeTask() },
-                                enabled = task.canResume() && !state.isProcessing,
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Продолжить",
-                                    modifier = Modifier.size(28.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Старт")
-                            }
-                        }
-                        else -> {}
                     }
                 }
             }
+        ) { paddingValues ->
+            if (task == null) {
+                EmptyScreenContent(
+                    message = stringResource(R.string.loading_task),
+                    modifier = Modifier.padding(paddingValues)
+                )
+                return@AppScaffold
+            }
 
-            // Группа с дополнительными действиями - показывается только при наличии действий
-            if (hasAdditionalActions) {
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+            ) {
+                // Информация о задании
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(8.dp)
+                            .padding(16.dp)
                     ) {
+                        // Заголовок и статус
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Дополнительные действия",
-                                style = MaterialTheme.typography.titleSmall,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(bottom = 4.dp)
-                            )
-
-                            IconButton(onClick = { showAdditionalActions = !showAdditionalActions }) {
-                                Icon(
-                                    imageVector = if (showAdditionalActions)
-                                        Icons.Default.Pause else Icons.Default.PlayArrow,
-                                    contentDescription = if (showAdditionalActions)
-                                        "Скрыть" else "Показать"
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = viewModel.formatTaskType(task.taskTypeId),
+                                    style = MaterialTheme.typography.titleMedium
                                 )
+
+                                // Добавлен штрихкод задания
+                                Text(
+                                    text = "Штрихкод: ${task.barcode}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                if (task.isVerified) {
+                                    Text(
+                                        text = "Верифицировано",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
+
+                            TaskXStatusIndicator(
+                                status = task.status,
+                                formatStatus = viewModel::formatTaskStatus
+                            )
                         }
 
-                        AnimatedVisibility(
-                            visible = showAdditionalActions,
-                            enter = expandVertically(),
-                            exit = shrinkVertically()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                if (!task.isVerified && viewModel.isActionAvailable(AvailableTaskAction.VERIFY_TASK)) {
-                                    IconButton(
-                                        onClick = { viewModel.showVerificationDialog() },
-                                        enabled = !state.isProcessing
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.QrCode,
-                                            contentDescription = "Верифицировать",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                                // Другие дополнительные действия...
+                        // Только даты начала и изменения
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            task.startedAt?.let {
+                                Text(
+                                    text = "Начато: ${viewModel.formatDate(it)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            task.lastModifiedAt?.let {
+                                Text(
+                                    text = "Изменено: ${viewModel.formatDate(it)}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
                             }
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Панель переключения вида
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    FilledTonalButton(
+                        onClick = { viewModel.showPlannedActions() },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (state.activeView == TaskXDetailView.PLANNED_ACTIONS)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Text("Запланировано")
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    FilledTonalButton(
+                        onClick = { viewModel.showFactActions() },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (state.activeView == TaskXDetailView.FACT_ACTIONS)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Text("Выполнено")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Содержимое в зависимости от выбранного вида
+                Box(modifier = Modifier.weight(1f)) {
+                    when (state.activeView) {
+                        TaskXDetailView.PLANNED_ACTIONS -> {
+                            PlannedActionsView(
+                                plannedActions = task.plannedActions,
+                                nextActionId = nextActionId,
+                                onActionClick = { action ->
+                                    // Проверяем, что задание в статусе "Выполняется"
+                                    if (task.status == TaskXStatus.IN_PROGRESS &&
+                                        !action.isCompleted &&
+                                        !action.isSkipped
+                                    ) {
+
+                                        // Проверяем строгий порядок выполнения
+                                        val isStrictOrder =
+                                            state.taskType?.strictActionOrder == true
+
+                                        if (isStrictOrder) {
+                                            // Если порядок строгий, проверяем, что это первое не выполненное действие
+                                            val firstNotCompletedAction = task.plannedActions
+                                                .sortedBy { it.order }
+                                                .firstOrNull { !it.isCompleted && !it.isSkipped }
+
+                                            if (firstNotCompletedAction?.id == action.id) {
+                                                viewModel.startActionExecution(action.id)
+                                            } else {
+                                                // Показываем сообщение, что нужно выполнять действия по порядку
+                                                viewModel.showOrderRequiredMessage()
+                                            }
+                                        } else {
+                                            // Если порядок не строгий, разрешаем выполнять любое действие
+                                            viewModel.startActionExecution(action.id)
+                                        }
+                                    }
+                                }
+                            )
+                        }
+
+                        TaskXDetailView.FACT_ACTIONS -> {
+                            FactActionsView(
+                                factActions = task.factActions,
+                                formatDate = viewModel::formatDate
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Уменьшенный блок с кнопками управления статусом с иконками и кратким текстом
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        when (task.status) {
+                            TaskXStatus.TO_DO -> {
+                                Button(
+                                    onClick = { viewModel.startTask() },
+                                    enabled = task.canStart() && !state.isProcessing,
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Начать выполнение",
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Старт")
+                                }
+                            }
+
+                            TaskXStatus.IN_PROGRESS -> {
+                                Button(
+                                    onClick = { viewModel.showCompletionDialog() },
+                                    enabled = task.canComplete() && !state.isProcessing,
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = "Завершить",
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Финиш")
+                                }
+
+                                if (viewModel.isActionAvailable(AvailableTaskAction.PAUSE)) {
+                                    Button(
+                                        onClick = { viewModel.pauseTask() },
+                                        enabled = !state.isProcessing,
+                                        modifier = Modifier.padding(horizontal = 8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Pause,
+                                            contentDescription = "Приостановить",
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Пауза")
+                                    }
+                                }
+                            }
+
+                            TaskXStatus.PAUSED -> {
+                                Button(
+                                    onClick = { viewModel.resumeTask() },
+                                    enabled = task.canResume() && !state.isProcessing,
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Продолжить",
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Старт")
+                                }
+                            }
+
+                            else -> {}
+                        }
+                    }
+                }
+
+                // Группа с дополнительными действиями - показывается только при наличии действий
+                if (hasAdditionalActions) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Дополнительные действия",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(bottom = 4.dp)
+                                )
+
+                                IconButton(onClick = {
+                                    showAdditionalActions = !showAdditionalActions
+                                }) {
+                                    Icon(
+                                        imageVector = if (showAdditionalActions)
+                                            Icons.Default.Pause else Icons.Default.PlayArrow,
+                                        contentDescription = if (showAdditionalActions)
+                                            "Скрыть" else "Показать"
+                                    )
+                                }
+                            }
+
+                            AnimatedVisibility(
+                                visible = showAdditionalActions,
+                                enter = expandVertically(),
+                                exit = shrinkVertically()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    if (!task.isVerified && viewModel.isActionAvailable(
+                                            AvailableTaskAction.VERIFY_TASK
+                                        )
+                                    ) {
+                                        IconButton(
+                                            onClick = { viewModel.showVerificationDialog() },
+                                            enabled = !state.isProcessing
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.QrCode,
+                                                contentDescription = "Верифицировать",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+
+                                    // Другие дополнительные действия...
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // Добавить сюда расширяемую кнопку
+        if (task != null) {
+            // Создаем список кнопок в зависимости от текущего статуса
+            val fabItems = when (task.status) {
+                TaskXStatus.TO_DO -> listOf(
+                    FabItem(
+                        icon = Icons.Default.PlayArrow,
+                        contentDescription = "Начать выполнение",
+                        text = "Старт",  // Добавлен текст кнопки
+                        onClick = { viewModel.startTask() },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+                TaskXStatus.IN_PROGRESS -> listOf(
+                    FabItem(
+                        icon = Icons.Default.Pause,
+                        contentDescription = "Приостановить",
+                        text = "Пауза",  // Добавлен текст кнопки
+                        onClick = { viewModel.pauseTask() },
+                        containerColor = MaterialTheme.colorScheme.tertiary,
+                        contentColor = MaterialTheme.colorScheme.onTertiary
+                    ),
+                    FabItem(
+                        icon = Icons.Default.CheckCircle,
+                        contentDescription = "Завершить",
+                        text = "Финиш",  // Добавлен текст кнопки
+                        onClick = { viewModel.showCompletionDialog() },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+                TaskXStatus.PAUSED -> listOf(
+                    FabItem(
+                        icon = Icons.Default.PlayArrow,
+                        contentDescription = "Продолжить",
+                        text = "Старт",  // Добавлен текст кнопки
+                        onClick = { viewModel.resumeTask() },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+                else -> emptyList() // Для завершенных и отмененных заданий кнопок нет
+            }
+
+            // Отображаем расширяемую кнопку только если есть доступные действия
+            if (fabItems.isNotEmpty()) {
+                ExpandableFab(
+                    icon = Icons.Default.Info,
+                    contentDescription = "Управление статусом",
+                    items = fabItems,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(16.dp)
+                )
             }
         }
     }
