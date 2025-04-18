@@ -5,7 +5,6 @@ import com.synngate.synnframe.domain.entity.taskx.FactLineXActionType
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.model.wizard.WizardResultModel
 import com.synngate.synnframe.domain.model.wizard.WizardStep
-import com.synngate.synnframe.presentation.ui.wizard.component.StepComponentFactory
 import timber.log.Timber
 
 /**
