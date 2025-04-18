@@ -18,13 +18,12 @@ data class TaskXDetailState(
     val showVerificationDialog: Boolean = false,
     val currentUserId: String? = null,
     val showCompletionDialog: Boolean = false,
-    val showActionWizard: Boolean = false
+    val showActionWizard: Boolean = false,
+    val showOrderRequiredMessage: Boolean = false
 )
 
 sealed class TaskXDetailEvent {
     data class ShowSnackbar(val message: String) : TaskXDetailEvent()
-
-    // Новые события для работы с визардом действий
     object ShowActionWizard : TaskXDetailEvent()
     object HideActionWizard : TaskXDetailEvent()
 }

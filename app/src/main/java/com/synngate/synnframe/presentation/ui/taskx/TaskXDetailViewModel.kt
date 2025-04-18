@@ -35,6 +35,31 @@ class TaskXDetailViewModel(
         launchIO {
             try {
                 Timber.d("Starting action execution for actionId: $actionId")
+
+                val task = uiState.value.task ?: return@launchIO
+
+                // Проверяем, что задание в статусе "Выполняется"
+                if (task.status != TaskXStatus.IN_PROGRESS) {
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Задание не в статусе 'Выполняется'"))
+                    return@launchIO
+                }
+
+                // Проверяем строгий порядок выполнения
+                val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
+                val action = task.plannedActions.find { it.id == actionId }
+
+                if (isStrictOrder && action != null) {
+                    // Если порядок строгий, проверяем, что это первое не выполненное действие
+                    val firstNotCompletedAction = task.plannedActions
+                        .sortedBy { it.order }
+                        .firstOrNull { !it.isCompleted && !it.isSkipped }
+
+                    if (firstNotCompletedAction?.id != actionId) {
+                        showOrderRequiredMessage()
+                        return@launchIO
+                    }
+                }
+
                 val result = actionWizardController.initialize(taskId, actionId)
                 if (result.isSuccess) {
                     Timber.d("Action wizard initialized successfully")
@@ -51,6 +76,17 @@ class TaskXDetailViewModel(
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось начать выполнение действия"))
             }
         }
+    }
+
+    // Метод для показа сообщения о необходимости соблюдения порядка выполнения
+    fun showOrderRequiredMessage() {
+        updateState { it.copy(showOrderRequiredMessage = true) }
+        sendEvent(TaskXDetailEvent.ShowSnackbar("Необходимо выполнять действия в указанном порядке"))
+    }
+
+    // Метод для скрытия сообщения о необходимости соблюдения порядка
+    fun hideOrderRequiredMessage() {
+        updateState { it.copy(showOrderRequiredMessage = false) }
     }
 
     // Метод для скрытия визарда
@@ -164,6 +200,18 @@ class TaskXDetailViewModel(
     fun completeTask() {
         launchIO {
             val task = uiState.value.task ?: return@launchIO
+            val taskType = uiState.value.taskType ?: return@launchIO
+
+            // Проверяем, что все необходимые действия выполнены
+            val allActionsCompleted = task.plannedActions.all { it.isCompleted || it.isSkipped }
+
+            // Если не все действия выполнены и не установлен флаг allowCompletionWithoutFactActions,
+            // то показываем предупреждение и не завершаем задание
+            if (!allActionsCompleted && !taskType.allowCompletionWithoutFactActions) {
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Необходимо выполнить все запланированные действия"))
+                updateState { it.copy(showCompletionDialog = false) }
+                return@launchIO
+            }
 
             updateState { it.copy(isProcessing = true) }
 

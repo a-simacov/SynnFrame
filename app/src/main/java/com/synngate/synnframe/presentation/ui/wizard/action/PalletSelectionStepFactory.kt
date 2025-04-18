@@ -7,7 +7,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,6 +50,18 @@ class PalletSelectionStepFactory(
         // Получение данных из ViewModel
         val pallets by wizardViewModel.pallets.collectAsState()
 
+        // Определяем, ищем мы паллету хранения или размещения
+        // Это зависит от того, к какому типу шагов относится текущий шаг
+        val isStorageStep = step.id in action.actionTemplate.storageSteps.map { it.id }
+
+        // Запланированная паллета (может быть null)
+        val plannedPallet = if (isStorageStep) action.storagePallet else action.placementPallet
+
+        // Список запланированных паллет
+        val planPallets = remember(action, isStorageStep) {
+            listOfNotNull(plannedPallet)
+        }
+
         // Загрузка паллет при изменении поискового запроса
         LaunchedEffect(searchQuery) {
             wizardViewModel.loadPallets(searchQuery)
@@ -57,6 +73,67 @@ class PalletSelectionStepFactory(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
+
+            // Отображаем запланированные паллеты, если они есть
+            if (planPallets.isNotEmpty()) {
+                Text(
+                    text = "По плану:",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(if(planPallets.size > 2) 200.dp else 120.dp)
+                ) {
+                    items(planPallets) { pallet ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp)
+                            ) {
+                                Text(
+                                    text = "Код: ${pallet.code}",
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Text(
+                                    text = "Статус: ${if (pallet.isClosed) "Закрыта" else "Открыта"}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+
+                                Button(
+                                    onClick = {
+                                        // Явно указываем тип Any
+                                        val result: Any = pallet
+                                        context.onComplete(result)
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 4.dp)
+                                ) {
+                                    Text("Выбрать")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                )
+            }
 
             if (showScanner) {
                 BarcodeScannerView(
@@ -104,10 +181,22 @@ class PalletSelectionStepFactory(
                         PalletItem(
                             pallet = pallet,
                             onClick = {
-                                context.onComplete(pallet)
+                                // Явно указываем тип Any
+                                val result: Any = pallet
+                                context.onComplete(result)
                             }
                         )
                     }
+                }
+
+                // Кнопка "Назад"
+                OutlinedButton(
+                    onClick = { context.onBack() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Text("Назад")
                 }
             }
         }

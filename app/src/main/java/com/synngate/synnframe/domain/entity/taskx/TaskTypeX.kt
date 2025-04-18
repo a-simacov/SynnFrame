@@ -11,6 +11,7 @@ data class TaskTypeX(
     val canBeCreatedInApp: Boolean = false, // Можно ли создать в приложении
     val allowCompletionWithoutFactActions: Boolean = false, // Разрешено ли завершение без факт. действий
     val allowExceedPlanQuantity: Boolean = false, // Разрешено ли превышение планового количества
+    val strictActionOrder: Boolean = true,  // Требовать строгий порядок выполнения действий
     val availableActions: List<AvailableTaskAction> = emptyList(), // Доступные действия
     val finalActions: List<ActionTemplate> = emptyList() // Финальные действия перед завершением
 )

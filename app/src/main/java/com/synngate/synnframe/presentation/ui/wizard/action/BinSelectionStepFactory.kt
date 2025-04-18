@@ -7,7 +7,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
@@ -44,10 +49,18 @@ class BinSelectionStepFactory(
         var showScanner by remember { mutableStateOf(false) }
 
         // Получаем зону из контекста, если указана
-        val zoneFilter = action.actionTemplate.placementObjectType?.name
+        val zoneFilter = action.placementBin?.zone
 
         // Получение данных из ViewModel
         val bins by wizardViewModel.bins.collectAsState()
+
+        // Запланированная ячейка (может быть null)
+        val plannedBin = action.placementBin
+
+        // Список запланированных ячеек
+        val planBins = remember(action) {
+            listOfNotNull(plannedBin)
+        }
 
         // Загрузка ячеек при изменении поискового запроса
         LaunchedEffect(zoneFilter, searchQuery) {
@@ -60,6 +73,73 @@ class BinSelectionStepFactory(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
+
+            // Отображаем запланированные ячейки, если они есть
+            if (planBins.isNotEmpty()) {
+                Text(
+                    text = "По плану:",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(if(planBins.size > 2) 200.dp else 120.dp)
+                ) {
+                    items(planBins) { bin ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp)
+                            ) {
+                                Text(
+                                    text = "Код: ${bin.code}",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "Зона: ${bin.zone}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    text = "Расположение: ${bin.line}-${bin.rack}-${bin.tier}-${bin.position}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+
+                                Button(
+                                    onClick = {
+                                        // Явно указываем тип Any
+                                        val result: Any = bin
+                                        context.onComplete(result)
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 4.dp)
+                                ) {
+                                    Text("Выбрать")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                )
+            }
 
             if (showScanner) {
                 BarcodeScannerView(
@@ -107,10 +187,22 @@ class BinSelectionStepFactory(
                         BinItem(
                             bin = bin,
                             onClick = {
-                                context.onComplete(bin)
+                                // Явно указываем тип Any
+                                val result: Any = bin
+                                context.onComplete(result)
                             }
                         )
                     }
+                }
+
+                // Кнопка "Назад"
+                OutlinedButton(
+                    onClick = { context.onBack() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Text("Назад")
                 }
             }
         }

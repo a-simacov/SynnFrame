@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -28,6 +30,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
@@ -70,12 +73,24 @@ fun ActionWizardScreen(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                // Заголовок
-                Text(
-                    text = wizardState.action?.actionTemplate?.name ?: "Выполнение действия",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
+                // Заголовок и кнопка закрытия
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = wizardState.action?.actionTemplate?.name ?: "Выполнение действия",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    IconButton(onClick = onCancel) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Закрыть"
+                        )
+                    }
+                }
 
                 // Прогресс
                 LinearProgressIndicator(
@@ -89,16 +104,25 @@ fun ActionWizardScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(400.dp) // Фиксированная высота вместо weight
+                        .weight(1f)
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(16.dp) // Добавляем видимый padding
+                        .padding(16.dp)
                 ) {
                     val currentStep = wizardState.currentStep
                     val action = wizardState.action
 
                     if (currentStep == null || wizardState.isCompleted) {
                         // Итоговый экран
-                        Text("Итоговый экран действия")
+                        ActionSummaryScreen(
+                            state = wizardState,
+                            onComplete = onComplete,
+                            onBack = {
+                                // Вернуться с итогового экрана на последний шаг
+                                coroutineScope.launch {
+                                    actionWizardController.processStepResult(null)
+                                }
+                            }
+                        )
                     } else if (action != null) {
                         // Находим ActionStep для текущего шага визарда
                         val actionStep = findActionStepForWizardStep(action, currentStep.id)
@@ -133,21 +157,12 @@ fun ActionWizardScreen(
                                     onCancel = onCancel
                                 )
 
-                                // ВАЖНО: добавляем отладочную информацию
-                                Column {
-                                    Text(
-                                        text = "Шаг: ${actionStep.name}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.padding(bottom = 8.dp)
-                                    )
-
-                                    // Создаем компонент шага
-                                    factory.createComponent(
-                                        step = actionStep,
-                                        action = action,
-                                        context = context
-                                    )
-                                }
+                                // Создаем компонент шага
+                                factory.createComponent(
+                                    step = actionStep,
+                                    action = action,
+                                    context = context
+                                )
                             } else {
                                 // Фабрика не найдена
                                 Text(
@@ -176,25 +191,54 @@ fun ActionWizardScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Кнопки действий
+                // Кнопки действий с возможностью возврата назад
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(
+                    // Кнопка "Назад" - отображается, только если можно вернуться назад
+                    if (wizardState.canGoBack || wizardState.isCompleted) {
+                        OutlinedButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    actionWizardController.processStepResult(null)
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Назад"
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Назад")
+                        }
+                    } else {
+                        // Пустой Spacer для сохранения выравнивания, если кнопка "Назад" отсутствует
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+
+                    // Кнопка отмены для обоих состояний - в основном для мобильной версии
+                    OutlinedButton(
                         onClick = onCancel,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Отмена")
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Button(
-                        onClick = onComplete,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Завершить")
+                    // Кнопка "Завершить" - видна только на итоговом экране
+                    if (wizardState.isCompleted) {
+                        Button(
+                            onClick = onComplete,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Завершить")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Завершить"
+                            )
+                        }
                     }
                 }
             }
@@ -214,7 +258,7 @@ fun ActionWizardScreen(
     }
 }
 
-// Улучшенная функция для поиска ActionStep
+// Функция для поиска ActionStep
 private fun findActionStepForWizardStep(
     action: PlannedAction,
     stepId: String
@@ -310,42 +354,19 @@ fun ActionSummaryScreen(
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                     }
+                    is Product -> {
+                        Text(
+                            text = "Товар: ${value.name}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        Text(
+                            text = "Артикул: ${value.articleNumber}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
                 }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Кнопки действий
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedButton(
-                onClick = {
-                    Timber.d("Back button in summary screen clicked")
-                    onBack()
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = null
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Назад")
-            }
-
-            Button(
-                onClick = onComplete,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Подтвердить")
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null
-                )
             }
         }
     }

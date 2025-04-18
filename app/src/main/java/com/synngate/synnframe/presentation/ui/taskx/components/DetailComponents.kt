@@ -15,7 +15,6 @@ import androidx.compose.material.icons.filled.NoEncryption
 import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -40,14 +39,6 @@ fun PlannedActionsView(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        Text(
-            text = "Запланированные действия",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        HorizontalDivider()
-
         if (plannedActions.isEmpty()) {
             EmptyScreenContent(message = "Нет запланированных действий")
         } else {
@@ -70,14 +61,6 @@ fun FactActionsView(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        Text(
-            text = "Выполненные действия",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        HorizontalDivider()
-
         if (factActions.isEmpty()) {
             EmptyScreenContent(message = "Нет выполненных действий")
         } else {
