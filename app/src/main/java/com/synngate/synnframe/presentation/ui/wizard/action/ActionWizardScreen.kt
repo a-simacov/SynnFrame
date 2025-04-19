@@ -31,6 +31,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.data.barcodescanner.ScannerService
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
@@ -45,12 +46,10 @@ import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.scanner.ScannerStatusIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.WmsActionIconWithTooltip
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * Экран визарда действий
- */
 @Composable
 fun ActionWizardScreen(
     actionWizardController: ActionWizardController,
@@ -60,11 +59,8 @@ fun ActionWizardScreen(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Получаем текущее состояние визарда
     val state by actionWizardController.wizardState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
-
-    Timber.d("ActionWizardScreen: state=$state")
 
     if (state == null) {
         Box(
@@ -80,10 +76,8 @@ fun ActionWizardScreen(
         return
     }
 
-    // Получаем сервис сканера из CompositionLocal
     val scannerService = LocalScannerService.current
 
-    // Слушатель штрихкодов от встроенного сканера
     ScannerListener(onBarcodeScanned = { barcode ->
         Timber.d("Штрихкод от встроенного сканера: $barcode")
         coroutineScope.launch {
@@ -92,17 +86,13 @@ fun ActionWizardScreen(
     })
 
     val wizardState = state!!
-    Timber.d("ActionWizardScreen: currentStep=${wizardState.currentStep}, action=${wizardState.action != null}")
 
-    // Обработка системной кнопки "Назад"
     BackHandler {
         if (wizardState.isCompleted || wizardState.currentStepIndex > 0) {
-            // На итоговом экране или не на первом шаге - возврат к предыдущему шагу
             coroutineScope.launch {
                 actionWizardController.processStepResult(null)
             }
         } else {
-            // На первом шаге - закрытие мастера
             onCancel()
         }
     }
@@ -116,35 +106,8 @@ fun ActionWizardScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // Заголовок и кнопка закрытия
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = wizardState.action?.actionTemplate?.name ?: "Выполнение действия",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.weight(1f)
-                )
+            WizardHeader(wizardState, scannerService, onCancel)
 
-                // Добавляем индикатор статуса сканера
-                scannerService?.let { scanner ->
-                    ScannerStatusIndicator(
-                        scannerService = scanner,
-                        showText = false,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                }
-
-                IconButton(onClick = onCancel) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Закрыть"
-                    )
-                }
-            }
-
-            // Прогресс
             LinearProgressIndicator(
                 progress = { wizardState.progress },
                 modifier = Modifier
@@ -152,7 +115,6 @@ fun ActionWizardScreen(
                     .padding(vertical = 16.dp)
             )
 
-            // Содержимое текущего шага
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -164,59 +126,44 @@ fun ActionWizardScreen(
                 val action = wizardState.action
 
                 if (currentStep == null || wizardState.isCompleted) {
-                    // Итоговый экран
                     ActionSummaryScreen(
                         state = wizardState
                     )
                 } else if (action != null) {
-                    // Находим ActionStep для текущего шага визарда
                     val actionStep = findActionStepForWizardStep(action, currentStep.id)
 
-                    Timber.d("Step: ${currentStep.id}, found actionStep: ${actionStep?.id}")
-
                     if (actionStep != null) {
-                        // Находим фабрику для типа объекта
                         val factory = actionStepFactoryRegistry.getFactory(actionStep.objectType)
 
-                        Timber.d("Object type: ${actionStep.objectType}, factory: ${factory != null}")
-
                         if (factory != null) {
-                            // Создаем контекст для шага
                             val context = actionWizardContextFactory.createContext(
                                 state = wizardState,
                                 onStepComplete = { result ->
-                                    Timber.d("Step completed with result: $result")
                                     coroutineScope.launch {
                                         actionWizardController.processStepResult(result)
                                     }
                                 },
                                 onBack = {
-                                    Timber.d("Back navigation requested")
                                     coroutineScope.launch {
                                         actionWizardController.processStepResult(null)
                                     }
                                 },
                                 onForward = {
-                                    Timber.d("Forward navigation requested")
                                     coroutineScope.launch {
                                         actionWizardController.processForwardStep()
                                     }
                                 },
-                                onSkip = { result ->
-                                    Timber.d("Skip requested with result: $result")
-                                },
+                                onSkip = { },
                                 onCancel = onCancel,
                                 lastScannedBarcode = wizardState.lastScannedBarcode
                             )
 
-                            // Создаем компонент шага
                             factory.createComponent(
                                 step = actionStep,
                                 action = action,
                                 context = context
                             )
                         } else {
-                            // Фабрика не найдена
                             Text(
                                 text = "Ошибка: Нет компонента для типа объекта: ${actionStep.objectType}",
                                 style = MaterialTheme.typography.bodyLarge,
@@ -224,7 +171,6 @@ fun ActionWizardScreen(
                             )
                         }
                     } else {
-                        // ActionStep не найден
                         Text(
                             text = "Ошибка: Шаг не найден: ${currentStep.id}",
                             style = MaterialTheme.typography.bodyLarge,
@@ -232,7 +178,6 @@ fun ActionWizardScreen(
                         )
                     }
                 } else {
-                    // Действие не найдено
                     Text(
                         text = "Ошибка: Действие не найдено",
                         style = MaterialTheme.typography.bodyLarge,
@@ -243,81 +188,109 @@ fun ActionWizardScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Кнопки действий с возможностью возврата назад
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if ((wizardState.canGoBack && wizardState.currentStepIndex > 0) || wizardState.isCompleted) {
-                    OutlinedButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                actionWizardController.processStepResult(null)
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Назад"
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Назад")
-                    }
-                } else {
-                    // Пустой Spacer для сохранения выравнивания, если кнопка "Назад" отсутствует
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-
-                // Кнопка "Завершить" - видна только на итоговом экране
-                if (wizardState.isCompleted) {
-                    Button(
-                        onClick = onComplete,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Завершить")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Завершить"
-                        )
-                    }
-                }
-            }
+            WizardActions(wizardState, coroutineScope, actionWizardController, onComplete)
 
             Spacer(modifier = Modifier.weight(0.1f))
         }
     }
 }
 
-// Функция для поиска ActionStep
+@Composable
+private fun WizardActions(
+    wizardState: ActionWizardState,
+    coroutineScope: CoroutineScope,
+    actionWizardController: ActionWizardController,
+    onComplete: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if ((wizardState.canGoBack && wizardState.currentStepIndex > 0) || wizardState.isCompleted) {
+            OutlinedButton(
+                onClick = {
+                    coroutineScope.launch {
+                        actionWizardController.processStepResult(null)
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Назад"
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Назад")
+            }
+        } else {
+            // Пустой Spacer для сохранения выравнивания, если кнопка "Назад" отсутствует
+            Spacer(modifier = Modifier.weight(1f))
+        }
+
+        if (wizardState.isCompleted) {
+            Button(
+                onClick = onComplete,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Завершить")
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Завершить"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WizardHeader(
+    wizardState: ActionWizardState,
+    scannerService: ScannerService?,
+    onCancel: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = wizardState.action?.wmsAction?.name ?: "Выполнение действия",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.weight(1f)
+        )
+
+        scannerService?.let { scanner ->
+            ScannerStatusIndicator(
+                scannerService = scanner,
+                showText = false,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+        }
+
+        IconButton(onClick = onCancel) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Закрыть"
+            )
+        }
+    }
+}
+
 private fun findActionStepForWizardStep(
     action: PlannedAction,
     stepId: String
 ): ActionStep? {
-    Timber.d("Finding action step for wizard step: $stepId")
-    Timber.d("Storage steps: ${action.actionTemplate.storageSteps.map { it.id }}")
-    Timber.d("Placement steps: ${action.actionTemplate.placementSteps.map { it.id }}")
-
-    // Ищем в шагах хранения
     action.actionTemplate.storageSteps.find { it.id == stepId }?.let {
-        Timber.d("Found in storage steps: ${it.id}")
         return it
     }
 
-    // Ищем в шагах размещения
     action.actionTemplate.placementSteps.find { it.id == stepId }?.let {
-        Timber.d("Found in placement steps: ${it.id}")
         return it
     }
 
-    Timber.w("Action step not found for wizard step: $stepId")
     return null
 }
 
-/**
- * Экран сводки действия
- */
 @Composable
 fun ActionSummaryScreen(
     state: ActionWizardState,
@@ -339,7 +312,6 @@ fun ActionSummaryScreen(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            // Заменяем текстовое представление действия на строку с иконкой и подсказкой
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -357,7 +329,6 @@ fun ActionSummaryScreen(
                 )
             }
 
-            // Отображение результатов шагов
             for ((stepId, value) in state.results.entries) {
                 when (value) {
                     is TaskProduct -> {
