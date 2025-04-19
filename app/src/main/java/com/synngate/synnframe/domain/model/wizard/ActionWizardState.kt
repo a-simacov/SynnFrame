@@ -15,7 +15,8 @@ data class ActionWizardState(
     val results: Map<String, Any> = emptyMap(),// Результаты шагов
     val startedAt: LocalDateTime = LocalDateTime.now(),
     val errors: Map<String, String> = emptyMap(),
-    val isInitialized: Boolean = false
+    val isInitialized: Boolean = false,
+    val lastScannedBarcode: String? = null    // Последний отсканированный штрихкод
 ) {
     val currentStep: WizardStep?
         get() = if (currentStepIndex < steps.size) steps[currentStepIndex] else null

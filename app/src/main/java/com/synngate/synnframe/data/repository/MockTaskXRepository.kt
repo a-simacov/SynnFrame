@@ -364,12 +364,12 @@ class MockTaskXRepository(
                 storagePallet = Pallet(code = "IN00000000003", isClosed = false),
                 wmsAction = WmsAction.TAKE_FROM,
                 placementBin = BinX(
-                    code = "R30111",
+                    code = "B00211",
                     zone = "Хранение",
-                    line = "R",
-                    rack = "3",
-                    tier = "01",
-                    position = "11"
+                    line = "B",
+                    rack = "02",
+                    tier = "1",
+                    position = "1"
                 )
             ),
             PlannedAction(

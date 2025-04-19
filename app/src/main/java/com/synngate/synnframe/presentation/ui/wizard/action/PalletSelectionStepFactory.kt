@@ -38,11 +38,10 @@ import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
-import com.synngate.synnframe.presentation.common.LocalScannerService
-import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.PalletItem
 import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
+import timber.log.Timber
 
 /**
  * Фабрика компонентов для шага выбора паллеты с тремя способами ввода
@@ -73,9 +72,6 @@ class PalletSelectionStepFactory(
         // Получение данных из ViewModel
         val pallets by wizardViewModel.pallets.collectAsState()
 
-        // Получаем сервис сканера для встроенного сканера
-        val scannerService = LocalScannerService.current
-
         // Определяем, ищем мы паллету хранения или размещения
         // Это зависит от того, к какому типу шагов относится текущий шаг
         val isStorageStep = step.id in action.actionTemplate.storageSteps.map { it.id }
@@ -93,22 +89,27 @@ class PalletSelectionStepFactory(
             context.results[step.id] as? Pallet
         }
 
-        // Слушатель событий сканирования
-        if (selectedInputMethod == InputMethod.HARDWARE_SCANNER) {
-            ScannerListener(
-                onBarcodeScanned = { barcode ->
+        LaunchedEffect(context.lastScannedBarcode) {
+            val barcode = context.lastScannedBarcode
+            if (barcode != null && barcode.isNotEmpty()) {
+                Timber.d("Получен штрихкод от внешнего сканера: $barcode")
+
+                // Проверяем формат штрихкода (должен соответствовать формату кода паллеты)
+                if (palletCodeRegex.matches(barcode)) {
+                    // Обрабатываем штрихкод как код паллеты
                     processBarcodeForPallet(
                         barcode = barcode,
                         expectedBarcode = plannedPallet?.code,
                         onPalletFound = { pallet ->
                             if (pallet != null) {
                                 context.onComplete(pallet)
+                                context.onForward()
                                 selectedInputMethod = InputMethod.NONE
                             }
                         }
                     )
                 }
-            )
+            }
         }
 
         // Загрузка паллет при изменении поискового запроса
@@ -126,6 +127,8 @@ class PalletSelectionStepFactory(
                         onPalletFound = { pallet ->
                             if (pallet != null) {
                                 context.onComplete(pallet)
+                                // Добавляем вызов onForward() для автоматического перехода к следующему шагу
+                                context.onForward()
                             }
                             showCameraScannerDialog = false
                             selectedInputMethod = InputMethod.NONE
@@ -231,27 +234,6 @@ class PalletSelectionStepFactory(
                         )
                         Text(stringResource(R.string.scan_with_camera))
                     }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Кнопка для сканирования встроенным сканером (если доступен)
-                    if (scannerService != null) {
-                        Button(
-                            onClick = { selectedInputMethod = InputMethod.HARDWARE_SCANNER },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.QrCodeScanner,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 4.dp)
-                            )
-                            Text(stringResource(R.string.scan_with_scanner))
-                        }
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -272,28 +254,6 @@ class PalletSelectionStepFactory(
                     )
                     Text(stringResource(R.string.select_from_list))
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Кнопка для создания новой паллеты
-                Button(
-                    onClick = { showManualInputForm = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
-                    Text("Создать новую паллету")
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
             // Показываем форму для ручного ввода кода паллеты
@@ -569,12 +529,6 @@ class PalletSelectionStepFactory(
     ) {
         // Если задан ожидаемый штрихкод, проверяем соответствие
         if (expectedBarcode != null && barcode != expectedBarcode) {
-            onPalletFound(null)
-            return
-        }
-
-        // Проверяем формат штрихкода (должен соответствовать формату кода паллеты)
-        if (!palletCodeRegex.matches(barcode)) {
             onPalletFound(null)
             return
         }

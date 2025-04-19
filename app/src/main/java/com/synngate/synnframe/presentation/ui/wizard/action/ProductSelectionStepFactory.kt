@@ -45,6 +45,7 @@ import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.ProductItem
 import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
+import timber.log.Timber
 
 /**
  * Фабрика компонентов для шага выбора продукта с тремя способами ввода
@@ -87,6 +88,29 @@ class ProductSelectionStepFactory(
             (context.results[step.id] as? TaskProduct)?.product
         }
 
+        LaunchedEffect(context.lastScannedBarcode) {
+            val barcode = context.lastScannedBarcode
+            if (barcode != null && barcode.isNotEmpty()) {
+                Timber.d("Получен штрихкод от внешнего сканера: $barcode")
+
+                // Обрабатываем штрихкод для поиска товара
+                processBarcodeForProduct(
+                    barcode = barcode,
+                    onProductFound = { product ->
+                        if (product != null) {
+                            val result: Any = if (step.objectType == ActionObjectType.TASK_PRODUCT) {
+                                TaskProduct(product = product)
+                            } else {
+                                product
+                            }
+                            context.onComplete(result)
+                            context.onForward()
+                        }
+                    }
+                )
+            }
+        }
+
         // Слушатель событий сканирования
         if (selectedInputMethod == InputMethod.HARDWARE_SCANNER) {
             ScannerListener(
@@ -101,6 +125,8 @@ class ProductSelectionStepFactory(
                                     product
                                 }
                                 context.onComplete(result)
+                                // Добавляем вызов onForward() для автоматического перехода к следующему шагу
+                                context.onForward()
                                 selectedInputMethod = InputMethod.NONE
                             }
                         }
@@ -130,6 +156,8 @@ class ProductSelectionStepFactory(
                                     product
                                 }
                                 context.onComplete(result)
+                                // Добавляем вызов onForward() для автоматического перехода к следующему шагу
+                                context.onForward()
                             }
                             showCameraScannerDialog = false
                             selectedInputMethod = InputMethod.NONE

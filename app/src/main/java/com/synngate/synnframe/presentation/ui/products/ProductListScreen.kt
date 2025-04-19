@@ -37,14 +37,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.synngate.synnframe.R
 import com.synngate.synnframe.presentation.common.LocalScannerService
@@ -76,9 +74,6 @@ fun ProductListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showSortMenu by remember { mutableStateOf(false) }
 
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val coroutineScope = rememberCoroutineScope()
-
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
@@ -104,10 +99,8 @@ fun ProductListScreen(
 
     val scannerService = LocalScannerService.current
 
-    // Слушатель сканирования
     ScannerListener(
         onBarcodeScanned = { barcode ->
-            // Обрабатываем штрихкод
             viewModel.findProductByBarcode(barcode) { product ->
                 if (product != null) {
                     navigateToProductDetail(product.id)

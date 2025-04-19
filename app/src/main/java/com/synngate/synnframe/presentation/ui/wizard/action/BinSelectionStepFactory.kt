@@ -43,6 +43,7 @@ import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.BinItem
 import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
+import timber.log.Timber
 
 /**
  * Фабрика компонентов для шага выбора ячейки с тремя способами ввода
@@ -86,6 +87,25 @@ class BinSelectionStepFactory(
             context.results[step.id] as? BinX
         }
 
+        LaunchedEffect(context.lastScannedBarcode) {
+            val barcode = context.lastScannedBarcode
+            if (barcode != null && barcode.isNotEmpty()) {
+                Timber.d("Получен штрихкод от внешнего сканера: $barcode")
+
+                // Обрабатываем штрихкод как код ячейки
+                processBarcodeForBin(
+                    barcode = barcode,
+                    expectedBarcode = plannedBin?.code,
+                    onBinFound = { bin ->
+                        if (bin != null) {
+                            context.onComplete(bin)
+                            context.onForward()
+                        }
+                    }
+                )
+            }
+        }
+
         // Слушатель событий сканирования
         if (selectedInputMethod == InputMethod.HARDWARE_SCANNER) {
             ScannerListener(
@@ -96,6 +116,8 @@ class BinSelectionStepFactory(
                         onBinFound = { bin ->
                             if (bin != null) {
                                 context.onComplete(bin)
+                                // Добавляем вызов onForward() для автоматического перехода к следующему шагу
+                                context.onForward()
                                 selectedInputMethod = InputMethod.NONE
                             }
                         }
@@ -119,6 +141,8 @@ class BinSelectionStepFactory(
                         onBinFound = { bin ->
                             if (bin != null) {
                                 context.onComplete(bin)
+                                // Добавляем вызов onForward() для автоматического перехода к следующему шагу
+                                context.onForward()
                             }
                             showCameraScannerDialog = false
                             selectedInputMethod = InputMethod.NONE
@@ -370,6 +394,8 @@ class BinSelectionStepFactory(
                                 Button(
                                     onClick = {
                                         context.onComplete(bin)
+                                        // При выборе из списка тоже добавляем автоматический переход
+                                        context.onForward()
                                         showScanMethodSelection = false
                                     },
                                     modifier = Modifier
@@ -410,6 +436,8 @@ class BinSelectionStepFactory(
                             bin = bin,
                             onClick = {
                                 context.onComplete(bin)
+                                // При выборе из списка тоже добавляем автоматический переход
+                                context.onForward()
                                 showScanMethodSelection = false
                             }
                         )

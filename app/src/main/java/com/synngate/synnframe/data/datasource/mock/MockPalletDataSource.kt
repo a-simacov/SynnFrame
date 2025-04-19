@@ -7,9 +7,9 @@ import timber.log.Timber
 
 class MockPalletDataSource : PalletDataSource {
     private val pallets = mutableListOf(
-        Pallet(code = "IN000000001", isClosed = true),
-        Pallet(code = "IN000000002", isClosed = false),
-        Pallet(code = "IN000000003", isClosed = false)
+        Pallet(code = "IN00000000001", isClosed = true),
+        Pallet(code = "IN00000000002", isClosed = false),
+        Pallet(code = "IN00000000003", isClosed = false)
     )
     private var nextPalletNumber = 1000
 

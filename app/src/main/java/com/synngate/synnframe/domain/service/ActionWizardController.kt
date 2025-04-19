@@ -58,7 +58,8 @@ class ActionWizardController(
                 steps = steps,
                 results = mapOf(),
                 startedAt = LocalDateTime.now(),
-                isInitialized = true
+                isInitialized = true,
+                lastScannedBarcode = null
             )
 
             Timber.d("Wizard initialized successfully with ${steps.size} steps")
@@ -67,6 +68,63 @@ class ActionWizardController(
             Timber.e(e, "Error initializing wizard: ${e.message}")
             Result.failure(e)
         }
+    }
+
+    /**
+     * Обрабатывает штрихкод от сканера
+     * @param barcode Отсканированный штрихкод
+     */
+    suspend fun processBarcodeFromScanner(barcode: String) {
+        val currentState = _wizardState.value ?: return
+
+        try {
+            Timber.d("Processing barcode from scanner: $barcode")
+
+            // Обновляем состояние с новым штрихкодом
+            _wizardState.value = currentState.copy(
+                lastScannedBarcode = barcode
+            )
+
+            // Текущий шаг
+            val currentStep = currentState.currentStep ?: return
+            val stepId = currentStep.id
+
+            // Если это последний экран, просто сохраняем штрихкод без дополнительной обработки
+            if (currentState.isCompleted) {
+                return
+            }
+
+            // Найдем ActionStep для текущего шага, чтобы определить тип обрабатываемого объекта
+            val action = currentState.action ?: return
+            val actionStep = findActionStepForWizardStep(action, stepId)
+
+            if (actionStep != null) {
+                // Пытаемся автоматически обработать штрихкод в зависимости от типа объекта
+                // Для простоты, мы только сохраняем штрихкод в состоянии
+                // Каждый компонент шага будет сам решать, как использовать этот штрихкод
+
+                Timber.d("Barcode ${barcode} saved for step ${stepId}")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error processing barcode: ${e.message}")
+        }
+    }
+
+    /**
+     * Находит ActionStep для указанного ID шага визарда
+     */
+    private fun findActionStepForWizardStep(action: PlannedAction, stepId: String): ActionStep? {
+        // Ищем в шагах хранения
+        action.actionTemplate.storageSteps.find { it.id == stepId }?.let {
+            return it
+        }
+
+        // Ищем в шагах размещения
+        action.actionTemplate.placementSteps.find { it.id == stepId }?.let {
+            return it
+        }
+
+        return null
     }
 
     /**

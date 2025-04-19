@@ -18,6 +18,7 @@ class ActionWizardContextFactory {
      * @param onForward Обработчик перехода вперед
      * @param onSkip Обработчик пропуска шага
      * @param onCancel Обработчик отмены визарда
+     * @param lastScannedBarcode Последний отсканированный штрихкод (опционально)
      * @return Контекст для шага
      */
     fun createContext(
@@ -26,7 +27,8 @@ class ActionWizardContextFactory {
         onBack: () -> Unit,
         onForward: () -> Unit,
         onSkip: (Any?) -> Unit,
-        onCancel: () -> Unit
+        onCancel: () -> Unit,
+        lastScannedBarcode: String? = state.lastScannedBarcode
     ): ActionContext {
         val currentStep = state.currentStep
         if (currentStep == null) {
@@ -72,7 +74,8 @@ class ActionWizardContextFactory {
             onCancel = {
                 Timber.d("Cancel requested")
                 onCancel()
-            }
+            },
+            lastScannedBarcode = lastScannedBarcode
         )
     }
 }

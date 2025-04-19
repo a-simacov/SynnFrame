@@ -14,7 +14,8 @@ data class ActionContext(
     val onBack: () -> Unit,                   // Возврат к предыдущему шагу
     val onForward: () -> Unit,                // Переход к следующему шагу без изменения результата
     val onSkip: (Any?) -> Unit,               // Пропуск шага с опциональным результатом
-    val onCancel: () -> Unit                  // Отмена визарда
+    val onCancel: () -> Unit,                 // Отмена визарда
+    val lastScannedBarcode: String? = null    // Последний отсканированный штрихкод от встроенного сканера
 ) {
     /**
      * Получает результат для текущего шага, если он есть
