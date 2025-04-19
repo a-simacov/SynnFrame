@@ -121,7 +121,6 @@ class ActionWizardController(
      */
     suspend fun processStepResult(result: Any?) {
         val state = _wizardState.value ?: return
-        val currentStep = state.currentStep
 
         try {
             // Если результат null, это означает шаг назад
@@ -131,6 +130,7 @@ class ActionWizardController(
             }
 
             // Обработка результата шага
+            val currentStep = state.currentStep
             if (currentStep != null && !state.isCompleted) {
                 // Обновляем результаты
                 val updatedResults = state.results.toMutableMap()
@@ -161,12 +161,14 @@ class ActionWizardController(
                 )
                 Timber.d("Returning from summary to last step")
             }
-        } else if (state.canGoBack) {
-            // Возврат к предыдущему шагу
+        } else if (state.canGoBack && state.currentStepIndex > 0) {
+            // Возврат к предыдущему шагу (только если есть предыдущий шаг)
             _wizardState.value = state.copy(
                 currentStepIndex = state.currentStepIndex - 1
             )
             Timber.d("Going back to previous step")
+        } else {
+            Timber.d("Cannot go back from first step or step doesn't allow back navigation")
         }
     }
 

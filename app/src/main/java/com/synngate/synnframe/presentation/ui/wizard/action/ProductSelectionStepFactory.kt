@@ -2,16 +2,13 @@ package com.synngate.synnframe.presentation.ui.wizard.action
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +26,6 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
-import com.synngate.synnframe.presentation.common.scanner.BarcodeScannerView
 import com.synngate.synnframe.presentation.ui.taskx.components.ProductItem
 import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
 
@@ -47,7 +43,6 @@ class ProductSelectionStepFactory(
         context: ActionContext
     ) {
         var searchQuery by remember { mutableStateOf("") }
-        var showScanner by remember { mutableStateOf(false) }
 
         // Получаем продукты через ViewModel
         val products by wizardViewModel.products.collectAsState()
@@ -58,6 +53,12 @@ class ProductSelectionStepFactory(
         // Список продуктов из плана для показа пользователю
         val planProducts = remember(action) {
             listOfNotNull(action.storageProduct)
+        }
+
+        // Получаем уже выбранный продукт из контекста, если есть
+        val selectedProduct = remember(context.results) {
+            context.results[step.id] as? Product ?:
+            (context.results[step.id] as? TaskProduct)?.product
         }
 
         // Загрузка продуктов при изменении поискового запроса
@@ -74,6 +75,42 @@ class ProductSelectionStepFactory(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
+            // Отображаем ранее выбранный продукт, если есть
+            if (selectedProduct != null) {
+                Text(
+                    text = "Выбранный продукт:",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                    ) {
+                        Text(
+                            text = selectedProduct.name,
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Text(
+                            text = "Артикул: ${selectedProduct.articleNumber}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+
             // Отображаем запланированные продукты, если они есть
             if (planProducts.isNotEmpty()) {
                 Text(
@@ -86,7 +123,7 @@ class ProductSelectionStepFactory(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(if(planProducts.size > 2) 200.dp else 120.dp)
+                        .weight(0.3f)
                 ) {
                     items(planProducts) { taskProduct ->
                         Card(
@@ -117,7 +154,7 @@ class ProductSelectionStepFactory(
                                     )
                                 }
 
-                                Button(
+                                androidx.compose.material3.Button(
                                     onClick = {
                                         // Создаем результат в зависимости от типа объекта
                                         val result: Any = if (step.objectType == ActionObjectType.TASK_PRODUCT) {
@@ -138,88 +175,33 @@ class ProductSelectionStepFactory(
                     }
                 }
 
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            if (showScanner) {
-                BarcodeScannerView(
-                    onBarcodeDetected = { barcode ->
-                        wizardViewModel.findProductByBarcode(barcode) { product ->
-                            if (product != null) {
-                                // Создаем TaskProduct из найденного продукта или возвращаем сам Product
-                                // в зависимости от типа объекта
-                                val result: Any = if (step.objectType == ActionObjectType.TASK_PRODUCT) {
-                                    TaskProduct(product = product)
-                                } else {
-                                    product
-                                }
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("Поиск товара") },
+                modifier = Modifier.fillMaxWidth()
+            )
 
-                                context.onComplete(result)
+            LazyColumn(
+                modifier = Modifier.weight(1f)
+            ) {
+                items(products) { product ->
+                    ProductItem(
+                        product = product,
+                        onClick = {
+                            // Создаем результат в зависимости от типа объекта
+                            val result: Any = if (step.objectType == ActionObjectType.TASK_PRODUCT) {
+                                TaskProduct(product = product)
+                            } else {
+                                product
                             }
+
+                            context.onComplete(result)
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                )
-
-                Button(
-                    onClick = { showScanner = false },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                ) {
-                    Text("Выбрать из списка")
-                }
-            } else {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    label = { Text("Поиск товара") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Button(
-                    onClick = { showScanner = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                ) {
-                    Text("Сканировать штрихкод")
-                }
-
-                LazyColumn(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    items(products) { product ->
-                        ProductItem(
-                            product = product,
-                            onClick = {
-                                // Создаем результат в зависимости от типа объекта
-                                val result: Any = if (step.objectType == ActionObjectType.TASK_PRODUCT) {
-                                    TaskProduct(product = product)
-                                } else {
-                                    product
-                                }
-
-                                context.onComplete(result)
-                            }
-                        )
-                    }
-                }
-
-                // Кнопка "Назад"
-                OutlinedButton(
-                    onClick = { context.onBack() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                ) {
-                    Text("Назад")
+                    )
                 }
             }
         }

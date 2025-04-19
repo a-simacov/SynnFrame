@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.wizard.action
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,6 +64,19 @@ fun ActionWizardScreen(
 
     state?.let { wizardState ->
         Timber.d("ActionWizardScreen: currentStep=${wizardState.currentStep}, action=${wizardState.action != null}")
+
+        // Обработка системной кнопки "Назад"
+        BackHandler {
+            if (wizardState.isCompleted || wizardState.currentStepIndex > 0) {
+                // На итоговом экране или не на первом шаге - возврат к предыдущему шагу
+                coroutineScope.launch {
+                    actionWizardController.processStepResult(null)
+                }
+            } else {
+                // На первом шаге - закрытие мастера
+                onCancel()
+            }
+        }
 
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
@@ -196,8 +210,8 @@ fun ActionWizardScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Кнопка "Назад" - отображается, только если можно вернуться назад
-                    if (wizardState.canGoBack || wizardState.isCompleted) {
+                    // Кнопка "Назад" - отображается, только если можно вернуться назад и это не первый шаг
+                    if ((wizardState.canGoBack && wizardState.currentStepIndex > 0) || wizardState.isCompleted) {
                         OutlinedButton(
                             onClick = {
                                 coroutineScope.launch {
@@ -218,14 +232,6 @@ fun ActionWizardScreen(
                         Spacer(modifier = Modifier.weight(1f))
                     }
 
-                    // Кнопка отмены для обоих состояний - в основном для мобильной версии
-                    OutlinedButton(
-                        onClick = onCancel,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Отмена")
-                    }
-
                     // Кнопка "Завершить" - видна только на итоговом экране
                     if (wizardState.isCompleted) {
                         Button(
@@ -242,7 +248,7 @@ fun ActionWizardScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.weight(0.5f))
+                Spacer(modifier = Modifier.weight(0.05f))
             }
         }
     } ?: run {
@@ -318,8 +324,8 @@ fun ActionSummaryScreen(
             )
 
             // Отображение результатов шагов
-            for (result in state.results.entries) {
-                when (val value = result.value) {
+            for ((stepId, value) in state.results.entries) {
+                when (value) {
                     is TaskProduct -> {
                         Text(
                             text = "Товар: ${value.product.name}",
