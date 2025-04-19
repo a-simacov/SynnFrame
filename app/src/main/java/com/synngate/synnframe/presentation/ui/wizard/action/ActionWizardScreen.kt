@@ -27,7 +27,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -76,14 +79,26 @@ fun ActionWizardScreen(
         return
     }
 
+    // Получаем сервис сканера
     val scannerService = LocalScannerService.current
 
-    ScannerListener(onBarcodeScanned = { barcode ->
-        Timber.d("Штрихкод от встроенного сканера: $barcode")
-        coroutineScope.launch {
-            actionWizardController.processBarcodeFromScanner(barcode)
-        }
-    })
+    // Переменная для отслеживания обработки штрихкода
+    var isProcessingGlobalBarcode by remember { mutableStateOf(false) }
+
+    // Глобальный слушатель сканера нужен только для итогового экрана
+    // Для остальных шагов будем использовать локальные слушатели
+    if (state?.isCompleted == true) {
+        ScannerListener(onBarcodeScanned = { barcode ->
+            if (!isProcessingGlobalBarcode) {
+                isProcessingGlobalBarcode = true
+                Timber.d("Штрихкод от встроенного сканера (глобальный): $barcode")
+                coroutineScope.launch {
+                    actionWizardController.processBarcodeFromScanner(barcode)
+                    isProcessingGlobalBarcode = false
+                }
+            }
+        })
+    }
 
     val wizardState = state!!
 

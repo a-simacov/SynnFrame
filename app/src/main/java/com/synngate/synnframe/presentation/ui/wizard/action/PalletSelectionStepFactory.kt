@@ -121,11 +121,15 @@ class PalletSelectionStepFactory(
             }
         }
 
+        var isProcessingBarcode by remember { mutableStateOf(false) }
+
         // Функция поиска паллеты по коду
         val searchPallet = { code: String ->
-            if (code.isNotEmpty()) {
+            if (!isProcessingBarcode && code.isNotEmpty()) {
                 Timber.d("Поиск паллеты по коду: $code")
                 errorMessage = null // Сбрасываем предыдущую ошибку
+
+                isProcessingBarcode = true
 
                 processBarcodeForPallet(
                     barcode = code,
@@ -134,13 +138,16 @@ class PalletSelectionStepFactory(
                         if (pallet != null) {
                             Timber.d("Паллета найдена: ${pallet.code}")
                             context.onComplete(pallet)
-                            // Не вызываем onForward() автоматически, чтобы избежать проблем с навигацией
+                            // Добавляем вызов onForward() для согласованности с ProductSelectionStepFactory
+                            context.onForward()
                         } else {
                             Timber.w("Паллета не найдена: $code")
                             showError("Паллета с кодом '$code' не найдена")
                         }
                     }
                 )
+
+                isProcessingBarcode = false
                 // Очищаем поле ввода после поиска
                 manualPalletCode = ""
             }
@@ -149,9 +156,11 @@ class PalletSelectionStepFactory(
         // Эффект для обработки штрихкода от внешнего сканера
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
-            if (!barcode.isNullOrEmpty()) {
+            if (!barcode.isNullOrEmpty() && !isProcessingBarcode) {
+                isProcessingBarcode = true
                 Timber.d("Получен штрихкод от внешнего сканера: $barcode")
                 searchPallet(barcode)
+                isProcessingBarcode = false
             }
         }
 
