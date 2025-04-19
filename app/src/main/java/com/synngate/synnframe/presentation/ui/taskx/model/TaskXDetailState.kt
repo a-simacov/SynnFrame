@@ -19,7 +19,10 @@ data class TaskXDetailState(
     val currentUserId: String? = null,
     val showCompletionDialog: Boolean = false,
     val showActionWizard: Boolean = false,
-    val showOrderRequiredMessage: Boolean = false
+    val showOrderRequiredMessage: Boolean = false,
+    val nextActionId: String? = null,
+    val hasAdditionalActions: Boolean = false,
+    val statusActions: List<StatusActionData> = emptyList()
 )
 
 sealed class TaskXDetailEvent {
@@ -27,3 +30,12 @@ sealed class TaskXDetailEvent {
     object ShowActionWizard : TaskXDetailEvent()
     object HideActionWizard : TaskXDetailEvent()
 }
+
+// Вспомогательные классы для UI
+data class StatusActionData(
+    val id: String,
+    val iconName: String,    // Имя иконки для сопоставления в UI
+    val text: String,
+    val description: String,
+    val onClick: () -> Unit
+)

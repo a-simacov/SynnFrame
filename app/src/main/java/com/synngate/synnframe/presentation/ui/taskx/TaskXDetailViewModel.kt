@@ -1,17 +1,25 @@
 package com.synngate.synnframe.presentation.ui.taskx
 
+import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.taskx.AvailableTaskAction
+import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
+import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.service.ActionWizardContextFactory
 import com.synngate.synnframe.domain.service.ActionWizardController
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
+import com.synngate.synnframe.presentation.ui.taskx.model.StatusActionData
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -26,6 +34,7 @@ class TaskXDetailViewModel(
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
 
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+    private var taskObserverJob: Job? = null
 
     init {
         loadTask()
@@ -75,6 +84,89 @@ class TaskXDetailViewModel(
                 updateState { it.copy(error = "Ошибка при инициализации действия: ${e.message}") }
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось начать выполнение действия"))
             }
+        }
+    }
+
+    // Определение следующего действия
+    private fun calculateNextActionId(task: TaskX, taskType: TaskTypeX?): String? {
+        val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
+
+        return if (isStrictOrder) {
+            task.plannedActions
+                .sortedBy { it.order }
+                .firstOrNull { !it.isCompleted && !it.isSkipped }
+                ?.id
+        } else {
+            null
+        }
+    }
+
+    // Проверка, можно ли выполнить действие
+    fun canExecuteAction(actionId: String): Boolean {
+        val task = uiState.value.task ?: return false
+        val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
+
+        // Для задания без строгого порядка - можно выполнять любое действие
+        if (!isStrictOrder) return true
+
+        // Для задания со строгим порядком - только первое невыполненное
+        val nextActionId = uiState.value.nextActionId
+        return nextActionId == actionId
+    }
+
+    // Попытка выполнить действие с проверкой порядка
+    fun tryExecuteAction(actionId: String) {
+        if (canExecuteAction(actionId)) {
+            startActionExecution(actionId)
+        } else {
+            showOrderRequiredMessage()
+        }
+    }
+
+    // Проверка наличия дополнительных действий
+    private fun checkHasAdditionalActions(task: TaskX): Boolean {
+        return !task.isVerified && isActionAvailable(AvailableTaskAction.VERIFY_TASK) ||
+                isActionAvailable(AvailableTaskAction.PRINT_TASK_LABEL)
+    }
+
+    // Формирование списка действий для статуса
+    private fun createStatusActions(task: TaskX, taskType: TaskTypeX?): List<StatusActionData> {
+        return when (task.status) {
+            TaskXStatus.TO_DO -> listOf(
+                StatusActionData(
+                    id = "start",
+                    iconName = "play_arrow",
+                    text = "Старт",
+                    description = "Начать выполнение",
+                    onClick = ::startTask
+                )
+            )
+            TaskXStatus.IN_PROGRESS -> listOf(
+                StatusActionData(
+                    id = "pause",
+                    iconName = "pause",
+                    text = "Пауза",  // Добавлен текст кнопки
+                    description = "Приостановить",
+                    onClick = ::pauseTask
+                ),
+                StatusActionData(
+                    id = "finish",
+                    iconName = "check_circle",
+                    text = "Финиш",  // Добавлен текст кнопки
+                    description = "Завершить",
+                    onClick = ::showCompletionDialog,
+                )
+            )
+            TaskXStatus.PAUSED -> listOf(
+                StatusActionData(
+                    id = "resume",
+                    iconName = "play_arrow",
+                    description = "Продолжить",
+                    text = "Старт",  // Добавлен текст кнопки
+                    onClick = ::resumeTask
+                )
+            )
+            else -> emptyList()
         }
     }
 
@@ -137,6 +229,9 @@ class TaskXDetailViewModel(
                             error = null
                         )
                     }
+
+                    updateDependentState(task, taskType)
+                    startObservingTaskChanges()
                 } else {
                     updateState {
                         it.copy(
@@ -199,8 +294,9 @@ class TaskXDetailViewModel(
 
     fun completeTask() {
         launchIO {
-            val task = uiState.value.task ?: return@launchIO
-            val taskType = uiState.value.taskType ?: return@launchIO
+            val currentState = uiState.value
+            val task = currentState.task ?: return@launchIO
+            val taskType = currentState.taskType ?: return@launchIO
 
             // Проверяем, что все необходимые действия выполнены
             val allActionsCompleted = task.plannedActions.all { it.isCompleted || it.isSkipped }
@@ -361,6 +457,55 @@ class TaskXDetailViewModel(
         }
     }
 
+    /**
+     * Метод для начала наблюдения за изменениями статуса задания
+     * Автоматически обновляет зависимые данные при изменении статуса
+     */
+    private fun startObservingTaskChanges() {
+        // Отменяем предыдущее наблюдение, если оно было
+        taskObserverJob?.cancel()
+
+        // Запускаем новое наблюдение
+        taskObserverJob = viewModelScope.launch {
+            uiState
+                .map { it.task }
+                .distinctUntilChanged { old, new ->
+                    // Сравниваем только id и статус, игнорируя другие поля
+                    if (old == null || new == null) false
+                    else old.id == new.id && old.status == new.status
+                }
+                .collect { task ->
+                    if (task != null) {
+                        val taskType = uiState.value.taskType
+                        Timber.d("Статус задания изменился на: ${task.status}")
+                        updateDependentState(task, taskType)
+                    }
+                }
+        }
+    }
+
+    /**
+     * Метод для остановки наблюдения
+     */
+    private fun stopObservingTaskChanges() {
+        taskObserverJob?.cancel()
+        taskObserverJob = null
+    }
+
+    private fun updateDependentState(task: TaskX, taskType: TaskTypeX?) {
+        val nextActionId = calculateNextActionId(task, taskType)
+        val hasAdditionalActions = checkHasAdditionalActions(task)
+        val statusActions = createStatusActions(task, taskType)
+
+        updateState { currentState ->
+            currentState.copy(
+                nextActionId = nextActionId,
+                hasAdditionalActions = hasAdditionalActions,
+                statusActions = statusActions
+            )
+        }
+    }
+
     fun showCompletionDialog() {
         updateState { it.copy(showCompletionDialog = true) }
     }
@@ -411,5 +556,6 @@ class TaskXDetailViewModel(
 
     override fun dispose() {
         super.dispose()
+        stopObservingTaskChanges()
     }
 }
