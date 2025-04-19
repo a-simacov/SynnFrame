@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -28,11 +29,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,17 +44,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.synngate.synnframe.R
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import timber.log.Timber
 
 /**
  * Универсальный диалог сканирования штрихкодов
- *
- * @param onBarcodeScanned Обработчик события сканирования штрихкода
- * @param onClose Обработчик закрытия диалога
- * @param instructionText Текст инструкции (что нужно сканировать)
- * @param expectedBarcode Ожидаемый штрихкод (если задан, будет проверяться соответствие)
- * @param title Заголовок диалога
- * @param allowManualInput Разрешить ручной ввод штрихкода
- * @param modifier Модификатор
  */
 @Composable
 fun UniversalScannerDialog(
@@ -65,31 +61,36 @@ fun UniversalScannerDialog(
     allowManualInput: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    // Флаг для предотвращения повторной обработки штрихкода
-    var hasProcessedBarcode by remember { mutableStateOf(false) }
-
-    // Состояние ручного ввода
+    // Состояния UI
     var isManualInputMode by remember { mutableStateOf(false) }
     var manualBarcode by remember { mutableStateOf("") }
+    var scannerKey by remember { mutableStateOf(0) } // Ключ для пересоздания сканера
 
-    // Состояние ошибки (если ожидается определенный штрихкод)
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    // Состояния обработки
     var isProcessing by remember { mutableStateOf(false) }
 
-    val barcodeMismatchMessage = stringResource(id = R.string.barcode_mismatch)
+    // Состояния ошибок
+    var errorState by remember { mutableStateOf<ErrorState?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
-    // Закрытие диалога при размонтировании
-    DisposableEffect(Unit) {
-        onDispose {
-            if (!hasProcessedBarcode) {
-                onClose()
+    // Функция для показа временного сообщения об ошибке
+    val showTemporaryError = { message: String, barcode: String ->
+        errorState = ErrorState(message, barcode)
+        coroutineScope.launch {
+            delay(3000)
+            if (errorState?.message == message) {
+                errorState = null
             }
         }
     }
 
-    // Сброс ошибки при изменении ручного ввода
-    LaunchedEffect(manualBarcode) {
-        errorMessage = null
+    // Функция для обработки успешного сканирования
+    val handleSuccessfulScan = { barcode: String ->
+        Timber.d("Успешное сканирование: $barcode")
+        // 1. Сначала вызываем обработчик
+        onBarcodeScanned(barcode)
+        // 2. Затем закрываем диалог - это должно вызвать переход к следующему шагу
+        onClose()
     }
 
     Dialog(
@@ -173,6 +174,7 @@ fun UniversalScannerDialog(
                         .weight(1f)
                         .fillMaxWidth()
                 ) {
+                    val barcodeMismatchMessage = stringResource(id = R.string.barcode_mismatch)
                     if (isManualInputMode) {
                         // Режим ручного ввода
                         Column(
@@ -184,20 +186,25 @@ fun UniversalScannerDialog(
                         ) {
                             OutlinedTextField(
                                 value = manualBarcode,
-                                onValueChange = { manualBarcode = it },
+                                onValueChange = {
+                                    manualBarcode = it
+                                    // Сбрасываем ошибку при изменении ввода
+                                    errorState = null
+                                },
                                 label = { Text(stringResource(R.string.enter_barcode)) },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(bottom = 16.dp),
                                 singleLine = true,
-                                isError = errorMessage != null
+                                isError = errorState != null
                             )
 
-                            errorMessage?.let {
+                            errorState?.let {
                                 Text(
-                                    text = it,
+                                    text = "${it.message}\nОтсканирован: ${it.barcode}",
                                     color = MaterialTheme.colorScheme.error,
                                     style = MaterialTheme.typography.bodySmall,
+                                    textAlign = TextAlign.Center,
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
                             }
@@ -225,16 +232,15 @@ fun UniversalScannerDialog(
                                             isProcessing = true
                                             // Проверяем, соответствует ли введенный штрихкод ожидаемому
                                             if (expectedBarcode != null && manualBarcode != expectedBarcode) {
-                                                errorMessage = barcodeMismatchMessage
+                                                showTemporaryError(
+                                                    barcodeMismatchMessage,
+                                                    manualBarcode
+                                                )
                                                 isProcessing = false
                                             } else {
-                                                hasProcessedBarcode = true
-                                                onBarcodeScanned(manualBarcode)
+                                                // Успешное сканирование
+                                                handleSuccessfulScan(manualBarcode)
                                                 isProcessing = false
-                                                // Если нет ожидаемого штрихкода, закрываем диалог после сканирования
-                                                if (expectedBarcode == null) {
-                                                    onClose()
-                                                }
                                             }
                                         }
                                     },
@@ -254,28 +260,32 @@ fun UniversalScannerDialog(
                             }
                         }
                     } else {
-                        // Режим камеры
-                        BarcodeScannerView(
-                            onBarcodeDetected = { barcode ->
-                                if (!hasProcessedBarcode) {
-                                    // Проверяем, соответствует ли отсканированный штрихкод ожидаемому
+                        // Режим камеры - используем ключ для пересоздания при ошибке
+                        key(scannerKey) {
+                            BarcodeScannerView(
+                                onBarcodeDetected = { barcode ->
+                                    Timber.d("Штрихкод обнаружен: $barcode")
+                                    // Проверяем, соответствует ли штрихкод ожидаемому
                                     if (expectedBarcode != null && barcode != expectedBarcode) {
-                                        errorMessage = barcodeMismatchMessage
+                                        Timber.d("Несоответствие штрихкода: ожидался $expectedBarcode, получен $barcode")
+                                        showTemporaryError(
+                                            barcodeMismatchMessage,
+                                            barcode
+                                        )
+                                        // Перезагружаем сканер после ошибки
+                                        scannerKey++
                                     } else {
-                                        hasProcessedBarcode = true
-                                        onBarcodeScanned(barcode)
-                                        // Если нет ожидаемого штрихкода, закрываем диалог после сканирования
-                                        if (expectedBarcode == null) {
-                                            onClose()
-                                        }
+                                        // Успешное сканирование
+                                        Timber.d("Штрихкод соответствует ожидаемому, вызываем handleSuccessfulScan")
+                                        handleSuccessfulScan(barcode)
                                     }
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
 
                         // Показываем ошибку поверх камеры
-                        errorMessage?.let {
+                        errorState?.let {
                             Card(
                                 modifier = Modifier
                                     .align(Alignment.TopCenter)
@@ -285,13 +295,38 @@ fun UniversalScannerDialog(
                                     containerColor = MaterialTheme.colorScheme.errorContainer
                                 )
                             ) {
-                                Text(
-                                    text = it,
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.padding(16.dp)
-                                )
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "${it.message}\nОтсканирован: ${it.barcode}",
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        textAlign = TextAlign.Center
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    // Кнопка для обновления сканера вручную
+                                    Button(
+                                        onClick = {
+                                            errorState = null
+                                            scannerKey++ // Пересоздаем сканер
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Refresh,
+                                            contentDescription = "Обновить",
+                                            modifier = Modifier.padding(end = 4.dp)
+                                        )
+                                        Text("Обновить сканер")
+                                    }
+                                }
                             }
                         }
                     }
@@ -307,7 +342,10 @@ fun UniversalScannerDialog(
                     // Кнопка переключения режима ввода (если разрешен ручной ввод)
                     if (allowManualInput) {
                         Button(
-                            onClick = { isManualInputMode = !isManualInputMode },
+                            onClick = {
+                                isManualInputMode = !isManualInputMode
+                                errorState = null // Сбросить ошибки при смене режима
+                            },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -347,3 +385,11 @@ fun UniversalScannerDialog(
         }
     }
 }
+
+/**
+ * Класс для хранения информации об ошибке
+ */
+private data class ErrorState(
+    val message: String,
+    val barcode: String
+)
