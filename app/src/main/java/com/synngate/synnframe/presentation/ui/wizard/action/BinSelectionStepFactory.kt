@@ -122,14 +122,18 @@ class BinSelectionStepFactory(
         }
 
         var isProcessingBarcode by remember { mutableStateOf(false) }
+        var isScanProcessed by remember { mutableStateOf(false) }
 
         // Функция поиска ячейки по коду
         val searchBin = { code: String ->
-            if (!isProcessingBarcode && code.isNotEmpty()) {
+            if (!isProcessingBarcode && code.isNotEmpty() && !isScanProcessed) {
                 Timber.d("Поиск ячейки по коду: $code")
                 errorMessage = null // Сбрасываем предыдущую ошибку
 
                 isProcessingBarcode = true
+
+                // Установка флага обработки
+                isScanProcessed = true
 
                 processBarcodeForBin(
                     barcode = code,
@@ -137,15 +141,17 @@ class BinSelectionStepFactory(
                     onBinFound = { bin ->
                         if (bin != null) {
                             Timber.d("Ячейка найдена: ${bin.code}")
+                            // Только вызываем onComplete, без onForward
                             context.onComplete(bin)
-                            // Добавляем вызов onForward() для согласованного поведения
-                            context.onForward()
                         } else {
                             Timber.w("Ячейка не найдена: $code")
                             showError("Ячейка с кодом '$code' не найдена")
+                            // Сбрасываем флаг, так как ошибка - можно повторить сканирование
+                            isScanProcessed = false
                         }
                     }
                 )
+
                 isProcessingBarcode = false
                 // Очищаем поле ввода после поиска
                 manualBinCode = ""
@@ -155,21 +161,45 @@ class BinSelectionStepFactory(
         // Эффект для обработки штрихкода от внешнего сканера
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
-            if (!barcode.isNullOrEmpty() && !isProcessingBarcode) {
+            if (!barcode.isNullOrEmpty() && !isProcessingBarcode && !isScanProcessed) {
                 isProcessingBarcode = true
                 Timber.d("Получен штрихкод от внешнего сканера: $barcode")
-                searchBin(barcode)
+
+                // Установка флага обработки
+                isScanProcessed = true
+
+                processBarcodeForBin(
+                    barcode = barcode,
+                    expectedBarcode = plannedBin?.code,
+                    onBinFound = { bin ->
+                        if (bin != null) {
+                            Timber.d("Ячейка найдена: ${bin.code}")
+                            // Только вызываем onComplete, без onForward
+                            context.onComplete(bin)
+                        } else {
+                            Timber.w("Ячейка не найдена: $barcode")
+                            showError("Ячейка с кодом '$barcode' не найдена")
+                            // Сбрасываем флаг, так как ошибка - можно повторить сканирование
+                            isScanProcessed = false
+                        }
+                    }
+                )
+
                 isProcessingBarcode = false
             }
         }
 
         // Слушатель событий сканирования от встроенного сканера - всегда активен
-        ScannerListener(
-            onBarcodeScanned = { barcode ->
-                Timber.d("Получен штрихкод от встроенного сканера: $barcode")
-                searchBin(barcode)
-            }
-        )
+        if (!isScanProcessed) {
+            ScannerListener(
+                onBarcodeScanned = { barcode ->
+                    if (!isProcessingBarcode && !isScanProcessed) {
+                        Timber.d("Получен штрихкод от встроенного сканера: $barcode")
+                        searchBin(barcode)
+                    }
+                }
+            )
+        }
 
         // Загрузка ячеек при изменении поискового запроса
         LaunchedEffect(searchQuery, zoneFilter) {

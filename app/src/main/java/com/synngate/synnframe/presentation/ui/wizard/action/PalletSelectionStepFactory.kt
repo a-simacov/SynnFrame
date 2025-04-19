@@ -122,14 +122,18 @@ class PalletSelectionStepFactory(
         }
 
         var isProcessingBarcode by remember { mutableStateOf(false) }
+        var isScanProcessed by remember { mutableStateOf(false) }
 
         // Функция поиска паллеты по коду
         val searchPallet = { code: String ->
-            if (!isProcessingBarcode && code.isNotEmpty()) {
+            if (!isProcessingBarcode && code.isNotEmpty() && !isScanProcessed) {
                 Timber.d("Поиск паллеты по коду: $code")
                 errorMessage = null // Сбрасываем предыдущую ошибку
 
                 isProcessingBarcode = true
+
+                // Установка флага обработки
+                isScanProcessed = true
 
                 processBarcodeForPallet(
                     barcode = code,
@@ -137,12 +141,13 @@ class PalletSelectionStepFactory(
                     onPalletFound = { pallet ->
                         if (pallet != null) {
                             Timber.d("Паллета найдена: ${pallet.code}")
+                            // Только вызываем onComplete, без onForward
                             context.onComplete(pallet)
-                            // Добавляем вызов onForward() для согласованности с ProductSelectionStepFactory
-                            context.onForward()
                         } else {
                             Timber.w("Паллета не найдена: $code")
                             showError("Паллета с кодом '$code' не найдена")
+                            // Сбрасываем флаг, так как ошибка - можно повторить сканирование
+                            isScanProcessed = false
                         }
                     }
                 )
@@ -156,21 +161,45 @@ class PalletSelectionStepFactory(
         // Эффект для обработки штрихкода от внешнего сканера
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
-            if (!barcode.isNullOrEmpty() && !isProcessingBarcode) {
+            if (!barcode.isNullOrEmpty() && !isProcessingBarcode && !isScanProcessed) {
                 isProcessingBarcode = true
                 Timber.d("Получен штрихкод от внешнего сканера: $barcode")
-                searchPallet(barcode)
+
+                // Установка флага обработки
+                isScanProcessed = true
+
+                processBarcodeForPallet(
+                    barcode = barcode,
+                    expectedBarcode = plannedPallet?.code,
+                    onPalletFound = { pallet ->
+                        if (pallet != null) {
+                            Timber.d("Паллета найдена: ${pallet.code}")
+                            // Только вызываем onComplete, без onForward
+                            context.onComplete(pallet)
+                        } else {
+                            Timber.w("Паллета не найдена: $barcode")
+                            showError("Паллета с кодом '$barcode' не найдена")
+                            // Сбрасываем флаг, так как ошибка - можно повторить сканирование
+                            isScanProcessed = false
+                        }
+                    }
+                )
+
                 isProcessingBarcode = false
             }
         }
 
         // Слушатель событий сканирования от встроенного сканера - всегда активен
-        ScannerListener(
-            onBarcodeScanned = { barcode ->
-                Timber.d("Получен штрихкод от встроенного сканера: $barcode")
-                searchPallet(barcode)
-            }
-        )
+        if (!isScanProcessed) {
+            ScannerListener(
+                onBarcodeScanned = { barcode ->
+                    if (!isProcessingBarcode && !isScanProcessed) {
+                        Timber.d("Получен штрихкод от встроенного сканера: $barcode")
+                        searchPallet(barcode)
+                    }
+                }
+            )
+        }
 
         // Загрузка паллет при изменении поискового запроса
         LaunchedEffect(searchQuery) {

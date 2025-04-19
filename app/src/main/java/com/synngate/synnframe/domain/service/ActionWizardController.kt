@@ -71,46 +71,6 @@ class ActionWizardController(
     }
 
     /**
-     * Обрабатывает штрихкод от сканера
-     * @param barcode Отсканированный штрихкод
-     */
-    suspend fun processBarcodeFromScanner(barcode: String) {
-        val currentState = _wizardState.value ?: return
-
-        try {
-            Timber.d("Processing barcode from scanner: $barcode")
-
-            // Обновляем состояние с новым штрихкодом
-            _wizardState.value = currentState.copy(
-                lastScannedBarcode = barcode
-            )
-
-            // Текущий шаг
-            val currentStep = currentState.currentStep ?: return
-            val stepId = currentStep.id
-
-            // Если это последний экран, просто сохраняем штрихкод без дополнительной обработки
-            if (currentState.isCompleted) {
-                return
-            }
-
-            // Найдем ActionStep для текущего шага, чтобы определить тип обрабатываемого объекта
-            val action = currentState.action ?: return
-            val actionStep = findActionStepForWizardStep(action, stepId)
-
-            if (actionStep != null) {
-                // Пытаемся автоматически обработать штрихкод в зависимости от типа объекта
-                // Для простоты, мы только сохраняем штрихкод в состоянии
-                // Каждый компонент шага будет сам решать, как использовать этот штрихкод
-
-                Timber.d("Barcode ${barcode} saved for step ${stepId}")
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error processing barcode: ${e.message}")
-        }
-    }
-
-    /**
      * Находит ActionStep для указанного ID шага визарда
      */
     private fun findActionStepForWizardStep(action: PlannedAction, stepId: String): ActionStep? {
@@ -181,9 +141,20 @@ class ActionWizardController(
         val state = _wizardState.value ?: return
 
         try {
+            // Проверяем, что не происходит повторная обработка
+            if (state.isProcessingStep) {
+                Timber.w("Уже выполняется обработка шага, игнорирование результата: $result")
+                return
+            }
+
+            // Устанавливаем флаг обработки
+            _wizardState.value = state.copy(isProcessingStep = true)
+
             // Если результат null, это означает шаг назад
             if (result == null) {
                 handleBackStep(state)
+                // Сбрасываем флаг обработки после завершения
+                _wizardState.value = _wizardState.value?.copy(isProcessingStep = false)
                 return
             }
 
@@ -197,60 +168,123 @@ class ActionWizardController(
                 // Переходим к следующему шагу
                 _wizardState.value = state.copy(
                     currentStepIndex = state.currentStepIndex + 1,
-                    results = updatedResults
+                    results = updatedResults,
+                    isProcessingStep = false,   // Сбрасываем флаг обработки
+                    lastScannedBarcode = null   // Сбрасываем последний отсканированный штрихкод
                 )
 
                 Timber.d("Step completed, moving to next step (${state.currentStepIndex + 1})")
+            } else {
+                // Сбрасываем флаг обработки, если не удалось обработать
+                _wizardState.value = _wizardState.value?.copy(isProcessingStep = false)
             }
         } catch (e: Exception) {
             Timber.e(e, "Error processing step result")
+            // В случае ошибки также сбрасываем флаг обработки
+            _wizardState.value = _wizardState.value?.copy(isProcessingStep = false)
         }
     }
 
-    /**
-     * Обрабатывает переход вперед без изменения результата
-     * Используется для перехода вперед, когда шаг уже был выполнен
-     */
+    // 2. Добавить аналогичную защиту от двойного перехода в processForwardStep
     suspend fun processForwardStep() {
         val state = _wizardState.value ?: return
-        handleForwardStep(state)
+
+        // Проверяем, что не происходит повторная обработка
+        if (state.isProcessingStep) {
+            Timber.w("Уже выполняется обработка шага, игнорирование перехода вперед")
+            return
+        }
+
+        // Устанавливаем флаг обработки
+        _wizardState.value = state.copy(isProcessingStep = true)
+
+        try {
+            handleForwardStep(state)
+        } catch (e: Exception) {
+            Timber.e(e, "Error processing forward step")
+        } finally {
+            // Сбрасываем флаг обработки
+            _wizardState.value = _wizardState.value?.copy(isProcessingStep = false)
+        }
     }
 
-    /**
-     * Обрабатывает шаг вперед - переходит к следующему шагу без сохранения нового результата
-     */
+    // 3. Изменить метод handleForwardStep для корректной обработки
     private fun handleForwardStep(state: ActionWizardState) {
         // Проверяем, что мы не на итоговом экране и текущий шаг выполнен (имеет результат)
         val currentStep = state.currentStep
         if (!state.isCompleted && currentStep != null && state.results.containsKey(currentStep.id)) {
             // Переходим к следующему шагу
             _wizardState.value = state.copy(
-                currentStepIndex = state.currentStepIndex + 1
+                currentStepIndex = state.currentStepIndex + 1,
+                lastScannedBarcode = null  // Сбрасываем последний отсканированный штрихкод
             )
             Timber.d("Moving forward to next step without changing result")
         }
     }
 
-    /**
-     * Обрабатывает шаг назад
-     */
+    // 4. Изменить метод handleBackStep для корректной обработки шага назад
     private fun handleBackStep(state: ActionWizardState) {
         if (state.isCompleted) {
             // Возврат из итогового экрана к последнему шагу
             if (state.steps.isNotEmpty()) {
                 _wizardState.value = state.copy(
-                    currentStepIndex = state.steps.size - 1
+                    currentStepIndex = state.steps.size - 1,
+                    lastScannedBarcode = null  // Сбрасываем последний отсканированный штрихкод
                 )
                 Timber.d("Returning from summary to last step")
             }
         } else if (state.canGoBack && state.currentStepIndex > 0) {
             // Возврат к предыдущему шагу (только если есть предыдущий шаг)
             _wizardState.value = state.copy(
-                currentStepIndex = state.currentStepIndex - 1
+                currentStepIndex = state.currentStepIndex - 1,
+                lastScannedBarcode = null  // Сбрасываем последний отсканированный штрихкод
             )
             Timber.d("Going back to previous step")
         } else {
             Timber.d("Cannot go back from first step or step doesn't allow back navigation")
+        }
+    }
+
+    // 5. Изменения для метода processBarcodeFromScanner
+    suspend fun processBarcodeFromScanner(barcode: String) {
+        val currentState = _wizardState.value ?: return
+
+        try {
+            // Проверяем, что барком не совпадает с предыдущим и визард не находится в процессе обработки
+            if (barcode == currentState.lastScannedBarcode || currentState.isProcessingStep) {
+                Timber.d("Игнорирование повторного штрихкода или визард в процессе обработки")
+                return
+            }
+
+            Timber.d("Processing barcode from scanner: $barcode")
+
+            // Обновляем состояние с новым штрихкодом
+            _wizardState.value = currentState.copy(
+                lastScannedBarcode = barcode
+            )
+
+            // Текущий шаг
+            val currentStep = currentState.currentStep ?: return
+            val stepId = currentStep.id
+
+            // Если это последний экран, просто сохраняем штрихкод без дополнительной обработки
+            if (currentState.isCompleted) {
+                return
+            }
+
+            // Найдем ActionStep для текущего шага, чтобы определить тип обрабатываемого объекта
+            val action = currentState.action ?: return
+            val actionStep = findActionStepForWizardStep(action, stepId)
+
+            if (actionStep != null) {
+                // Пытаемся автоматически обработать штрихкод в зависимости от типа объекта
+                // Для простоты, мы только сохраняем штрихкод в состоянии
+                // Каждый компонент шага будет сам решать, как использовать этот штрихкод
+
+                Timber.d("Barcode ${barcode} saved for step ${stepId}")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error processing barcode: ${e.message}")
         }
     }
 
