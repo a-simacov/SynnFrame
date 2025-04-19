@@ -104,6 +104,18 @@ class PalletSelectionStepFactory(
                             text = "Статус: ${if (selectedPallet.isClosed) "Закрыта" else "Открыта"}",
                             style = MaterialTheme.typography.bodySmall
                         )
+
+                        // Кнопка "Вперёд" для перехода к следующему шагу
+                        if (context.hasStepResult) {
+                            androidx.compose.material3.Button(
+                                onClick = { context.onForward() },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                            ) {
+                                Text("Вперёд")
+                            }
+                        }
                     }
                 }
 

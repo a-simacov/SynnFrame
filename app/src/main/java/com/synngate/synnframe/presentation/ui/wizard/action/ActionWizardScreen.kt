@@ -165,6 +165,12 @@ fun ActionWizardScreen(
                                             actionWizardController.processStepResult(null)
                                         }
                                     },
+                                    onForward = {
+                                        Timber.d("Forward navigation requested")
+                                        coroutineScope.launch {
+                                            actionWizardController.processForwardStep()
+                                        }
+                                    },
                                     onSkip = { result ->
                                         Timber.d("Skip requested with result: $result")
                                     },

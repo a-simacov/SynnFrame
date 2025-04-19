@@ -15,6 +15,7 @@ class ActionWizardContextFactory {
      * @param state Состояние визарда
      * @param onStepComplete Обработчик завершения шага
      * @param onBack Обработчик навигации назад
+     * @param onForward Обработчик перехода вперед
      * @param onSkip Обработчик пропуска шага
      * @param onCancel Обработчик отмены визарда
      * @return Контекст для шага
@@ -23,6 +24,7 @@ class ActionWizardContextFactory {
         state: ActionWizardState,
         onStepComplete: (Any) -> Unit,
         onBack: () -> Unit,
+        onForward: () -> Unit,
         onSkip: (Any?) -> Unit,
         onCancel: () -> Unit
     ): ActionContext {
@@ -31,11 +33,16 @@ class ActionWizardContextFactory {
             Timber.w("Creating context for null step")
         }
 
+        // Проверяем, есть ли результат для текущего шага
+        val stepId = currentStep?.id ?: ""
+        val hasResult = state.results.containsKey(stepId)
+
         return ActionContext(
             taskId = state.taskId,
             actionId = state.actionId,
-            stepId = currentStep?.id ?: "",
+            stepId = stepId,
             results = state.results,
+            hasStepResult = hasResult,
             onUpdate = { updatedResults ->
                 // Этот метод вызывается для обновления промежуточных результатов,
                 // но пока не используется
@@ -53,6 +60,10 @@ class ActionWizardContextFactory {
             onBack = {
                 Timber.d("Back navigation requested")
                 onBack()
+            },
+            onForward = {
+                Timber.d("Forward navigation requested")
+                onForward()
             },
             onSkip = { result ->
                 Timber.d("Skip requested with result: $result")

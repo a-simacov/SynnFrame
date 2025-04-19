@@ -150,6 +150,30 @@ class ActionWizardController(
     }
 
     /**
+     * Обрабатывает переход вперед без изменения результата
+     * Используется для перехода вперед, когда шаг уже был выполнен
+     */
+    suspend fun processForwardStep() {
+        val state = _wizardState.value ?: return
+        handleForwardStep(state)
+    }
+
+    /**
+     * Обрабатывает шаг вперед - переходит к следующему шагу без сохранения нового результата
+     */
+    private fun handleForwardStep(state: ActionWizardState) {
+        // Проверяем, что мы не на итоговом экране и текущий шаг выполнен (имеет результат)
+        val currentStep = state.currentStep
+        if (!state.isCompleted && currentStep != null && state.results.containsKey(currentStep.id)) {
+            // Переходим к следующему шагу
+            _wizardState.value = state.copy(
+                currentStepIndex = state.currentStepIndex + 1
+            )
+            Timber.d("Moving forward to next step without changing result")
+        }
+    }
+
+    /**
      * Обрабатывает шаг назад
      */
     private fun handleBackStep(state: ActionWizardState) {
