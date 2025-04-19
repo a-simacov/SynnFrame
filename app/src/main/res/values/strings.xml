@@ -708,4 +708,6 @@
     <string name="pallets_count">Показано паллет: %1$d из %2$d</string>
     <string name="select_bin">Выбрать ячейку</string>
     <string name="select_pallet">Выбрать паллету</string>
+    <string name="enter_pallet_code">Штрихкод паллеты</string>
+    <string name="enter_bin_code">Код ячейки</string>
 </resources>

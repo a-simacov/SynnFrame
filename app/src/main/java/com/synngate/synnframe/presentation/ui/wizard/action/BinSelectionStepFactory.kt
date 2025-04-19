@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.wizard.action
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,7 +10,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ViewList
@@ -19,8 +25,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,25 +38,30 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
+import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.BinItem
+import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * Фабрика компонентов для шага выбора ячейки с тремя способами ввода
+ * Фабрика компонентов для шага выбора ячейки с улучшенным интерфейсом
  */
 class BinSelectionStepFactory(
     private val wizardViewModel: ActionDataViewModel
@@ -58,26 +73,31 @@ class BinSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
+        // Состояния поля поиска и ввода
+        var manualBinCode by remember { mutableStateOf("") }
+        var showBinList by remember { mutableStateOf(false) }
         var searchQuery by remember { mutableStateOf("") }
 
-        // Состояния для диалогов и режимов ввода
+        // Состояние для сообщений об ошибках
+        var errorMessage by remember { mutableStateOf<String?>(null) }
+
+        // Состояние для диалога сканирования камерой
         var showCameraScannerDialog by remember { mutableStateOf(false) }
-        var showScanMethodSelection by remember { mutableStateOf(false) }
-        var selectedInputMethod by remember { mutableStateOf(InputMethod.NONE) }
+
+        // Для отображения сообщений
+        val snackbarHostState = remember { SnackbarHostState() }
+        val coroutineScope = rememberCoroutineScope()
+
+        // Получение данных о ячейках из ViewModel
+        val bins by wizardViewModel.bins.collectAsState()
 
         // Получаем зону из контекста, если указана
         val zoneFilter = action.placementBin?.zone
 
-        // Получение данных из ViewModel
-        val bins by wizardViewModel.bins.collectAsState()
-
-        // Получаем сервис сканера для встроенного сканера
-        val scannerService = LocalScannerService.current
-
-        // Запланированная ячейка (может быть null)
+        // Получаем запланированную ячейку
         val plannedBin = action.placementBin
 
-        // Список запланированных ячеек
+        // Список запланированных ячеек для отображения
         val planBins = remember(action) {
             listOfNotNull(plannedBin)
         }
@@ -87,71 +107,77 @@ class BinSelectionStepFactory(
             context.results[step.id] as? BinX
         }
 
-        LaunchedEffect(context.lastScannedBarcode) {
-            val barcode = context.lastScannedBarcode
-            if (barcode != null && barcode.isNotEmpty()) {
-                Timber.d("Получен штрихкод от внешнего сканера: $barcode")
+        // Получаем сервис сканера для встроенного сканера
+        val scannerService = LocalScannerService.current
 
-                // Обрабатываем штрихкод как код ячейки
-                processBarcodeForBin(
-                    barcode = barcode,
-                    expectedBarcode = plannedBin?.code,
-                    onBinFound = { bin ->
-                        if (bin != null) {
-                            context.onComplete(bin)
-                            context.onForward()
-                        }
-                    }
+        // Функция для показа сообщения об ошибке
+        val showError = { message: String ->
+            errorMessage = message
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    duration = SnackbarDuration.Short
                 )
             }
         }
 
-        // Слушатель событий сканирования
-        if (selectedInputMethod == InputMethod.HARDWARE_SCANNER) {
-            ScannerListener(
-                onBarcodeScanned = { barcode ->
-                    processBarcodeForBin(
-                        barcode = barcode,
-                        expectedBarcode = plannedBin?.code,
-                        onBinFound = { bin ->
-                            if (bin != null) {
-                                context.onComplete(bin)
-                                // Добавляем вызов onForward() для автоматического перехода к следующему шагу
-                                context.onForward()
-                                selectedInputMethod = InputMethod.NONE
-                            }
+        // Функция поиска ячейки по коду
+        val searchBin = { code: String ->
+            if (code.isNotEmpty()) {
+                Timber.d("Поиск ячейки по коду: $code")
+                errorMessage = null // Сбрасываем предыдущую ошибку
+
+                processBarcodeForBin(
+                    barcode = code,
+                    expectedBarcode = plannedBin?.code,
+                    onBinFound = { bin ->
+                        if (bin != null) {
+                            Timber.d("Ячейка найдена: ${bin.code}")
+                            context.onComplete(bin)
+                            // Не вызываем onForward() автоматически, чтобы избежать проблем с навигацией
+                        } else {
+                            Timber.w("Ячейка не найдена: $code")
+                            showError("Ячейка с кодом '$code' не найдена")
                         }
-                    )
-                }
-            )
+                    }
+                )
+                // Очищаем поле ввода после поиска
+                manualBinCode = ""
+            }
         }
 
-        // Загрузка ячеек при изменении поискового запроса или зоны
-        LaunchedEffect(zoneFilter, searchQuery) {
+        // Эффект для обработки штрихкода от внешнего сканера
+        LaunchedEffect(context.lastScannedBarcode) {
+            val barcode = context.lastScannedBarcode
+            if (!barcode.isNullOrEmpty()) {
+                Timber.d("Получен штрихкод от внешнего сканера: $barcode")
+                searchBin(barcode)
+            }
+        }
+
+        // Слушатель событий сканирования от встроенного сканера - всегда активен
+        ScannerListener(
+            onBarcodeScanned = { barcode ->
+                Timber.d("Получен штрихкод от встроенного сканера: $barcode")
+                searchBin(barcode)
+            }
+        )
+
+        // Загрузка ячеек при изменении поискового запроса
+        LaunchedEffect(searchQuery, zoneFilter) {
             wizardViewModel.loadBins(searchQuery, zoneFilter)
         }
 
-        // Показываем диалог сканирования камерой, если выбран этот метод
+        // Показываем диалог сканирования камерой, если он активирован
         if (showCameraScannerDialog) {
             UniversalScannerDialog(
                 onBarcodeScanned = { barcode ->
-                    processBarcodeForBin(
-                        barcode = barcode,
-                        expectedBarcode = plannedBin?.code,
-                        onBinFound = { bin ->
-                            if (bin != null) {
-                                context.onComplete(bin)
-                                // Добавляем вызов onForward() для автоматического перехода к следующему шагу
-                                context.onForward()
-                            }
-                            showCameraScannerDialog = false
-                            selectedInputMethod = InputMethod.NONE
-                        }
-                    )
+                    Timber.d("Получен штрихкод от камеры: $barcode")
+                    searchBin(barcode)
+                    showCameraScannerDialog = false
                 },
                 onClose = {
                     showCameraScannerDialog = false
-                    selectedInputMethod = InputMethod.NONE
                 },
                 instructionText = if (plannedBin != null)
                     stringResource(R.string.scan_bin_expected, plannedBin.code)
@@ -162,11 +188,54 @@ class BinSelectionStepFactory(
         }
 
         Column(modifier = Modifier.fillMaxWidth()) {
+            // Заголовок с описанием действия WMS
             Text(
-                text = step.promptText,
+                text = "${step.promptText} (${getWmsActionDescription(action.wmsAction)})",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
+
+            // Поле для ручного ввода кода ячейки (всегда отображается)
+            OutlinedTextField(
+                value = manualBinCode,
+                onValueChange = {
+                    manualBinCode = it
+                    errorMessage = null // Сбрасываем ошибку при вводе
+                },
+                label = { Text(stringResource(R.string.enter_bin_code)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { searchBin(manualBinCode) }),
+                trailingIcon = {
+                    IconButton(onClick = { showCameraScannerDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.QrCodeScanner,
+                            contentDescription = stringResource(R.string.scan_with_camera)
+                        )
+                    }
+                },
+                isError = errorMessage != null,
+                supportingText = {
+                    if (errorMessage != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Error,
+                                contentDescription = "Ошибка",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
+                            Text(
+                                text = errorMessage!!,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Отображаем выбранную ячейку, если есть
             if (selectedBin != null) {
@@ -192,9 +261,7 @@ class BinSelectionStepFactory(
                     ) {
                         Text(
                             text = "Код: ${selectedBin.code}",
-                            style = MaterialTheme.typography.titleSmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            style = MaterialTheme.typography.titleSmall
                         )
                         Text(
                             text = "Зона: ${selectedBin.zone}",
@@ -204,84 +271,87 @@ class BinSelectionStepFactory(
                             text = "Расположение: ${selectedBin.line}-${selectedBin.rack}-${selectedBin.tier}-${selectedBin.position}",
                             style = MaterialTheme.typography.bodySmall
                         )
-
-                        // Кнопка "Вперёд" для перехода к следующему шагу
-                        if (context.hasStepResult) {
-                            Button(
-                                onClick = { context.onForward() },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp)
-                            ) {
-                                Text("Вперёд")
-                            }
-                        }
                     }
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            // Если не выбран способ ввода, показываем кнопки выбора метода
-            if (!showScanMethodSelection && selectedInputMethod == InputMethod.NONE && selectedBin == null) {
+            // Отображаем запланированные ячейки, если они есть
+            if (planBins.isNotEmpty()) {
                 Text(
-                    text = stringResource(R.string.choose_scan_method),
+                    text = "По плану:",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
 
-                // Кнопки выбора метода ввода
-                Row(
-                    modifier = Modifier.fillMaxWidth()
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
                 ) {
-                    // Кнопка для сканирования камерой
-                    Button(
-                        onClick = {
-                            selectedInputMethod = InputMethod.CAMERA
-                            showCameraScannerDialog = true
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.QrCodeScanner,
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = 4.dp)
-                        )
-                        Text(stringResource(R.string.scan_with_camera))
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Кнопка для сканирования встроенным сканером (если доступен)
-                    if (scannerService != null) {
-                        Button(
-                            onClick = { selectedInputMethod = InputMethod.HARDWARE_SCANNER },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    items(planBins) { bin ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
                             )
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.QrCodeScanner,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 4.dp)
-                            )
-                            Text(stringResource(R.string.scan_with_scanner))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = "Код: ${bin.code}",
+                                        style = MaterialTheme.typography.titleSmall
+                                    )
+                                    Text(
+                                        text = "Зона: ${bin.zone}",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                    Text(
+                                        text = "Расположение: ${bin.line}-${bin.rack}-${bin.tier}-${bin.position}",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = { context.onComplete(bin) }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Выбрать",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
 
-                // Кнопка для выбора из списка
+            // Кнопка для выбора из списка (если нет запланированной ячейки или есть, но можно выбрать любую)
+            if (plannedBin == null || !step.validationRules.rules.any { it.type == ValidationType.FROM_PLAN }) {
                 Button(
-                    onClick = { showScanMethodSelection = true },
+                    onClick = {
+                        showBinList = !showBinList
+                        // Загружаем ячейки при открытии списка
+                        if (showBinList) {
+                            wizardViewModel.loadBins("", zoneFilter)
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
@@ -293,127 +363,14 @@ class BinSelectionStepFactory(
                         contentDescription = null,
                         modifier = Modifier.padding(end = 4.dp)
                     )
-                    Text(stringResource(R.string.select_from_list))
+                    Text(if (showBinList) "Скрыть список" else "Выбрать из списка")
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Показываем интерфейс встроенного сканера, если выбран этот метод
-            if (selectedInputMethod == InputMethod.HARDWARE_SCANNER) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Text(
-                            text = if (plannedBin != null)
-                                stringResource(R.string.scan_bin_expected, plannedBin.code)
-                            else
-                                stringResource(R.string.scan_bin),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "Ожидание сканирования...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Button(
-                            onClick = { selectedInputMethod = InputMethod.NONE },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor = MaterialTheme.colorScheme.onError
-                            )
-                        ) {
-                            Text("Отмена")
-                        }
-                    }
-                }
-            }
-
-            // Отображаем запланированные ячейки, если они есть
-            if (planBins.isNotEmpty() && (showScanMethodSelection || selectedInputMethod == InputMethod.NONE)) {
-                Text(
-                    text = "По плану:",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(0.3f)
-                ) {
-                    items(planBins) { bin ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp)
-                            ) {
-                                Text(
-                                    text = "Код: ${bin.code}",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = "Зона: ${bin.zone}",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                Text(
-                                    text = "Расположение: ${bin.line}-${bin.rack}-${bin.tier}-${bin.position}",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-
-                                Button(
-                                    onClick = {
-                                        context.onComplete(bin)
-                                        // При выборе из списка тоже добавляем автоматический переход
-                                        context.onForward()
-                                        showScanMethodSelection = false
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 4.dp)
-                                ) {
-                                    Text("Выбрать")
-                                }
-                            }
-                        }
-                    }
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            // Поиск и список ячеек (показываются только если выбран режим ручного ввода)
-            if (showScanMethodSelection) {
+            // Список ячеек для выбора (показывается только если активирован)
+            if (showBinList) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -428,34 +385,41 @@ class BinSelectionStepFactory(
                     }
                 )
 
+                Spacer(modifier = Modifier.height(8.dp))
+
                 LazyColumn(
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
                 ) {
                     items(bins) { bin ->
                         BinItem(
                             bin = bin,
-                            onClick = {
-                                context.onComplete(bin)
-                                // При выборе из списка тоже добавляем автоматический переход
-                                context.onForward()
-                                showScanMethodSelection = false
-                            }
+                            onClick = { context.onComplete(bin) }
                         )
                     }
                 }
 
-                // Кнопка отмены для возврата к выбору способа ввода
-                Button(
-                    onClick = { showScanMethodSelection = false },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Кнопка Вперед в нижней части экрана (если выбрана ячейка)
+            if (context.hasStepResult) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.CenterEnd
                 ) {
-                    Text("Отмена")
+                    OutlinedButton(
+                        onClick = { context.onForward() },
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Text("Вперед")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Вперед"
+                        )
+                    }
                 }
             }
         }
@@ -473,18 +437,12 @@ class BinSelectionStepFactory(
     ) {
         // Если задан ожидаемый штрихкод, проверяем соответствие
         if (expectedBarcode != null && barcode != expectedBarcode) {
+            Timber.w("Несоответствие штрихкода: ожидался $expectedBarcode, получен $barcode")
             onBinFound(null)
             return
         }
 
         // Ищем ячейку по штрихкоду
         wizardViewModel.findBinByCode(barcode, onBinFound)
-    }
-
-    // Перечисление для методов ввода
-    private enum class InputMethod {
-        NONE,               // Режим выбора
-        CAMERA,             // Сканирование камерой
-        HARDWARE_SCANNER,   // Сканирование встроенным сканером
     }
 }
