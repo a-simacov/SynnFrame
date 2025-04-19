@@ -680,4 +680,32 @@
     <string name="verify_task_failure">Incorrect barcode for verification</string>
     <string name="extended_tasks">Extended Tasks</string>
     <string name="extended_tasks_desc">WMS task management with extended functionality</string>
+
+    <!-- Строки для UniversalScannerDialog -->
+    <string name="expected_barcode">Ожидаемый штрихкод: %s</string>
+    <string name="enter_barcode">Введите штрихкод</string>
+    <string name="use_camera">Использовать камеру</string>
+    <string name="manual_input">Ручной ввод</string>
+    <string name="barcode_mismatch">Отсканированный штрихкод не соответствует ожидаемому</string>
+
+    <!-- Строки для сканирования в мастере действий -->
+    <string name="scan_product_expected">Сканируйте товар: %s</string>
+    <string name="scan_bin_expected">Сканируйте ячейку: %s</string>
+    <string name="scan_pallet">Сканируйте паллету</string>
+    <string name="scan_pallet_expected">Сканируйте паллету: %s</string>
+    <string name="select_from_list">Выбрать из списка</string>
+    <string name="scan_with_camera">Сканировать камерой</string>
+    <string name="scan_with_scanner">Сканировать сканером</string>
+    <string name="choose_scan_method">Выберите способ ввода</string>
+    <string name="search_bins">Поиск ячеек</string>
+    <string name="search_bins_hint">Введите код ячейки</string>
+    <string name="search_pallets">Поиск паллет</string>
+    <string name="search_pallets_hint">Введите код паллеты</string>
+    <string name="no_bins_found">Ячейки не найдены</string>
+    <string name="no_pallets_found">Паллеты не найдены</string>
+    <string name="barcode_scanner_error">Ошибка сканирования</string>
+    <string name="bins_count">Показано ячеек: %1$d из %2$d</string>
+    <string name="pallets_count">Показано паллет: %1$d из %2$d</string>
+    <string name="select_bin">Выбрать ячейку</string>
+    <string name="select_pallet">Выбрать паллету</string>
 </resources>
