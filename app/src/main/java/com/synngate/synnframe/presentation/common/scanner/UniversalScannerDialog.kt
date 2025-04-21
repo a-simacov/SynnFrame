@@ -29,7 +29,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -46,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.synngate.synnframe.R
-import com.synngate.synnframe.presentation.common.LocalScannerService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -69,40 +67,17 @@ fun UniversalScannerDialog(
     var manualBarcode by remember { mutableStateOf("") }
     var scannerKey by remember { mutableStateOf(0) } // Ключ для пересоздания сканера
 
-    // Получаем сервис сканера
-    val scannerService = LocalScannerService.current
-
     // Состояния обработки
     var isProcessing by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
 
-    // Состояния ошибок
-    var errorState by remember { mutableStateOf<ErrorState?>(null) }
-
-    // Временно переключаем на сканер камеры в режиме сканирования
     LaunchedEffect(Unit) {
         isProcessing = false
         Timber.d("UniversalScannerDialog: Сброс флага isProcessing при инициализации")
-
-        // Явно создаем сканер на основе камеры для диалога - NEW!
-        scannerService?.let { service ->
-            // Создаем сканер камеры для диалога
-            service.createCameraScanner()
-            service.enable()
-            Timber.d("UniversalScannerDialog: Временно активирован сканер камеры")
-        }
     }
 
-    // Восстанавливаем предпочтительный сканер при закрытии диалога
-    DisposableEffect(Unit) {
-        onDispose {
-            // Восстанавливаем предпочтительный сканер после закрытия диалога - NEW!
-            scannerService?.let { service ->
-                service.restorePreferredScanner()
-                Timber.d("UniversalScannerDialog: Восстановлен предпочтительный сканер")
-            }
-        }
-    }
+    // Состояния ошибок
+    var errorState by remember { mutableStateOf<ErrorState?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     // Функция для показа временного сообщения об ошибке
     val showTemporaryError = { message: String, barcode: String ->
