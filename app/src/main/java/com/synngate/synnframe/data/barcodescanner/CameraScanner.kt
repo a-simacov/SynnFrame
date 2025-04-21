@@ -104,7 +104,7 @@ class CameraScanner(
      * Устанавливает слушатель для сканирования штрихкодов
      * @param listener Функция-обработчик результата сканирования или null для отмены
      */
-    override fun setOnBarcodeScannedListener(listener: ((String) -> Unit)?) {
+    fun setOnBarcodeScannedListener(listener: ((String) -> Unit)?) {
         onBarcodeListener = listener
     }
 }
