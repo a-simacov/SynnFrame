@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.wizard.action
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,7 +10,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ViewList
@@ -19,8 +25,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,31 +38,35 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
+import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.presentation.common.LocalScannerService
-import com.synngate.synnframe.presentation.common.scanner.ScannerListener
+import com.synngate.synnframe.presentation.common.scanner.BarcodeHandlerWithState
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.ProductItem
+import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * Фабрика компонентов для шага выбора продукта с тремя способами ввода
+ * Фабрика компонентов для шага выбора продукта с улучшенным интерфейсом
  */
 class ProductSelectionStepFactory(
-    private val wizardViewModel: ActionDataViewModel,
-    private val navController: NavController? = null
+    private val wizardViewModel: ActionDataViewModel
 ) : ActionStepFactory {
 
     @Composable
@@ -61,23 +75,28 @@ class ProductSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
+        // Состояния поля поиска и ввода
+        var manualProductCode by remember { mutableStateOf("") }
+        var showProductList by remember { mutableStateOf(false) }
         var searchQuery by remember { mutableStateOf("") }
 
-        // Состояния для диалогов и режимов ввода
+        // Состояние для сообщений об ошибках
+        var errorMessage by remember { mutableStateOf<String?>(null) }
+
+        // Состояние для диалога сканирования камерой
         var showCameraScannerDialog by remember { mutableStateOf(false) }
-        var showScanMethodSelection by remember { mutableStateOf(false) }
-        var selectedInputMethod by remember { mutableStateOf(InputMethod.NONE) }
 
-        // Запланированный продукт
-        val plannedProduct = action.storageProduct?.product
+        // Для отображения сообщений
+        val snackbarHostState = remember { SnackbarHostState() }
+        val coroutineScope = rememberCoroutineScope()
 
-        // Получение данных из ViewModel
+        // Получение данных о продуктах из ViewModel
         val products by wizardViewModel.products.collectAsState()
 
-        // Получаем сервис сканера для встроенного сканера
-        val scannerService = LocalScannerService.current
+        // Получаем запланированный продукт
+        val plannedProduct = action.storageProduct?.product
 
-        // Список продуктов из плана для показа пользователю
+        // Список запланированных продуктов для отображения
         val planProducts = remember(action) {
             listOfNotNull(action.storageProduct)
         }
@@ -88,56 +107,99 @@ class ProductSelectionStepFactory(
             (context.results[step.id] as? TaskProduct)?.product
         }
 
-        LaunchedEffect(step.id) {
-            selectedInputMethod = InputMethod.NONE
-            Timber.d("ProductSelectionStep: Сброс выбранного метода ввода при инициализации шага ${step.id}")
+        // Получаем сервис сканера для встроенного сканера
+        val scannerService = LocalScannerService.current
+
+        // Функция для показа сообщения об ошибке
+        val showError = { message: String ->
+            errorMessage = message
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    duration = SnackbarDuration.Short
+                )
+            }
         }
 
-        LaunchedEffect(context.lastScannedBarcode) {
-            val barcode = context.lastScannedBarcode
-            if (barcode != null && barcode.isNotEmpty()) {
-                Timber.d("Получен штрихкод от внешнего сканера: $barcode")
+        // Функция поиска продукта по штрихкоду или артикулу
+        val searchProduct = { barcode: String ->
+            if (barcode.isNotEmpty()) {
+                Timber.d("Поиск продукта по штрихкоду: $barcode")
+                errorMessage = null // Сбрасываем предыдущую ошибку
 
-                // Обрабатываем штрихкод для поиска товара
                 processBarcodeForProduct(
                     barcode = barcode,
                     onProductFound = { product ->
                         if (product != null) {
+                            Timber.d("Продукт найден: ${product.name}")
+
+                            // Создаем результат в зависимости от типа объекта
                             val result: Any = if (step.objectType == ActionObjectType.TASK_PRODUCT) {
                                 TaskProduct(product = product)
                             } else {
                                 product
                             }
+
+                            // Вызываем onComplete для передачи результата
                             context.onComplete(result)
-                            context.onForward()
+                        } else {
+                            Timber.w("Продукт не найден: $barcode")
+                            showError("Продукт со штрихкодом '$barcode' не найден")
                         }
                     }
                 )
+
+                // Очищаем поле ввода после поиска
+                manualProductCode = ""
             }
         }
 
-        // Слушатель событий сканирования
-        if (selectedInputMethod == InputMethod.HARDWARE_SCANNER) {
-            ScannerListener(
-                onBarcodeScanned = { barcode ->
-                    processBarcodeForProduct(
-                        barcode = barcode,
-                        onProductFound = { product ->
-                            if (product != null) {
-                                val result: Any = if (step.objectType == ActionObjectType.TASK_PRODUCT) {
-                                    TaskProduct(product = product)
-                                } else {
-                                    product
-                                }
-                                context.onComplete(result)
-                                // Добавляем вызов onForward() для автоматического перехода к следующему шагу
-                                context.onForward()
-                                selectedInputMethod = InputMethod.NONE
+        // Использование BarcodeHandlerWithState для обработки штрихкодов
+        BarcodeHandlerWithState(
+            stepKey = step.id,
+            stepResult = context.getCurrentStepResult(),
+            onBarcodeScanned = { barcode, setProcessingState ->
+                Timber.d("Получен штрихкод от сканера: $barcode")
+                errorMessage = null // Сбрасываем предыдущую ошибку
+
+                processBarcodeForProduct(
+                    barcode = barcode,
+                    onProductFound = { product ->
+                        if (product != null) {
+                            Timber.d("Продукт найден: ${product.name}")
+
+                            // Создаем результат в зависимости от типа объекта
+                            val result: Any = if (step.objectType == ActionObjectType.TASK_PRODUCT) {
+                                TaskProduct(product = product)
+                            } else {
+                                product
                             }
+
+                            // Вызываем onComplete для передачи результата
+                            context.onComplete(result)
+                        } else {
+                            Timber.w("Продукт не найден: $barcode")
+                            showError("Продукт со штрихкодом '$barcode' не найден")
+                            // Сбрасываем состояние обработки, чтобы можно было повторить сканирование
+                            setProcessingState(false)
                         }
-                    )
-                }
-            )
+                    }
+                )
+
+                // Очищаем поле ввода после поиска
+                manualProductCode = ""
+            }
+        )
+
+        // Обработка внешнего штрихкода из контекста
+        LaunchedEffect(context.lastScannedBarcode) {
+            val barcode = context.lastScannedBarcode
+            if (!barcode.isNullOrEmpty()) {
+                Timber.d("Получен штрихкод от внешнего сканера: $barcode")
+
+                // Просто перенаправляем в функцию поиска продукта
+                searchProduct(barcode)
+            }
         }
 
         // Загрузка продуктов при изменении поискового запроса
@@ -147,31 +209,16 @@ class ProductSelectionStepFactory(
             wizardViewModel.loadProducts(searchQuery, planProductIds)
         }
 
-        // Показываем диалог сканирования камерой, если выбран этот метод
+        // Показываем диалог сканирования камерой, если он активирован
         if (showCameraScannerDialog) {
             UniversalScannerDialog(
                 onBarcodeScanned = { barcode ->
-                    processBarcodeForProduct(
-                        barcode = barcode,
-                        onProductFound = { product ->
-                            if (product != null) {
-                                val result: Any = if (step.objectType == ActionObjectType.TASK_PRODUCT) {
-                                    TaskProduct(product = product)
-                                } else {
-                                    product
-                                }
-                                context.onComplete(result)
-                                // Добавляем вызов onForward() для автоматического перехода к следующему шагу
-                                context.onForward()
-                            }
-                            showCameraScannerDialog = false
-                            selectedInputMethod = InputMethod.NONE
-                        }
-                    )
+                    Timber.d("Получен штрихкод от камеры: $barcode")
+                    searchProduct(barcode)
+                    showCameraScannerDialog = false
                 },
                 onClose = {
                     showCameraScannerDialog = false
-                    selectedInputMethod = InputMethod.NONE
                 },
                 instructionText = if (plannedProduct != null)
                     stringResource(R.string.scan_product_expected, plannedProduct.name)
@@ -181,11 +228,54 @@ class ProductSelectionStepFactory(
         }
 
         Column(modifier = Modifier.fillMaxWidth()) {
+            // Заголовок с описанием действия WMS
             Text(
-                text = step.promptText,
+                text = "${step.promptText} (${getWmsActionDescription(action.wmsAction)})",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
+
+            // Поле для ручного ввода штрихкода продукта
+            OutlinedTextField(
+                value = manualProductCode,
+                onValueChange = {
+                    manualProductCode = it
+                    errorMessage = null // Сбрасываем ошибку при вводе
+                },
+                label = { Text(stringResource(R.string.enter_product_barcode)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { searchProduct(manualProductCode) }),
+                trailingIcon = {
+                    IconButton(onClick = { showCameraScannerDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.QrCodeScanner,
+                            contentDescription = stringResource(R.string.scan_with_camera)
+                        )
+                    }
+                },
+                isError = errorMessage != null,
+                supportingText = {
+                    if (errorMessage != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Error,
+                                contentDescription = "Ошибка",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
+                            Text(
+                                text = errorMessage!!,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Отображаем выбранный продукт, если есть
             if (selectedProduct != null) {
@@ -217,84 +307,97 @@ class ProductSelectionStepFactory(
                             text = "Артикул: ${selectedProduct.articleNumber}",
                             style = MaterialTheme.typography.bodySmall
                         )
-
-                        // Кнопка "Вперёд" для перехода к следующему шагу
-                        if (context.hasStepResult) {
-                            Button(
-                                onClick = { context.onForward() },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp)
-                            ) {
-                                Text("Вперёд")
-                            }
-                        }
                     }
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            // Если не выбран способ ввода, показываем кнопки выбора метода
-            if (!showScanMethodSelection && selectedInputMethod == InputMethod.NONE && selectedProduct == null) {
+            // Отображаем запланированные продукты, если они есть
+            if (planProducts.isNotEmpty()) {
                 Text(
-                    text = stringResource(R.string.choose_scan_method),
+                    text = "По плану:",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
 
-                // Кнопки выбора метода ввода
-                Row(
-                    modifier = Modifier.fillMaxWidth()
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
                 ) {
-                    // Кнопка для сканирования камерой
-                    Button(
-                        onClick = {
-                            selectedInputMethod = InputMethod.CAMERA
-                            showCameraScannerDialog = true
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.QrCodeScanner,
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = 4.dp)
-                        )
-                        Text(stringResource(R.string.scan_with_camera))
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Кнопка для сканирования встроенным сканером (если доступен)
-                    if (scannerService != null) {
-                        Button(
-                            onClick = { selectedInputMethod = InputMethod.HARDWARE_SCANNER },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    items(planProducts) { taskProduct ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
                             )
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.QrCodeScanner,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 4.dp)
-                            )
-                            Text(stringResource(R.string.scan_with_scanner))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = taskProduct.product.name,
+                                        style = MaterialTheme.typography.titleSmall
+                                    )
+                                    Text(
+                                        text = "Артикул: ${taskProduct.product.articleNumber}",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                    if (taskProduct.quantity > 0) {
+                                        Text(
+                                            text = "Количество: ${taskProduct.quantity}",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+
+                                IconButton(
+                                    onClick = {
+                                        // Создаем результат в зависимости от типа объекта
+                                        val result: Any = if (step.objectType == ActionObjectType.TASK_PRODUCT) {
+                                            taskProduct
+                                        } else {
+                                            taskProduct.product
+                                        }
+                                        context.onComplete(result)
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Выбрать",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
 
-                // Кнопка для выбора из списка
+            // Кнопка для выбора из списка (если нет запланированного продукта или есть, но можно выбрать любой)
+            if (plannedProduct == null || !step.validationRules.rules.any { it.type == ValidationType.FROM_PLAN }) {
                 Button(
-                    onClick = { showScanMethodSelection = true },
+                    onClick = {
+                        showProductList = !showProductList
+                        // Загружаем продукты при открытии списка
+                        if (showProductList) {
+                            wizardViewModel.loadProducts("", plannedProduct?.let { setOf(it.id) })
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
@@ -306,135 +409,19 @@ class ProductSelectionStepFactory(
                         contentDescription = null,
                         modifier = Modifier.padding(end = 4.dp)
                     )
-                    Text(stringResource(R.string.select_from_list))
+                    Text(if (showProductList) "Скрыть список" else "Выбрать из списка")
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Показываем интерфейс встроенного сканера, если выбран этот метод
-            if (selectedInputMethod == InputMethod.HARDWARE_SCANNER) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Text(
-                            text = if (plannedProduct != null)
-                                stringResource(R.string.scan_product_expected, plannedProduct.name)
-                            else
-                                stringResource(R.string.scan_product),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "Ожидание сканирования...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Button(
-                            onClick = { selectedInputMethod = InputMethod.NONE },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor = MaterialTheme.colorScheme.onError
-                            )
-                        ) {
-                            Text("Отмена")
-                        }
-                    }
-                }
-            }
-
-            // Отображаем запланированные продукты, если они есть
-            if (planProducts.isNotEmpty() && (showScanMethodSelection || selectedInputMethod == InputMethod.NONE)) {
-                Text(
-                    text = "По плану:",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(0.3f)
-                ) {
-                    items(planProducts) { taskProduct ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp)
-                            ) {
-                                Text(
-                                    text = taskProduct.product.name,
-                                    style = MaterialTheme.typography.titleSmall
-                                )
-                                Text(
-                                    text = "Артикул: ${taskProduct.product.articleNumber}",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                if (taskProduct.quantity > 0) {
-                                    Text(
-                                        text = "Количество: ${taskProduct.quantity}",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-
-                                Button(
-                                    onClick = {
-                                        // Создаем результат в зависимости от типа объекта
-                                        val result: Any = if (step.objectType == ActionObjectType.TASK_PRODUCT) {
-                                            taskProduct
-                                        } else {
-                                            taskProduct.product
-                                        }
-                                        context.onComplete(result)
-                                        showScanMethodSelection = false
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 4.dp)
-                                ) {
-                                    Text("Выбрать")
-                                }
-                            }
-                        }
-                    }
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            // Поиск и список продуктов (показываются только если выбран режим ручного ввода)
-            if (showScanMethodSelection) {
+            // Список продуктов для выбора (показывается только если активирован)
+            if (showProductList) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text("Поиск товара") },
+                    label = { Text(stringResource(R.string.search_product)) },
+                    placeholder = { Text(stringResource(R.string.search_product_hint)) },
                     modifier = Modifier.fillMaxWidth(),
                     leadingIcon = {
                         Icon(
@@ -444,8 +431,12 @@ class ProductSelectionStepFactory(
                     }
                 )
 
+                Spacer(modifier = Modifier.height(8.dp))
+
                 LazyColumn(
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
                 ) {
                     items(products) { product ->
                         ProductItem(
@@ -457,26 +448,32 @@ class ProductSelectionStepFactory(
                                 } else {
                                     product
                                 }
-
                                 context.onComplete(result)
-                                showScanMethodSelection = false
                             }
                         )
                     }
                 }
 
-                // Кнопка отмены для возврата к выбору способа ввода
-                Button(
-                    onClick = { showScanMethodSelection = false },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Кнопка Вперед в нижней части экрана (если выбран продукт)
+            if (context.hasStepResult) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.CenterEnd
                 ) {
-                    Text("Отмена")
+                    OutlinedButton(
+                        onClick = { context.onForward() },
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Text("Вперед")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Вперед"
+                        )
+                    }
                 }
             }
         }
@@ -492,14 +489,11 @@ class ProductSelectionStepFactory(
     }
 
     // Метод для обработки отсканированного штрихкода
-    private fun processBarcodeForProduct(barcode: String, onProductFound: (Product?) -> Unit) {
+    private fun processBarcodeForProduct(
+        barcode: String,
+        onProductFound: (Product?) -> Unit
+    ) {
+        // Ищем продукт по штрихкоду
         wizardViewModel.findProductByBarcode(barcode, onProductFound)
-    }
-
-    // Перечисление для методов ввода
-    private enum class InputMethod {
-        NONE,               // Режим выбора
-        CAMERA,             // Сканирование камерой
-        HARDWARE_SCANNER,   // Сканирование встроенным сканером
     }
 }
