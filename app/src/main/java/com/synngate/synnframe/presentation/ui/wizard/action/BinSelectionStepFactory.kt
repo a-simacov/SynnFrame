@@ -51,7 +51,6 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
-import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scanner.BarcodeHandlerWithState
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.BinItem
@@ -60,9 +59,6 @@ import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * Фабрика компонентов для шага выбора ячейки с улучшенным интерфейсом
- */
 class BinSelectionStepFactory(
     private val wizardViewModel: ActionDataViewModel
 ) : ActionStepFactory {
@@ -73,44 +69,31 @@ class BinSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Состояния поля поиска и ввода
         var manualBinCode by remember { mutableStateOf("") }
         var showBinList by remember { mutableStateOf(false) }
         var searchQuery by remember { mutableStateOf("") }
 
-        // Состояние для сообщений об ошибках
         var errorMessage by remember { mutableStateOf<String?>(null) }
 
-        // Состояние для диалога сканирования камерой
         var showCameraScannerDialog by remember { mutableStateOf(false) }
 
-        // Для отображения сообщений
         val snackbarHostState = remember { SnackbarHostState() }
         val coroutineScope = rememberCoroutineScope()
 
-        // Получение данных о ячейках из ViewModel
         val bins by wizardViewModel.bins.collectAsState()
 
-        // Получаем зону из контекста, если указана
         val zoneFilter = action.placementBin?.zone
 
-        // Получаем запланированную ячейку
         val plannedBin = action.placementBin
 
-        // Список запланированных ячеек для отображения
         val planBins = remember(action) {
             listOfNotNull(plannedBin)
         }
 
-        // Получаем уже выбранную ячейку из контекста, если есть
         val selectedBin = remember(context.results) {
             context.results[step.id] as? BinX
         }
 
-        // Получаем сервис сканера для встроенного сканера
-        val scannerService = LocalScannerService.current
-
-        // Функция для показа сообщения об ошибке
         val showError = { message: String ->
             errorMessage = message
             coroutineScope.launch {
@@ -121,11 +104,10 @@ class BinSelectionStepFactory(
             }
         }
 
-        // Функция поиска ячейки по коду
         val searchBin = { code: String ->
             if (code.isNotEmpty()) {
                 Timber.d("Поиск ячейки по коду: $code")
-                errorMessage = null // Сбрасываем предыдущую ошибку
+                errorMessage = null
 
                 processBarcodeForBin(
                     barcode = code,
@@ -133,7 +115,6 @@ class BinSelectionStepFactory(
                     onBinFound = { bin ->
                         if (bin != null) {
                             Timber.d("Ячейка найдена: ${bin.code}")
-                            // Только вызываем onComplete, без onForward
                             context.onComplete(bin)
                         } else {
                             Timber.w("Ячейка не найдена: $code")
@@ -142,18 +123,16 @@ class BinSelectionStepFactory(
                     }
                 )
 
-                // Очищаем поле ввода после поиска
                 manualBinCode = ""
             }
         }
 
-        // Использование BarcodeHandlerWithState для обработки штрихкодов
         BarcodeHandlerWithState(
             stepKey = step.id,
             stepResult = context.getCurrentStepResult(),
             onBarcodeScanned = { barcode, setProcessingState ->
                 Timber.d("Получен штрихкод от сканера: $barcode")
-                errorMessage = null // Сбрасываем предыдущую ошибку
+                errorMessage = null
 
                 processBarcodeForBin(
                     barcode = barcode,
@@ -161,24 +140,19 @@ class BinSelectionStepFactory(
                     onBinFound = { bin ->
                         if (bin != null) {
                             Timber.d("Ячейка найдена: ${bin.code}")
-                            // Вызываем onComplete для передачи результата
                             context.onComplete(bin)
-                            // Не сбрасываем состояние, т.к. завершили шаг успешно
                         } else {
                             Timber.w("Ячейка не найдена: $barcode")
                             showError("Ячейка с кодом '$barcode' не найдена")
-                            // Сбрасываем состояние обработки, чтобы можно было повторить сканирование
                             setProcessingState(false)
                         }
                     }
                 )
 
-                // Очищаем поле ввода после поиска
                 manualBinCode = ""
             }
         )
 
-        // Эффект для обработки штрихкода от внешнего сканера
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
             if (!barcode.isNullOrEmpty()) {
@@ -187,12 +161,10 @@ class BinSelectionStepFactory(
             }
         }
 
-        // Загрузка ячеек при изменении поискового запроса
         LaunchedEffect(searchQuery, zoneFilter) {
             wizardViewModel.loadBins(searchQuery, zoneFilter)
         }
 
-        // Показываем диалог сканирования камерой, если он активирован
         if (showCameraScannerDialog) {
             UniversalScannerDialog(
                 onBarcodeScanned = { barcode ->
@@ -212,14 +184,12 @@ class BinSelectionStepFactory(
         }
 
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Заголовок с описанием действия WMS
             Text(
                 text = "${step.promptText} (${getWmsActionDescription(action.wmsAction)})",
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 4.dp)
             )
 
-            // Поле для ручного ввода кода ячейки (всегда отображается)
             OutlinedTextField(
                 value = manualBinCode,
                 onValueChange = {
@@ -259,9 +229,6 @@ class BinSelectionStepFactory(
                 }
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Отображаем выбранную ячейку, если есть
             if (selectedBin != null) {
                 Text(
                     text = "Выбранная ячейка:",
@@ -281,7 +248,7 @@ class BinSelectionStepFactory(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(8.dp)
+                            .padding(4.dp)
                     ) {
                         Text(
                             text = "Код: ${selectedBin.code}",
@@ -298,7 +265,6 @@ class BinSelectionStepFactory(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
@@ -314,7 +280,6 @@ class BinSelectionStepFactory(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp)
                 ) {
                     items(planBins) { bin ->
                         Card(
@@ -361,8 +326,6 @@ class BinSelectionStepFactory(
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
@@ -409,7 +372,7 @@ class BinSelectionStepFactory(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 LazyColumn(
                     modifier = Modifier
@@ -424,7 +387,7 @@ class BinSelectionStepFactory(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(4.dp))
             }
 
             // Кнопка Вперед в нижней части экрана (если выбрана ячейка)

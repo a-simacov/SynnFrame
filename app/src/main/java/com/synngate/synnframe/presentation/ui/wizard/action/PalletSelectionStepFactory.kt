@@ -153,7 +153,6 @@ class PalletSelectionStepFactory(
             }
         )
 
-        // Обработка внешнего штрихкода из контекста
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
             if (!barcode.isNullOrEmpty()) {
@@ -232,9 +231,6 @@ class PalletSelectionStepFactory(
                 }
             )
 
-            //Spacer(modifier = Modifier.height(16.dp))
-
-            // Отображаем выбранную паллету, если есть
             if (selectedPallet != null) {
                 Text(
                     text = "Выбранная паллета:",
@@ -370,7 +366,7 @@ class PalletSelectionStepFactory(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 LazyColumn(
                     modifier = Modifier
@@ -385,7 +381,7 @@ class PalletSelectionStepFactory(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(4.dp))
             }
 
             // Кнопка Вперед в нижней части экрана (если выбрана паллета)
