@@ -49,9 +49,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * Универсальный диалог сканирования штрихкодов
- */
 @Composable
 fun UniversalScannerDialog(
     onBarcodeScanned: (String) -> Unit,
@@ -62,24 +59,19 @@ fun UniversalScannerDialog(
     allowManualInput: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    // Состояния UI
     var isManualInputMode by remember { mutableStateOf(false) }
     var manualBarcode by remember { mutableStateOf("") }
     var scannerKey by remember { mutableStateOf(0) } // Ключ для пересоздания сканера
 
-    // Состояния обработки
     var isProcessing by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         isProcessing = false
-        Timber.d("UniversalScannerDialog: Сброс флага isProcessing при инициализации")
     }
 
-    // Состояния ошибок
     var errorState by remember { mutableStateOf<ErrorState?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Функция для показа временного сообщения об ошибке
     val showTemporaryError = { message: String, barcode: String ->
         errorState = ErrorState(message, barcode)
         coroutineScope.launch {
@@ -90,14 +82,10 @@ fun UniversalScannerDialog(
         }
     }
 
-    // Функция для обработки успешного сканирования
     val handleSuccessfulScan = { barcode: String ->
         if (!isProcessing) {
             isProcessing = true
-            Timber.d("Успешное сканирование: $barcode")
-            // 1. Сначала вызываем обработчик
             onBarcodeScanned(barcode)
-            // 2. Затем закрываем диалог - это должно вызвать переход к следующему шагу
             onClose()
         }
     }
@@ -119,7 +107,6 @@ fun UniversalScannerDialog(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                // Заголовок и кнопка закрытия
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -140,7 +127,6 @@ fun UniversalScannerDialog(
                     }
                 }
 
-                // Инструкция
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -156,7 +142,6 @@ fun UniversalScannerDialog(
                     )
                 }
 
-                // Если ожидается определенный штрихкод, показываем его
                 if (expectedBarcode != null) {
                     Card(
                         modifier = Modifier
@@ -177,7 +162,6 @@ fun UniversalScannerDialog(
                     }
                 }
 
-                // Область сканирования или ручного ввода
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -395,9 +379,6 @@ fun UniversalScannerDialog(
     }
 }
 
-/**
- * Класс для хранения информации об ошибке
- */
 private data class ErrorState(
     val message: String,
     val barcode: String

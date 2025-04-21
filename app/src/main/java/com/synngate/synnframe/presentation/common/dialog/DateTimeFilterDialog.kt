@@ -9,25 +9,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Divider
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,122 +27,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.synngate.synnframe.R
-import java.time.Instant
-import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
-
-@Composable
-fun ConfirmationDialog(
-    title: String,
-    message: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-    confirmText: String = stringResource(id = R.string.confirm),
-    dismissText: String = stringResource(id = R.string.cancel)
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(text = title) },
-        text = { Text(text = message) },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onConfirm()
-                    onDismiss()
-                }
-            ) {
-                Text(text = confirmText)
-            }
-        },
-        dismissButton = {
-            OutlinedButton(
-                onClick = onDismiss
-            ) {
-                Text(text = dismissText)
-            }
-        }
-    )
-}
-
-@Composable
-fun ProgressDialog(
-    message: String,
-    onDismiss: (() -> Unit)? = null // null для некоторых операций, которые нельзя отменить
-) {
-    Dialog(
-        onDismissRequest = { onDismiss?.invoke() },
-        properties = DialogProperties(
-            dismissOnBackPress = onDismiss != null,
-            dismissOnClickOutside = onDismiss != null
-        )
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.material3.MaterialTheme.shapes.medium
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                androidx.compose.material3.CircularProgressIndicator()
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = message,
-                    textAlign = TextAlign.Center
-                )
-
-                if (onDismiss != null) {
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    TextButton(
-                        onClick = onDismiss
-                    ) {
-                        Text(text = stringResource(id = R.string.cancel))
-                    }
-                }
-            }
-        }
-    }
-}
-
-enum class DateFilterPreset {
-    LAST_5_MINUTES,
-    LAST_30_MINUTES,
-    LAST_HOUR;
-
-    fun getDates(): Pair<LocalDateTime, LocalDateTime> {
-        val endDate = LocalDateTime.now()
-        val startDate = when(this) {
-            LAST_5_MINUTES -> endDate.minus(5, ChronoUnit.MINUTES)
-            LAST_30_MINUTES -> endDate.minus(30, ChronoUnit.MINUTES)
-            LAST_HOUR -> endDate.minus(1, ChronoUnit.HOURS)
-        }
-        return Pair(startDate, endDate)
-    }
-
-    companion object {
-        fun getResourceId(preset: DateFilterPreset): Int {
-            return when(preset) {
-                LAST_5_MINUTES -> R.string.last_5_minutes
-                LAST_30_MINUTES -> R.string.last_30_minutes
-                LAST_HOUR -> R.string.last_hour
-            }
-        }
-    }
-}
 
 @Composable
 fun DateTimeFilterDialog(
@@ -165,7 +47,11 @@ fun DateTimeFilterDialog(
     }
 ) {
     // Локальные переменные состояния для хранения выбранных дат
-    var selectedFromDate by remember { mutableStateOf(fromDate ?: LocalDateTime.now().minusHours(1)) }
+    var selectedFromDate by remember {
+        mutableStateOf(
+            fromDate ?: LocalDateTime.now().minusHours(1)
+        )
+    }
     var selectedToDate by remember { mutableStateOf(toDate ?: LocalDateTime.now()) }
 
     // Состояния для отображения диалогов выбора даты и времени
@@ -410,139 +296,28 @@ fun DateTimeFilterDialog(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CustomDatePickerDialog(
-    selectedDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault())
-            .toInstant().toEpochMilli()
-    )
+enum class DateFilterPreset {
+    LAST_5_MINUTES,
+    LAST_30_MINUTES,
+    LAST_HOUR;
 
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    datePickerState.selectedDateMillis?.let { dateMillis ->
-                        val localDate = Instant.ofEpochMilli(dateMillis)
-                            .atZone(ZoneId.systemDefault())
-                            .toLocalDate()
-                        onDateSelected(localDate)
-                    }
-                }
-            ) {
-                Text(stringResource(id = R.string.ok))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(id = R.string.cancel))
+    fun getDates(): Pair<LocalDateTime, LocalDateTime> {
+        val endDate = LocalDateTime.now()
+        val startDate = when(this) {
+            LAST_5_MINUTES -> endDate.minus(5, ChronoUnit.MINUTES)
+            LAST_30_MINUTES -> endDate.minus(30, ChronoUnit.MINUTES)
+            LAST_HOUR -> endDate.minus(1, ChronoUnit.HOURS)
+        }
+        return Pair(startDate, endDate)
+    }
+
+    companion object {
+        fun getResourceId(preset: DateFilterPreset): Int {
+            return when(preset) {
+                LAST_5_MINUTES -> R.string.last_5_minutes
+                LAST_30_MINUTES -> R.string.last_30_minutes
+                LAST_HOUR -> R.string.last_hour
             }
         }
-    ) {
-        DatePicker(state = datePickerState)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CustomTimePickerDialog(
-    selectedTime: LocalTime,
-    onTimeSelected: (LocalTime) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val timePickerState = rememberTimePickerState(
-        initialHour = selectedTime.hour,
-        initialMinute = selectedTime.minute
-    )
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true
-        )
-    ) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            tonalElevation = 6.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = stringResource(id = R.string.select_time),
-                    style = MaterialTheme.typography.titleLarge
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                TimePicker(state = timePickerState)
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(id = R.string.cancel))
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    TextButton(
-                        onClick = {
-                            val selectedTimeFromPicker = LocalTime.of(
-                                timePickerState.hour,
-                                timePickerState.minute,
-                                0  // seconds
-                            )
-                            onTimeSelected(selectedTimeFromPicker)
-                        }
-                    ) {
-                        Text(stringResource(id = R.string.ok))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun DateFilterSummary(
-    fromDate: LocalDateTime?,
-    toDate: LocalDateTime?,
-    modifier: Modifier = Modifier
-) {
-    if (fromDate == null || toDate == null) return
-
-    val dateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
-
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = stringResource(id = R.string.date_filter_active),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        Text(
-            text = "${fromDate.format(dateTimeFormatter)} - ${toDate.format(dateTimeFormatter)}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }

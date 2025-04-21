@@ -13,7 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
@@ -244,6 +245,7 @@ private fun WizardActions(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // Кнопка "Назад"
         if ((wizardState.canGoBack && wizardState.currentStepIndex > 0) || wizardState.isCompleted) {
             OutlinedButton(
                 onClick = {
@@ -254,7 +256,7 @@ private fun WizardActions(
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Назад"
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -265,7 +267,26 @@ private fun WizardActions(
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        if (wizardState.isCompleted) {
+        // Кнопка "Вперед" - отображается только если есть результат для текущего шага и визард не завершен
+        if (!wizardState.isCompleted && wizardState.currentStep != null &&
+            wizardState.hasResultForStep(wizardState.currentStep!!.id)) {
+            OutlinedButton(
+                onClick = {
+                    coroutineScope.launch {
+                        actionWizardController.processForwardStep()
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Вперед")
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Вперед"
+                )
+            }
+        } else if (wizardState.isCompleted) {
+            // Кнопка "Завершить" - отображается только на итоговом экране
             Button(
                 onClick = onComplete,
                 modifier = Modifier.weight(1f)
@@ -277,6 +298,9 @@ private fun WizardActions(
                     contentDescription = "Завершить"
                 )
             }
+        } else {
+            // Пустой Spacer для сохранения выравнивания, если нет кнопок "Вперед" или "Завершить"
+            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }
@@ -291,8 +315,11 @@ private fun WizardHeader(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Используем getWmsActionDescription вместо name для строкового представления действия
         Text(
-            text = wizardState.action?.wmsAction?.name ?: "Выполнение действия",
+            text = wizardState.action?.wmsAction?.let {
+                getWmsActionDescription(it)
+            } ?: "Выполнение действия",
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.weight(1f)
         )

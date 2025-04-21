@@ -15,9 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * Сервис для централизованного управления сканером
- */
+
 class ScannerService(
     private val scannerFactory: BarcodeScannerFactory,
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
@@ -27,10 +25,8 @@ class ScannerService(
     private val _scannerState = MutableStateFlow<ScannerState>(ScannerState.Uninitialized)
     val scannerState = _scannerState.asStateFlow()
 
-    // Общий обработчик сканирования
     private val globalScanListener = object : ScanResultListener {
         override fun onScanSuccess(result: ScanResult) {
-            // Уведомляем всех слушателей
             listeners.forEach { it.onScanSuccess(result) }
         }
 
@@ -39,15 +35,11 @@ class ScannerService(
         }
     }
 
-    // Привязка к экрану с LifecycleOwner (для камеры)
     fun attachToScreen(lifecycleOwner: LifecycleOwner? = null) {
-        // Привязываем сканер только если это DefaultBarcodeScanner
         if (lifecycleOwner != null && scanner is DefaultBarcodeScanner) {
             (scanner as DefaultBarcodeScanner).setLifecycleOwner(lifecycleOwner)
-            Timber.d("Scanner attached to screen with lifecycle owner")
         }
 
-        // Включаем сканер только если уже инициализирован и есть слушатели
         if (listeners.isNotEmpty() &&
             (_scannerState.value == ScannerState.Initialized ||
                     _scannerState.value == ScannerState.Disabled)) {
@@ -55,19 +47,16 @@ class ScannerService(
         }
     }
 
-    // Отвязка от экрана
     fun detachFromScreen() {
         if (listeners.isEmpty() && _scannerState.value == ScannerState.Enabled) {
             disable()
         }
     }
 
-    // Добавить слушателя
     fun addListener(listener: ScanResultListener) {
         if (!listeners.contains(listener)) {
             listeners.add(listener)
 
-            // Активируем сканер, если есть хотя бы один слушатель и сканер реальный
             if (listeners.isNotEmpty() &&
                 hasRealScanner() &&
                 (_scannerState.value == ScannerState.Initialized ||
@@ -77,17 +66,14 @@ class ScannerService(
         }
     }
 
-    // Удалить слушателя
     fun removeListener(listener: ScanResultListener) {
         listeners.remove(listener)
 
-        // Деактивируем сканер, если не осталось слушателей
         if (listeners.isEmpty() && _scannerState.value == ScannerState.Enabled) {
             disable()
         }
     }
 
-    // Проверка наличия реального сканера (не NullBarcodeScanner)
     fun hasRealScanner(): Boolean {
         return scanner != null && scanner !is NullBarcodeScanner
     }
@@ -100,7 +86,6 @@ class ScannerService(
         val lifecycleOwner = LocalLifecycleOwner.current
 
         DisposableEffect(lifecycleOwner) {
-            // Создаем слушателя
             val listener = object : ScanResultListener {
                 override fun onScanSuccess(result: ScanResult) {
                     onScanResult(result.barcode)
@@ -111,16 +96,11 @@ class ScannerService(
                 }
             }
 
-            // Привязываем сканер к экрану только если это не NullBarcodeScanner
             if (hasRealScanner()) {
                 attachToScreen(lifecycleOwner)
                 addListener(listener)
-                Timber.d("Real scanner attached to screen in ScannerEffect")
-            } else {
-                Timber.d("No real scanner available, ScannerEffect will not attach to screen")
             }
 
-            // При размонтировании удаляем слушателя и отвязываемся от экрана
             onDispose {
                 removeListener(listener)
                 if (hasRealScanner()) {
@@ -130,14 +110,6 @@ class ScannerService(
         }
     }
 
-    // Обновление LifecycleOwner для DefaultBarcodeScanner
-    fun updateLifecycleOwner(lifecycleOwner: LifecycleOwner) {
-        if (scanner is DefaultBarcodeScanner) {
-            (scanner as DefaultBarcodeScanner).setLifecycleOwner(lifecycleOwner)
-        }
-    }
-
-    // Инициализация
     fun initialize(lifecycleOwner: LifecycleOwner? = null) {
         if (_scannerState.value != ScannerState.Uninitialized) return
 
@@ -151,9 +123,7 @@ class ScannerService(
                 if (result.isSuccess) {
                     this@ScannerService.scanner = scanner
                     _scannerState.value = ScannerState.Initialized
-                    Timber.i("Scanner initialized: ${scanner.getManufacturer()}")
 
-                    // Если есть слушатели и это реальный сканер, активируем его
                     if (listeners.isNotEmpty() && hasRealScanner()) {
                         enable()
                     }
@@ -168,7 +138,6 @@ class ScannerService(
         }
     }
 
-    // Активация сканера
     fun enable() {
         if (_scannerState.value != ScannerState.Initialized &&
             _scannerState.value != ScannerState.Disabled) return
@@ -176,10 +145,8 @@ class ScannerService(
         coroutineScope.launch {
             try {
                 scanner?.let { scanner ->
-                    // Если это NullBarcodeScanner, не включаем его реально
-                    if (scanner is NullBarcodeScanner) {
+                        if (scanner is NullBarcodeScanner) {
                         _scannerState.value = ScannerState.Enabled
-                        Timber.i("Null scanner 'enabled' (no actual scanner activation)")
                         return@launch
                     }
 
@@ -189,7 +156,6 @@ class ScannerService(
 
                     if (result.isSuccess) {
                         _scannerState.value = ScannerState.Enabled
-                        Timber.i("Scanner enabled: ${scanner.getManufacturer()}")
                     } else {
                         _scannerState.value = ScannerState.Error(result.exceptionOrNull()?.message ?: "Unknown error")
                         Timber.e(result.exceptionOrNull(), "Failed to enable scanner")
@@ -205,22 +171,18 @@ class ScannerService(
         }
     }
 
-    // Деактивация сканера
     fun disable() {
         if (_scannerState.value != ScannerState.Enabled) return
 
         coroutineScope.launch {
             try {
-                // Если это NullBarcodeScanner, просто меняем состояние
                 if (scanner is NullBarcodeScanner) {
                     _scannerState.value = ScannerState.Disabled
-                    Timber.i("Null scanner 'disabled' (no actual scanner deactivation)")
                     return@launch
                 }
 
                 scanner?.disable()
                 _scannerState.value = ScannerState.Disabled
-                Timber.i("Scanner disabled")
             } catch (e: Exception) {
                 _scannerState.value = ScannerState.Error(e.message ?: "Unknown error")
                 Timber.e(e, "Exception during scanner disabling")
@@ -228,15 +190,10 @@ class ScannerService(
         }
     }
 
-    /**
-     * Проверяет, включен ли сканер
-     * @return true, если сканер включен
-     */
     fun isEnabled(): Boolean {
         return scannerState.value == ScannerState.Enabled
     }
 
-    // Программно запустить сканирование (только для DataWedge)
     fun triggerScan() {
         scanner?.let {
             if (it is DataWedgeBarcodeScanner) {
@@ -245,7 +202,6 @@ class ScannerService(
         }
     }
 
-    // Полное освобождение ресурсов
     fun dispose() {
         coroutineScope.launch {
             listeners.clear()
@@ -254,7 +210,6 @@ class ScannerService(
                 scanner?.dispose()
                 scanner = null
                 _scannerState.value = ScannerState.Uninitialized
-                Timber.i("Scanner disposed")
             } catch (e: Exception) {
                 Timber.e(e, "Exception during scanner disposal")
             }
@@ -262,9 +217,6 @@ class ScannerService(
     }
 }
 
-/**
- * Состояния сканера
- */
 sealed class ScannerState {
     object Uninitialized : ScannerState()
     object Initializing : ScannerState()

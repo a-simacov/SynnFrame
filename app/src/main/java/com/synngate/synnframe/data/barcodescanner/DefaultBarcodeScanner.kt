@@ -29,7 +29,6 @@ class DefaultBarcodeScanner(
     private var cameraProvider: ProcessCameraProvider? = null
     private var analysisUseCase: ImageAnalysis? = null
 
-    // Используем один и тот же lifecycle владельца для камеры
     private var lifecycleOwner: LifecycleOwner? = null
 
     override suspend fun initialize(): Result<Unit> = withContext(Dispatchers.IO) {
@@ -38,7 +37,6 @@ class DefaultBarcodeScanner(
         }
 
         return@withContext try {
-            // Получаем ProcessCameraProvider
             val provider = suspendCancellableCoroutine<ProcessCameraProvider> { continuation ->
                 ProcessCameraProvider.getInstance(context).also { future ->
                     future.addListener({
@@ -86,15 +84,12 @@ class DefaultBarcodeScanner(
 
         return@withContext try {
             withContext(Dispatchers.Main) {
-                // Проверяем, что lifecycleOwner установлен
                 if (lifecycleOwner == null) {
                     return@withContext Result.failure(Exception("LifecycleOwner not set for camera"))
                 }
 
-                // Отвязываем все предыдущие use cases
                 cameraProvider?.unbindAll()
 
-                // Подготавливаем анализатор изображений
                 analysisUseCase = ImageAnalysis.Builder()
                     .setTargetResolution(android.util.Size(1280, 720))
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
@@ -115,10 +110,8 @@ class DefaultBarcodeScanner(
                     }
 
                 try {
-                    // Определяем selector для задней камеры
                     val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-                    // Связываем use cases с камерой
                     cameraProvider?.bindToLifecycle(
                         lifecycleOwner!!,
                         cameraSelector,
@@ -143,7 +136,6 @@ class DefaultBarcodeScanner(
 
         try {
             withContext(Dispatchers.Main) {
-                // Отвязываем все use cases
                 cameraProvider?.unbindAll()
                 analysisUseCase = null
             }
@@ -161,7 +153,6 @@ class DefaultBarcodeScanner(
 
     override fun getManufacturer(): ScannerManufacturer = ScannerManufacturer.DEFAULT
 
-    // Метод для установки LifecycleOwner, необходимый для работы камеры
     fun setLifecycleOwner(owner: LifecycleOwner) {
         lifecycleOwner = owner
     }

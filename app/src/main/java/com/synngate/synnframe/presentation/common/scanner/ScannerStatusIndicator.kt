@@ -40,12 +40,9 @@ fun ScannerStatusIndicator(
     val scannerState by scannerService.scannerState.collectAsState()
     val tooltipState = rememberTooltipState()
 
-    // Проверяем, есть ли реальный сканер
     val hasRealScanner = scannerService.hasRealScanner()
 
-    // Определяем цвет индикатора и текст статуса в зависимости от состояния
     val (statusColor, statusText, showError) = when {
-        // Специальная обработка для "пустого" сканера
         !hasRealScanner -> Triple(
             Color.Gray,
             "Сканер недоступен",
@@ -135,7 +132,6 @@ fun ScannerStatusIndicator(
                     }
                 }
 
-                // Статус-индикатор (цветная точка)
                 Box(
                     modifier = Modifier
                         .padding(4.dp)
