@@ -20,10 +20,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
@@ -34,9 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -45,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.synngate.synnframe.R
-import com.synngate.synnframe.domain.entity.taskx.AvailableTaskAction
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.presentation.common.components.ExpandableFab
 import com.synngate.synnframe.presentation.common.components.FabItem
@@ -71,15 +66,6 @@ fun TaskXDetailScreen(
     val wizardState by viewModel.actionWizardController.wizardState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val task = state.task
-
-    // Флаг для показа дополнительных действий
-    var showAdditionalActions by remember { mutableStateOf(false) }
-
-    // Проверка наличия доступных дополнительных действий
-    val hasAdditionalActions = task?.let {
-        !it.isVerified && viewModel.isActionAvailable(AvailableTaskAction.VERIFY_TASK) ||
-                viewModel.isActionAvailable(AvailableTaskAction.PRINT_TASK_LABEL)
-    } ?: false
 
     val nextActionId = state.nextActionId
 
@@ -161,8 +147,7 @@ fun TaskXDetailScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         AppScaffold(
-            title = task?.name ?: stringResource(R.string.task_details),
-            // Убран subtitle со штрихкодом задания
+            title = task?.taskTypeId?.let { viewModel.formatTaskType(it) } ?: "Unknown",
             onNavigateBack = navigateBack,
             snackbarHostState = snackbarHostState,
             notification = state.error?.let {
@@ -170,34 +155,12 @@ fun TaskXDetailScreen(
             },
             isLoading = state.isLoading,
             floatingActionButton = {
-                // Кнопка добавления действия показывается только для задания в статусе "Выполняется"
                 if (task?.status == TaskXStatus.IN_PROGRESS) {
                     val isStrictOrder = state.taskType?.strictActionOrder == true
 
-                    if (isStrictOrder) {
-                        // Для заданий со строгим порядком выполнения - кнопка с текстом
-                        ExtendedFloatingActionButton(
-                            onClick = {
-                                // Получаем первое невыполненное действие
-                                task.getNextAction()?.let { action ->
-                                    viewModel.startActionExecution(action.id)
-                                }
-                            },
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            icon = {
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = null
-                                )
-                            },
-                            text = { Text("Выполнить действие") }
-                        )
-                    } else {
-                        // Для заданий с произвольным порядком - обычная кнопка с плюсом
+                    if (!isStrictOrder) {
                         FloatingActionButton(
                             onClick = {
-                                // Получаем первое невыполненное действие и запускаем его
                                 task.getNextAction()?.let { action ->
                                     viewModel.startActionExecution(action.id)
                                 }
@@ -223,77 +186,35 @@ fun TaskXDetailScreen(
                 modifier = modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(16.dp)
+                    .padding(8.dp)
             ) {
-                // Информация о задании
                 Card(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(8.dp)
                     ) {
-                        // Заголовок и статус
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = viewModel.formatTaskType(task.taskTypeId),
-                                    style = MaterialTheme.typography.titleMedium
-                                )
+                        Text(
+                            text = task.name ?: stringResource(R.string.task_details),
+                            style = MaterialTheme.typography.titleMedium
+                        )
 
-                                // Добавлен штрихкод задания
-                                Text(
-                                    text = "Штрихкод: ${task.barcode}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-
-                                if (task.isVerified) {
-                                    Text(
-                                        text = "Верифицировано",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-
-                            TaskXStatusIndicator(
-                                status = task.status,
-                                formatStatus = viewModel::formatTaskStatus
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-                        HorizontalDivider()
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Только даты начала и изменения
-                        Row(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            task.startedAt?.let {
-                                Text(
-                                    text = "Начато: ${viewModel.formatDate(it)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-
-                            task.lastModifiedAt?.let {
-                                Text(
-                                    text = "Изменено: ${viewModel.formatDate(it)}",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
+                        // Добавлен штрихкод задания
+                        Text(
+                            text = "Штрихкод: ${task.barcode}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        TaskXStatusIndicator(
+                            status = task.status,
+                            formatStatus = viewModel::formatTaskStatus
+                        )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Панель переключения вида
                 Row(
@@ -310,7 +231,7 @@ fun TaskXDetailScreen(
                                 MaterialTheme.colorScheme.surfaceVariant
                         )
                     ) {
-                        Text("Запланировано")
+                        Text("План")
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
@@ -325,11 +246,11 @@ fun TaskXDetailScreen(
                                 MaterialTheme.colorScheme.surfaceVariant
                         )
                     ) {
-                        Text("Выполнено")
+                        Text("Факт")
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Содержимое в зависимости от выбранного вида
                 Box(modifier = Modifier.weight(1f)) {

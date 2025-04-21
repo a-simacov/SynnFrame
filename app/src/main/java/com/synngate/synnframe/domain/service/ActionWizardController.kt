@@ -151,12 +151,38 @@ class ActionWizardController(
             // Устанавливаем флаг обработки
             _wizardState.value = state.copy(isProcessingStep = true)
 
-            // Остальной код...
+            if (result == null) {
+                // Если результат null, это означает шаг назад
+                handleBackStep(state)
+            } else {
+                // Обработка результата шага и переход к следующему
+                handleStepResult(state, result)
+            }
         } catch (e: Exception) {
             Timber.e(e, "Error processing step result")
             // В случае ошибки также сбрасываем флаг обработки
             _wizardState.value = _wizardState.value?.copy(isProcessingStep = false)
         }
+    }
+
+    private fun handleStepResult(state: ActionWizardState, result: Any) {
+        // Получаем текущий шаг
+        val currentStep = state.currentStep ?: return
+        val stepId = currentStep.id
+
+        // Сохраняем результат текущего шага
+        val updatedResults = state.results.toMutableMap()
+        updatedResults[stepId] = result
+
+        // Переходим к следующему шагу
+        _wizardState.value = state.copy(
+            currentStepIndex = state.currentStepIndex + 1,
+            results = updatedResults,
+            lastScannedBarcode = null,  // Сбрасываем последний отсканированный штрихкод
+            isProcessingStep = false     // Сбрасываем флаг обработки
+        )
+
+        Timber.d("Moving to next step with result for step $stepId: $result")
     }
 
     /**
