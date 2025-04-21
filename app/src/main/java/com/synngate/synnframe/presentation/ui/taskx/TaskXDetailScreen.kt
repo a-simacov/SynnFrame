@@ -20,7 +20,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
@@ -32,7 +31,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -41,8 +39,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
-import com.synngate.synnframe.presentation.common.components.ExpandableFab
-import com.synngate.synnframe.presentation.common.components.FabItem
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
@@ -143,187 +139,198 @@ fun TaskXDetailScreen(
         }
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        AppScaffold(
-            title = task?.taskTypeId?.let { viewModel.formatTaskType(it) } ?: "Unknown",
-            onNavigateBack = navigateBack,
-            snackbarHostState = snackbarHostState,
-            notification = state.error?.let {
-                Pair(it, StatusType.ERROR)
-            },
-            isLoading = state.isLoading,
-            floatingActionButton = {
-                if (task?.status == TaskXStatus.IN_PROGRESS) {
-                    val isStrictOrder = state.taskType?.strictActionOrder == true
+    AppScaffold(
+        title = task?.taskTypeId?.let { viewModel.formatTaskType(it) } ?: "Unknown",
+        onNavigateBack = navigateBack,
+        snackbarHostState = snackbarHostState,
+        notification = state.error?.let {
+            Pair(it, StatusType.ERROR)
+        },
+        isLoading = state.isLoading
+    ) { paddingValues ->
+        if (task == null) {
+            EmptyScreenContent(
+                message = stringResource(R.string.loading_task),
+                modifier = Modifier.padding(paddingValues)
+            )
+            return@AppScaffold
+        }
 
-                    if (!isStrictOrder) {
-                        FloatingActionButton(
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(4.dp)
+        ) {
+            ExpandableTaskInfoCard(
+                title = stringResource(R.string.task_details),
+                initiallyExpanded = false, // По умолчанию свернуто
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Имя: ${task.name}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Штрихкод: ${task.barcode}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Статус задания
+                TaskXStatusIndicator(
+                    status = task.status,
+                )
+
+                // Можно добавить дополнительную информацию
+                task.startedAt?.let {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Начато: ${viewModel.formatDate(it)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                task.lastModifiedAt?.let {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Изменено: ${viewModel.formatDate(it)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Панель переключения вида
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                FilledTonalButton(
+                    onClick = { viewModel.showPlannedActions() },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (state.activeView == TaskXDetailView.PLANNED_ACTIONS)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Text("План")
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                FilledTonalButton(
+                    onClick = { viewModel.showFactActions() },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (state.activeView == TaskXDetailView.FACT_ACTIONS)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Text("Факт")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Содержимое в зависимости от выбранного вида
+            when (state.activeView) {
+                TaskXDetailView.PLANNED_ACTIONS -> {
+                    Box(modifier = Modifier.weight(1f)) {
+                        PlannedActionsView(
+                            plannedActions = task.plannedActions,
+                            nextActionId = nextActionId,
+                            onActionClick = { action ->
+                                // Проверяем, что задание в статусе "Выполняется"
+                                if (task.status == TaskXStatus.IN_PROGRESS &&
+                                    !action.isCompleted &&
+                                    !action.isSkipped
+                                ) {
+                                    viewModel.tryExecuteAction(action.id)
+                                }
+                            }
+                        )
+                    }
+
+                    // Кнопка добавления нового действия (если задание в статусе "Выполняется" и порядок не строгий)
+                    if (task.status == TaskXStatus.IN_PROGRESS &&
+                        state.taskType?.strictActionOrder != true) {
+                        Button(
                             onClick = {
                                 task.getNextAction()?.let { action ->
                                     viewModel.startActionExecution(action.id)
                                 }
                             },
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = "Добавить действие")
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Добавить действие",
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
+                            Text("Добавить действие")
                         }
                     }
-                }
-            }
-        ) { paddingValues ->
-            if (task == null) {
-                EmptyScreenContent(
-                    message = stringResource(R.string.loading_task),
-                    modifier = Modifier.padding(paddingValues)
-                )
-                return@AppScaffold
-            }
 
-            Column(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(4.dp)
-            ) {
-                ExpandableTaskInfoCard(
-                    title = stringResource(R.string.task_details),
-                    initiallyExpanded = false, // По умолчанию свернуто
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Имя: ${task.name}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = "Штрихкод: ${task.barcode}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Статус задания
-                    TaskXStatusIndicator(
-                        status = task.status,
-                    )
-
-                    // Можно добавить дополнительную информацию
-                    task.startedAt?.let {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Начато: ${viewModel.formatDate(it)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    task.lastModifiedAt?.let {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Изменено: ${viewModel.formatDate(it)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Панель переключения вида
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    FilledTonalButton(
-                        onClick = { viewModel.showPlannedActions() },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (state.activeView == TaskXDetailView.PLANNED_ACTIONS)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Text("План")
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    FilledTonalButton(
-                        onClick = { viewModel.showFactActions() },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (state.activeView == TaskXDetailView.FACT_ACTIONS)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Text("Факт")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Содержимое в зависимости от выбранного вида
-                Box(modifier = Modifier.weight(1f)) {
-                    when (state.activeView) {
-                        TaskXDetailView.PLANNED_ACTIONS -> {
-                            PlannedActionsView(
-                                plannedActions = task.plannedActions,
-                                nextActionId = nextActionId,
-                                onActionClick = { action ->
-                                    // Проверяем, что задание в статусе "Выполняется"
-                                    if (task.status == TaskXStatus.IN_PROGRESS &&
-                                        !action.isCompleted &&
-                                        !action.isSkipped
-                                    ) {
-                                        viewModel.tryExecuteAction(action.id)
-                                    }
+                    if (state.statusActions.isNotEmpty()) {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                //.padding(vertical = 8.dp)
+                        ) {
+                            state.statusActions.forEach { actionData ->
+                                Button(
+                                    onClick = actionData.onClick,
+                                    modifier = Modifier
+                                        .padding(horizontal = 4.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = when (actionData.id) {
+                                            "start" -> MaterialTheme.colorScheme.primary
+                                            "finish" -> MaterialTheme.colorScheme.secondary
+                                            "pause" -> MaterialTheme.colorScheme.tertiary
+                                            "resume" -> MaterialTheme.colorScheme.primary
+                                            else -> MaterialTheme.colorScheme.primary
+                                        }
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = getIconByName(actionData.iconName),
+                                        contentDescription = actionData.description,
+                                        modifier = Modifier.padding(end = 8.dp)
+                                    )
+                                    Text(actionData.text)
                                 }
-                            )
-                        }
-
-                        TaskXDetailView.FACT_ACTIONS -> {
-                            FactActionsView(
-                                factActions = task.factActions,
-                                formatDate = viewModel::formatDate
-                            )
+                            }
                         }
                     }
                 }
-            }
-        }
 
-        // ФАБ кнопки размещаем справа (меняем на BottomEnd)
-        if (task != null) {
-            // Создаем список кнопок в зависимости от текущего статуса
-            val fabItems = state.statusActions.map { actionData ->
-                FabItem(
-                    icon = getIconByName(actionData.iconName),
-                    contentDescription = actionData.description,
-                    text = actionData.text,
-                    onClick = actionData.onClick
-                )
-            }
-
-            // Отображаем расширяемую кнопку только если есть доступные действия
-            if (fabItems.isNotEmpty()) {
-                ExpandableFab(
-                    icon = Icons.Default.Info,
-                    contentDescription = "Управление статусом",
-                    items = fabItems,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd) // Изменено с BottomStart на BottomEnd
-                        .padding(16.dp)
-                )
+                TaskXDetailView.FACT_ACTIONS -> {
+                    FactActionsView(
+                        factActions = task.factActions,
+                        formatDate = viewModel::formatDate,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
