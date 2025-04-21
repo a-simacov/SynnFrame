@@ -83,6 +83,18 @@ fun ActionWizardScreen(
     // Получаем сервис сканера
     val scannerService = LocalScannerService.current
 
+    // Проверка и включение сканера при открытии визарда
+    LaunchedEffect(scannerService) {
+        scannerService?.let {
+            if (!it.isEnabled()) {
+                it.enable()
+                Timber.d("ActionWizardScreen: Сканер был отключен, выполняем принудительное включение")
+            } else {
+                Timber.d("ActionWizardScreen: Сканер уже включен")
+            }
+        }
+    }
+
     // Переменная для отслеживания обработки штрихкода
     var isProcessingGlobalBarcode by remember { mutableStateOf(false) }
 

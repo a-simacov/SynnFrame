@@ -198,6 +198,14 @@ class ScannerService(
         }
     }
 
+    /**
+     * Проверяет, включен ли сканер
+     * @return true, если сканер включен
+     */
+    fun isEnabled(): Boolean {
+        return scannerState.value == ScannerState.Enabled
+    }
+
     // Программно запустить сканирование (только для DataWedge)
     fun triggerScan() {
         scanner?.let {

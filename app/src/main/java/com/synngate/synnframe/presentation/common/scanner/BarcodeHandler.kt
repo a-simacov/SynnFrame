@@ -89,21 +89,15 @@ fun BarcodeHandlerWithState(
         isProcessingBarcode = false
         Timber.d("BarcodeHandlerWithState: Сброс флага isProcessingBarcode для шага $stepKey")
 
-        // Важное дополнение - переинициализация сканера при смене шага
+        // Убираем переинициализацию сканера - она создает проблемы
+        // Вместо этого просто проверяем, что сканер включен
         scannerService?.let {
-            // Сначала отключаем, затем включаем сканер заново для нового шага
-            it.disable()
-            it.enable()
-            Timber.d("BarcodeHandlerWithState: Переинициализация сканера для шага $stepKey")
-        }
-    }
-
-    // Освобождение сканера при удалении компонента
-    DisposableEffect(stepKey) {
-        onDispose {
-            if (isProcessingBarcode) {
-                isProcessingBarcode = false
-                Timber.d("BarcodeHandlerWithState: Сброс флага isProcessingBarcode при размонтировании для шага $stepKey")
+            // Проверяем, включен ли сканер, и если нет - включаем его
+            if (!it.isEnabled()) {
+                it.enable()
+                Timber.d("BarcodeHandlerWithState: Включение сканера для шага $stepKey")
+            } else {
+                Timber.d("BarcodeHandlerWithState: Сканер уже включен для шага $stepKey")
             }
         }
     }
@@ -127,4 +121,15 @@ fun BarcodeHandlerWithState(
             }
         }
     )
+
+    // Освобождение сканера при удалении компонента - только отмечаем обработку как завершенную,
+    // но не отключаем сканер, так как он может использоваться другими компонентами
+    DisposableEffect(stepKey) {
+        onDispose {
+            if (isProcessingBarcode) {
+                isProcessingBarcode = false
+                Timber.d("BarcodeHandlerWithState: Сброс флага isProcessingBarcode при размонтировании для шага $stepKey")
+            }
+        }
+    }
 }
