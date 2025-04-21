@@ -7,6 +7,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.synngate.synnframe.presentation.common.LocalScannerService
+import timber.log.Timber
 
 /**
  * Компонент для простой интеграции сканера в любой экран
@@ -19,7 +20,16 @@ fun ScannerListener(
     // Получаем доступ к сервису сканера через CompositionLocal
     val scannerService = LocalScannerService.current
 
-    scannerService?.ScannerEffect(onScanResult = onBarcodeScanned)
+    // Проверяем, есть ли реальный сканер
+    scannerService?.let {
+        if (it.hasRealScanner()) {
+            // Используем ScannerEffect только если есть реальный сканер
+            it.ScannerEffect(onScanResult = onBarcodeScanned)
+            Timber.d("ScannerListener: подключен к реальному сканеру")
+        } else {
+            Timber.d("ScannerListener: нет реального сканера, слушатель не активирован")
+        }
+    }
 }
 
 @Composable

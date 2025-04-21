@@ -926,7 +926,7 @@ fun DeviceTypeSection(
     SectionHeader(title = stringResource(R.string.device_settings))
 
     InfoCard(
-        title = stringResource(R.string.device_settings),
+        title = "Тип сканера",
         modifier = modifier
     ) {
         val types = DeviceType.entries
@@ -937,11 +937,11 @@ fun DeviceTypeSection(
             onValueChange = { onDeviceTypeChange(it) },
             valueToString = { deviceType ->
                 when (deviceType) {
-                    DeviceType.STANDARD -> stringResource(R.string.device_type_standard)
+                    DeviceType.STANDARD -> "Стандарт (без авто-скана)"
                     DeviceType.ZEBRA_DATAWEDGE -> stringResource(R.string.scanner_type_datawedge)
+                    DeviceType.CAMERA_SCANNER -> "Камера"
                 }
             },
-            labelText = stringResource(R.string.device_type),
             modifier = modifier
         )
 

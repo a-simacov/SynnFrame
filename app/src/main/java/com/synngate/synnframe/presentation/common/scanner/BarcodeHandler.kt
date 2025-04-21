@@ -26,17 +26,24 @@ fun BarcodeHandler(
     // Получаем сканер сервис
     val scannerService = LocalScannerService.current
 
+    // Проверяем, есть ли реальный сканер
+    val hasRealScanner = scannerService?.hasRealScanner() ?: false
+
     // Сброс флага при инициализации компонента
     LaunchedEffect(stepKey) {
         isProcessingBarcode = false
         Timber.d("BarcodeHandler: Сброс флага isProcessingBarcode для шага $stepKey")
 
-        // Важное дополнение - переинициализация сканера при смене шага
-        scannerService?.let {
-            // Сначала отключаем, затем включаем сканер заново для нового шага
-            it.disable()
-            it.enable()
-            Timber.d("BarcodeHandler: Переинициализация сканера для шага $stepKey")
+        // Переинициализируем сканер только если это реальный сканер
+        if (hasRealScanner) {
+            scannerService?.let {
+                // Сначала отключаем, затем включаем сканер заново для нового шага
+                it.disable()
+                it.enable()
+                Timber.d("BarcodeHandler: Переинициализация сканера для шага $stepKey")
+            }
+        } else {
+            Timber.d("BarcodeHandler: Пропуск переинициализации для пустого сканера")
         }
     }
 
@@ -50,23 +57,25 @@ fun BarcodeHandler(
         }
     }
 
-    // Слушатель сканирования
-    ScannerListener(
-        onBarcodeScanned = { barcode ->
-            if (!isProcessingBarcode) {
-                Timber.d("BarcodeHandler: Получен штрихкод: $barcode для шага $stepKey")
-                isProcessingBarcode = true
+    // Слушатель сканирования - активируем только если есть реальный сканер
+    if (hasRealScanner) {
+        ScannerListener(
+            onBarcodeScanned = { barcode ->
+                if (!isProcessingBarcode) {
+                    Timber.d("BarcodeHandler: Получен штрихкод: $barcode для шага $stepKey")
+                    isProcessingBarcode = true
 
-                // Вызываем обработчик
-                onBarcodeScanned(barcode)
+                    // Вызываем обработчик
+                    onBarcodeScanned(barcode)
 
-                // Не сбрасываем флаг автоматически, это должен делать вызывающий код
-                // в случае ошибки обработки
-            } else {
-                Timber.d("BarcodeHandler: Игнорирование штрихкода, т.к. текущий штрихкод обрабатывается")
+                    // Не сбрасываем флаг автоматически, это должен делать вызывающий код
+                    // в случае ошибки обработки
+                }
             }
-        }
-    )
+        )
+    } else {
+        Timber.d("BarcodeHandler: Сканер не активирован (нет реального сканера)")
+    }
 }
 
 /**
@@ -84,21 +93,27 @@ fun BarcodeHandlerWithState(
     // Получаем сканер сервис
     val scannerService = LocalScannerService.current
 
+    // Проверяем, есть ли реальный сканер
+    val hasRealScanner = scannerService?.hasRealScanner() ?: false
+
     // Сброс флага при инициализации компонента
     LaunchedEffect(stepKey) {
         isProcessingBarcode = false
         Timber.d("BarcodeHandlerWithState: Сброс флага isProcessingBarcode для шага $stepKey")
 
-        // Убираем переинициализацию сканера - она создает проблемы
-        // Вместо этого просто проверяем, что сканер включен
-        scannerService?.let {
-            // Проверяем, включен ли сканер, и если нет - включаем его
-            if (!it.isEnabled()) {
-                it.enable()
-                Timber.d("BarcodeHandlerWithState: Включение сканера для шага $stepKey")
-            } else {
-                Timber.d("BarcodeHandlerWithState: Сканер уже включен для шага $stepKey")
+        // Проверяем и включаем сканер только если это реальный сканер
+        if (hasRealScanner) {
+            scannerService?.let {
+                // Проверяем, включен ли сканер, и если нет - включаем его
+                if (!it.isEnabled()) {
+                    it.enable()
+                    Timber.d("BarcodeHandlerWithState: Включение сканера для шага $stepKey")
+                } else {
+                    Timber.d("BarcodeHandlerWithState: Сканер уже включен для шага $stepKey")
+                }
             }
+        } else {
+            Timber.d("BarcodeHandlerWithState: Пропуск инициализации для пустого сканера")
         }
     }
 
@@ -107,20 +122,22 @@ fun BarcodeHandlerWithState(
         isProcessingBarcode = newState
     }
 
-    // Слушатель сканирования
-    ScannerListener(
-        onBarcodeScanned = { barcode ->
-            if (!isProcessingBarcode) {
-                Timber.d("BarcodeHandlerWithState: Получен штрихкод: $barcode для шага $stepKey")
-                isProcessingBarcode = true
+    // Слушатель сканирования - активируем только если есть реальный сканер
+    if (hasRealScanner) {
+        ScannerListener(
+            onBarcodeScanned = { barcode ->
+                if (!isProcessingBarcode) {
+                    Timber.d("BarcodeHandlerWithState: Получен штрихкод: $barcode для шага $stepKey")
+                    isProcessingBarcode = true
 
-                // Вызываем обработчик с функцией обратного вызова для управления состоянием
-                onBarcodeScanned(barcode, setProcessingState)
-            } else {
-                Timber.d("BarcodeHandlerWithState: Игнорирование штрихкода, т.к. текущий штрихкод обрабатывается")
+                    // Вызываем обработчик с функцией обратного вызова для управления состоянием
+                    onBarcodeScanned(barcode, setProcessingState)
+                }
             }
-        }
-    )
+        )
+    } else {
+        Timber.d("BarcodeHandlerWithState: Сканер не активирован (нет реального сканера)")
+    }
 
     // Освобождение сканера при удалении компонента - только отмечаем обработку как завершенную,
     // но не отключаем сканер, так как он может использоваться другими компонентами

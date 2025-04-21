@@ -86,11 +86,16 @@ fun ActionWizardScreen(
     // Проверка и включение сканера при открытии визарда
     LaunchedEffect(scannerService) {
         scannerService?.let {
-            if (!it.isEnabled()) {
-                it.enable()
-                Timber.d("ActionWizardScreen: Сканер был отключен, выполняем принудительное включение")
+            // Проверяем, есть ли реальный сканер перед его активацией
+            if (it.hasRealScanner()) {
+                if (!it.isEnabled()) {
+                    it.enable()
+                    Timber.d("ActionWizardScreen: Сканер был отключен, выполняем принудительное включение")
+                } else {
+                    Timber.d("ActionWizardScreen: Сканер уже включен")
+                }
             } else {
-                Timber.d("ActionWizardScreen: Сканер уже включен")
+                Timber.d("ActionWizardScreen: Пропуск включения сканера (пустой сканер)")
             }
         }
     }
@@ -105,7 +110,7 @@ fun ActionWizardScreen(
 
     // Глобальный слушатель сканера нужен только для итогового экрана
     // Для остальных шагов будем использовать локальные слушатели
-    if (state?.isCompleted == true) {
+    if (state?.isCompleted == true && scannerService?.hasRealScanner() == true) {
         ScannerListener(onBarcodeScanned = { barcode ->
             if (!isProcessingGlobalBarcode) {
                 isProcessingGlobalBarcode = true

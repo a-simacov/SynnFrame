@@ -23,11 +23,17 @@ class BarcodeScannerFactory(
                 Timber.d("Creating DataWedgeBarcodeScanner")
                 DataWedgeBarcodeScanner(context)
             }
-            else -> {
-                Timber.d("Creating DefaultBarcodeScanner")
+            DeviceType.CAMERA_SCANNER -> {
+                // Явно указано использование камеры как сканера
+                Timber.d("Creating DefaultBarcodeScanner (camera) by explicit setting")
                 val scanner = DefaultBarcodeScanner(context)
                 lifecycleOwner?.let { scanner.setLifecycleOwner(it) }
                 scanner
+            }
+            else -> {
+                // Для стандартного типа и других неуказанных типов используем NullBarcodeScanner
+                Timber.d("Creating NullBarcodeScanner - no built-in scanner available")
+                NullBarcodeScanner(context)
             }
         }
     }
@@ -37,7 +43,7 @@ class BarcodeScannerFactory(
  * Типы поддерживаемых устройств
  */
 enum class DeviceType {
-    STANDARD, // Обычное Android-устройство
-    ZEBRA_DATAWEDGE
-    // Другие производители можно добавить в будущем
+    STANDARD,        // Обычное Android-устройство без автоматического сканирования
+    ZEBRA_DATAWEDGE, // Устройство Zebra с DataWedge
+    CAMERA_SCANNER   // Устройство, где камера используется как сканер
 }

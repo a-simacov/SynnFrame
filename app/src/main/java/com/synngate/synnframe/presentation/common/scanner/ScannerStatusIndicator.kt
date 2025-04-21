@@ -40,42 +40,56 @@ fun ScannerStatusIndicator(
     val scannerState by scannerService.scannerState.collectAsState()
     val tooltipState = rememberTooltipState()
 
+    // Проверяем, есть ли реальный сканер
+    val hasRealScanner = scannerService.hasRealScanner()
+
     // Определяем цвет индикатора и текст статуса в зависимости от состояния
-    val (statusColor, statusText, showError) = when (scannerState) {
-        ScannerState.Uninitialized -> Triple(
+    val (statusColor, statusText, showError) = when {
+        // Специальная обработка для "пустого" сканера
+        !hasRealScanner -> Triple(
+            Color.Gray,
+            "Сканер недоступен",
+            false
+        )
+        scannerState == ScannerState.Uninitialized -> Triple(
             Color.Gray,
             stringResource(R.string.scanner_uninitialized),
             false
         )
-        ScannerState.Initializing -> Triple(
+        scannerState == ScannerState.Initializing -> Triple(
             Color.Yellow,
             stringResource(R.string.scanner_initializing),
             false
         )
-        ScannerState.Initialized -> Triple(
+        scannerState == ScannerState.Initialized -> Triple(
             Color.Blue,
             stringResource(R.string.scanner_initialized),
             false
         )
-        ScannerState.Enabling -> Triple(
+        scannerState == ScannerState.Enabling -> Triple(
             Color.Yellow,
             stringResource(R.string.scanner_enabling),
             false
         )
-        ScannerState.Enabled -> Triple(
+        scannerState == ScannerState.Enabled -> Triple(
             Color.Green,
             stringResource(R.string.scanner_enabled),
             false
         )
-        ScannerState.Disabled -> Triple(
+        scannerState == ScannerState.Disabled -> Triple(
             Color.Red,
             stringResource(R.string.scanner_disabled),
             false
         )
-        is ScannerState.Error -> Triple(
+        scannerState is ScannerState.Error -> Triple(
             Color.Red,
             (scannerState as ScannerState.Error).message,
             true
+        )
+        else -> Triple(
+            Color.Gray,
+            "Неизвестное состояние",
+            false
         )
     }
 

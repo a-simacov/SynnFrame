@@ -41,10 +41,13 @@ class ScannerService(
 
     // Привязка к экрану с LifecycleOwner (для камеры)
     fun attachToScreen(lifecycleOwner: LifecycleOwner? = null) {
+        // Привязываем сканер только если это DefaultBarcodeScanner
         if (lifecycleOwner != null && scanner is DefaultBarcodeScanner) {
             (scanner as DefaultBarcodeScanner).setLifecycleOwner(lifecycleOwner)
+            Timber.d("Scanner attached to screen with lifecycle owner")
         }
 
+        // Включаем сканер только если уже инициализирован и есть слушатели
         if (listeners.isNotEmpty() &&
             (_scannerState.value == ScannerState.Initialized ||
                     _scannerState.value == ScannerState.Disabled)) {
@@ -64,8 +67,9 @@ class ScannerService(
         if (!listeners.contains(listener)) {
             listeners.add(listener)
 
-            // Активируем сканер, если есть хотя бы один слушатель
+            // Активируем сканер, если есть хотя бы один слушатель и сканер реальный
             if (listeners.isNotEmpty() &&
+                hasRealScanner() &&
                 (_scannerState.value == ScannerState.Initialized ||
                         _scannerState.value == ScannerState.Disabled)) {
                 enable()
@@ -81,6 +85,11 @@ class ScannerService(
         if (listeners.isEmpty() && _scannerState.value == ScannerState.Enabled) {
             disable()
         }
+    }
+
+    // Проверка наличия реального сканера (не NullBarcodeScanner)
+    fun hasRealScanner(): Boolean {
+        return scanner != null && scanner !is NullBarcodeScanner
     }
 
     // Композабл для простой подписки в Compose-экранах
@@ -102,14 +111,21 @@ class ScannerService(
                 }
             }
 
-            // Привязываем сканер к экрану и добавляем слушателя
-            attachToScreen(lifecycleOwner)
-            addListener(listener)
+            // Привязываем сканер к экрану только если это не NullBarcodeScanner
+            if (hasRealScanner()) {
+                attachToScreen(lifecycleOwner)
+                addListener(listener)
+                Timber.d("Real scanner attached to screen in ScannerEffect")
+            } else {
+                Timber.d("No real scanner available, ScannerEffect will not attach to screen")
+            }
 
             // При размонтировании удаляем слушателя и отвязываемся от экрана
             onDispose {
                 removeListener(listener)
-                detachFromScreen()
+                if (hasRealScanner()) {
+                    detachFromScreen()
+                }
             }
         }
     }
@@ -137,8 +153,8 @@ class ScannerService(
                     _scannerState.value = ScannerState.Initialized
                     Timber.i("Scanner initialized: ${scanner.getManufacturer()}")
 
-                    // Если есть слушатели, активируем сканер
-                    if (listeners.isNotEmpty()) {
+                    // Если есть слушатели и это реальный сканер, активируем его
+                    if (listeners.isNotEmpty() && hasRealScanner()) {
                         enable()
                     }
                 } else {
@@ -160,13 +176,20 @@ class ScannerService(
         coroutineScope.launch {
             try {
                 scanner?.let { scanner ->
+                    // Если это NullBarcodeScanner, не включаем его реально
+                    if (scanner is NullBarcodeScanner) {
+                        _scannerState.value = ScannerState.Enabled
+                        Timber.i("Null scanner 'enabled' (no actual scanner activation)")
+                        return@launch
+                    }
+
                     _scannerState.value = ScannerState.Enabling
 
                     val result = scanner.enable(globalScanListener)
 
                     if (result.isSuccess) {
                         _scannerState.value = ScannerState.Enabled
-                        Timber.i("Scanner enabled")
+                        Timber.i("Scanner enabled: ${scanner.getManufacturer()}")
                     } else {
                         _scannerState.value = ScannerState.Error(result.exceptionOrNull()?.message ?: "Unknown error")
                         Timber.e(result.exceptionOrNull(), "Failed to enable scanner")
@@ -188,6 +211,13 @@ class ScannerService(
 
         coroutineScope.launch {
             try {
+                // Если это NullBarcodeScanner, просто меняем состояние
+                if (scanner is NullBarcodeScanner) {
+                    _scannerState.value = ScannerState.Disabled
+                    Timber.i("Null scanner 'disabled' (no actual scanner deactivation)")
+                    return@launch
+                }
+
                 scanner?.disable()
                 _scannerState.value = ScannerState.Disabled
                 Timber.i("Scanner disabled")
