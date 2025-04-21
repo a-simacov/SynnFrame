@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -48,9 +47,10 @@ import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.status.StatusType
+import com.synngate.synnframe.presentation.common.status.TaskXStatusIndicator
+import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableTaskInfoCard
 import com.synngate.synnframe.presentation.ui.taskx.components.FactActionsView
 import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionsView
-import com.synngate.synnframe.presentation.ui.taskx.components.TaskXStatusIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXVerificationDialog
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
@@ -186,35 +186,55 @@ fun TaskXDetailScreen(
                 modifier = modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(8.dp)
+                    .padding(4.dp)
             ) {
-                Card(
+                ExpandableTaskInfoCard(
+                    title = stringResource(R.string.task_details),
+                    initiallyExpanded = false, // По умолчанию свернуто
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp)
-                    ) {
-                        Text(
-                            text = task.name ?: stringResource(R.string.task_details),
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                    Text(
+                        text = "Имя: ${task.name}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
 
-                        // Добавлен штрихкод задания
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Штрихкод: ${task.barcode}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Статус задания
+                    TaskXStatusIndicator(
+                        status = task.status,
+                    )
+
+                    // Можно добавить дополнительную информацию
+                    task.startedAt?.let {
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Штрихкод: ${task.barcode}",
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = "Начато: ${viewModel.formatDate(it)}",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        TaskXStatusIndicator(
-                            status = task.status,
-                            formatStatus = viewModel::formatTaskStatus
+                    }
+
+                    task.lastModifiedAt?.let {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Изменено: ${viewModel.formatDate(it)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // Панель переключения вида
                 Row(
@@ -250,7 +270,7 @@ fun TaskXDetailScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // Содержимое в зависимости от выбранного вида
                 Box(modifier = Modifier.weight(1f)) {
@@ -282,7 +302,7 @@ fun TaskXDetailScreen(
             }
         }
 
-        // Добавить сюда расширяемую кнопку
+        // ФАБ кнопки размещаем справа (меняем на BottomEnd)
         if (task != null) {
             // Создаем список кнопок в зависимости от текущего статуса
             val fabItems = state.statusActions.map { actionData ->
@@ -301,7 +321,7 @@ fun TaskXDetailScreen(
                     contentDescription = "Управление статусом",
                     items = fabItems,
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
+                        .align(Alignment.BottomEnd) // Изменено с BottomStart на BottomEnd
                         .padding(16.dp)
                 )
             }

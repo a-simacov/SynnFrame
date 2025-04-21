@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 
 @Composable
-fun TaskXStatusIndicator(
+fun TaskXStatusIndicatorOld(
     status: TaskXStatus,
     formatStatus: (TaskXStatus) -> String,
     modifier: Modifier = Modifier

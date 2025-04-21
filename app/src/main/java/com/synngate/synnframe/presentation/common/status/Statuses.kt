@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material.icons.filled.Warning
@@ -32,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.domain.entity.TaskStatus
+import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 
 enum class StatusType {
     INFO,
@@ -148,6 +151,34 @@ fun TaskStatusIndicator(
         TaskStatus.TO_DO -> Color.DarkGray
         TaskStatus.IN_PROGRESS -> Color.Magenta
         TaskStatus.COMPLETED -> Color.DarkGray
+    }
+
+    Icon(
+        imageVector = icon,
+        tint = iconTint,
+        contentDescription = status.name
+    )
+}
+
+@Composable
+fun TaskXStatusIndicator(
+    status: TaskXStatus,
+    modifier: Modifier = Modifier
+) {
+    val icon = when (status) {
+        TaskXStatus.TO_DO -> Icons.Default.Schedule
+        TaskXStatus.IN_PROGRESS -> Icons.Default.SyncAlt
+        TaskXStatus.COMPLETED -> Icons.Default.CheckCircle
+        TaskXStatus.PAUSED -> Icons.Default.Pause
+        TaskXStatus.CANCELLED -> Icons.Default.Cancel
+    }
+
+    val iconTint = when (status) {
+        TaskXStatus.TO_DO -> Color.DarkGray
+        TaskXStatus.IN_PROGRESS -> Color.Magenta
+        TaskXStatus.COMPLETED -> Color.DarkGray
+        TaskXStatus.PAUSED -> Color(0xFFFFF9C4)
+        TaskXStatus.CANCELLED -> MaterialTheme.colorScheme.errorContainer
     }
 
     Icon(

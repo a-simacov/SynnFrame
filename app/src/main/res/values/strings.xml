@@ -712,4 +712,5 @@
     <string name="enter_bin_code">Код ячейки</string>
     <string name="enter_product_barcode">Штрихкод товара</string>
     <string name="search_product">Поиск товара</string>
+    <string name="filter_by_status">Фильтр по статусу</string>
 </resources>

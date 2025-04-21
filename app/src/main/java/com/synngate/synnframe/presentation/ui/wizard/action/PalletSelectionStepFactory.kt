@@ -51,7 +51,6 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
-import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scanner.BarcodeHandlerWithState
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.PalletItem
@@ -60,9 +59,6 @@ import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * Фабрика компонентов для шага выбора паллеты с улучшенным интерфейсом
- */
 class PalletSelectionStepFactory(
     private val wizardViewModel: ActionDataViewModel
 ) : ActionStepFactory {
@@ -73,44 +69,31 @@ class PalletSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Состояния поля поиска и ввода
         var manualPalletCode by remember { mutableStateOf("") }
         var showPalletList by remember { mutableStateOf(false) }
         var searchQuery by remember { mutableStateOf("") }
 
-        // Состояние для сообщений об ошибках
         var errorMessage by remember { mutableStateOf<String?>(null) }
 
-        // Состояние для диалога сканирования камерой
         var showCameraScannerDialog by remember { mutableStateOf(false) }
 
-        // Для отображения сообщений
         val snackbarHostState = remember { SnackbarHostState() }
         val coroutineScope = rememberCoroutineScope()
 
-        // Получение данных о паллетах из ViewModel
         val pallets by wizardViewModel.pallets.collectAsState()
 
-        // Определяем, является ли шаг шагом хранения или размещения
         val isStorageStep = step.id in action.actionTemplate.storageSteps.map { it.id }
 
-        // Получаем запланированную паллету в зависимости от типа шага
         val plannedPallet = if (isStorageStep) action.storagePallet else action.placementPallet
 
-        // Список запланированных паллет для отображения
         val planPallets = remember(action, isStorageStep) {
             listOfNotNull(plannedPallet)
         }
 
-        // Получаем уже выбранную паллету из контекста, если есть
         val selectedPallet = remember(context.results) {
             context.results[step.id] as? Pallet
         }
 
-        // Получаем сервис сканера для встроенного сканера
-        val scannerService = LocalScannerService.current
-
-        // Функция для показа сообщения об ошибке
         val showError = { message: String ->
             errorMessage = message
             coroutineScope.launch {
@@ -121,11 +104,10 @@ class PalletSelectionStepFactory(
             }
         }
 
-        // Функция поиска паллеты по коду
         val searchPallet = { code: String ->
             if (code.isNotEmpty()) {
                 Timber.d("Поиск паллеты по коду: $code")
-                errorMessage = null // Сбрасываем предыдущую ошибку
+                errorMessage = null
 
                 processBarcodeForPallet(
                     barcode = code,
@@ -141,18 +123,16 @@ class PalletSelectionStepFactory(
                     }
                 )
 
-                // Очищаем поле ввода после поиска
                 manualPalletCode = ""
             }
         }
 
-        // Использование BarcodeHandlerWithState для обработки штрихкодов
         BarcodeHandlerWithState(
             stepKey = step.id,
             stepResult = context.getCurrentStepResult(),
             onBarcodeScanned = { barcode, setProcessingState ->
                 Timber.d("Получен штрихкод от сканера: $barcode")
-                errorMessage = null // Сбрасываем предыдущую ошибку
+                errorMessage = null
 
                 processBarcodeForPallet(
                     barcode = barcode,
@@ -160,19 +140,15 @@ class PalletSelectionStepFactory(
                     onPalletFound = { pallet ->
                         if (pallet != null) {
                             Timber.d("Паллета найдена: ${pallet.code}")
-                            // Вызываем onComplete для передачи результата
                             context.onComplete(pallet)
-                            // Не сбрасываем состояние, т.к. завершили шаг успешно
                         } else {
                             Timber.w("Паллета не найдена: $barcode")
                             showError("Паллета с кодом '$barcode' не найдена")
-                            // Сбрасываем состояние обработки, чтобы можно было повторить сканирование
                             setProcessingState(false)
                         }
                     }
                 )
 
-                // Очищаем поле ввода после поиска
                 manualPalletCode = ""
             }
         )
@@ -188,12 +164,10 @@ class PalletSelectionStepFactory(
             }
         }
 
-        // Загрузка паллет при изменении поискового запроса
         LaunchedEffect(searchQuery) {
             wizardViewModel.loadPallets(searchQuery)
         }
 
-        // Показываем диалог сканирования камерой, если он активирован
         if (showCameraScannerDialog) {
             UniversalScannerDialog(
                 onBarcodeScanned = { barcode ->
@@ -213,14 +187,12 @@ class PalletSelectionStepFactory(
         }
 
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Заголовок с описанием действия WMS
             Text(
                 text = "${step.promptText} (${getWmsActionDescription(action.wmsAction)})",
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 4.dp)
             )
 
-            // Поле для ручного ввода кода паллеты (всегда отображается)
             OutlinedTextField(
                 value = manualPalletCode,
                 onValueChange = {
@@ -260,7 +232,7 @@ class PalletSelectionStepFactory(
                 }
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            //Spacer(modifier = Modifier.height(16.dp))
 
             // Отображаем выбранную паллету, если есть
             if (selectedPallet != null) {
@@ -295,7 +267,6 @@ class PalletSelectionStepFactory(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
@@ -311,7 +282,6 @@ class PalletSelectionStepFactory(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp)
                 ) {
                     items(planPallets) { pallet ->
                         Card(
@@ -354,8 +324,6 @@ class PalletSelectionStepFactory(
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
