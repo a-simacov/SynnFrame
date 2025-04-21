@@ -1,11 +1,13 @@
 package com.synngate.synnframe.presentation.common.scanner
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.synngate.synnframe.presentation.common.LocalScannerService
 import timber.log.Timber
 
 /**
@@ -21,10 +23,31 @@ fun BarcodeHandler(
     // Флаг обработки штрихкода - сбрасывается при изменении шага или результата
     var isProcessingBarcode by remember(stepKey, stepResult) { mutableStateOf(false) }
 
+    // Получаем сканер сервис
+    val scannerService = LocalScannerService.current
+
     // Сброс флага при инициализации компонента
     LaunchedEffect(stepKey) {
         isProcessingBarcode = false
         Timber.d("BarcodeHandler: Сброс флага isProcessingBarcode для шага $stepKey")
+
+        // Важное дополнение - переинициализация сканера при смене шага
+        scannerService?.let {
+            // Сначала отключаем, затем включаем сканер заново для нового шага
+            it.disable()
+            it.enable()
+            Timber.d("BarcodeHandler: Переинициализация сканера для шага $stepKey")
+        }
+    }
+
+    // Освобождение сканера при удалении компонента
+    DisposableEffect(stepKey) {
+        onDispose {
+            if (isProcessingBarcode) {
+                isProcessingBarcode = false
+                Timber.d("BarcodeHandler: Сброс флага isProcessingBarcode при размонтировании для шага $stepKey")
+            }
+        }
     }
 
     // Слушатель сканирования
@@ -58,10 +81,31 @@ fun BarcodeHandlerWithState(
     // Флаг обработки штрихкода - сбрасывается при изменении шага или результата
     var isProcessingBarcode by remember(stepKey, stepResult) { mutableStateOf(false) }
 
+    // Получаем сканер сервис
+    val scannerService = LocalScannerService.current
+
     // Сброс флага при инициализации компонента
     LaunchedEffect(stepKey) {
         isProcessingBarcode = false
         Timber.d("BarcodeHandlerWithState: Сброс флага isProcessingBarcode для шага $stepKey")
+
+        // Важное дополнение - переинициализация сканера при смене шага
+        scannerService?.let {
+            // Сначала отключаем, затем включаем сканер заново для нового шага
+            it.disable()
+            it.enable()
+            Timber.d("BarcodeHandlerWithState: Переинициализация сканера для шага $stepKey")
+        }
+    }
+
+    // Освобождение сканера при удалении компонента
+    DisposableEffect(stepKey) {
+        onDispose {
+            if (isProcessingBarcode) {
+                isProcessingBarcode = false
+                Timber.d("BarcodeHandlerWithState: Сброс флага isProcessingBarcode при размонтировании для шага $stepKey")
+            }
+        }
     }
 
     // Функция для управления состоянием обработки
