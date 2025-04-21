@@ -122,7 +122,7 @@ class BinSelectionStepFactory(
         }
 
         var isProcessingBarcode by remember { mutableStateOf(false) }
-        var isScanProcessed by remember { mutableStateOf(false) }
+        var isScanProcessed by remember(step.id, context.getCurrentStepResult()) { mutableStateOf(false) }
 
         // Функция поиска ячейки по коду
         val searchBin = { code: String ->
@@ -156,6 +156,12 @@ class BinSelectionStepFactory(
                 // Очищаем поле ввода после поиска
                 manualBinCode = ""
             }
+        }
+
+        LaunchedEffect(step.id) {
+            // Сбрасываем флаг при инициализации или переходе к этому шагу
+            isScanProcessed = false
+            Timber.d("BinSelectionStep: Сброс флага isScanProcessed при инициализации шага ${step.id}")
         }
 
         // Эффект для обработки штрихкода от внешнего сканера

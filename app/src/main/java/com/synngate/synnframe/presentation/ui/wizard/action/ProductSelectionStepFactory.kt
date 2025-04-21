@@ -88,6 +88,11 @@ class ProductSelectionStepFactory(
             (context.results[step.id] as? TaskProduct)?.product
         }
 
+        LaunchedEffect(step.id) {
+            selectedInputMethod = InputMethod.NONE
+            Timber.d("ProductSelectionStep: Сброс выбранного метода ввода при инициализации шага ${step.id}")
+        }
+
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
             if (barcode != null && barcode.isNotEmpty()) {

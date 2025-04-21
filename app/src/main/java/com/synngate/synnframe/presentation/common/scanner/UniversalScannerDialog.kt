@@ -29,6 +29,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +70,11 @@ fun UniversalScannerDialog(
     // Состояния обработки
     var isProcessing by remember { mutableStateOf(false) }
 
+    LaunchedEffect(Unit) {
+        isProcessing = false
+        Timber.d("UniversalScannerDialog: Сброс флага isProcessing при инициализации")
+    }
+
     // Состояния ошибок
     var errorState by remember { mutableStateOf<ErrorState?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -86,11 +92,14 @@ fun UniversalScannerDialog(
 
     // Функция для обработки успешного сканирования
     val handleSuccessfulScan = { barcode: String ->
-        Timber.d("Успешное сканирование: $barcode")
-        // 1. Сначала вызываем обработчик
-        onBarcodeScanned(barcode)
-        // 2. Затем закрываем диалог - это должно вызвать переход к следующему шагу
-        onClose()
+        if (!isProcessing) {
+            isProcessing = true
+            Timber.d("Успешное сканирование: $barcode")
+            // 1. Сначала вызываем обработчик
+            onBarcodeScanned(barcode)
+            // 2. Затем закрываем диалог - это должно вызвать переход к следующему шагу
+            onClose()
+        }
     }
 
     Dialog(
