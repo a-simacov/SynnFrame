@@ -31,7 +31,7 @@ fun BarcodeHandler(
         isProcessingBarcode = false
         Timber.d("BarcodeHandler: Сброс флага isProcessingBarcode для шага $stepKey")
 
-        // Проверяем наличие встроенного сканера - NEW!
+        // Проверяем наличие встроенного сканера
         scannerService?.let {
             if (it.hasHardwareScanner()) {
                 // Включаем сканер только при наличии встроенного сканера
@@ -100,7 +100,7 @@ fun BarcodeHandlerWithState(
         isProcessingBarcode = false
         Timber.d("BarcodeHandlerWithState: Сброс флага isProcessingBarcode для шага $stepKey")
 
-        // Проверяем наличие встроенного сканера - NEW!
+        // Проверяем наличие встроенного сканера
         scannerService?.let {
             if (it.hasHardwareScanner()) {
                 // Включаем сканер только при наличии встроенного сканера

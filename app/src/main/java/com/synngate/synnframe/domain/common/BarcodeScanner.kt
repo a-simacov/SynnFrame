@@ -1,46 +1,22 @@
 package com.synngate.synnframe.domain.common
 
-/**
- * Интерфейс для взаимодействия со сканерами различных производителей
- */
 interface BarcodeScanner {
-    /**
-     * Инициализация сканера
-     * @return Результат инициализации
-     */
     suspend fun initialize(): Result<Unit>
-
-    /**
-     * Освобождение ресурсов сканера
-     */
     suspend fun dispose()
-
-    /**
-     * Активация сканера для получения событий сканирования
-     * @param listener Слушатель событий сканирования
-     * @return Результат активации
-     */
     suspend fun enable(listener: ScanResultListener): Result<Unit>
-
-    /**
-     * Деактивация сканера
-     */
     suspend fun disable()
-
-    /**
-     * Проверка, инициализирован ли сканер
-     */
     fun isInitialized(): Boolean
-
-    /**
-     * Проверка, активирован ли сканер
-     */
     fun isEnabled(): Boolean
+    fun getManufacturer(): ScannerManufacturer
 
     /**
-     * Получение типа производителя сканера
+     * Устанавливает слушатель для сканирования штрихкодов
+     * @param listener Функция-обработчик результата сканирования или null для отмены
      */
-    fun getManufacturer(): ScannerManufacturer
+    fun setOnBarcodeScannedListener(listener: ((String) -> Unit)?) {
+        // Пустая реализация по умолчанию для обратной совместимости
+        // Подклассы должны переопределить этот метод при необходимости
+    }
 }
 
 /**
