@@ -713,4 +713,16 @@
     <string name="enter_product_barcode">Штрихкод товара</string>
     <string name="search_product">Поиск товара</string>
     <string name="filter_by_status">Фильтр по статусу</string>
+
+    <!-- Строки для работы с операциями -->
+    <string name="operations">Операции</string>
+    <string name="operations_menu_title">Список операций</string>
+    <string name="operation_tasks_title">Задания операции</string>
+    <string name="operation_tasks_subtitle">Доступные задания</string>
+    <string name="available_operations">Доступные операции</string>
+    <string name="no_operations_available">Нет доступных операций</string>
+    <string name="no_tasks_available">Нет доступных заданий</string>
+    <string name="error_loading_operations">Ошибка загрузки операций</string>
+    <string name="error_loading_tasks">Ошибка загрузки заданий</string>
+    <string name="task_id_fmt">ID: %s</string>
 </resources>

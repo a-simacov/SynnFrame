@@ -39,4 +39,6 @@ sealed class MainMenuEvent {
     data class ShowSnackbar(val message: String) : MainMenuEvent()
 
     data object NavigateToTasksX : MainMenuEvent()
+
+    data object NavigateToOperations : MainMenuEvent()
 }

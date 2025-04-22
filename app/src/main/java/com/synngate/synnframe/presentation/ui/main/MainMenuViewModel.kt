@@ -169,4 +169,9 @@ class MainMenuViewModel(
             }
         }
     }
+
+    fun onOperationsClick() {
+        Timber.d("Operations clicked")
+        sendEvent(MainMenuEvent.NavigateToOperations)
+    }
 }

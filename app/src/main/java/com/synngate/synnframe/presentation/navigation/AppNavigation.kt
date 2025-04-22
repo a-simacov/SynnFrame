@@ -25,6 +25,8 @@ import com.synngate.synnframe.presentation.ui.login.LoginScreen
 import com.synngate.synnframe.presentation.ui.logs.LogDetailScreen
 import com.synngate.synnframe.presentation.ui.logs.LogListScreen
 import com.synngate.synnframe.presentation.ui.main.MainMenuScreen
+import com.synngate.synnframe.presentation.ui.operation.OperationMenuScreen
+import com.synngate.synnframe.presentation.ui.operation.OperationTasksScreen
 import com.synngate.synnframe.presentation.ui.products.ProductDetailScreen
 import com.synngate.synnframe.presentation.ui.products.ProductListScreen
 import com.synngate.synnframe.presentation.ui.server.ServerDetailScreen
@@ -191,6 +193,11 @@ fun AppNavigation(
                             popUpTo(Screen.MainMenu.route) { inclusive = false }
                         }
                     },
+                    navigateToOperations = {
+                        navController.navigate(Screen.OperationMenu.route) {
+                            popUpTo(Screen.MainMenu.route) { inclusive = false }
+                        }
+                    },
                     exitApp = {
                         (context as? Activity)?.finish()
                     }
@@ -213,6 +220,50 @@ fun AppNavigation(
                     navigateToSyncHistory = {
                         navController.navigate(Screen.SyncHistory.route)
                     },
+                    navigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable(Screen.OperationMenu.route) { entry ->
+                val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
+                val viewModel = remember { screenContainer.createOperationMenuViewModel() }
+
+                OperationMenuScreen(
+                    viewModel = viewModel,
+                    navigateToOperationTasks = { operationId, operationName ->
+                        navController.navigate(Screen.OperationTasks.createRoute(operationId, operationName))
+                    },
+                    navigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable(
+                route = Screen.OperationTasks.route,
+                arguments = listOf(
+                    navArgument("operationId") {
+                        type = NavType.StringType
+                    },
+                    navArgument("operationName") {
+                        type = NavType.StringType
+                        nullable = true
+                    }
+                )
+            ) { entry ->
+                val operationId = entry.arguments?.getString("operationId") ?: ""
+                val encodedOperationName = entry.arguments?.getString("operationName") ?: ""
+                val operationName = java.net.URLDecoder.decode(encodedOperationName, "UTF-8")
+
+                val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
+                val viewModel = remember(operationId, operationName) {
+                    screenContainer.createOperationTasksViewModel(operationId, operationName)
+                }
+
+                OperationTasksScreen(
+                    viewModel = viewModel,
                     navigateBack = {
                         navController.popBackStack()
                     }
@@ -550,5 +601,13 @@ sealed class Screen(val route: String) {
     object TaskXList : Screen("taskx_list") // Список заданий X
     object TaskXDetail : Screen("taskx_detail/{taskId}") { // Детальная информация о задании X
         fun createRoute(taskId: String) = "taskx_detail/$taskId"
+    }
+
+    object OperationMenu : Screen("operation_menu")
+    object OperationTasks : Screen("operation_tasks/{operationId}/{operationName}") {
+        fun createRoute(operationId: String, operationName: String): String {
+            val encodedName = java.net.URLEncoder.encode(operationName, "UTF-8")
+            return "operation_tasks/$operationId/$encodedName"
+        }
     }
 }

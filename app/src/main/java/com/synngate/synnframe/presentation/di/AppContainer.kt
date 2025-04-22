@@ -18,6 +18,8 @@ import com.synngate.synnframe.data.remote.api.AppUpdateApi
 import com.synngate.synnframe.data.remote.api.AppUpdateApiImpl
 import com.synngate.synnframe.data.remote.api.AuthApi
 import com.synngate.synnframe.data.remote.api.AuthApiImpl
+import com.synngate.synnframe.data.remote.api.OperationMenuApi
+import com.synngate.synnframe.data.remote.api.OperationMenuApiImpl
 import com.synngate.synnframe.data.remote.api.ProductApi
 import com.synngate.synnframe.data.remote.api.ProductApiImpl
 import com.synngate.synnframe.data.remote.api.TaskApi
@@ -33,6 +35,7 @@ import com.synngate.synnframe.data.repository.MockBinXRepository
 import com.synngate.synnframe.data.repository.MockPalletRepository
 import com.synngate.synnframe.data.repository.MockTaskTypeXRepository
 import com.synngate.synnframe.data.repository.MockTaskXRepository
+import com.synngate.synnframe.data.repository.OperationMenuRepositoryImpl
 import com.synngate.synnframe.data.repository.ProductRepositoryImpl
 import com.synngate.synnframe.data.repository.ServerRepositoryImpl
 import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
@@ -55,6 +58,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.repository.ActionTemplateRepository
 import com.synngate.synnframe.domain.repository.BinXRepository
 import com.synngate.synnframe.domain.repository.LogRepository
+import com.synngate.synnframe.domain.repository.OperationMenuRepository
 import com.synngate.synnframe.domain.repository.PalletRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
@@ -84,6 +88,7 @@ import com.synngate.synnframe.domain.service.UpdateInstallerImpl
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.domain.service.WebServerManager
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
+import com.synngate.synnframe.domain.usecase.operation.OperationMenuUseCases
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
@@ -96,6 +101,8 @@ import com.synngate.synnframe.presentation.ui.login.LoginViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogListViewModel
 import com.synngate.synnframe.presentation.ui.main.MainMenuViewModel
+import com.synngate.synnframe.presentation.ui.operation.OperationMenuViewModel
+import com.synngate.synnframe.presentation.ui.operation.OperationTasksViewModel
 import com.synngate.synnframe.presentation.ui.products.ProductDetailViewModel
 import com.synngate.synnframe.presentation.ui.products.ProductListViewModel
 import com.synngate.synnframe.presentation.ui.products.mapper.ProductUiMapper
@@ -277,6 +284,11 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         WizardPalletRepositoryImpl(palletDataSource)
     }
 
+    val operationMenuRepository: OperationMenuRepository by lazy {
+        Timber.d("Creating OperationMenuRepository")
+        OperationMenuRepositoryImpl(operationMenuApi)
+    }
+
     // API сервисы
     val apiService: ApiService by lazy {
         Timber.d("Creating ApiService")
@@ -305,6 +317,11 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
 
     val taskTypeApi: TaskTypeApi by lazy {
         TaskTypeApiImpl(httpClient, serverProvider)
+    }
+
+    val operationMenuApi: OperationMenuApi by lazy {
+        Timber.d("Creating OperationMenuApi")
+        OperationMenuApiImpl(httpClient, serverProvider)
     }
 
     // Сервисы
@@ -441,6 +458,11 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
 
     val taskTypeUseCases by lazy {
         TaskTypeUseCases(taskTypeRepository)
+    }
+
+    val operationMenuUseCases: OperationMenuUseCases by lazy {
+        Timber.d("Creating OperationMenuUseCases")
+        OperationMenuUseCases(operationMenuRepository)
     }
 
     // Репозитории для заданий X
@@ -716,5 +738,23 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         )
 
         return registry
+    }
+
+    fun createOperationMenuViewModel(): OperationMenuViewModel {
+        return getOrCreateViewModel("OperationMenuViewModel") {
+            OperationMenuViewModel(
+                operationMenuUseCases = appContainer.operationMenuUseCases
+            )
+        }
+    }
+
+    fun createOperationTasksViewModel(operationId: String, operationName: String): OperationTasksViewModel {
+        return getOrCreateViewModel("OperationTasksViewModel_$operationId") {
+            OperationTasksViewModel(
+                operationId = operationId,
+                operationName = operationName,
+                operationMenuUseCases = appContainer.operationMenuUseCases
+            )
+        }
     }
 }

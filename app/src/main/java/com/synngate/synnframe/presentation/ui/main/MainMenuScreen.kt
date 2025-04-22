@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.outlined.Assignment
 import androidx.compose.material.icons.outlined.Inventory
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -40,9 +41,6 @@ import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.main.model.MainMenuEvent
 
-/**
- * Экран главного меню
- */
 @Composable
 fun MainMenuScreen(
     viewModel: MainMenuViewModel,
@@ -52,16 +50,14 @@ fun MainMenuScreen(
     navigateToSettings: () -> Unit,
     navigateToLogin: () -> Unit,
     navigateToTasksX: () -> Unit,
+    navigateToOperations: () -> Unit,
     exitApp: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Получаем состояние экрана из ViewModel
     val state by viewModel.uiState.collectAsState()
 
-    // SnackbarHostState для показа уведомлений
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Обработка событий из ViewModel
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
@@ -81,6 +77,7 @@ fun MainMenuScreen(
                 is MainMenuEvent.ShowExitConfirmation -> {
                     // Обрабатывается через showExitConfirmation в state
                 }
+                is MainMenuEvent.NavigateToOperations -> navigateToOperations()
             }
         }
     }
@@ -126,6 +123,15 @@ fun MainMenuScreen(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
+
+            NavigationButton(
+                text = stringResource(id = R.string.operations),
+                onClick = { viewModel.onOperationsClick() },
+                icon = Icons.Outlined.Assignment,
+                contentDescription = stringResource(id = R.string.operations)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             NavigationButton(
                 text = stringResource(id = R.string.tasks),
