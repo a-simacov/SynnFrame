@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
+import com.synngate.synnframe.domain.entity.OperationMenuType
 import com.synngate.synnframe.domain.entity.operation.OperationMenuItem
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
@@ -37,7 +38,7 @@ import com.synngate.synnframe.presentation.ui.operation.model.OperationMenuEvent
 @Composable
 fun OperationMenuScreen(
     viewModel: OperationMenuViewModel,
-    navigateToOperationTasks: (operationId: String, operationName: String) -> Unit,
+    navigateToOperationTasks: (operationId: String, operationName: String, operationType: OperationMenuType) -> Unit,
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -49,7 +50,7 @@ fun OperationMenuScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is OperationMenuEvent.NavigateToOperationTasks -> {
-                    navigateToOperationTasks(event.operationId, event.operationName)
+                    navigateToOperationTasks(event.operationId, event.operationName, event.operationType)
                 }
                 is OperationMenuEvent.NavigateBack -> {
                     navigateBack()
@@ -99,7 +100,7 @@ fun OperationMenuScreen(
                 OperationMenuContent(
                     operations = state.operations,
                     onOperationClick = { operation ->
-                        viewModel.onOperationClick(operation.id, operation.name)
+                        viewModel.onOperationClick(operation.id, operation.name, operation.type)
                     }
                 )
             }

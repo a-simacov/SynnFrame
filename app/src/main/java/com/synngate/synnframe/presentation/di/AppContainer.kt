@@ -54,6 +54,8 @@ import com.synngate.synnframe.data.service.SoundServiceImpl
 import com.synngate.synnframe.data.service.SynchronizationControllerImpl
 import com.synngate.synnframe.data.service.WebServerControllerImpl
 import com.synngate.synnframe.data.service.WebServerManagerImpl
+import com.synngate.synnframe.domain.entity.OperationMenuType
+import com.synngate.synnframe.domain.entity.operation.OperationTask
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.repository.ActionTemplateRepository
 import com.synngate.synnframe.domain.repository.BinXRepository
@@ -102,6 +104,7 @@ import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogListViewModel
 import com.synngate.synnframe.presentation.ui.main.MainMenuViewModel
 import com.synngate.synnframe.presentation.ui.operation.OperationMenuViewModel
+import com.synngate.synnframe.presentation.ui.operation.OperationTaskDetailViewModel
 import com.synngate.synnframe.presentation.ui.operation.OperationTasksViewModel
 import com.synngate.synnframe.presentation.ui.products.ProductDetailViewModel
 import com.synngate.synnframe.presentation.ui.products.ProductListViewModel
@@ -748,13 +751,24 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         }
     }
 
-    fun createOperationTasksViewModel(operationId: String, operationName: String): OperationTasksViewModel {
+    fun createOperationTasksViewModel(
+        operationId: String,
+        operationName: String,
+        operationType: OperationMenuType = OperationMenuType.SHOW_LIST
+    ): OperationTasksViewModel {
         return getOrCreateViewModel("OperationTasksViewModel_$operationId") {
             OperationTasksViewModel(
                 operationId = operationId,
                 operationName = operationName,
+                operationType = operationType,
                 operationMenuUseCases = appContainer.operationMenuUseCases
             )
+        }
+    }
+
+    fun createOperationTaskDetailViewModel(task: OperationTask): OperationTaskDetailViewModel {
+        return getOrCreateViewModel("OperationTaskDetailViewModel_${task.id}") {
+            OperationTaskDetailViewModel(task)
         }
     }
 }

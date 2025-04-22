@@ -17,4 +17,8 @@ class OperationMenuRepositoryImpl(
     override suspend fun getOperationTasks(operationId: String): ApiResult<List<OperationTask>> {
         return operationMenuApi.getOperationTasks(operationId)
     }
+
+    override suspend fun searchTaskByValue(operationId: String, searchValue: String): ApiResult<OperationTask> {
+        return operationMenuApi.searchTaskByValue(operationId, searchValue)
+    }
 }

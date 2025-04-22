@@ -8,4 +8,6 @@ interface OperationMenuApi {
     suspend fun getOperationMenu(): ApiResult<List<OperationMenuItem>>
 
     suspend fun getOperationTasks(operationId: String): ApiResult<List<OperationTask>>
+
+    suspend fun searchTaskByValue(operationId: String, searchValue: String): ApiResult<OperationTask>
 }

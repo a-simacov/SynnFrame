@@ -725,4 +725,10 @@
     <string name="error_loading_operations">Ошибка загрузки операций</string>
     <string name="error_loading_tasks">Ошибка загрузки заданий</string>
     <string name="task_id_fmt">ID: %s</string>
+
+    <string name="search_value">Введите значение для поиска</string>
+    <string name="task_name">Название задания</string>
+    <string name="start_task_execution">Начать работу с заданием</string>
+    <string name="search_task_hint">Введите штрихкод или другое значение</string>
+    <string name="no_task_found">Задание не найдено</string>
 </resources>

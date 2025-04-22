@@ -8,6 +8,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import timber.log.Timber
@@ -91,6 +92,45 @@ class OperationMenuApiImpl(
             ApiResult.Error(
                 HttpStatusCode.InternalServerError.value,
                 e.message ?: "Failed to fetch operation tasks"
+            )
+        }
+    }
+
+    override suspend fun searchTaskByValue(operationId: String, searchValue: String): ApiResult<OperationTask> {
+        val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
+            HttpStatusCode.InternalServerError.value,
+            "No active server configured"
+        )
+
+        return try {
+            val url = "${server.apiUrl}/menu/$operationId/search?value=$searchValue"
+            val response = client.get(url) {
+                header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
+                header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
+            }
+
+            if (response.status.isSuccess()) {
+                try {
+                    val task = response.body<OperationTask>()
+                    ApiResult.Success(task)
+                } catch (e: Exception) {
+                    ApiResult.Error(
+                        HttpStatusCode.InternalServerError.value,
+                        e.message ?: "Error parsing search result"
+                    )
+                }
+            } else {
+                // Получаем текст ошибки из ответа
+                val errorText = response.bodyAsText()
+                ApiResult.Error(
+                    response.status.value,
+                    errorText
+                )
+            }
+        } catch (e: Exception) {
+            ApiResult.Error(
+                HttpStatusCode.InternalServerError.value,
+                e.message ?: "Error searching task"
             )
         }
     }

@@ -30,4 +30,14 @@ class OperationMenuUseCases(
             ApiResult.Error(500, e.message ?: "Unknown error")
         }
     }
+
+    suspend fun searchTaskByValue(operationId: String, searchValue: String): ApiResult<OperationTask> {
+        Timber.d("Search task for operation $operationId by value: $searchValue")
+        return try {
+            operationMenuRepository.searchTaskByValue(operationId, searchValue)
+        } catch (e: Exception) {
+            Timber.e(e, "Error in searchTaskByValue use case")
+            ApiResult.Error(500, e.message ?: "Unknown error")
+        }
+    }
 }

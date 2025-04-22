@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.operation
 
+import com.synngate.synnframe.domain.entity.OperationMenuType
 import com.synngate.synnframe.domain.usecase.operation.OperationMenuUseCases
 import com.synngate.synnframe.presentation.ui.operation.model.OperationMenuEvent
 import com.synngate.synnframe.presentation.ui.operation.model.OperationMenuState
@@ -56,9 +57,9 @@ class OperationMenuViewModel(
         }
     }
 
-    fun onOperationClick(operationId: String, operationName: String) {
+    fun onOperationClick(operationId: String, operationName: String, operationMenuType: OperationMenuType) {
         Timber.d("Operation clicked: $operationId")
-        sendEvent(OperationMenuEvent.NavigateToOperationTasks(operationId, operationName))
+        sendEvent(OperationMenuEvent.NavigateToOperationTasks(operationId, operationName, operationType = operationMenuType))
     }
 
     fun onBackClick() {
