@@ -18,8 +18,8 @@ import com.synngate.synnframe.data.remote.api.AppUpdateApi
 import com.synngate.synnframe.data.remote.api.AppUpdateApiImpl
 import com.synngate.synnframe.data.remote.api.AuthApi
 import com.synngate.synnframe.data.remote.api.AuthApiImpl
-import com.synngate.synnframe.data.remote.api.OperationMenuApi
-import com.synngate.synnframe.data.remote.api.OperationMenuApiImpl
+import com.synngate.synnframe.data.remote.api.DynamicMenuApi
+import com.synngate.synnframe.data.remote.api.DynamicMenuApiImpl
 import com.synngate.synnframe.data.remote.api.ProductApi
 import com.synngate.synnframe.data.remote.api.ProductApiImpl
 import com.synngate.synnframe.data.remote.api.TaskApi
@@ -29,13 +29,13 @@ import com.synngate.synnframe.data.remote.api.TaskTypeApiImpl
 import com.synngate.synnframe.data.remote.service.ApiService
 import com.synngate.synnframe.data.remote.service.ApiServiceImpl
 import com.synngate.synnframe.data.remote.service.ServerProvider
+import com.synngate.synnframe.data.repository.DynamicMenuRepositoryImpl
 import com.synngate.synnframe.data.repository.LogRepositoryImpl
 import com.synngate.synnframe.data.repository.MockActionTemplateRepository
 import com.synngate.synnframe.data.repository.MockBinXRepository
 import com.synngate.synnframe.data.repository.MockPalletRepository
 import com.synngate.synnframe.data.repository.MockTaskTypeXRepository
 import com.synngate.synnframe.data.repository.MockTaskXRepository
-import com.synngate.synnframe.data.repository.OperationMenuRepositoryImpl
 import com.synngate.synnframe.data.repository.ProductRepositoryImpl
 import com.synngate.synnframe.data.repository.ServerRepositoryImpl
 import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
@@ -54,13 +54,13 @@ import com.synngate.synnframe.data.service.SoundServiceImpl
 import com.synngate.synnframe.data.service.SynchronizationControllerImpl
 import com.synngate.synnframe.data.service.WebServerControllerImpl
 import com.synngate.synnframe.data.service.WebServerManagerImpl
-import com.synngate.synnframe.domain.entity.OperationMenuType
-import com.synngate.synnframe.domain.entity.operation.OperationTask
+import com.synngate.synnframe.domain.entity.DynamicMenuItemType
+import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.repository.ActionTemplateRepository
 import com.synngate.synnframe.domain.repository.BinXRepository
+import com.synngate.synnframe.domain.repository.DynamicMenuRepository
 import com.synngate.synnframe.domain.repository.LogRepository
-import com.synngate.synnframe.domain.repository.OperationMenuRepository
 import com.synngate.synnframe.domain.repository.PalletRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
@@ -89,8 +89,8 @@ import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.UpdateInstallerImpl
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.domain.service.WebServerManager
+import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
 import com.synngate.synnframe.domain.usecase.log.LogUseCases
-import com.synngate.synnframe.domain.usecase.operation.OperationMenuUseCases
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
@@ -99,13 +99,13 @@ import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
+import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicMenuViewModel
+import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicTaskDetailViewModel
+import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicTasksViewModel
 import com.synngate.synnframe.presentation.ui.login.LoginViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogListViewModel
 import com.synngate.synnframe.presentation.ui.main.MainMenuViewModel
-import com.synngate.synnframe.presentation.ui.operation.OperationMenuViewModel
-import com.synngate.synnframe.presentation.ui.operation.OperationTaskDetailViewModel
-import com.synngate.synnframe.presentation.ui.operation.OperationTasksViewModel
 import com.synngate.synnframe.presentation.ui.products.ProductDetailViewModel
 import com.synngate.synnframe.presentation.ui.products.ProductListViewModel
 import com.synngate.synnframe.presentation.ui.products.mapper.ProductUiMapper
@@ -287,9 +287,9 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         WizardPalletRepositoryImpl(palletDataSource)
     }
 
-    val operationMenuRepository: OperationMenuRepository by lazy {
+    val dynamicMenuRepository: DynamicMenuRepository by lazy {
         Timber.d("Creating OperationMenuRepository")
-        OperationMenuRepositoryImpl(operationMenuApi)
+        DynamicMenuRepositoryImpl(dynamicMenuApi)
     }
 
     // API сервисы
@@ -322,9 +322,9 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         TaskTypeApiImpl(httpClient, serverProvider)
     }
 
-    val operationMenuApi: OperationMenuApi by lazy {
+    val dynamicMenuApi: DynamicMenuApi by lazy {
         Timber.d("Creating OperationMenuApi")
-        OperationMenuApiImpl(httpClient, serverProvider)
+        DynamicMenuApiImpl(httpClient, serverProvider)
     }
 
     // Сервисы
@@ -463,9 +463,9 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         TaskTypeUseCases(taskTypeRepository)
     }
 
-    val operationMenuUseCases: OperationMenuUseCases by lazy {
+    val dynamicMenuUseCases: DynamicMenuUseCases by lazy {
         Timber.d("Creating OperationMenuUseCases")
-        OperationMenuUseCases(operationMenuRepository)
+        DynamicMenuUseCases(dynamicMenuRepository)
     }
 
     // Репозитории для заданий X
@@ -743,32 +743,32 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         return registry
     }
 
-    fun createOperationMenuViewModel(): OperationMenuViewModel {
-        return getOrCreateViewModel("OperationMenuViewModel") {
-            OperationMenuViewModel(
-                operationMenuUseCases = appContainer.operationMenuUseCases
+    fun createDynamicMenuViewModel(): DynamicMenuViewModel {
+        return getOrCreateViewModel("DynamicMenuViewModel") {
+            DynamicMenuViewModel(
+                dynamicMenuUseCases = appContainer.dynamicMenuUseCases
             )
         }
     }
 
-    fun createOperationTasksViewModel(
-        operationId: String,
-        operationName: String,
-        operationType: OperationMenuType = OperationMenuType.SHOW_LIST
-    ): OperationTasksViewModel {
-        return getOrCreateViewModel("OperationTasksViewModel_$operationId") {
-            OperationTasksViewModel(
-                operationId = operationId,
-                operationName = operationName,
-                operationType = operationType,
-                operationMenuUseCases = appContainer.operationMenuUseCases
+    fun createDynamicTasksViewModel(
+        menuItemId: String,
+        menuItemName: String,
+        menuItemType: DynamicMenuItemType = DynamicMenuItemType.SHOW_LIST
+    ): DynamicTasksViewModel {
+        return getOrCreateViewModel("DynamicTasksViewModel_$menuItemId") {
+            DynamicTasksViewModel(
+                menuItemId = menuItemId,
+                menuItemName = menuItemName,
+                menuItemType = menuItemType,
+                dynamicMenuUseCases = appContainer.dynamicMenuUseCases
             )
         }
     }
 
-    fun createOperationTaskDetailViewModel(task: OperationTask): OperationTaskDetailViewModel {
-        return getOrCreateViewModel("OperationTaskDetailViewModel_${task.id}") {
-            OperationTaskDetailViewModel(task)
+    fun createDynamicTaskDetailViewModel(task: DynamicTask): DynamicTaskDetailViewModel {
+        return getOrCreateViewModel("DynamicTaskDetailViewModel_${task.id}") {
+            DynamicTaskDetailViewModel(task)
         }
     }
 }

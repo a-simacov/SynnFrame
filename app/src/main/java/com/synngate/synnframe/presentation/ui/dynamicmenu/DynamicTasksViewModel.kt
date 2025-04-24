@@ -1,52 +1,47 @@
-package com.synngate.synnframe.presentation.ui.operation
+package com.synngate.synnframe.presentation.ui.dynamicmenu
 
 import com.synngate.synnframe.data.remote.api.ApiResult
-import com.synngate.synnframe.domain.entity.OperationMenuType
-import com.synngate.synnframe.domain.usecase.operation.OperationMenuUseCases
-import com.synngate.synnframe.presentation.ui.operation.model.OperationTasksEvent
-import com.synngate.synnframe.presentation.ui.operation.model.OperationTasksState
+import com.synngate.synnframe.domain.entity.DynamicMenuItemType
+import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
+import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import timber.log.Timber
 
-class OperationTasksViewModel(
-    val operationId: String,
-    val operationName: String,
-    val operationType: OperationMenuType,
-    private val operationMenuUseCases: OperationMenuUseCases,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-) : BaseViewModel<OperationTasksState, OperationTasksEvent>(
-    OperationTasksState(
-        operationId = operationId,
-        operationName = operationName,
-        operationType = operationType
+class DynamicTasksViewModel(
+    val menuItemId: String,
+    val menuItemName: String,
+    val menuItemType: DynamicMenuItemType,
+    private val dynamicMenuUseCases: DynamicMenuUseCases,
+) : BaseViewModel<DynamicTasksState, DynamicTasksEvent>(
+    DynamicTasksState(
+        menuItemId = menuItemId,
+        menuItemName = menuItemName,
+        menuItemType = menuItemType
     )
 ) {
 
     init {
-        if (operationType == OperationMenuType.SHOW_LIST) {
-            loadOperationTasks()
+        if (menuItemType == DynamicMenuItemType.SHOW_LIST) {
+            loadDynamicTasks()
         }
     }
 
-    fun loadOperationTasks() {
-        val currentOperationId = uiState.value.operationId
-        if (currentOperationId.isEmpty()) {
+    fun loadDynamicTasks() {
+        val currentMenuItemId = uiState.value.menuItemId
+        if (currentMenuItemId.isEmpty()) {
             Timber.e("Cannot load tasks: operationId is empty")
             updateState { it.copy(error = "Ошибка загрузки заданий: ID операции не указан") }
             return
         }
 
         launchIO {
-            Timber.d("Loading tasks for operation: $currentOperationId")
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
-                val result = operationMenuUseCases.getOperationTasks(currentOperationId)
+                val result = dynamicMenuUseCases.getOperationTasks(currentMenuItemId)
                 if (result.isSuccess()) {
                     val tasks = result.getOrNull() ?: emptyList()
-                    Timber.d("Tasks loaded: ${tasks.size} items")
                     updateState {
                         it.copy(
                             tasks = tasks,
@@ -55,7 +50,7 @@ class OperationTasksViewModel(
                         )
                     }
                 } else {
-                    val errorMessage = "Ошибка загрузки заданий: ${result as? com.synngate.synnframe.data.remote.api.ApiResult.Error}"
+                    val errorMessage = "Ошибка загрузки заданий: ${result as? ApiResult.Error}"
                     Timber.e(errorMessage)
                     updateState {
                         it.copy(
@@ -84,7 +79,7 @@ class OperationTasksViewModel(
         val searchValue = uiState.value.searchValue.trim()
 
         if (searchValue.isEmpty()) {
-            sendEvent(OperationTasksEvent.ShowSnackbar("Please enter a search value"))
+            sendEvent(DynamicTasksEvent.ShowSnackbar("Please enter a search value"))
             return
         }
 
@@ -92,13 +87,13 @@ class OperationTasksViewModel(
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
-                val result = operationMenuUseCases.searchTaskByValue(operationId, searchValue)
+                val result = dynamicMenuUseCases.searchTaskByValue(menuItemId, searchValue)
 
                 if (result.isSuccess()) {
                     val task = result.getOrNull()
                     if (task != null) {
                         updateState { it.copy(foundTask = task, isLoading = false) }
-                        sendEvent(OperationTasksEvent.NavigateToTaskDetail(task))
+                        sendEvent(DynamicTasksEvent.NavigateToTaskDetail(task))
                     } else {
                         updateState { it.copy(
                             error = "No task found",
@@ -111,25 +106,19 @@ class OperationTasksViewModel(
                         error = error?.message ?: "Search failed",
                         isLoading = false
                     ) }
-                    sendEvent(OperationTasksEvent.ShowSnackbar(error?.message ?: "Search failed"))
+                    sendEvent(DynamicTasksEvent.ShowSnackbar(error?.message ?: "Search failed"))
                 }
             } catch (e: Exception) {
                 updateState { it.copy(
                     error = "Error: ${e.message}",
                     isLoading = false
                 ) }
-                sendEvent(OperationTasksEvent.ShowSnackbar("Error: ${e.message}"))
+                sendEvent(DynamicTasksEvent.ShowSnackbar("Error: ${e.message}"))
             }
         }
     }
 
-    fun onBackClick() {
-        Timber.d("Back clicked in operation tasks")
-        sendEvent(OperationTasksEvent.NavigateBack)
-    }
-
     fun onRefresh() {
-        Timber.d("Refreshing operation tasks")
-        loadOperationTasks()
+        loadDynamicTasks()
     }
 }

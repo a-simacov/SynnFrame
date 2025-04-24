@@ -16,7 +16,6 @@ import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.outlined.Assignment
 import androidx.compose.material.icons.outlined.Inventory
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -50,7 +49,7 @@ fun MainMenuScreen(
     navigateToSettings: () -> Unit,
     navigateToLogin: () -> Unit,
     navigateToTasksX: () -> Unit,
-    navigateToOperations: () -> Unit,
+    navigateToDynamicMenu: () -> Unit,
     exitApp: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -77,7 +76,7 @@ fun MainMenuScreen(
                 is MainMenuEvent.ShowExitConfirmation -> {
                     // Обрабатывается через showExitConfirmation в state
                 }
-                is MainMenuEvent.NavigateToOperations -> navigateToOperations()
+                is MainMenuEvent.NavigateToDynamicMenu -> navigateToDynamicMenu()
             }
         }
     }
@@ -126,8 +125,8 @@ fun MainMenuScreen(
 
             NavigationButton(
                 text = stringResource(id = R.string.operations),
-                onClick = { viewModel.onOperationsClick() },
-                icon = Icons.Outlined.Assignment,
+                onClick = { viewModel.onDynamicMenuClick() },
+                icon = Icons.AutoMirrored.Outlined.Assignment,
                 contentDescription = stringResource(id = R.string.operations)
             )
 
@@ -144,11 +143,11 @@ fun MainMenuScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             NavigationButton(
-                text = "Расширенные задания", // Можно добавить строку в ресурсы
+                text = "Расширенные задания",
                 onClick = { viewModel.onTasksXClick() },
                 icon = Icons.AutoMirrored.Outlined.Assignment,
-                contentDescription = "Расширенные задания", // Можно добавить строку в ресурсы
-                badge = null // Можно добавить счетчик заданий X, если нужно
+                contentDescription = "Расширенные задания",
+                badge = null
             )
 
             Spacer(modifier = Modifier.height(12.dp))

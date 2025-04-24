@@ -1,8 +1,8 @@
 package com.synngate.synnframe.data.remote.api
 
 import com.synngate.synnframe.data.remote.service.ServerProvider
-import com.synngate.synnframe.domain.entity.operation.OperationMenuItem
-import com.synngate.synnframe.domain.entity.operation.OperationTask
+import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
+import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.util.network.ApiUtils
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -13,12 +13,12 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import timber.log.Timber
 
-class OperationMenuApiImpl(
+class DynamicMenuApiImpl(
     private val client: HttpClient,
     private val serverProvider: ServerProvider
-) : OperationMenuApi {
+) : DynamicMenuApi {
 
-    override suspend fun getOperationMenu(): ApiResult<List<OperationMenuItem>> {
+    override suspend fun getDynamicMenu(): ApiResult<List<DynamicMenuItem>> {
         val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
             HttpStatusCode.InternalServerError.value,
             "No active server configured"
@@ -33,7 +33,7 @@ class OperationMenuApiImpl(
 
             if (response.status.isSuccess()) {
                 try {
-                    val menuItems = response.body<List<OperationMenuItem>>()
+                    val menuItems = response.body<List<DynamicMenuItem>>()
                     ApiResult.Success(menuItems)
                 } catch (e: Exception) {
                     Timber.e(e, "Error parsing operation menu JSON: ${e.message}")
@@ -57,14 +57,14 @@ class OperationMenuApiImpl(
         }
     }
 
-    override suspend fun getOperationTasks(operationId: String): ApiResult<List<OperationTask>> {
+    override suspend fun getDynamicTasks(menuItemId: String): ApiResult<List<DynamicTask>> {
         val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
             HttpStatusCode.InternalServerError.value,
             "No active server configured"
         )
 
         return try {
-            val url = "${server.apiUrl}/menu/$operationId"
+            val url = "${server.apiUrl}/menu/$menuItemId"
             val response = client.get(url) {
                 header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
                 header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
@@ -72,7 +72,7 @@ class OperationMenuApiImpl(
 
             if (response.status.isSuccess()) {
                 try {
-                    val tasks = response.body<List<OperationTask>>()
+                    val tasks = response.body<List<DynamicTask>>()
                     ApiResult.Success(tasks)
                 } catch (e: Exception) {
                     Timber.e(e, "Error parsing operation tasks JSON: ${e.message}")
@@ -88,7 +88,7 @@ class OperationMenuApiImpl(
                 )
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error getting operation tasks from server for operation ID: $operationId")
+            Timber.e(e, "Error getting operation tasks from server for operation ID: $menuItemId")
             ApiResult.Error(
                 HttpStatusCode.InternalServerError.value,
                 e.message ?: "Failed to fetch operation tasks"
@@ -96,14 +96,14 @@ class OperationMenuApiImpl(
         }
     }
 
-    override suspend fun searchTaskByValue(operationId: String, searchValue: String): ApiResult<OperationTask> {
+    override suspend fun searchTaskByValue(menuItemId: String, searchValue: String): ApiResult<DynamicTask> {
         val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
             HttpStatusCode.InternalServerError.value,
             "No active server configured"
         )
 
         return try {
-            val url = "${server.apiUrl}/menu/$operationId/search?value=$searchValue"
+            val url = "${server.apiUrl}/menu/$menuItemId/search?value=$searchValue"
             val response = client.get(url) {
                 header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
                 header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
@@ -111,7 +111,7 @@ class OperationMenuApiImpl(
 
             if (response.status.isSuccess()) {
                 try {
-                    val task = response.body<OperationTask>()
+                    val task = response.body<DynamicTask>()
                     ApiResult.Success(task)
                 } catch (e: Exception) {
                     ApiResult.Error(

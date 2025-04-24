@@ -40,5 +40,5 @@ sealed class MainMenuEvent {
 
     data object NavigateToTasksX : MainMenuEvent()
 
-    data object NavigateToOperations : MainMenuEvent()
+    data object NavigateToDynamicMenu : MainMenuEvent()
 }

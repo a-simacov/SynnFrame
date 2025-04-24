@@ -20,16 +20,16 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.synngate.synnframe.SynnFrameApplication
-import com.synngate.synnframe.domain.entity.OperationMenuType
-import com.synngate.synnframe.domain.entity.operation.OperationTask
+import com.synngate.synnframe.domain.entity.DynamicMenuItemType
+import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.presentation.common.LocalCurrentUser
+import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicMenuScreen
+import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicTaskDetailScreen
+import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicTasksScreen
 import com.synngate.synnframe.presentation.ui.login.LoginScreen
 import com.synngate.synnframe.presentation.ui.logs.LogDetailScreen
 import com.synngate.synnframe.presentation.ui.logs.LogListScreen
 import com.synngate.synnframe.presentation.ui.main.MainMenuScreen
-import com.synngate.synnframe.presentation.ui.operation.OperationMenuScreen
-import com.synngate.synnframe.presentation.ui.operation.OperationTaskDetailScreen
-import com.synngate.synnframe.presentation.ui.operation.OperationTasksScreen
 import com.synngate.synnframe.presentation.ui.products.ProductDetailScreen
 import com.synngate.synnframe.presentation.ui.products.ProductListScreen
 import com.synngate.synnframe.presentation.ui.server.ServerDetailScreen
@@ -41,6 +41,7 @@ import com.synngate.synnframe.presentation.ui.tasks.TaskListScreen
 import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailScreen
 import com.synngate.synnframe.presentation.ui.taskx.TaskXListScreen
 import timber.log.Timber
+import java.net.URLEncoder.encode
 
 /**
  * Основной навигационный компонент приложения
@@ -196,8 +197,8 @@ fun AppNavigation(
                             popUpTo(Screen.MainMenu.route) { inclusive = false }
                         }
                     },
-                    navigateToOperations = {
-                        navController.navigate(Screen.OperationMenu.route) {
+                    navigateToDynamicMenu = {
+                        navController.navigate(Screen.DynamicMenu.route) {
                             popUpTo(Screen.MainMenu.route) { inclusive = false }
                         }
                     },
@@ -229,17 +230,17 @@ fun AppNavigation(
                 )
             }
 
-            composable(Screen.OperationMenu.route) { entry ->
+            composable(Screen.DynamicMenu.route) { entry ->
                 val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
-                val viewModel = remember { screenContainer.createOperationMenuViewModel() }
+                val viewModel = remember { screenContainer.createDynamicMenuViewModel() }
 
-                OperationMenuScreen(
+                DynamicMenuScreen(
                     viewModel = viewModel,
-                    navigateToOperationTasks = { operationId, operationName, operationType ->
-                        navController.navigate(Screen.OperationTasks.createRoute(
-                            operationId = operationId,
-                            operationName = operationName,
-                            operationType = operationType
+                    navigateToDynamicTasks = { menuItemId, menuItemName, menuItemType ->
+                        navController.navigate(Screen.DynamicTasks.createRoute(
+                            menuItemId = menuItemId,
+                            menuItemName = menuItemName,
+                            menuItemType = menuItemType
                         ))
                     },
                     navigateBack = {
@@ -249,36 +250,36 @@ fun AppNavigation(
             }
 
             composable(
-                route = Screen.OperationTasks.route,
+                route = Screen.DynamicTasks.route,
                 arguments = listOf(
-                    navArgument("operationId") {
+                    navArgument("menuItemId") {
                         type = NavType.StringType
                     },
-                    navArgument("operationName") {
+                    navArgument("menuItemName") {
                         type = NavType.StringType
                         nullable = true
                     },
-                    navArgument("operationType") {
+                    navArgument("menuItemType") {
                         type = NavType.StringType
-                        defaultValue = OperationMenuType.SHOW_LIST.name
+                        defaultValue = DynamicMenuItemType.SHOW_LIST.name
                     }
                 )
             ) { entry ->
-                val operationId = entry.arguments?.getString("operationId") ?: ""
-                val encodedOperationName = entry.arguments?.getString("operationName") ?: ""
-                val operationName = java.net.URLDecoder.decode(encodedOperationName, "UTF-8")
-                val operationTypeStr = entry.arguments?.getString("operationType") ?: OperationMenuType.SHOW_LIST.name
-                val operationType = OperationMenuType.fromString(operationTypeStr)
+                val menuItemId = entry.arguments?.getString("menuItemId") ?: ""
+                val encodedMenuItemName = entry.arguments?.getString("menuItemName") ?: ""
+                val menuItemName = java.net.URLDecoder.decode(encodedMenuItemName, "UTF-8")
+                val menuItemTypeStr = entry.arguments?.getString("menuItemType") ?: DynamicMenuItemType.SHOW_LIST.name
+                val menuItemType = DynamicMenuItemType.fromString(menuItemTypeStr)
 
                 val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
-                val viewModel = remember(operationId, operationName, operationType) {
-                    screenContainer.createOperationTasksViewModel(operationId, operationName, operationType)
+                val viewModel = remember(menuItemId, menuItemName, menuItemType) {
+                    screenContainer.createDynamicTasksViewModel(menuItemId, menuItemName, menuItemType)
                 }
 
-                OperationTasksScreen(
+                DynamicTasksScreen(
                     viewModel = viewModel,
                     navigateToTaskDetail = { task ->
-                        navController.navigate(Screen.OperationTaskDetail.createRoute(task))
+                        navController.navigate(Screen.DynamicTaskDetail.createRoute(task))
                     },
                     navigateBack = {
                         navController.popBackStack()
@@ -287,7 +288,7 @@ fun AppNavigation(
             }
 
             composable(
-                route = Screen.OperationTaskDetail.route,
+                route = Screen.DynamicTaskDetail.route,
                 arguments = listOf(
                     navArgument("taskId") {
                         type = NavType.StringType
@@ -304,12 +305,12 @@ fun AppNavigation(
 
                 val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
                 val viewModel = remember(taskId, taskName) {
-                    screenContainer.createOperationTaskDetailViewModel(
-                        OperationTask(id = taskId, name = taskName)
+                    screenContainer.createDynamicTaskDetailViewModel(
+                        DynamicTask(id = taskId, name = taskName)
                     )
                 }
 
-                OperationTaskDetailScreen(
+                DynamicTaskDetailScreen(
                     viewModel = viewModel,
                     navigateBack = {
                         navController.popBackStack()
@@ -650,18 +651,18 @@ sealed class Screen(val route: String) {
         fun createRoute(taskId: String) = "taskx_detail/$taskId"
     }
 
-    object OperationMenu : Screen("operation_menu")
-    object OperationTasks : Screen("operation_tasks/{operationId}/{operationName}?operationType={operationType}") {
-        fun createRoute(operationId: String, operationName: String, operationType: OperationMenuType = OperationMenuType.SHOW_LIST): String {
-            val encodedName = java.net.URLEncoder.encode(operationName, "UTF-8")
-            return "operation_tasks/$operationId/$encodedName?operationType=${operationType.name}"
+    object DynamicMenu : Screen("dynamic_menu")
+    object DynamicTasks : Screen("dynamic_tasks/{menuItemId}/{menuItemName}?menuItemType={menuItemType}") {
+        fun createRoute(menuItemId: String, menuItemName: String, menuItemType: DynamicMenuItemType = DynamicMenuItemType.SHOW_LIST): String {
+            val encodedName = encode(menuItemName, "UTF-8")
+            return "dynamic_tasks/$menuItemId/$encodedName?operationType=${menuItemType.name}"
         }
     }
 
-    object OperationTaskDetail : Screen("operation_task_detail?taskId={taskId}&taskName={taskName}") {
-        fun createRoute(task: OperationTask): String {
-            val encodedName = java.net.URLEncoder.encode(task.name, "UTF-8")
-            return "operation_task_detail?taskId=${task.id}&taskName=$encodedName"
+    object DynamicTaskDetail : Screen("dynamic_task_detail?taskId={taskId}&taskName={taskName}") {
+        fun createRoute(task: DynamicTask): String {
+            val encodedName = encode(task.name, "UTF-8")
+            return "dynamic_task_detail?taskId=${task.id}&taskName=$encodedName"
         }
     }
 }

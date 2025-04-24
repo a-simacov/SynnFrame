@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.operation
+package com.synngate.synnframe.presentation.ui.dynamicmenu
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,17 +28,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
-import com.synngate.synnframe.domain.entity.OperationMenuType
-import com.synngate.synnframe.domain.entity.operation.OperationMenuItem
+import com.synngate.synnframe.domain.entity.DynamicMenuItemType
+import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.status.StatusType
-import com.synngate.synnframe.presentation.ui.operation.model.OperationMenuEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicMenuEvent
 
 @Composable
-fun OperationMenuScreen(
-    viewModel: OperationMenuViewModel,
-    navigateToOperationTasks: (operationId: String, operationName: String, operationType: OperationMenuType) -> Unit,
+fun DynamicMenuScreen(
+    viewModel: DynamicMenuViewModel,
+    navigateToDynamicTasks: (menuItemId: String, menuItemName: String, menuItemType: DynamicMenuItemType) -> Unit,
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -49,13 +49,13 @@ fun OperationMenuScreen(
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is OperationMenuEvent.NavigateToOperationTasks -> {
-                    navigateToOperationTasks(event.operationId, event.operationName, event.operationType)
+                is DynamicMenuEvent.NavigateToDynamicTasks -> {
+                    navigateToDynamicTasks(event.menuItemId, event.menuItemName, event.menuItemType)
                 }
-                is OperationMenuEvent.NavigateBack -> {
+                is DynamicMenuEvent.NavigateBack -> {
                     navigateBack()
                 }
-                is OperationMenuEvent.ShowSnackbar -> {
+                is DynamicMenuEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(
                         message = event.message,
                         duration = SnackbarDuration.Short
@@ -87,7 +87,7 @@ fun OperationMenuScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (state.operations.isEmpty()) {
+            if (state.menuItems.isEmpty()) {
                 Text(
                     text = stringResource(id = R.string.no_operations_available),
                     style = MaterialTheme.typography.bodyLarge,
@@ -97,10 +97,10 @@ fun OperationMenuScreen(
                         .padding(16.dp)
                 )
             } else {
-                OperationMenuContent(
-                    operations = state.operations,
-                    onOperationClick = { operation ->
-                        viewModel.onOperationClick(operation.id, operation.name, operation.type)
+                DynamicMenuContent(
+                    menuItems = state.menuItems,
+                    onMenuItemClick = { operation ->
+                        viewModel.onMenuItemClick(operation.id, operation.name, operation.type)
                     }
                 )
             }
@@ -109,9 +109,9 @@ fun OperationMenuScreen(
 }
 
 @Composable
-private fun OperationMenuContent(
-    operations: List<OperationMenuItem>,
-    onOperationClick: (OperationMenuItem) -> Unit,
+private fun DynamicMenuContent(
+    menuItems: List<DynamicMenuItem>,
+    onMenuItemClick: (DynamicMenuItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -127,12 +127,12 @@ private fun OperationMenuContent(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        operations.forEach { operation ->
+        menuItems.forEach { menuItem ->
             NavigationButton(
-                text = operation.name,
-                onClick = { onOperationClick(operation) },
+                text = menuItem.name,
+                onClick = { onMenuItemClick(menuItem) },
                 icon = Icons.AutoMirrored.Outlined.Assignment,
-                contentDescription = operation.name
+                contentDescription = menuItem.name
             )
 
             Spacer(modifier = Modifier.height(12.dp))

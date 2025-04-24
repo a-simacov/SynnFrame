@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.operation
+package com.synngate.synnframe.presentation.ui.dynamicmenu
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -20,11 +20,11 @@ import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.InfoCard
 import com.synngate.synnframe.presentation.common.scaffold.InfoRow
-import com.synngate.synnframe.presentation.ui.operation.model.OperationTaskDetailEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTaskDetailEvent
 
 @Composable
-fun OperationTaskDetailScreen(
-    viewModel: OperationTaskDetailViewModel,
+fun DynamicTaskDetailScreen(
+    viewModel: DynamicTaskDetailViewModel,
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -34,11 +34,11 @@ fun OperationTaskDetailScreen(
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is OperationTaskDetailEvent.NavigateBack -> navigateBack()
-                is OperationTaskDetailEvent.ShowSnackbar -> {
+                is DynamicTaskDetailEvent.NavigateBack -> navigateBack()
+                is DynamicTaskDetailEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(event.message)
                 }
-                is OperationTaskDetailEvent.StartTaskExecution -> {
+                is DynamicTaskDetailEvent.StartTaskExecution -> {
                     // В будущем добавим переход к экрану выполнения задания
                 }
             }

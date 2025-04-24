@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.operation
+package com.synngate.synnframe.presentation.ui.dynamicmenu
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,18 +35,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
-import com.synngate.synnframe.domain.entity.OperationMenuType
-import com.synngate.synnframe.domain.entity.operation.OperationTask
+import com.synngate.synnframe.domain.entity.DynamicMenuItemType
+import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.status.StatusType
-import com.synngate.synnframe.presentation.ui.operation.model.OperationTasksEvent
-import com.synngate.synnframe.presentation.ui.operation.model.OperationTasksState
+import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksState
 
 @Composable
-fun OperationTasksScreen(
-    viewModel: OperationTasksViewModel,
-    navigateToTaskDetail: (OperationTask) -> Unit,
+fun DynamicTasksScreen(
+    viewModel: DynamicTasksViewModel,
+    navigateToTaskDetail: (DynamicTask) -> Unit,
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -57,24 +57,24 @@ fun OperationTasksScreen(
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is OperationTasksEvent.NavigateBack -> {
+                is DynamicTasksEvent.NavigateBack -> {
                     navigateBack()
                 }
 
-                is OperationTasksEvent.ShowSnackbar -> {
+                is DynamicTasksEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(
                         message = event.message,
                         duration = SnackbarDuration.Short
                     )
                 }
 
-                is OperationTasksEvent.NavigateToTaskDetail -> navigateToTaskDetail(event.task)
+                is DynamicTasksEvent.NavigateToTaskDetail -> navigateToTaskDetail(event.task)
             }
         }
     }
 
     AppScaffold(
-        title = state.operationName.ifEmpty { stringResource(id = R.string.operation_tasks_title) },
+        title = state.menuItemName.ifEmpty { stringResource(id = R.string.operation_tasks_title) },
         onNavigateBack = navigateBack,
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {
@@ -95,8 +95,8 @@ fun OperationTasksScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when (state.operationType) {
-                OperationMenuType.SHOW_LIST -> {
+            when (state.menuItemType) {
+                DynamicMenuItemType.SHOW_LIST -> {
                     if (state.tasks.isEmpty()) {
                         Text(
                             text = stringResource(id = R.string.no_tasks_available),
@@ -107,14 +107,14 @@ fun OperationTasksScreen(
                                 .padding(16.dp)
                         )
                     } else {
-                        OperationTasksList(
+                        DynamicTasksList(
                             tasks = state.tasks,
                             onTaskClick = { task -> navigateToTaskDetail(task) }
                         )
                     }
                 }
-                OperationMenuType.SEARCH -> {
-                    OperationTaskSearch(
+                DynamicMenuItemType.SEARCH -> {
+                    DynamicTaskSearch(
                         state = state,
                         onValueChange = viewModel::onSearchValueChanged,
                         onSearch = viewModel::onSearch,
@@ -127,9 +127,9 @@ fun OperationTasksScreen(
 }
 
 @Composable
-private fun OperationTasksList(
-    tasks: List<OperationTask>,
-    onTaskClick: (OperationTask) -> Unit,
+private fun DynamicTasksList(
+    tasks: List<DynamicTask>,
+    onTaskClick: (DynamicTask) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -142,7 +142,7 @@ private fun OperationTasksList(
         }
 
         items(tasks) { task ->
-            OperationTaskItem(
+            DynamicTaskItem(
                 task = task,
                 onClick = { onTaskClick(task) }
             )
@@ -157,8 +157,8 @@ private fun OperationTasksList(
 }
 
 @Composable
-private fun OperationTaskItem(
-    task: OperationTask,
+private fun DynamicTaskItem(
+    task: DynamicTask,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -198,8 +198,8 @@ private fun OperationTaskItem(
 }
 
 @Composable
-fun OperationTaskSearch(
-    state: OperationTasksState,
+fun DynamicTaskSearch(
+    state: DynamicTasksState,
     onValueChange: (String) -> Unit,
     onSearch: () -> Unit,
     paddingValues: PaddingValues,

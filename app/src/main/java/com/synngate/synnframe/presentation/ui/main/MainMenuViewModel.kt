@@ -170,8 +170,7 @@ class MainMenuViewModel(
         }
     }
 
-    fun onOperationsClick() {
-        Timber.d("Operations clicked")
-        sendEvent(MainMenuEvent.NavigateToOperations)
+    fun onDynamicMenuClick() {
+        sendEvent(MainMenuEvent.NavigateToDynamicMenu)
     }
 }
