@@ -1,7 +1,8 @@
 package com.synngate.synnframe.presentation.ui.dynamicmenu
 
 import com.synngate.synnframe.data.remote.api.ApiResult
-import com.synngate.synnframe.domain.entity.DynamicMenuItemType
+import com.synngate.synnframe.domain.entity.operation.ScreenElementType
+import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
 import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksEvent
 import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksState
@@ -11,27 +12,29 @@ import timber.log.Timber
 class DynamicTasksViewModel(
     val menuItemId: String,
     val menuItemName: String,
-    val menuItemType: DynamicMenuItemType,
+    val endpoint: String,
+    val screenSettings: ScreenSettings,
     private val dynamicMenuUseCases: DynamicMenuUseCases,
 ) : BaseViewModel<DynamicTasksState, DynamicTasksEvent>(
     DynamicTasksState(
         menuItemId = menuItemId,
         menuItemName = menuItemName,
-        menuItemType = menuItemType
+        endpoint = endpoint,
+        screenSettings = screenSettings
     )
 ) {
 
     init {
-        if (menuItemType == DynamicMenuItemType.SHOW_LIST) {
+        if (uiState.value.hasElement(ScreenElementType.SHOW_LIST)) {
             loadDynamicTasks()
         }
     }
 
     fun loadDynamicTasks() {
-        val currentMenuItemId = uiState.value.menuItemId
-        if (currentMenuItemId.isEmpty()) {
-            Timber.e("Cannot load tasks: operationId is empty")
-            updateState { it.copy(error = "Ошибка загрузки заданий: ID операции не указан") }
+        val currentEndpoint = uiState.value.endpoint
+        if (currentEndpoint.isEmpty()) {
+            Timber.e("Cannot load tasks: endpoint is empty")
+            updateState { it.copy(error = "Ошибка загрузки заданий: эндпоинт не указан") }
             return
         }
 
@@ -39,9 +42,14 @@ class DynamicTasksViewModel(
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
-                val result = dynamicMenuUseCases.getOperationTasks(currentMenuItemId)
+                val result = dynamicMenuUseCases.getDynamicTasks(currentEndpoint)
                 if (result.isSuccess()) {
                     val tasks = result.getOrNull() ?: emptyList()
+
+                    if (tasks.size == 1 && uiState.value.screenSettings.openImmediately) {
+                        sendEvent(DynamicTasksEvent.NavigateToTaskDetail(tasks[0]))
+                    }
+
                     updateState {
                         it.copy(
                             tasks = tasks,
@@ -50,7 +58,7 @@ class DynamicTasksViewModel(
                         )
                     }
                 } else {
-                    val errorMessage = "Ошибка загрузки заданий: ${result as? ApiResult.Error}"
+                    val errorMessage = "Ошибка загрузки заданий: ${(result as? ApiResult.Error)?.message}"
                     Timber.e(errorMessage)
                     updateState {
                         it.copy(
@@ -60,7 +68,7 @@ class DynamicTasksViewModel(
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Exception while loading operation tasks")
+                Timber.e(e, "Exception while loading dynamic tasks")
                 updateState {
                     it.copy(
                         isLoading = false,
@@ -77,9 +85,15 @@ class DynamicTasksViewModel(
 
     fun onSearch() {
         val searchValue = uiState.value.searchValue.trim()
+        val currentEndpoint = uiState.value.endpoint
+
+        if (currentEndpoint.isEmpty()) {
+            sendEvent(DynamicTasksEvent.ShowSnackbar("Ошибка: эндпоинт не указан"))
+            return
+        }
 
         if (searchValue.isEmpty()) {
-            sendEvent(DynamicTasksEvent.ShowSnackbar("Please enter a search value"))
+            sendEvent(DynamicTasksEvent.ShowSnackbar("Пожалуйста, введите значение для поиска"))
             return
         }
 
@@ -87,7 +101,7 @@ class DynamicTasksViewModel(
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
-                val result = dynamicMenuUseCases.searchTaskByValue(menuItemId, searchValue)
+                val result = dynamicMenuUseCases.searchDynamicTask(currentEndpoint, searchValue)
 
                 if (result.isSuccess()) {
                     val task = result.getOrNull()
@@ -96,24 +110,24 @@ class DynamicTasksViewModel(
                         sendEvent(DynamicTasksEvent.NavigateToTaskDetail(task))
                     } else {
                         updateState { it.copy(
-                            error = "No task found",
+                            error = "Задание не найдено",
                             isLoading = false
                         ) }
                     }
                 } else {
                     val error = result as? ApiResult.Error
                     updateState { it.copy(
-                        error = error?.message ?: "Search failed",
+                        error = error?.message ?: "Ошибка поиска",
                         isLoading = false
                     ) }
-                    sendEvent(DynamicTasksEvent.ShowSnackbar(error?.message ?: "Search failed"))
+                    sendEvent(DynamicTasksEvent.ShowSnackbar(error?.message ?: "Ошибка поиска"))
                 }
             } catch (e: Exception) {
                 updateState { it.copy(
-                    error = "Error: ${e.message}",
+                    error = "Ошибка: ${e.message}",
                     isLoading = false
                 ) }
-                sendEvent(DynamicTasksEvent.ShowSnackbar("Error: ${e.message}"))
+                sendEvent(DynamicTasksEvent.ShowSnackbar("Ошибка: ${e.message}"))
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.synngate.synnframe.presentation.ui.dynamicmenu
 
 import com.synngate.synnframe.domain.entity.DynamicMenuItemType
+import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
 import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicMenuEvent
 import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicMenuState
@@ -11,52 +12,82 @@ class DynamicMenuViewModel(
     private val dynamicMenuUseCases: DynamicMenuUseCases,
 ) : BaseViewModel<DynamicMenuState, DynamicMenuEvent>(DynamicMenuState()) {
 
+    private var currentMenuItemId: String? = null
+
     init {
-        loadDynamicMenu()
+        loadDynamicMenu(null)
     }
 
-    fun loadDynamicMenu() {
+    fun loadDynamicMenu(menuItemId: String?) {
+        currentMenuItemId = menuItemId
+
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
-
             try {
-                val result = dynamicMenuUseCases.getDynamicMenu()
+                val result = dynamicMenuUseCases.getDynamicMenu(menuItemId)
                 if (result.isSuccess()) {
                     val menuItems = result.getOrNull() ?: emptyList()
                     updateState {
                         it.copy(
                             menuItems = menuItems,
+                            currentMenuItemId = menuItemId,
                             isLoading = false,
-                            error = if (menuItems.isEmpty()) "Нет доступных операций" else null
+                            error = if (menuItems.isEmpty()) "Нет доступных элементов меню" else null
                         )
                     }
                 } else {
-                    val errorMessage = "Ошибка загрузки операций: ${result as? com.synngate.synnframe.data.remote.api.ApiResult.Error}"
-                    Timber.e(errorMessage)
-                    updateState {
-                        it.copy(
-                            isLoading = false,
-                            error = errorMessage
-                        )
-                    }
+                    updateState { it.copy(
+                        isLoading = false,
+                        error = "Ошибка загрузки меню: ${(result as? com.synngate.synnframe.data.remote.api.ApiResult.Error)?.message}"
+                    )}
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Exception while loading operation menu")
-                updateState {
-                    it.copy(
-                        isLoading = false,
-                        error = "Ошибка загрузки операций: ${e.message}"
-                    )
-                }
+                Timber.e(e, "Error loading dynamic menu")
+                updateState { it.copy(
+                    isLoading = false,
+                    error = "Ошибка: ${e.message}"
+                )}
             }
         }
     }
 
-    fun onMenuItemClick(menuItemId: String, menuItemName: String, menuItemType: DynamicMenuItemType) {
-        sendEvent(DynamicMenuEvent.NavigateToDynamicTasks(menuItemId, menuItemName, menuItemType))
+    fun onMenuItemClick(menuItem: DynamicMenuItem) {
+        when (menuItem.type) {
+            DynamicMenuItemType.SUBMENU -> {
+                loadDynamicMenu(menuItem.id)
+            }
+            DynamicMenuItemType.TASKS -> {
+                if (menuItem.endpoint == null) {
+                    sendEvent(DynamicMenuEvent.ShowSnackbar("Ошибка: отсутствует endpoint для задания"))
+                    return
+                }
+                sendEvent(DynamicMenuEvent.NavigateToDynamicTasks(
+                    menuItemId = menuItem.id,
+                    menuItemName = menuItem.name,
+                    endpoint = menuItem.endpoint,
+                    screenSettings = menuItem.screenSettings
+                ))
+            }
+            DynamicMenuItemType.PRODUCTS -> {
+                if (menuItem.endpoint == null) {
+                    sendEvent(DynamicMenuEvent.ShowSnackbar("Ошибка: отсутствует endpoint для товаров"))
+                    return
+                }
+                sendEvent(DynamicMenuEvent.ShowSnackbar("Работа с товарами будет реализована позже"))
+            }
+        }
+    }
+
+    fun onBackPressed() {
+        if (currentMenuItemId != null) {
+            val parentId = uiState.value.menuItems.firstOrNull()?.parentId
+            loadDynamicMenu(parentId)
+        } else {
+            sendEvent(DynamicMenuEvent.NavigateBack)
+        }
     }
 
     fun onRefresh() {
-        loadDynamicMenu()
+        loadDynamicMenu(currentMenuItemId)
     }
 }

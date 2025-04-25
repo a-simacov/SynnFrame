@@ -7,5 +7,8 @@ import kotlinx.serialization.Serializable
 data class DynamicMenuItem(
     val id: String,
     val name: String,
-    val type: DynamicMenuItemType = DynamicMenuItemType.SHOW_LIST
+    val type: DynamicMenuItemType = DynamicMenuItemType.SUBMENU,
+    val parentId: String? = null,  // null - корневой элемент, не null - элемент подменю
+    val endpoint: String? = null,  // API-эндпоинт для получения данных
+    val screenSettings: ScreenSettings = ScreenSettings()
 )

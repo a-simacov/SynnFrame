@@ -2,6 +2,7 @@ package com.synngate.synnframe.data.remote.api
 
 import com.synngate.synnframe.data.remote.service.ServerProvider
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
+import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.util.network.ApiUtils
 import io.ktor.client.HttpClient
@@ -18,14 +19,19 @@ class DynamicMenuApiImpl(
     private val serverProvider: ServerProvider
 ) : DynamicMenuApi {
 
-    override suspend fun getDynamicMenu(): ApiResult<List<DynamicMenuItem>> {
+    override suspend fun getDynamicMenu(menuItemId: String?): ApiResult<List<DynamicMenuItem>> {
         val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
             HttpStatusCode.InternalServerError.value,
             "No active server configured"
         )
 
         return try {
-            val url = "${server.apiUrl}/menu"
+            val url = if (menuItemId == null) {
+                "${server.apiUrl}/menu"
+            } else {
+                "${server.apiUrl}/menu/$menuItemId"
+            }
+
             val response = client.get(url) {
                 header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
                 header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
@@ -36,10 +42,10 @@ class DynamicMenuApiImpl(
                     val menuItems = response.body<List<DynamicMenuItem>>()
                     ApiResult.Success(menuItems)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error parsing operation menu JSON: ${e.message}")
+                    Timber.e(e, "Error parsing dynamic menu JSON: ${e.message}")
                     ApiResult.Error(
                         HttpStatusCode.InternalServerError.value,
-                        "Error parsing operation menu: ${e.message}"
+                        "Error parsing dynamic menu: ${e.message}"
                     )
                 }
             } else {
@@ -49,22 +55,32 @@ class DynamicMenuApiImpl(
                 )
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error getting operation menu from server")
+            Timber.e(e, "Error getting dynamic menu from server")
             ApiResult.Error(
                 HttpStatusCode.InternalServerError.value,
-                e.message ?: "Failed to fetch operation menu"
+                e.message ?: "Failed to fetch dynamic menu"
             )
         }
     }
 
-    override suspend fun getDynamicTasks(menuItemId: String): ApiResult<List<DynamicTask>> {
+    override suspend fun getDynamicTasks(
+        endpoint: String,
+        params: Map<String, String>
+    ): ApiResult<List<DynamicTask>> {
         val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
             HttpStatusCode.InternalServerError.value,
             "No active server configured"
         )
 
         return try {
-            val url = "${server.apiUrl}/menu/$menuItemId"
+            val baseUrl = "${server.apiUrl}${endpoint}"
+            val url = if (params.isNotEmpty()) {
+                val queryParams = params.entries.joinToString("&") { "${it.key}=${it.value}" }
+                "$baseUrl?$queryParams"
+            } else {
+                baseUrl
+            }
+
             val response = client.get(url) {
                 header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
                 header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
@@ -75,10 +91,10 @@ class DynamicMenuApiImpl(
                     val tasks = response.body<List<DynamicTask>>()
                     ApiResult.Success(tasks)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error parsing operation tasks JSON: ${e.message}")
+                    Timber.e(e, "Error parsing dynamic tasks JSON: ${e.message}")
                     ApiResult.Error(
                         HttpStatusCode.InternalServerError.value,
-                        "Error parsing operation tasks: ${e.message}"
+                        "Error parsing dynamic tasks: ${e.message}"
                     )
                 }
             } else {
@@ -88,22 +104,22 @@ class DynamicMenuApiImpl(
                 )
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error getting operation tasks from server for operation ID: $menuItemId")
+            Timber.e(e, "Error getting dynamic tasks from server")
             ApiResult.Error(
                 HttpStatusCode.InternalServerError.value,
-                e.message ?: "Failed to fetch operation tasks"
+                e.message ?: "Failed to fetch dynamic tasks"
             )
         }
     }
 
-    override suspend fun searchTaskByValue(menuItemId: String, searchValue: String): ApiResult<DynamicTask> {
+    override suspend fun searchDynamicTask(endpoint: String, searchValue: String): ApiResult<DynamicTask> {
         val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
             HttpStatusCode.InternalServerError.value,
             "No active server configured"
         )
 
         return try {
-            val url = "${server.apiUrl}/menu/$menuItemId/search?value=$searchValue"
+            val url = "${server.apiUrl}${endpoint}?value=$searchValue"
             val response = client.get(url) {
                 header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
                 header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
@@ -120,7 +136,6 @@ class DynamicMenuApiImpl(
                     )
                 }
             } else {
-                // Получаем текст ошибки из ответа
                 val errorText = response.bodyAsText()
                 ApiResult.Error(
                     response.status.value,
@@ -131,6 +146,55 @@ class DynamicMenuApiImpl(
             ApiResult.Error(
                 HttpStatusCode.InternalServerError.value,
                 e.message ?: "Error searching task"
+            )
+        }
+    }
+
+    override suspend fun getDynamicProducts(
+        endpoint: String,
+        params: Map<String, String>
+    ): ApiResult<List<DynamicProduct>> {
+        val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
+            HttpStatusCode.InternalServerError.value,
+            "No active server configured"
+        )
+
+        return try {
+            val baseUrl = "${server.apiUrl}${endpoint}"
+            val url = if (params.isNotEmpty()) {
+                val queryParams = params.entries.joinToString("&") { "${it.key}=${it.value}" }
+                "$baseUrl?$queryParams"
+            } else {
+                baseUrl
+            }
+
+            val response = client.get(url) {
+                header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
+                header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
+            }
+
+            if (response.status.isSuccess()) {
+                try {
+                    val products = response.body<List<DynamicProduct>>()
+                    ApiResult.Success(products)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error parsing dynamic products JSON: ${e.message}")
+                    ApiResult.Error(
+                        HttpStatusCode.InternalServerError.value,
+                        "Error parsing dynamic products: ${e.message}"
+                    )
+                }
+            } else {
+                ApiResult.Error(
+                    response.status.value,
+                    "Server returned status code: ${response.status.value}"
+                )
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error getting dynamic products from server")
+            ApiResult.Error(
+                HttpStatusCode.InternalServerError.value,
+                e.message ?: "Failed to fetch dynamic products"
             )
         }
     }

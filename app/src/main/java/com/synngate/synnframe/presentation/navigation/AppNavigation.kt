@@ -20,8 +20,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.synngate.synnframe.SynnFrameApplication
-import com.synngate.synnframe.domain.entity.DynamicMenuItemType
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
+import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.presentation.common.LocalCurrentUser
 import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicMenuScreen
 import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicTaskDetailScreen
@@ -236,11 +236,12 @@ fun AppNavigation(
 
                 DynamicMenuScreen(
                     viewModel = viewModel,
-                    navigateToDynamicTasks = { menuItemId, menuItemName, menuItemType ->
+                    navigateToDynamicTasks = { menuItemId, menuItemName, endpoint, screenSettings ->
                         navController.navigate(Screen.DynamicTasks.createRoute(
                             menuItemId = menuItemId,
                             menuItemName = menuItemName,
-                            menuItemType = menuItemType
+                            endpoint = endpoint,
+                            screenSettings = screenSettings
                         ))
                     },
                     navigateBack = {
@@ -259,21 +260,44 @@ fun AppNavigation(
                         type = NavType.StringType
                         nullable = true
                     },
-                    navArgument("menuItemType") {
+                    navArgument("endpoint") {
                         type = NavType.StringType
-                        defaultValue = DynamicMenuItemType.SHOW_LIST.name
+                        nullable = false
+                    },
+                    // screenSettings передается как закодированная строка JSON
+                    navArgument("screenSettings") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
                     }
                 )
             ) { entry ->
                 val menuItemId = entry.arguments?.getString("menuItemId") ?: ""
                 val encodedMenuItemName = entry.arguments?.getString("menuItemName") ?: ""
                 val menuItemName = java.net.URLDecoder.decode(encodedMenuItemName, "UTF-8")
-                val menuItemTypeStr = entry.arguments?.getString("menuItemType") ?: DynamicMenuItemType.SHOW_LIST.name
-                val menuItemType = DynamicMenuItemType.fromString(menuItemTypeStr)
+                val endpoint = entry.arguments?.getString("endpoint") ?: ""
+                val encodedScreenSettings = entry.arguments?.getString("screenSettings")
+
+                // Декодирование screenSettings из JSON, если они переданы
+                val screenSettings = if (encodedScreenSettings != null) {
+                    try {
+                        val json = java.net.URLDecoder.decode(encodedScreenSettings, "UTF-8")
+                        kotlinx.serialization.json.Json.decodeFromString<ScreenSettings>(json)
+                    } catch (e: Exception) {
+                        ScreenSettings() // Используем значение по умолчанию в случае ошибки
+                    }
+                } else {
+                    ScreenSettings() // Значение по умолчанию, если настройки не переданы
+                }
 
                 val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
-                val viewModel = remember(menuItemId, menuItemName, menuItemType) {
-                    screenContainer.createDynamicTasksViewModel(menuItemId, menuItemName, menuItemType)
+                val viewModel = remember(menuItemId, menuItemName, endpoint, screenSettings) {
+                    screenContainer.createDynamicTasksViewModel(
+                        menuItemId = menuItemId,
+                        menuItemName = menuItemName,
+                        endpoint = endpoint,
+                        screenSettings = screenSettings
+                    )
                 }
 
                 DynamicTasksScreen(
@@ -652,10 +676,25 @@ sealed class Screen(val route: String) {
     }
 
     object DynamicMenu : Screen("dynamic_menu")
-    object DynamicTasks : Screen("dynamic_tasks/{menuItemId}/{menuItemName}?menuItemType={menuItemType}") {
-        fun createRoute(menuItemId: String, menuItemName: String, menuItemType: DynamicMenuItemType = DynamicMenuItemType.SHOW_LIST): String {
+    object DynamicTasks : Screen("dynamic_tasks/{menuItemId}/{menuItemName}/{endpoint}?screenSettings={screenSettings}") {
+        fun createRoute(
+            menuItemId: String,
+            menuItemName: String,
+            endpoint: String,
+            screenSettings: ScreenSettings
+        ): String {
             val encodedName = encode(menuItemName, "UTF-8")
-            return "dynamic_tasks/$menuItemId/$encodedName?operationType=${menuItemType.name}"
+            val encodedEndpoint = encode(endpoint, "UTF-8")
+
+            // Если переданы настройки экрана, кодируем их в JSON и передаем как параметр
+            val encodedSettings = if (screenSettings != ScreenSettings()) {
+                val json = kotlinx.serialization.json.Json.encodeToString(ScreenSettings.serializer(), screenSettings)
+                "?screenSettings=${encode(json, "UTF-8")}"
+            } else {
+                ""
+            }
+
+            return "dynamic_tasks/$menuItemId/$encodedName/$encodedEndpoint$encodedSettings"
         }
     }
 

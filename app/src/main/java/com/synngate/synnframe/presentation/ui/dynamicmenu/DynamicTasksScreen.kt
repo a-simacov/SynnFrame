@@ -35,13 +35,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
-import com.synngate.synnframe.domain.entity.DynamicMenuItemType
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
+import com.synngate.synnframe.domain.entity.operation.ScreenElementType
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksEvent
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksState
 
 @Composable
 fun DynamicTasksScreen(
@@ -60,15 +59,15 @@ fun DynamicTasksScreen(
                 is DynamicTasksEvent.NavigateBack -> {
                     navigateBack()
                 }
-
                 is DynamicTasksEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(
                         message = event.message,
                         duration = SnackbarDuration.Short
                     )
                 }
-
-                is DynamicTasksEvent.NavigateToTaskDetail -> navigateToTaskDetail(event.task)
+                is DynamicTasksEvent.NavigateToTaskDetail -> {
+                    navigateToTaskDetail(event.task)
+                }
             }
         }
     }
@@ -90,14 +89,39 @@ fun DynamicTasksScreen(
         },
         isLoading = state.isLoading
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            when (state.menuItemType) {
-                DynamicMenuItemType.SHOW_LIST -> {
-                    if (state.tasks.isEmpty()) {
+            if (state.hasElement(ScreenElementType.SEARCH)) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SearchTextField(
+                    value = state.searchValue,
+                    onValueChange = viewModel::onSearchValueChanged,
+                    label = stringResource(id = R.string.search_value),
+                    onSearch = viewModel::onSearch,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Button(
+                    onClick = viewModel::onSearch,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(id = R.string.search))
+                }
+            }
+
+            if (state.hasElement(ScreenElementType.SHOW_LIST)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    if (state.tasks.isEmpty() && !state.isLoading) {
                         Text(
                             text = stringResource(id = R.string.no_tasks_available),
                             style = MaterialTheme.typography.bodyLarge,
@@ -113,12 +137,19 @@ fun DynamicTasksScreen(
                         )
                     }
                 }
-                DynamicMenuItemType.SEARCH -> {
-                    DynamicTaskSearch(
-                        state = state,
-                        onValueChange = viewModel::onSearchValueChanged,
-                        onSearch = viewModel::onSearch,
-                        paddingValues = paddingValues
+            }
+
+            if (!state.hasElement(ScreenElementType.SEARCH) && !state.hasElement(ScreenElementType.SHOW_LIST)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Не указаны элементы для отображения на этом экране",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(16.dp)
                     )
                 }
             }
@@ -134,23 +165,15 @@ private fun DynamicTasksList(
 ) {
     LazyColumn(
         modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
+            .fillMaxSize(),
+        contentPadding = PaddingValues(vertical = 8.dp)
     ) {
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
         items(tasks) { task ->
             DynamicTaskItem(
                 task = task,
                 onClick = { onTaskClick(task) }
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        item {
             Spacer(modifier = Modifier.height(8.dp))
         }
     }
@@ -195,40 +218,4 @@ private fun DynamicTaskItem(
             )
         }
     }
-}
-
-@Composable
-fun DynamicTaskSearch(
-    state: DynamicTasksState,
-    onValueChange: (String) -> Unit,
-    onSearch: () -> Unit,
-    paddingValues: PaddingValues,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        SearchTextField(
-            value = state.searchValue,
-            onValueChange = onValueChange,
-            label = stringResource(id = R.string.search_value),
-            onSearch = onSearch,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = onSearch,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(id = R.string.search))
-        }
-    }
-
 }

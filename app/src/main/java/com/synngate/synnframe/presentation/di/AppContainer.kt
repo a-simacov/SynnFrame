@@ -54,8 +54,8 @@ import com.synngate.synnframe.data.service.SoundServiceImpl
 import com.synngate.synnframe.data.service.SynchronizationControllerImpl
 import com.synngate.synnframe.data.service.WebServerControllerImpl
 import com.synngate.synnframe.data.service.WebServerManagerImpl
-import com.synngate.synnframe.domain.entity.DynamicMenuItemType
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
+import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.repository.ActionTemplateRepository
 import com.synngate.synnframe.domain.repository.BinXRepository
@@ -754,13 +754,15 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
     fun createDynamicTasksViewModel(
         menuItemId: String,
         menuItemName: String,
-        menuItemType: DynamicMenuItemType = DynamicMenuItemType.SHOW_LIST
+        endpoint: String,
+        screenSettings: ScreenSettings
     ): DynamicTasksViewModel {
-        return getOrCreateViewModel("DynamicTasksViewModel_$menuItemId") {
+        return getOrCreateViewModel("DynamicTasksViewModel_${menuItemId}_${endpoint}") {
             DynamicTasksViewModel(
                 menuItemId = menuItemId,
                 menuItemName = menuItemName,
-                menuItemType = menuItemType,
+                endpoint = endpoint,
+                screenSettings = screenSettings,
                 dynamicMenuUseCases = appContainer.dynamicMenuUseCases
             )
         }

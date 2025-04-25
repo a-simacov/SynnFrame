@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Assignment
+import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.outlined.Inventory
+import androidx.compose.material.icons.outlined.SubdirectoryArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -24,12 +26,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.DynamicMenuItemType
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
+import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.status.StatusType
@@ -38,7 +42,7 @@ import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicMenuEvent
 @Composable
 fun DynamicMenuScreen(
     viewModel: DynamicMenuViewModel,
-    navigateToDynamicTasks: (menuItemId: String, menuItemName: String, menuItemType: DynamicMenuItemType) -> Unit,
+    navigateToDynamicTasks: (menuItemId: String, menuItemName: String, endpoint: String, screenSettings: ScreenSettings) -> Unit,
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -50,7 +54,12 @@ fun DynamicMenuScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is DynamicMenuEvent.NavigateToDynamicTasks -> {
-                    navigateToDynamicTasks(event.menuItemId, event.menuItemName, event.menuItemType)
+                    navigateToDynamicTasks(
+                        event.menuItemId,
+                        event.menuItemName,
+                        event.endpoint,
+                        event.screenSettings
+                    )
                 }
                 is DynamicMenuEvent.NavigateBack -> {
                     navigateBack()
@@ -61,13 +70,30 @@ fun DynamicMenuScreen(
                         duration = SnackbarDuration.Short
                     )
                 }
+                is DynamicMenuEvent.NavigateToDynamicProducts -> {
+                    snackbarHostState.showSnackbar(
+                        message = "Работа с товарами будет реализована позже",
+                        duration = SnackbarDuration.Short
+                    )
+                }
             }
         }
     }
 
+    val onBackAction = {
+        viewModel.onBackPressed()
+    }
+
+    val title = if (state.currentMenuItemId == null) {
+        stringResource(id = R.string.operations_menu_title)
+    } else {
+        val currentMenuItem = state.menuItems.firstOrNull { it.id == state.currentMenuItemId }
+        currentMenuItem?.name ?: stringResource(id = R.string.submenu_title)
+    }
+
     AppScaffold(
-        title = stringResource(id = R.string.operations_menu_title),
-        onNavigateBack = navigateBack,
+        title = title,
+        onNavigateBack = onBackAction,
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {
             Pair(it, StatusType.ERROR)
@@ -87,7 +113,7 @@ fun DynamicMenuScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (state.menuItems.isEmpty()) {
+            if (state.menuItems.isEmpty() && !state.isLoading) {
                 Text(
                     text = stringResource(id = R.string.no_operations_available),
                     style = MaterialTheme.typography.bodyLarge,
@@ -99,8 +125,8 @@ fun DynamicMenuScreen(
             } else {
                 DynamicMenuContent(
                     menuItems = state.menuItems,
-                    onMenuItemClick = { operation ->
-                        viewModel.onMenuItemClick(operation.id, operation.name, operation.type)
+                    onMenuItemClick = { menuItem ->
+                        viewModel.onMenuItemClick(menuItem)
                     }
                 )
             }
@@ -128,14 +154,25 @@ private fun DynamicMenuContent(
         )
 
         menuItems.forEach { menuItem ->
+            val icon = getIconForMenuItemType(menuItem.type)
+
             NavigationButton(
                 text = menuItem.name,
                 onClick = { onMenuItemClick(menuItem) },
-                icon = Icons.AutoMirrored.Outlined.Assignment,
+                icon = icon,
                 contentDescription = menuItem.name
             )
 
             Spacer(modifier = Modifier.height(12.dp))
         }
+    }
+}
+
+@Composable
+private fun getIconForMenuItemType(type: DynamicMenuItemType): ImageVector {
+    return when (type) {
+        DynamicMenuItemType.SUBMENU -> Icons.Outlined.SubdirectoryArrowRight
+        DynamicMenuItemType.TASKS -> Icons.AutoMirrored.Outlined.ListAlt
+        DynamicMenuItemType.PRODUCTS -> Icons.Outlined.Inventory
     }
 }

@@ -731,4 +731,7 @@
     <string name="start_task_execution">Начать работу с заданием</string>
     <string name="search_task_hint">Введите штрихкод или другое значение</string>
     <string name="no_task_found">Задание не найдено</string>
+
+    <!-- Строки для динамического меню -->
+    <string name="submenu_title">Подменю</string>
 </resources>
