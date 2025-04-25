@@ -44,6 +44,7 @@ import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicMenuEvent
 fun DynamicMenuScreen(
     viewModel: DynamicMenuViewModel,
     navigateToDynamicTasks: (menuItemId: String, menuItemName: String, endpoint: String, screenSettings: ScreenSettings) -> Unit,
+    navigateToDynamicProducts: (menuItemId: String, menuItemName: String, endpoint: String, screenSettings: ScreenSettings) -> Unit,
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -62,18 +63,20 @@ fun DynamicMenuScreen(
                         event.screenSettings
                     )
                 }
+                is DynamicMenuEvent.NavigateToDynamicProducts -> {
+                    navigateToDynamicProducts(
+                        event.menuItemId,
+                        event.menuItemName,
+                        event.endpoint,
+                        event.screenSettings
+                    )
+                }
                 is DynamicMenuEvent.NavigateBack -> {
                     navigateBack()
                 }
                 is DynamicMenuEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(
                         message = event.message,
-                        duration = SnackbarDuration.Short
-                    )
-                }
-                is DynamicMenuEvent.NavigateToDynamicProducts -> {
-                    snackbarHostState.showSnackbar(
-                        message = "Работа с товарами будет реализована позже",
                         duration = SnackbarDuration.Short
                     )
                 }

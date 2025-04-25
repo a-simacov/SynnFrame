@@ -20,10 +20,13 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.synngate.synnframe.SynnFrameApplication
+import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.presentation.common.LocalCurrentUser
 import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicMenuScreen
+import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicProductDetailScreen
+import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicProductsScreen
 import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicTaskDetailScreen
 import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicTasksScreen
 import com.synngate.synnframe.presentation.ui.login.LoginScreen
@@ -245,6 +248,15 @@ fun AppNavigation(
                             screenSettings = screenSettings
                         ))
                     },
+                    navigateToDynamicProducts = { menuItemId, menuItemName, endpoint, screenSettings ->
+                        // Добавляем обработку нового события
+                        navController.navigate(Screen.DynamicProducts.createRoute(
+                            menuItemId = menuItemId,
+                            menuItemName = menuItemName,
+                            endpoint = endpoint,
+                            screenSettings = screenSettings
+                        ))
+                    },
                     navigateBack = {
                         navController.popBackStack()
                     }
@@ -342,6 +354,114 @@ fun AppNavigation(
                 }
 
                 DynamicTaskDetailScreen(
+                    viewModel = viewModel,
+                    navigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable(
+                route = Screen.DynamicProducts.route,
+                arguments = listOf(
+                    navArgument("menuItemId") {
+                        type = NavType.StringType
+                    },
+                    navArgument("menuItemName") {
+                        type = NavType.StringType
+                        nullable = true
+                    },
+                    navArgument("endpoint") {
+                        type = NavType.StringType
+                        nullable = false
+                    },
+                    navArgument("screenSettings") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { entry ->
+                val menuItemId = entry.arguments?.getString("menuItemId") ?: ""
+                val encodedMenuItemName = entry.arguments?.getString("menuItemName") ?: ""
+                val menuItemName = java.net.URLDecoder.decode(encodedMenuItemName, "UTF-8")
+
+                // Декодируем endpoint из Base64
+                val encodedEndpoint = entry.arguments?.getString("endpoint") ?: ""
+                val endpoint = try {
+                    String(Base64.getDecoder().decode(encodedEndpoint))
+                } catch(e: Exception) {
+                    Timber.e(e, "Failed to decode endpoint from Base64, using as is")
+                    encodedEndpoint
+                }
+
+                val encodedScreenSettings = entry.arguments?.getString("screenSettings")
+
+                // Декодирование screenSettings из JSON, если они переданы
+                val screenSettings = if (encodedScreenSettings != null) {
+                    try {
+                        val json = java.net.URLDecoder.decode(encodedScreenSettings, "UTF-8")
+                        kotlinx.serialization.json.Json.decodeFromString<ScreenSettings>(json)
+                    } catch (e: Exception) {
+                        ScreenSettings() // Используем значение по умолчанию в случае ошибки
+                    }
+                } else {
+                    ScreenSettings() // Значение по умолчанию, если настройки не переданы
+                }
+
+                val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
+                val viewModel = remember(menuItemId, menuItemName, endpoint, screenSettings) {
+                    screenContainer.createDynamicProductsViewModel(
+                        menuItemId = menuItemId,
+                        menuItemName = menuItemName,
+                        endpoint = endpoint,
+                        screenSettings = screenSettings
+                    )
+                }
+
+                DynamicProductsScreen(
+                    viewModel = viewModel,
+                    navigateToProductDetail = { product ->
+                        navController.navigate(Screen.DynamicProductDetail.createRoute(product))
+                    },
+                    navigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable(
+                route = Screen.DynamicProductDetail.route,
+                arguments = listOf(
+                    navArgument("productId") {
+                        type = NavType.StringType
+                    },
+                    navArgument("productName") {
+                        type = NavType.StringType
+                        nullable = true
+                    }
+                )
+            ) { entry ->
+                val productId = entry.arguments?.getString("productId") ?: ""
+                val encodedProductName = entry.arguments?.getString("productName") ?: ""
+                val productName = java.net.URLDecoder.decode(encodedProductName, "UTF-8")
+
+                // Создаем временный объект DynamicProduct, который будет заполнен из ViewModel
+                val product = DynamicProduct(
+                    id = productId,
+                    name = productName,
+                    accountingModel = "QTY",  // Значение по умолчанию, которое будет заменено
+                    articleNumber = "",       // Будет заполнено в ViewModel
+                    mainUnitId = "",          // Будет заполнено в ViewModel
+                    units = emptyList()       // Будет заполнено в ViewModel
+                )
+
+                val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
+                val viewModel = remember(productId, productName) {
+                    screenContainer.createDynamicProductDetailViewModel(product)
+                }
+
+                DynamicProductDetailScreen(
                     viewModel = viewModel,
                     navigateBack = {
                         navController.popBackStack()
@@ -707,6 +827,36 @@ sealed class Screen(val route: String) {
         fun createRoute(task: DynamicTask): String {
             val encodedName = encode(task.name, "UTF-8")
             return "dynamic_task_detail?taskId=${task.id}&taskName=$encodedName"
+        }
+    }
+
+    object DynamicProducts : Screen("dynamic_products/{menuItemId}/{menuItemName}/{endpoint}?screenSettings={screenSettings}") {
+        fun createRoute(
+            menuItemId: String,
+            menuItemName: String,
+            endpoint: String,
+            screenSettings: ScreenSettings
+        ): String {
+            val encodedName = encode(menuItemName, "UTF-8")
+            // Используем Base64 кодирование для сохранения пробелов и спецсимволов в endpoint
+            val encodedEndpoint = Base64.getEncoder().encodeToString(endpoint.toByteArray())
+
+            // Если переданы настройки экрана, кодируем их в JSON и передаем как параметр
+            val encodedSettings = if (screenSettings != ScreenSettings()) {
+                val json = kotlinx.serialization.json.Json.encodeToString(ScreenSettings.serializer(), screenSettings)
+                "?screenSettings=${encode(json, "UTF-8")}"
+            } else {
+                ""
+            }
+
+            return "dynamic_products/$menuItemId/$encodedName/$encodedEndpoint$encodedSettings"
+        }
+    }
+
+    object DynamicProductDetail : Screen("dynamic_product_detail/{productId}/{productName}") {
+        fun createRoute(product: DynamicProduct): String {
+            val encodedName = encode(product.name, "UTF-8")
+            return "dynamic_product_detail/${product.id}/$encodedName"
         }
     }
 }

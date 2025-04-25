@@ -54,6 +54,7 @@ import com.synngate.synnframe.data.service.SoundServiceImpl
 import com.synngate.synnframe.data.service.SynchronizationControllerImpl
 import com.synngate.synnframe.data.service.WebServerControllerImpl
 import com.synngate.synnframe.data.service.WebServerManagerImpl
+import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
@@ -100,6 +101,8 @@ import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicMenuViewModel
+import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicProductDetailViewModel
+import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicProductsViewModel
 import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicTaskDetailViewModel
 import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicTasksViewModel
 import com.synngate.synnframe.presentation.ui.login.LoginViewModel
@@ -771,6 +774,38 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
     fun createDynamicTaskDetailViewModel(task: DynamicTask): DynamicTaskDetailViewModel {
         return getOrCreateViewModel("DynamicTaskDetailViewModel_${task.id}") {
             DynamicTaskDetailViewModel(task)
+        }
+    }
+
+    fun createDynamicProductDetailViewModel(product: DynamicProduct): DynamicProductDetailViewModel {
+        return getOrCreateViewModel("DynamicProductDetailViewModel_${product.id}") {
+            DynamicProductDetailViewModel(
+                dynamicProduct = product,
+                clipboardService = appContainer.clipboardService,
+                productUiMapper = appContainer.productUiMapper,
+                resourceProvider = appContainer.resourceProvider
+            )
+        }
+    }
+
+    fun createDynamicProductsViewModel(
+        menuItemId: String,
+        menuItemName: String,
+        endpoint: String,
+        screenSettings: ScreenSettings,
+        isSelectionMode: Boolean = false
+    ): DynamicProductsViewModel {
+        return getOrCreateViewModel("DynamicProductsViewModel_${menuItemId}_${endpoint}") {
+            DynamicProductsViewModel(
+                menuItemId = menuItemId,
+                menuItemName = menuItemName,
+                endpoint = endpoint,
+                screenSettings = screenSettings,
+                dynamicMenuUseCases = appContainer.dynamicMenuUseCases,
+                soundService = appContainer.soundService,
+                productUiMapper = appContainer.productUiMapper,
+                isSelectionMode = isSelectionMode
+            )
         }
     }
 }
