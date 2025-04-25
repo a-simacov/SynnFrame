@@ -123,7 +123,11 @@ fun DynamicTasksScreen(
                 ) {
                     if (state.tasks.isEmpty() && !state.isLoading) {
                         Text(
-                            text = stringResource(id = R.string.no_tasks_available),
+                            text = if (state.error == null) {
+                                stringResource(id = R.string.no_tasks_available)
+                            } else {
+                                formatErrorMessage(state.error)
+                            },
                             style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center,
                             modifier = Modifier
@@ -155,6 +159,16 @@ fun DynamicTasksScreen(
             }
         }
     }
+}
+
+@Composable
+private fun formatErrorMessage(errorMessage: String?): String {
+    if (errorMessage == null) return ""
+
+    return errorMessage
+        .replace("\n", ". ")
+        .replace("..", ".")
+        .replace(". .", ".")
 }
 
 @Composable

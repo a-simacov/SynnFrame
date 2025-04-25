@@ -101,11 +101,14 @@ class DynamicTasksViewModel(
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
-                val result = dynamicMenuUseCases.searchDynamicTask(currentEndpoint, searchValue)
+                //val result = dynamicMenuUseCases.searchDynamicTask(currentEndpoint, searchValue)
+                val params = mapOf(Pair("value", searchValue))
+                val result = dynamicMenuUseCases.getDynamicTasks(currentEndpoint, params)
 
                 if (result.isSuccess()) {
-                    val task = result.getOrNull()
-                    if (task != null) {
+                    val tasks = result.getOrNull()
+                    if (tasks != null) {
+                        val task = tasks[0]
                         updateState { it.copy(foundTask = task, isLoading = false) }
                         sendEvent(DynamicTasksEvent.NavigateToTaskDetail(task))
                     } else {

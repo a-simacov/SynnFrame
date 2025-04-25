@@ -42,6 +42,7 @@ import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailScreen
 import com.synngate.synnframe.presentation.ui.taskx.TaskXListScreen
 import timber.log.Timber
 import java.net.URLEncoder.encode
+import java.util.Base64
 
 /**
  * Основной навигационный компонент приложения
@@ -264,7 +265,6 @@ fun AppNavigation(
                         type = NavType.StringType
                         nullable = false
                     },
-                    // screenSettings передается как закодированная строка JSON
                     navArgument("screenSettings") {
                         type = NavType.StringType
                         nullable = true
@@ -275,7 +275,14 @@ fun AppNavigation(
                 val menuItemId = entry.arguments?.getString("menuItemId") ?: ""
                 val encodedMenuItemName = entry.arguments?.getString("menuItemName") ?: ""
                 val menuItemName = java.net.URLDecoder.decode(encodedMenuItemName, "UTF-8")
-                val endpoint = entry.arguments?.getString("endpoint") ?: ""
+                // Декодируем endpoint из Base64
+                val encodedEndpoint = entry.arguments?.getString("endpoint") ?: ""
+                val endpoint = try {
+                    String(Base64.getDecoder().decode(encodedEndpoint))
+                } catch(e: Exception) {
+                    Timber.e(e, "Failed to decode endpoint from Base64, using as is")
+                    encodedEndpoint
+                }
                 val encodedScreenSettings = entry.arguments?.getString("screenSettings")
 
                 // Декодирование screenSettings из JSON, если они переданы
@@ -636,9 +643,6 @@ fun NavGraphBuilder.taskXNavGraph(
     }
 }
 
-/**
- * Запечатанный класс для определения экранов навигации
- */
 sealed class Screen(val route: String) {
     object ServerList : Screen("server_list")
     object ServerDetail : Screen("server_detail/{serverId}") {
@@ -670,8 +674,8 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object SyncHistory : Screen("sync_history")
 
-    object TaskXList : Screen("taskx_list") // Список заданий X
-    object TaskXDetail : Screen("taskx_detail/{taskId}") { // Детальная информация о задании X
+    object TaskXList : Screen("taskx_list")
+    object TaskXDetail : Screen("taskx_detail/{taskId}") {
         fun createRoute(taskId: String) = "taskx_detail/$taskId"
     }
 
@@ -684,7 +688,8 @@ sealed class Screen(val route: String) {
             screenSettings: ScreenSettings
         ): String {
             val encodedName = encode(menuItemName, "UTF-8")
-            val encodedEndpoint = encode(endpoint, "UTF-8")
+            // Используем Base64 кодирование для сохранения пробелов в endpoint
+            val encodedEndpoint = Base64.getEncoder().encodeToString(endpoint.toByteArray())
 
             // Если переданы настройки экрана, кодируем их в JSON и передаем как параметр
             val encodedSettings = if (screenSettings != ScreenSettings()) {
