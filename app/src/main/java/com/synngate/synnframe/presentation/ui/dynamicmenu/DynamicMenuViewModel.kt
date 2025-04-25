@@ -73,7 +73,12 @@ class DynamicMenuViewModel(
                     sendEvent(DynamicMenuEvent.ShowSnackbar("Ошибка: отсутствует endpoint для товаров"))
                     return
                 }
-                sendEvent(DynamicMenuEvent.ShowSnackbar("Работа с товарами будет реализована позже"))
+                sendEvent(DynamicMenuEvent.NavigateToDynamicProducts(
+                    menuItemId = menuItem.id,
+                    menuItemName = menuItem.name,
+                    endpoint = menuItem.endpoint,
+                    screenSettings = menuItem.screenSettings
+                ))
             }
         }
     }
