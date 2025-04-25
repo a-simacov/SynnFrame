@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Pause
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -47,6 +49,7 @@ fun NotificationBar(
     visible: Boolean,
     message: String,
     type: StatusType,
+    onDismiss: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     // Определяем цвет фона и иконку в зависимости от типа уведомления
@@ -95,6 +98,20 @@ fun NotificationBar(
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Start
                 )
+
+                // Добавляем кнопку закрытия, если предоставлен обработчик onDismiss
+                if (onDismiss != null) {
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Закрыть",
+                            tint = textColor
+                        )
+                    }
+                }
             }
         }
     }

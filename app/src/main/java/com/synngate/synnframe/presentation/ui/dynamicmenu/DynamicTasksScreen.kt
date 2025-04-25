@@ -79,6 +79,9 @@ fun DynamicTasksScreen(
         notification = state.error?.let {
             Pair(it, StatusType.ERROR)
         },
+        onDismissNotification = {
+            viewModel.clearError()
+        },
         actions = {
             IconButton(onClick = { viewModel.onRefresh() }) {
                 Icon(

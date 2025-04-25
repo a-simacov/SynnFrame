@@ -90,4 +90,8 @@ class DynamicMenuViewModel(
     fun onRefresh() {
         loadDynamicMenu(currentMenuItemId)
     }
+
+    fun clearError() {
+        updateState { it.copy(error = null) }
+    }
 }

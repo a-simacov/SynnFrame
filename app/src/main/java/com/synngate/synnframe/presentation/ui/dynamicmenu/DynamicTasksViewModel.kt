@@ -138,4 +138,8 @@ class DynamicTasksViewModel(
     fun onRefresh() {
         loadDynamicTasks()
     }
+
+    fun clearError() {
+        updateState { it.copy(error = null) }
+    }
 }

@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,6 +81,7 @@ fun AppScaffold(
     lastSyncTime: String? = null,
     currentUser: String? = null,
     notification: Pair<String, StatusType>? = null,
+    onDismissNotification: (() -> Unit)? = null,  // Новый параметр для обработки закрытия уведомления
     drawerState: DrawerState? = null,
     drawerContent: @Composable (() -> Unit)? = null,
     menuItems: List<Pair<String, () -> Unit>>? = null,
@@ -90,6 +92,9 @@ fun AppScaffold(
     val coroutineScope = rememberCoroutineScope()
     var menuExpanded by remember { mutableStateOf(false) }
     val windowInsets = WindowInsets.systemBars
+
+    // Локальное состояние видимости уведомления
+    var isNotificationVisible by remember(notification) { mutableStateOf(notification != null) }
 
     // Получение данных о текущем пользователе через CompositionLocal
     val localCurrentUser = LocalCurrentUser.current
@@ -108,6 +113,11 @@ fun AppScaffold(
     val finalIsSyncing = isSyncing ?: (syncStatus == SynchronizationController.SyncStatus.SYNCING)
     val finalLastSyncTime = lastSyncTime ?:
     lastSyncInfo?.timestamp?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
+
+    // Обновляем видимость уведомления при изменении параметра notification
+    LaunchedEffect(notification) {
+        isNotificationVisible = notification != null
+    }
 
     val mainContent = @Composable {
         Scaffold(
@@ -189,12 +199,16 @@ fun AppScaffold(
                         scrollBehavior = scrollBehavior
                     )
 
-                    // Панель уведомлений
+                    // Панель уведомлений с обработкой закрытия
                     notification?.let { (message, type) ->
                         NotificationBar(
-                            visible = true,
+                            visible = isNotificationVisible,
                             message = message,
-                            type = type
+                            type = type,
+                            onDismiss = {
+                                isNotificationVisible = false
+                                onDismissNotification?.invoke()
+                            }
                         )
                     }
                 }
@@ -248,8 +262,8 @@ fun AppScaffold(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    //.navigationBarsPadding()
-                    //.padding(paddingValues)
+                //.navigationBarsPadding()
+                //.padding(paddingValues)
             ) {
                 content(paddingValues)
 
