@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.dynamicmenu
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -81,6 +82,10 @@ fun DynamicMenuScreen(
     }
 
     val onBackAction = {
+        viewModel.onBackPressed()
+    }
+
+    BackHandler(enabled = state.currentMenuItemId != null) {
         viewModel.onBackPressed()
     }
 
