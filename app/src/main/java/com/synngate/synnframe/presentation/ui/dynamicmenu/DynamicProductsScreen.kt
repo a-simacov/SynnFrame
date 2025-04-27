@@ -305,7 +305,7 @@ fun DynamicProductsList(
     ) {
         items(
             items = products,
-            key = { it.id }
+            key = { it.getId() }
         ) { product ->
             DynamicProductListItem(
                 product = product,
@@ -334,7 +334,7 @@ fun DynamicProductListItem(
                 .padding(16.dp)
         ) {
             Text(
-                text = product.name,
+                text = product.getName(),
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -347,7 +347,7 @@ fun DynamicProductListItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(id = R.string.product_article, product.articleNumber),
+                    text = stringResource(id = R.string.product_article, product.getArticleNumber()),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)

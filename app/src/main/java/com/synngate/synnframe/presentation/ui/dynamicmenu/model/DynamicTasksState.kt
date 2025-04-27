@@ -13,9 +13,9 @@ data class DynamicTasksState(
     val searchValue: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-    val foundTask: DynamicTask? = null
+    val foundTask: DynamicTask = DynamicTask.Empty
 ) {
-    // Проверка содержимого экрана по настройкам
+
     fun hasElement(element: ScreenElementType): Boolean {
         return screenSettings.screenElements.contains(element)
     }

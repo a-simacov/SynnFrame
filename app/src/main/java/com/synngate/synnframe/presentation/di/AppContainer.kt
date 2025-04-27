@@ -128,6 +128,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.ProductSelectionStep
 import com.synngate.synnframe.util.network.NetworkMonitor
 import com.synngate.synnframe.util.resources.ResourceProvider
 import com.synngate.synnframe.util.resources.ResourceProviderImpl
+import com.synngate.synnframe.util.serialization.appJson
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.plugins.HttpTimeout
@@ -139,7 +140,6 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
 import timber.log.Timber
 
 /**
@@ -178,15 +178,8 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         Timber.d("Creating HttpClient")
         HttpClient(Android) {
             install(ContentNegotiation) {
-                json(Json {
-                    prettyPrint = true
-                    isLenient = true
-                    ignoreUnknownKeys = true
-                    useArrayPolymorphism = true
-                    explicitNulls = false
-                    coerceInputValues = true
-                    encodeDefaults = true
-                })
+                // Используем общий JSON-форматтер приложения
+                json(appJson)
             }
             install(HttpTimeout) {
                 connectTimeoutMillis = 10000
@@ -772,13 +765,13 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
     }
 
     fun createDynamicTaskDetailViewModel(task: DynamicTask): DynamicTaskDetailViewModel {
-        return getOrCreateViewModel("DynamicTaskDetailViewModel_${task.id}") {
+        return getOrCreateViewModel("DynamicTaskDetailViewModel_${task.getId()}") {
             DynamicTaskDetailViewModel(task)
         }
     }
 
     fun createDynamicProductDetailViewModel(product: DynamicProduct): DynamicProductDetailViewModel {
-        return getOrCreateViewModel("DynamicProductDetailViewModel_${product.id}") {
+        return getOrCreateViewModel("DynamicProductDetailViewModel_${product.getId()}") {
             DynamicProductDetailViewModel(
                 dynamicProduct = product,
                 clipboardService = appContainer.clipboardService,

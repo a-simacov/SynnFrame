@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
+import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.ErrorScreenContent
 import com.synngate.synnframe.presentation.common.scaffold.InfoRow
@@ -70,7 +71,6 @@ fun DynamicProductDetailScreen(
 
     AppScaffold(
         title = stringResource(id = R.string.product_details),
-        subtitle = state.product?.name,
         onNavigateBack = navigateBack,
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {
@@ -100,7 +100,7 @@ fun DynamicProductDetailScreen(
                     )
                 }
 
-                state.error != null && state.product == null -> {
+                state.error != null && state.product is DynamicProduct.Empty -> {
                     ErrorScreenContent(
                         message = state.error ?: stringResource(id = R.string.error_loading_product)
                     )

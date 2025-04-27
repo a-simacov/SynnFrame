@@ -13,14 +13,18 @@ data class DynamicProductsState(
     val searchValue: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-    val foundProduct: DynamicProduct? = null,
+    val foundProduct: DynamicProduct = DynamicProduct.Empty,
     val showBatchScannerDialog: Boolean = false,
     val showScannerDialog: Boolean = false,
-    val selectedProduct: DynamicProduct? = null,
+    val selectedProduct: DynamicProduct = DynamicProduct.Empty,
     val isSelectionMode: Boolean = false
 ) {
 
     fun hasElement(element: ScreenElementType): Boolean {
         return screenSettings.screenElements.contains(element)
+    }
+
+    fun isProductSelected(): Boolean {
+        return selectedProduct != DynamicProduct.Empty
     }
 }

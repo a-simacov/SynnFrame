@@ -79,9 +79,7 @@ fun DynamicTasksScreen(
         notification = state.error?.let {
             Pair(it, StatusType.ERROR)
         },
-        onDismissNotification = {
-            viewModel.clearError()
-        },
+        onDismissNotification = viewModel::clearError,
         actions = {
             IconButton(onClick = { viewModel.onRefresh() }) {
                 Icon(
@@ -217,7 +215,7 @@ private fun DynamicTaskItem(
                 .padding(16.dp)
         ) {
             Text(
-                text = task.name,
+                text = task.getName(),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -229,7 +227,7 @@ private fun DynamicTaskItem(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = stringResource(id = R.string.task_id_fmt, task.id),
+                text = stringResource(id = R.string.task_id_fmt, task.getId()),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

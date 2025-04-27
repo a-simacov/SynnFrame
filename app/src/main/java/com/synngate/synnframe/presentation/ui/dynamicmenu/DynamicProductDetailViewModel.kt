@@ -35,32 +35,38 @@ class DynamicProductDetailViewModel(
     }
 
     private fun initializeUiModels() {
-        val product = uiState.value.product ?: return
+        val product = uiState.value.product
+        if (product == DynamicProduct.Empty) return
 
         // Преобразуем динамический товар в обычный для переиспользования существующих маппинг-функций
         val mappedProduct = DynamicProductMapper.toProduct(product)
         productUiModel = productUiMapper.mapToDetailModel(mappedProduct)
 
         // Выбираем основную единицу измерения
-        updateSelectedUnit(product.mainUnitId)
-
-        updateState { it.copy(selectedUnitId = product.mainUnitId) }
+        val mainUnitId = product.getMainUnitId()
+        if (mainUnitId.isNotEmpty()) {
+            updateSelectedUnit(mainUnitId)
+            updateState { it.copy(selectedUnitId = mainUnitId) }
+        }
     }
 
     fun selectUnit(unitId: String) {
+        if (unitId.isEmpty()) return
+
         updateSelectedUnit(unitId)
         updateState { it.copy(selectedUnitId = unitId) }
     }
 
     private fun updateSelectedUnit(unitId: String) {
-        val product = uiState.value.product ?: return
+        if (unitId.isEmpty()) return
+
+        val product = uiState.value.product
         val mappedProduct = DynamicProductMapper.toProduct(product)
 
         // Фильтруем UI-модели единиц измерения для выбранной
         selectedUnitUiModels = productUiModel?.units?.filter { it.id == unitId } ?: emptyList()
 
         // Получаем штрихкоды для выбранной единицы измерения
-        val selectedDynamicUnit = product.units.find { it.id == unitId }
         val selectedUnit = mappedProduct.units.find { it.id == unitId }
 
         selectedUnitBarcodes = selectedUnit?.let { unit ->
@@ -94,7 +100,8 @@ class DynamicProductDetailViewModel(
     }
 
     fun copyProductInfoToClipboard() {
-        val product = uiState.value.product ?: return
+        val product = uiState.value.product
+        if (product == DynamicProduct.Empty) return
 
         val accountingModelText = when (product.getAccountingModelEnum()) {
             AccountingModel.BATCH -> "По партиям и количеству"
@@ -104,13 +111,13 @@ class DynamicProductDetailViewModel(
         val mainUnit = product.getMainUnit()?.name ?: "Не указана"
 
         val productInfo = """
-            Наименование: ${product.name}
-            Идентификатор: ${product.id}
-            Артикул: ${product.articleNumber}
+            Наименование: ${product.getName()}
+            Идентификатор: ${product.getId()}
+            Артикул: ${product.getArticleNumber()}
             Модель учета: $accountingModelText
             Основная единица измерения: $mainUnit
-            Единицы измерения: ${product.units.joinToString("\n") { it.name }}
-            Штрихкоды: ${product.units.flatMap { listOf(it.mainBarcode) + it.barcodes }.distinct().joinToString("\n")}
+            Единицы измерения: ${product.getUnits().joinToString("\n") { it.name }}
+            Штрихкоды: ${product.getAllBarcodes().joinToString("\n")}
         """.trimIndent()
 
         val isCopied = clipboardService.copyToClipboard(
@@ -132,23 +139,21 @@ class DynamicProductDetailViewModel(
         }
     }
 
-    // Метод для получения UI-модели товара
     fun getProductUiModel(): ProductDetailUiModel? {
         if (productUiModel == null) {
-            val product = uiState.value.product ?: return null
+            val product = uiState.value.product
+            if (product == DynamicProduct.Empty) return null
+
             val mappedProduct = DynamicProductMapper.toProduct(product)
             productUiModel = productUiMapper.mapToDetailModel(mappedProduct)
         }
         return productUiModel
     }
 
-    // Методы для получения UI-моделей единиц измерения
     fun getSelectedUnitUiModels(): List<ProductUnitUiModel> = selectedUnitUiModels
 
-    // Метод для получения UI-моделей штрихкодов
     fun getAllBarcodesUiModels(): List<BarcodeUiModel> = productUiModel?.barcodes ?: emptyList()
 
-    // Метод для возврата на предыдущий экран
     fun navigateBack() {
         sendEvent(DynamicProductDetailEvent.NavigateBack)
     }

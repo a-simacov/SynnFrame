@@ -9,12 +9,12 @@ object DynamicProductMapper {
 
     fun toProduct(dynamicProduct: DynamicProduct): Product {
         return Product(
-            id = dynamicProduct.id,
-            name = dynamicProduct.name,
+            id = dynamicProduct.getId(),
+            name = dynamicProduct.getName(),
             accountingModel = dynamicProduct.getAccountingModelEnum(),
-            articleNumber = dynamicProduct.articleNumber,
-            mainUnitId = dynamicProduct.mainUnitId,
-            units = dynamicProduct.units.map { toProductUnit(it) }
+            articleNumber = dynamicProduct.getArticleNumber(),
+            mainUnitId = dynamicProduct.getMainUnitId(),
+            units = dynamicProduct.getUnits().map { toProductUnit(it) }
         )
     }
 

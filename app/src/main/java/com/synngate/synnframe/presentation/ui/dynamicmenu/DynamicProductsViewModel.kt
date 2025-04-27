@@ -13,7 +13,6 @@ import com.synngate.synnframe.presentation.ui.products.components.ScanResult
 import com.synngate.synnframe.presentation.ui.products.mapper.ProductUiMapper
 import com.synngate.synnframe.presentation.ui.products.model.ProductListItemUiModel
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import timber.log.Timber
 import java.util.concurrent.ConcurrentHashMap
@@ -71,7 +70,7 @@ class DynamicProductsViewModel(
             products = mappedProducts.map { product ->
                 productUiMapper.mapToListItem(
                     product = product,
-                    isSelected = product.id == currentState.selectedProduct?.id
+                    isSelected = product.id == currentState.selectedProduct.getId().takeIf { it.isNotEmpty() }
                 )
             },
             totalCount = currentState.products.size,
@@ -80,8 +79,8 @@ class DynamicProductsViewModel(
             errorMessage = currentState.error,
             searchQuery = currentState.searchValue,
             isSelectionMode = currentState.isSelectionMode,
-            selectedProductId = currentState.selectedProduct?.id,
-            showConfirmButton = currentState.isSelectionMode && currentState.selectedProduct != null
+            selectedProductId = currentState.selectedProduct.getId().takeIf { it.isNotEmpty() },
+            showConfirmButton = currentState.isSelectionMode && currentState.selectedProduct != DynamicProduct.Empty
         )
     }
 
@@ -134,7 +133,6 @@ class DynamicProductsViewModel(
         }
     }
 
-    @OptIn(FlowPreview::class)
     fun updateSearchQuery(query: String) {
         updateState { it.copy(searchValue = query) }
 
@@ -265,7 +263,7 @@ class DynamicProductsViewModel(
                         // Если товар найден
                         val product = products.first()
                         if (uiState.value.isSelectionMode) {
-                            sendEvent(DynamicProductsEvent.ReturnSelectedProductId(product.id))
+                            sendEvent(DynamicProductsEvent.ReturnSelectedProductId(product.getId()))
                         } else {
                             sendEvent(DynamicProductsEvent.NavigateToProductDetail(product))
                         }
@@ -372,8 +370,8 @@ class DynamicProductsViewModel(
 
     fun confirmProductSelection() {
         val selectedProduct = uiState.value.selectedProduct
-        if (selectedProduct != null) {
-            sendEvent(DynamicProductsEvent.ReturnSelectedProductId(selectedProduct.id))
+        if (selectedProduct != DynamicProduct.Empty) {
+            sendEvent(DynamicProductsEvent.ReturnSelectedProductId(selectedProduct.getId()))
         }
     }
 

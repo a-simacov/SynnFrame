@@ -6,6 +6,8 @@ import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.util.network.ApiUtils
+import com.synngate.synnframe.util.serialization.dynamicProductJson
+import com.synngate.synnframe.util.serialization.dynamicTaskJson
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
@@ -92,8 +94,6 @@ class DynamicMenuApiImpl(
 
         val (httpMethod, path) = parseEndpoint(endpoint)
 
-        Timber.d("Executing $httpMethod request to $path")
-
         val baseUrl = "${server.apiUrl}${path}"
         val url = if (params.isNotEmpty() && httpMethod == HttpMethod.GET) {
             val queryParams = params.entries.joinToString("&") { "${it.key}=${it.value}" }
@@ -135,10 +135,24 @@ class DynamicMenuApiImpl(
 
             if (response.status.isSuccess()) {
                 try {
-                    val tasks = response.body<List<DynamicTask>>()
-                    ApiResult.Success(tasks)
+                    val responseText = response.bodyAsText()
+
+                    // Используем нестандартное декодирование JSON
+                    val dynamicTasksList = try {
+                        // Используем созданный нами сериализатор
+                        val jsonFormat = dynamicTaskJson
+                        jsonFormat.decodeFromString<List<DynamicTask.Base>>(responseText)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error with custom decoding, trying default decoder")
+                        // Если не получилось, пробуем стандартный декодер
+                        response.body<List<DynamicTask.Base>>()
+                    }
+
+                    ApiResult.Success(dynamicTasksList)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error parsing tasks response: ${e.message}")
+                    val bodyText = response.bodyAsText()
+                    Timber.e(e, "Error parsing tasks response: ${e.message}\nResponse body: ${bodyText.take(500)}")
+
                     ApiResult.Error(
                         HttpStatusCode.InternalServerError.value,
                         "Error parsing tasks: ${e.message}"
@@ -163,8 +177,6 @@ class DynamicMenuApiImpl(
         )
 
         val (httpMethod, path) = parseEndpoint(endpoint)
-
-        Timber.d("Executing $httpMethod search request to $path with value: $searchValue")
 
         val baseUrl = "${server.apiUrl}${path}"
         val url = if (httpMethod == HttpMethod.GET) {
@@ -202,10 +214,25 @@ class DynamicMenuApiImpl(
 
             if (response.status.isSuccess()) {
                 try {
-                    val tasks = response.body<DynamicTask>()
-                    ApiResult.Success(tasks)
+                    // Получаем содержимое ответа для логирования и отладки
+                    val responseText = response.bodyAsText()
+                    Timber.d("Task search response body: $responseText")
+
+                    // Пробуем разные подходы к парсингу
+                    val dynamicTask = try {
+                        val jsonFormat = dynamicTaskJson
+                        jsonFormat.decodeFromString<DynamicTask.Base>(responseText)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error with custom decoding, trying default decoder")
+                        // Если не получилось, пробуем стандартный декодер
+                        response.body<DynamicTask.Base>()
+                    }
+
+                    ApiResult.Success(dynamicTask)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error parsing task search response: ${e.message}")
+                    val bodyText = response.bodyAsText()
+                    Timber.e(e, "Error parsing task search response: ${e.message}\nResponse body: ${bodyText.take(500)}")
+
                     ApiResult.Error(
                         HttpStatusCode.InternalServerError.value,
                         "Error parsing task search result: ${e.message}"
@@ -233,8 +260,6 @@ class DynamicMenuApiImpl(
         )
 
         val (httpMethod, path) = parseEndpoint(endpoint)
-
-        Timber.d("Executing $httpMethod request to $path")
 
         val baseUrl = "${server.apiUrl}${path}"
         val url = if (params.isNotEmpty() && httpMethod == HttpMethod.GET) {
@@ -277,10 +302,24 @@ class DynamicMenuApiImpl(
 
             if (response.status.isSuccess()) {
                 try {
-                    val products = response.body<List<DynamicProduct>>()
-                    ApiResult.Success(products)
+                    val responseText = response.bodyAsText()
+
+                    // Используем нестандартное декодирование JSON
+                    val dynamicProductsList = try {
+                        // Используем созданный нами сериализатор
+                        val jsonFormat = dynamicProductJson
+                        jsonFormat.decodeFromString<List<DynamicProduct.Base>>(responseText)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error with custom decoding, trying default decoder")
+                        // Если не получилось, пробуем стандартный декодер
+                        response.body<List<DynamicProduct.Base>>()
+                    }
+
+                    ApiResult.Success(dynamicProductsList)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error parsing products response: ${e.message}")
+                    val bodyText = response.bodyAsText()
+                    Timber.e(e, "Error parsing products response: ${e.message}\nResponse body: ${bodyText.take(500)}")
+
                     ApiResult.Error(
                         HttpStatusCode.InternalServerError.value,
                         "Error parsing products: ${e.message}"

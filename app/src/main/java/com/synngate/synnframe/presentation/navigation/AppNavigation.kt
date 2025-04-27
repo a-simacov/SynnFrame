@@ -349,7 +349,7 @@ fun AppNavigation(
                 val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
                 val viewModel = remember(taskId, taskName) {
                     screenContainer.createDynamicTaskDetailViewModel(
-                        DynamicTask(id = taskId, name = taskName)
+                        DynamicTask.Base(id = taskId, name = taskName)
                     )
                 }
 
@@ -447,7 +447,7 @@ fun AppNavigation(
                 val productName = java.net.URLDecoder.decode(encodedProductName, "UTF-8")
 
                 // Создаем временный объект DynamicProduct, который будет заполнен из ViewModel
-                val product = DynamicProduct(
+                val product = DynamicProduct.Base(
                     id = productId,
                     name = productName,
                     accountingModel = "QTY",  // Значение по умолчанию, которое будет заменено
@@ -825,8 +825,8 @@ sealed class Screen(val route: String) {
 
     object DynamicTaskDetail : Screen("dynamic_task_detail?taskId={taskId}&taskName={taskName}") {
         fun createRoute(task: DynamicTask): String {
-            val encodedName = encode(task.name, "UTF-8")
-            return "dynamic_task_detail?taskId=${task.id}&taskName=$encodedName"
+            val encodedName = encode(task.getName(), "UTF-8")
+            return "dynamic_task_detail?taskId=${task.getId()}&taskName=$encodedName"
         }
     }
 
@@ -853,10 +853,10 @@ sealed class Screen(val route: String) {
         }
     }
 
-    object DynamicProductDetail : Screen("dynamic_product_detail/{productId}/{productName}") {
+    object DynamicProductDetail : Screen("dynamic_product_detail?productId={productId}&productName={productName}") {
         fun createRoute(product: DynamicProduct): String {
-            val encodedName = encode(product.name, "UTF-8")
-            return "dynamic_product_detail/${product.id}/$encodedName"
+            val encodedName = encode(product.getName(), "UTF-8")
+            return "dynamic_product_detail?productId=${product.getId()}&productName=$encodedName"
         }
     }
 }

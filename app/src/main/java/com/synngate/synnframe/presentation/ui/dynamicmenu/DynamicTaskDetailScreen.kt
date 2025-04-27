@@ -47,7 +47,7 @@ fun DynamicTaskDetailScreen(
 
     AppScaffold(
         title = stringResource(id = R.string.task_details),
-        subtitle = state.task?.name,
+        subtitle = state.task.getName(),
         onNavigateBack = navigateBack,
         snackbarHostState = snackbarHostState
     ) { paddingValues ->
@@ -57,16 +57,16 @@ fun DynamicTaskDetailScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            state.task?.let { task ->
+            state.task.let { task ->
                 InfoCard {
                     InfoRow(
                         label = stringResource(id = R.string.task_id),
-                        value = task.id
+                        value = task.getId()
                     )
 
                     InfoRow(
                         label = stringResource(id = R.string.task_name),
-                        value = task.name
+                        value = task.getName()
                     )
                 }
 
