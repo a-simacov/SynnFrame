@@ -1,8 +1,8 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu
+package com.synngate.synnframe.presentation.ui.dynamicmenu.task
 
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTaskDetailEvent
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTaskDetailState
+import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTaskDetailEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTaskDetailState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 
 class DynamicTaskDetailViewModel(

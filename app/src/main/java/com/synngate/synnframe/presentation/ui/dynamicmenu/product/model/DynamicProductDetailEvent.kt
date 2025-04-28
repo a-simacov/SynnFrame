@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu.model
+package com.synngate.synnframe.presentation.ui.dynamicmenu.product.model
 
 sealed class DynamicProductDetailEvent {
     data object NavigateBack : DynamicProductDetailEvent()

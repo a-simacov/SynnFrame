@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu
+package com.synngate.synnframe.presentation.ui.dynamicmenu.product
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -36,10 +36,10 @@ import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.scanner.ScannerStatusIndicator
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.createComponentGroups
-import com.synngate.synnframe.presentation.ui.dynamicmenu.components.initializeProductComponents
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.rememberGenericScreenComponentRegistry
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicProductsEvent
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicProductsState
+import com.synngate.synnframe.presentation.ui.dynamicmenu.product.component.initializeProductComponents
+import com.synngate.synnframe.presentation.ui.dynamicmenu.product.model.DynamicProductsEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.product.model.DynamicProductsState
 import com.synngate.synnframe.presentation.ui.products.components.BatchScannerDialog
 
 @Composable

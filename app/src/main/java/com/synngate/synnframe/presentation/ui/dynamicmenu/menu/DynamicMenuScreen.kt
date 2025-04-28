@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu
+package com.synngate.synnframe.presentation.ui.dynamicmenu.menu
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
@@ -38,7 +38,7 @@ import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.status.StatusType
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicMenuEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.menu.model.DynamicMenuEvent
 
 @Composable
 fun DynamicMenuScreen(

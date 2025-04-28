@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu
+package com.synngate.synnframe.presentation.ui.dynamicmenu.product
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,7 +33,7 @@ import com.synngate.synnframe.presentation.common.scaffold.InfoRow
 import com.synngate.synnframe.presentation.common.scaffold.LoadingScreenContent
 import com.synngate.synnframe.presentation.common.scaffold.SectionHeader
 import com.synngate.synnframe.presentation.common.status.StatusType
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicProductDetailEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.product.model.DynamicProductDetailEvent
 import com.synngate.synnframe.presentation.ui.products.components.BarcodeItem
 import com.synngate.synnframe.presentation.ui.products.components.ProductUnitItem
 import com.synngate.synnframe.presentation.ui.products.model.BarcodeUiModel

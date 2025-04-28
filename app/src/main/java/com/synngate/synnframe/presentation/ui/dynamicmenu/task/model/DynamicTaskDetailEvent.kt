@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu.model
+package com.synngate.synnframe.presentation.ui.dynamicmenu.task.model
 
 sealed class DynamicTaskDetailEvent {
     data object NavigateBack : DynamicTaskDetailEvent()

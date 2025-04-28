@@ -1,10 +1,10 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu
+package com.synngate.synnframe.presentation.ui.dynamicmenu.menu
 
 import com.synngate.synnframe.domain.entity.DynamicMenuItemType
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicMenuEvent
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicMenuState
+import com.synngate.synnframe.presentation.ui.dynamicmenu.menu.model.DynamicMenuEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.menu.model.DynamicMenuState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import timber.log.Timber
 
@@ -61,7 +61,8 @@ class DynamicMenuViewModel(
                     sendEvent(DynamicMenuEvent.ShowSnackbar("Ошибка: отсутствует endpoint для задания"))
                     return
                 }
-                sendEvent(DynamicMenuEvent.NavigateToDynamicTasks(
+                sendEvent(
+                    DynamicMenuEvent.NavigateToDynamicTasks(
                     menuItemId = menuItem.id,
                     menuItemName = menuItem.name,
                     endpoint = menuItem.endpoint,
@@ -73,7 +74,8 @@ class DynamicMenuViewModel(
                     sendEvent(DynamicMenuEvent.ShowSnackbar("Ошибка: отсутствует endpoint для товаров"))
                     return
                 }
-                sendEvent(DynamicMenuEvent.NavigateToDynamicProducts(
+                sendEvent(
+                    DynamicMenuEvent.NavigateToDynamicProducts(
                     menuItemId = menuItem.id,
                     menuItemName = menuItem.name,
                     endpoint = menuItem.endpoint,

@@ -1,11 +1,11 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu
+package com.synngate.synnframe.presentation.ui.dynamicmenu.task
 
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.operation.ScreenElementType
 import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksEvent
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksState
+import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTasksEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTasksState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import timber.log.Timber
 

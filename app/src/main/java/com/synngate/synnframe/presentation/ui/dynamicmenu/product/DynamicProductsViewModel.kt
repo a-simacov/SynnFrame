@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu
+package com.synngate.synnframe.presentation.ui.dynamicmenu.product
 
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
@@ -7,8 +7,8 @@ import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.domain.mapper.DynamicProductMapper
 import com.synngate.synnframe.domain.service.SoundService
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicProductsEvent
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicProductsState
+import com.synngate.synnframe.presentation.ui.dynamicmenu.product.model.DynamicProductsEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.product.model.DynamicProductsState
 import com.synngate.synnframe.presentation.ui.products.components.ScanResult
 import com.synngate.synnframe.presentation.ui.products.mapper.ProductUiMapper
 import com.synngate.synnframe.presentation.ui.products.model.ProductListItemUiModel

@@ -1,12 +1,12 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu
+package com.synngate.synnframe.presentation.ui.dynamicmenu.product
 
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.mapper.DynamicProductMapper
 import com.synngate.synnframe.domain.service.ClipboardService
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicProductDetailEvent
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicProductDetailState
+import com.synngate.synnframe.presentation.ui.dynamicmenu.product.model.DynamicProductDetailEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.product.model.DynamicProductDetailState
 import com.synngate.synnframe.presentation.ui.products.mapper.ProductUiMapper
 import com.synngate.synnframe.presentation.ui.products.model.BarcodeUiModel
 import com.synngate.synnframe.presentation.ui.products.model.ProductDetailUiModel

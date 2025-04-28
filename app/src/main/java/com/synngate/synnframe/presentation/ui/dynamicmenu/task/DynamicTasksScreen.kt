@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu
+package com.synngate.synnframe.presentation.ui.dynamicmenu.task
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,10 +22,10 @@ import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.createComponentGroups
-import com.synngate.synnframe.presentation.ui.dynamicmenu.components.initializeTaskComponents
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.rememberGenericScreenComponentRegistry
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksEvent
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksState
+import com.synngate.synnframe.presentation.ui.dynamicmenu.task.component.initializeTaskComponents
+import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTasksEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTasksState
 
 @Composable
 fun DynamicTasksScreen(

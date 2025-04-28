@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu.model
+package com.synngate.synnframe.presentation.ui.dynamicmenu.task.model
 
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
 

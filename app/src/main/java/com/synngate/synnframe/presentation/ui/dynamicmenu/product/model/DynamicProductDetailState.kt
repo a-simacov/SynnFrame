@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu.model
+package com.synngate.synnframe.presentation.ui.dynamicmenu.product.model
 
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 

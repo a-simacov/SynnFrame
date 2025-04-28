@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu
+package com.synngate.synnframe.presentation.ui.dynamicmenu.task
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -20,7 +20,7 @@ import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.InfoCard
 import com.synngate.synnframe.presentation.common.scaffold.InfoRow
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTaskDetailEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTaskDetailEvent
 
 @Composable
 fun DynamicTaskDetailScreen(

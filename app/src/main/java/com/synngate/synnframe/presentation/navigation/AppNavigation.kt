@@ -24,11 +24,11 @@ import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.presentation.common.LocalCurrentUser
-import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicMenuScreen
-import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicProductDetailScreen
-import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicProductsScreen
-import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicTaskDetailScreen
-import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicTasksScreen
+import com.synngate.synnframe.presentation.ui.dynamicmenu.menu.DynamicMenuScreen
+import com.synngate.synnframe.presentation.ui.dynamicmenu.product.DynamicProductDetailScreen
+import com.synngate.synnframe.presentation.ui.dynamicmenu.product.DynamicProductsScreen
+import com.synngate.synnframe.presentation.ui.dynamicmenu.task.DynamicTaskDetailScreen
+import com.synngate.synnframe.presentation.ui.dynamicmenu.task.DynamicTasksScreen
 import com.synngate.synnframe.presentation.ui.login.LoginScreen
 import com.synngate.synnframe.presentation.ui.logs.LogDetailScreen
 import com.synngate.synnframe.presentation.ui.logs.LogListScreen

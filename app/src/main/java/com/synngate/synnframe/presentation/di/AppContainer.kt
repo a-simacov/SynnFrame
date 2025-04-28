@@ -100,11 +100,11 @@ import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
-import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicMenuViewModel
-import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicProductDetailViewModel
-import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicProductsViewModel
-import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicTaskDetailViewModel
-import com.synngate.synnframe.presentation.ui.dynamicmenu.DynamicTasksViewModel
+import com.synngate.synnframe.presentation.ui.dynamicmenu.menu.DynamicMenuViewModel
+import com.synngate.synnframe.presentation.ui.dynamicmenu.product.DynamicProductDetailViewModel
+import com.synngate.synnframe.presentation.ui.dynamicmenu.product.DynamicProductsViewModel
+import com.synngate.synnframe.presentation.ui.dynamicmenu.task.DynamicTaskDetailViewModel
+import com.synngate.synnframe.presentation.ui.dynamicmenu.task.DynamicTasksViewModel
 import com.synngate.synnframe.presentation.ui.login.LoginViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogDetailViewModel
 import com.synngate.synnframe.presentation.ui.logs.LogListViewModel

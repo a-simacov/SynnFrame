@@ -1,19 +1,19 @@
-package com.synngate.synnframe.presentation.ui.dynamicmenu.components
+package com.synngate.synnframe.presentation.ui.dynamicmenu.task.component
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,29 +21,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
-import com.synngate.synnframe.domain.entity.operation.DynamicProduct
+import com.synngate.synnframe.domain.entity.operation.DynamicTask
+import com.synngate.synnframe.presentation.ui.dynamicmenu.components.ScreenComponent
 
-/**
- * Компонент для отображения списка товаров
- */
-class ProductListComponent<S>(
+class TaskListComponent<S>(
     private val state: S,
-    private val products: List<DynamicProduct>,
+    private val tasks: List<DynamicTask>,
     private val isLoading: Boolean,
     private val error: String?,
-    private val onProductClick: (DynamicProduct) -> Unit
+    private val onTaskClick: (DynamicTask) -> Unit
 ) : ScreenComponent {
 
     @Composable
     override fun Render(modifier: Modifier) {
         Box(modifier = modifier) {
-            if (products.isEmpty() && !isLoading) {
+            if (tasks.isEmpty() && !isLoading) {
                 Text(
                     text = if (error == null) {
-                        stringResource(id = R.string.no_products)
+                        stringResource(id = R.string.no_tasks_available)
                     } else {
                         formatErrorMessage(error)
                     },
@@ -54,53 +51,53 @@ class ProductListComponent<S>(
                         .padding(16.dp)
                 )
             } else {
-                ProductsList(
-                    products = products,
-                    onProductClick = onProductClick
+                TasksList(
+                    tasks = tasks,
+                    onTaskClick = onTaskClick
                 )
             }
         }
     }
 
-    // Компонент будет использовать вес
     override fun usesWeight(): Boolean = true
 
-    // Значение веса компонента
     override fun getWeight(): Float = 1f
 
     @Composable
-    private fun ProductsList(
-        products: List<DynamicProduct>,
-        onProductClick: (DynamicProduct) -> Unit,
+    private fun TasksList(
+        tasks: List<DynamicTask>,
+        onTaskClick: (DynamicTask) -> Unit,
         modifier: Modifier = Modifier
     ) {
         LazyColumn(
-            modifier = modifier.fillMaxSize()
+            modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 8.dp)
         ) {
-            items(
-                items = products,
-                key = { it.id }
-            ) { product ->
-                ProductItem(
-                    product = product,
-                    onClick = { onProductClick(product) }
+            items(tasks) { task ->
+                TaskItem(
+                    task = task,
+                    onClick = { onTaskClick(task) }
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
 
     @Composable
-    private fun ProductItem(
-        product: DynamicProduct,
+    private fun TaskItem(
+        task: DynamicTask,
         onClick: () -> Unit,
         modifier: Modifier = Modifier
     ) {
         Card(
             modifier = modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp)
                 .clickable(onClick = onClick),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
         ) {
             Column(
                 modifier = Modifier
@@ -108,36 +105,22 @@ class ProductListComponent<S>(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = product.name,
+                    text = task.name,
                     style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.product_article, product.articleNumber),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f)
-                    )
+                HorizontalDivider()
 
-                    // Основная единица измерения
-                    product.getMainUnit()?.let { unit ->
-                        Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-                        Text(
-                            text = stringResource(id = R.string.product_main_unit, unit.name),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                Text(
+                    text = stringResource(id = R.string.task_id_fmt, task.id),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
