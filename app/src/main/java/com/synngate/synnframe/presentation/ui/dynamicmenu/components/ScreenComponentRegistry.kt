@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
+import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.domain.entity.operation.ScreenElementType
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
@@ -77,6 +78,36 @@ fun <S : ScreenElementsContainer> GenericScreenComponentRegistry<S>.initializeTa
     }
 
     // Регистрация компонента поиска
+    registerComponent(ScreenElementType.SEARCH) { state ->
+        SearchComponent(
+            searchValue = searchValueProvider(state),
+            onSearchValueChanged = onSearchValueChangedProvider(state),
+            onSearch = onSearchProvider(state)
+        )
+    }
+}
+
+fun <S : ScreenElementsContainer> GenericScreenComponentRegistry<S>.initializeProductComponents(
+    productsProvider: (S) -> List<DynamicProduct>,
+    isLoadingProvider: (S) -> Boolean,
+    errorProvider: (S) -> String?,
+    onProductClickProvider: (S) -> ((DynamicProduct) -> Unit),
+    searchValueProvider: (S) -> String,
+    onSearchValueChangedProvider: (S) -> ((String) -> Unit),
+    onSearchProvider: (S) -> (() -> Unit)
+) {
+    // Регистрация компонента списка товаров
+    registerComponent(ScreenElementType.SHOW_LIST) { state ->
+        ProductListComponent(
+            state = state,
+            products = productsProvider(state),
+            isLoading = isLoadingProvider(state),
+            error = errorProvider(state),
+            onProductClick = onProductClickProvider(state)
+        )
+    }
+
+    // Регистрация компонента поиска (переиспользуем уже существующий)
     registerComponent(ScreenElementType.SEARCH) { state ->
         SearchComponent(
             searchValue = searchValueProvider(state),
