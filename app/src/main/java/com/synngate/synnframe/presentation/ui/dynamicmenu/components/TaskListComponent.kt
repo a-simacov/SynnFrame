@@ -24,26 +24,27 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
-import com.synngate.synnframe.domain.entity.operation.ScreenElementType
-import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksState
 
 /**
  * Компонент для отображения списка заданий
  */
-class TaskListComponent(
-    private val state: DynamicTasksState,
-    private val events: DynamicTasksScreenEvents
+class TaskListComponent<S>(
+    private val state: S,
+    private val tasks: List<DynamicTask>,
+    private val isLoading: Boolean,
+    private val error: String?,
+    private val onTaskClick: (DynamicTask) -> Unit
 ) : ScreenComponent {
 
     @Composable
     override fun Render(modifier: Modifier) {
         Box(modifier = modifier) {
-            if (state.tasks.isEmpty() && !state.isLoading) {
+            if (tasks.isEmpty() && !isLoading) {
                 Text(
-                    text = if (state.error == null) {
+                    text = if (error == null) {
                         stringResource(id = R.string.no_tasks_available)
                     } else {
-                        formatErrorMessage(state.error)
+                        formatErrorMessage(error)
                     },
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
@@ -53,8 +54,8 @@ class TaskListComponent(
                 )
             } else {
                 TasksList(
-                    tasks = state.tasks,
-                    onTaskClick = events.onTaskClick
+                    tasks = tasks,
+                    onTaskClick = onTaskClick
                 )
             }
         }
@@ -135,14 +136,5 @@ class TaskListComponent(
             .replace("\n", ". ")
             .replace("..", ".")
             .replace(". .", ".")
-    }
-}
-
-/**
- * Расширение реестра компонентов для регистрации компонента списка заданий
- */
-fun ScreenComponentRegistry.registerTaskListComponent() {
-    registerComponent(ScreenElementType.SHOW_LIST) { state ->
-        TaskListComponent(state, events)
     }
 }

@@ -21,10 +21,11 @@ import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.status.StatusType
-import com.synngate.synnframe.presentation.ui.dynamicmenu.components.DynamicTasksScreenEvents
-import com.synngate.synnframe.presentation.ui.dynamicmenu.components.initialize
-import com.synngate.synnframe.presentation.ui.dynamicmenu.components.rememberScreenComponentRegistry
+import com.synngate.synnframe.presentation.ui.dynamicmenu.components.createComponentGroups
+import com.synngate.synnframe.presentation.ui.dynamicmenu.components.initializeTaskComponents
+import com.synngate.synnframe.presentation.ui.dynamicmenu.components.rememberGenericScreenComponentRegistry
 import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksEvent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.model.DynamicTasksState
 
 @Composable
 fun DynamicTasksScreen(
@@ -36,21 +37,24 @@ fun DynamicTasksScreen(
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Создаем объект с событиями для передачи компонентам
-    val events = remember {
-        DynamicTasksScreenEvents(
-            onSearchValueChanged = viewModel::onSearchValueChanged,
-            onSearch = viewModel::onSearch,
-            onRefresh = viewModel::onRefresh,
-            onTaskClick = { task -> navigateToTaskDetail(task) }
+    // Создаем и инициализируем универсальный реестр компонентов
+    val componentRegistry = rememberGenericScreenComponentRegistry<DynamicTasksState>()
+
+    // Инициализируем реестр для заданий
+    LaunchedEffect(Unit) {
+        componentRegistry.initializeTaskComponents(
+            tasksProvider = { it.tasks },
+            isLoadingProvider = { it.isLoading },
+            errorProvider = { it.error },
+            onTaskClickProvider = { { task -> navigateToTaskDetail(task) } },
+            searchValueProvider = { it.searchValue },
+            onSearchValueChangedProvider = { { value -> viewModel.onSearchValueChanged(value) } },
+            onSearchProvider = { { viewModel.onSearch() } }
         )
     }
 
-    // Создаем и инициализируем реестр компонентов
-    val componentRegistry = rememberScreenComponentRegistry(events)
-    LaunchedEffect(componentRegistry) {
-        componentRegistry.initialize()
-    }
+    // Получаем сгруппированные компоненты
+    val componentGroups = createComponentGroups(state, componentRegistry)
 
     // Обработка событий навигации
     LaunchedEffect(key1 = viewModel) {
@@ -98,28 +102,16 @@ fun DynamicTasksScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
-            // Разделяем компоненты на две группы:
-            // 1. Компоненты с фиксированным размером
-            // 2. Компоненты с весом (weight)
-
-            // Отображаем компоненты с фиксированным размером
-            state.screenSettings.screenElements.forEach { elementType ->
-                val component = componentRegistry.createComponent(elementType, state)
-                if (component != null && !component.usesWeight()) {
-                    component.Render(Modifier.fillMaxWidth())
-                }
+            componentGroups.fixedComponents.forEach { component ->
+                component.Render(Modifier.fillMaxWidth())
             }
 
-            // Отображаем компоненты с весом
-            state.screenSettings.screenElements.forEach { elementType ->
-                val component = componentRegistry.createComponent(elementType, state)
-                if (component != null && component.usesWeight()) {
-                    component.Render(
-                        Modifier
-                            .fillMaxWidth()
-                            .weight(component.getWeight())
-                    )
-                }
+            componentGroups.weightedComponents.forEach { component ->
+                component.Render(
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(component.getWeight())
+                )
             }
         }
     }
