@@ -6,7 +6,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -21,6 +24,7 @@ import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.InfoCard
 import com.synngate.synnframe.presentation.common.scaffold.InfoRow
 import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTaskDetailEvent
+import com.synngate.synnframe.util.html.HtmlUtils
 
 @Composable
 fun DynamicTaskDetailScreen(
@@ -45,9 +49,11 @@ fun DynamicTaskDetailScreen(
         }
     }
 
+    val taskName = state.task?.name?.let { HtmlUtils.stripHtml(it) } ?: ""
+
     AppScaffold(
         title = stringResource(id = R.string.task_details),
-        subtitle = state.task?.name,
+        subtitle = taskName, // Для заголовка используем текст без HTML-разметки
         onNavigateBack = navigateBack,
         snackbarHostState = snackbarHostState
     ) { paddingValues ->
@@ -56,6 +62,7 @@ fun DynamicTaskDetailScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             state.task?.let { task ->
                 InfoCard {
@@ -64,9 +71,11 @@ fun DynamicTaskDetailScreen(
                         value = task.id
                     )
 
-                    InfoRow(
-                        label = stringResource(id = R.string.task_name),
-                        value = task.name
+                    Text(
+                        text = HtmlUtils.htmlToAnnotatedString(task.name),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
                     )
                 }
 

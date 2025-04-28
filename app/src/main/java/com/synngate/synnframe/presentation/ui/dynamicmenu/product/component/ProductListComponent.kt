@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.ScreenComponent
+import com.synngate.synnframe.util.html.HtmlUtils
 
 class ProductListComponent<S>(
     private val state: S,
@@ -91,6 +92,9 @@ class ProductListComponent<S>(
         onClick: () -> Unit,
         modifier: Modifier = Modifier
     ) {
+        // Преобразуем HTML в AnnotatedString с использованием утилитного класса
+        val annotatedName = HtmlUtils.htmlToAnnotatedString(product.name)
+
         Card(
             modifier = modifier
                 .fillMaxWidth()
@@ -103,8 +107,9 @@ class ProductListComponent<S>(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
+                // Используем AnnotatedString для отображения форматированного текста
                 Text(
-                    text = product.name,
+                    text = annotatedName,
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis

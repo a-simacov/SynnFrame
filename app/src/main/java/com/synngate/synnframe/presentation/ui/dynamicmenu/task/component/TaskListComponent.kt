@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.ScreenComponent
+import com.synngate.synnframe.util.html.HtmlUtils
 
 class TaskListComponent<S>(
     private val state: S,
@@ -90,6 +91,8 @@ class TaskListComponent<S>(
         onClick: () -> Unit,
         modifier: Modifier = Modifier
     ) {
+        val annotatedName = HtmlUtils.htmlToAnnotatedString(task.name)
+
         Card(
             modifier = modifier
                 .fillMaxWidth()
@@ -105,7 +108,7 @@ class TaskListComponent<S>(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = task.name,
+                    text = annotatedName,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )

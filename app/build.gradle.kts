@@ -149,9 +149,6 @@ dependencies {
     // Date/Time
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
 
-    // Markdown parsing (for enhanced text)
-    implementation("io.noties.markwon:core:4.6.2")
-
     implementation("androidx.work:work-runtime-ktx:2.8.1")
 
     // Testing

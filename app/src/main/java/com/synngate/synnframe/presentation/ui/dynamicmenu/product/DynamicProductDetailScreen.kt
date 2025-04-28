@@ -39,6 +39,7 @@ import com.synngate.synnframe.presentation.ui.products.components.ProductUnitIte
 import com.synngate.synnframe.presentation.ui.products.model.BarcodeUiModel
 import com.synngate.synnframe.presentation.ui.products.model.ProductDetailUiModel
 import com.synngate.synnframe.presentation.ui.products.model.ProductUnitUiModel
+import com.synngate.synnframe.util.html.HtmlUtils
 
 @Composable
 fun DynamicProductDetailScreen(
@@ -70,7 +71,7 @@ fun DynamicProductDetailScreen(
 
     AppScaffold(
         title = stringResource(id = R.string.product_details),
-        subtitle = state.product?.name,
+        subtitle = state.product?.name?.let { HtmlUtils.stripHtml(it) },
         onNavigateBack = navigateBack,
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {
@@ -172,7 +173,7 @@ private fun ProductBasicInfoSection(
         SectionHeader(title = stringResource(id = R.string.basic_info))
 
         Text(
-            text = product.name,
+            text = HtmlUtils.htmlToAnnotatedString(product.name),
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
