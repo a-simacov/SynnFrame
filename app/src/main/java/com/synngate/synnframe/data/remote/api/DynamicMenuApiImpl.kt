@@ -1,6 +1,7 @@
 package com.synngate.synnframe.data.remote.api
 
 import com.synngate.synnframe.data.remote.dto.ApiErrorItem
+import com.synngate.synnframe.data.remote.dto.TaskStartRequestDto
 import com.synngate.synnframe.data.remote.dto.TaskXStartResponseDto
 import com.synngate.synnframe.data.remote.service.ServerProvider
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
@@ -316,10 +317,8 @@ class DynamicMenuApiImpl(
                 header("Authorization", authHeader)
                 header("User-Auth-Id", userId)
                 contentType(ContentType.Application.Json)
-                setBody(mapOf(
-                    "taskId" to taskId,
-                    "start" to true
-                ))
+                // Используем специальный DTO вместо Map
+                setBody(TaskStartRequestDto(taskId = taskId, start = true))
             }
 
             if (response.status.isSuccess()) {

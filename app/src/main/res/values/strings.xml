@@ -734,4 +734,7 @@
 
     <!-- Строки для динамического меню -->
     <string name="submenu_title">Подменю</string>
+
+    <string name="task_executor_fmt">Исполнитель: %s</string>
+    <string name="continue_task_execution">Продолжить выполнение</string>
 </resources>

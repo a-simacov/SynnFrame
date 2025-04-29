@@ -1,6 +1,7 @@
 package com.synngate.synnframe.presentation.ui.dynamicmenu.task
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,14 +17,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
+import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.InfoCard
 import com.synngate.synnframe.presentation.common.scaffold.InfoRow
+import com.synngate.synnframe.presentation.common.status.StatusType
+import com.synngate.synnframe.presentation.common.status.TaskXStatusIndicator
 import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTaskDetailEvent
 import com.synngate.synnframe.util.html.HtmlUtils
 
@@ -30,6 +36,7 @@ import com.synngate.synnframe.util.html.HtmlUtils
 fun DynamicTaskDetailScreen(
     viewModel: DynamicTaskDetailViewModel,
     navigateBack: () -> Unit,
+    navigateToTaskXDetail: (String) -> Unit, // Добавляем функцию навигации к TaskXDetail
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -43,19 +50,28 @@ fun DynamicTaskDetailScreen(
                     snackbarHostState.showSnackbar(event.message)
                 }
                 is DynamicTaskDetailEvent.StartTaskExecution -> {
-                    // В будущем добавим переход к экрану выполнения задания
+                    // Обработано в ViewModel
+                }
+                is DynamicTaskDetailEvent.NavigateToTaskXDetail -> {
+                    // Переходим к экрану выполнения задания
+                    navigateToTaskXDetail(event.taskId)
                 }
             }
         }
     }
 
     val taskName = state.task?.name?.let { HtmlUtils.stripHtml(it) } ?: ""
+    val taskStatus = state.task?.getTaskStatus() ?: TaskXStatus.TO_DO
 
     AppScaffold(
         title = stringResource(id = R.string.task_details),
         subtitle = taskName, // Для заголовка используем текст без HTML-разметки
         onNavigateBack = navigateBack,
-        snackbarHostState = snackbarHostState
+        snackbarHostState = snackbarHostState,
+        notification = state.error?.let {
+            Pair(it, StatusType.ERROR)
+        },
+        isLoading = state.isLoading
     ) { paddingValues ->
         Column(
             modifier = modifier
@@ -71,21 +87,58 @@ fun DynamicTaskDetailScreen(
                         value = task.id
                     )
 
+                    // Показываем статус задания
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.task_status),
+                            modifier = Modifier.weight(0.3f)
+                        )
+
+                        TaskXStatusIndicator(
+                            status = taskStatus,
+                            modifier = Modifier.weight(0.7f)
+                        )
+                    }
+
                     Text(
                         text = HtmlUtils.htmlToAnnotatedString(task.name),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp)
                     )
+
+                    // Показываем информацию об исполнителе, если она есть
+                    task.executorId?.let { executorId ->
+                        InfoRow(
+                            label = stringResource(id = R.string.task_executor),
+                            value = executorId
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                ActionButton(
-                    text = stringResource(id = R.string.start_task_execution),
-                    onClick = viewModel::onStartTaskExecution,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // Добавляем кнопку запуска задания только если оно в статусе "К выполнению"
+                if (taskStatus == TaskXStatus.TO_DO) {
+                    ActionButton(
+                        text = stringResource(id = R.string.start_task_execution),
+                        onClick = viewModel::onStartTaskExecution,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !state.isLoading
+                    )
+
+                    if (state.isLoading) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    }
+                }
             }
         }
     }

@@ -754,6 +754,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         }
     }
 
+    // Обновляем метод создания DynamicTasksViewModel
     fun createDynamicTasksViewModel(
         menuItemId: String,
         menuItemName: String,
@@ -766,14 +767,24 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 menuItemName = menuItemName,
                 endpoint = endpoint,
                 screenSettings = screenSettings,
-                dynamicMenuUseCases = appContainer.dynamicMenuUseCases
+                dynamicMenuUseCases = appContainer.dynamicMenuUseCases,
+                userUseCases = appContainer.userUseCases // Добавляем UserUseCases
             )
         }
     }
 
-    fun createDynamicTaskDetailViewModel(task: DynamicTask): DynamicTaskDetailViewModel {
+    // Обновляем метод создания DynamicTaskDetailViewModel
+    fun createDynamicTaskDetailViewModel(
+        task: DynamicTask,
+        endpoint: String = ""
+    ): DynamicTaskDetailViewModel {
         return getOrCreateViewModel("DynamicTaskDetailViewModel_${task.id}") {
-            DynamicTaskDetailViewModel(task)
+            DynamicTaskDetailViewModel(
+                task = task,
+                dynamicMenuUseCases = appContainer.dynamicMenuUseCases,
+                userUseCases = appContainer.userUseCases, // Добавляем UserUseCases
+                endpoint = endpoint // Передаем endpoint
+            )
         }
     }
 

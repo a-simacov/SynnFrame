@@ -263,6 +263,7 @@ fun AppNavigation(
                 )
             }
 
+            // Обновляем настройки composable для DynamicTasks
             composable(
                 route = Screen.DynamicTasks.route,
                 arguments = listOf(
@@ -287,6 +288,7 @@ fun AppNavigation(
                 val menuItemId = entry.arguments?.getString("menuItemId") ?: ""
                 val encodedMenuItemName = entry.arguments?.getString("menuItemName") ?: ""
                 val menuItemName = java.net.URLDecoder.decode(encodedMenuItemName, "UTF-8")
+
                 // Декодируем endpoint из Base64
                 val encodedEndpoint = entry.arguments?.getString("endpoint") ?: ""
                 val endpoint = try {
@@ -295,6 +297,7 @@ fun AppNavigation(
                     Timber.e(e, "Failed to decode endpoint from Base64, using as is")
                     encodedEndpoint
                 }
+
                 val encodedScreenSettings = entry.arguments?.getString("screenSettings")
 
                 // Декодирование screenSettings из JSON, если они переданы
@@ -324,6 +327,10 @@ fun AppNavigation(
                     navigateToTaskDetail = { task ->
                         navController.navigate(Screen.DynamicTaskDetail.createRoute(task))
                     },
+                    // Добавляем обработчик перехода к TaskXDetail
+                    navigateToTaskXDetail = { taskId ->
+                        navController.navigate(Screen.TaskXDetail.createRoute(taskId))
+                    },
                     navigateBack = {
                         navController.popBackStack()
                     }
@@ -349,7 +356,8 @@ fun AppNavigation(
                 val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
                 val viewModel = remember(taskId, taskName) {
                     screenContainer.createDynamicTaskDetailViewModel(
-                        DynamicTask(id = taskId, name = taskName)
+                        task = DynamicTask(id = taskId, name = taskName),
+                        endpoint = "/tasks/start"
                     )
                 }
 
@@ -357,6 +365,13 @@ fun AppNavigation(
                     viewModel = viewModel,
                     navigateBack = {
                         navController.popBackStack()
+                    },
+                    // Добавляем функцию навигации к TaskXDetail
+                    navigateToTaskXDetail = { taskXId ->
+                        navController.navigate(Screen.TaskXDetail.createRoute(taskXId)) {
+                            // При переходе к экрану выполнения задания закрываем экран деталей
+                            popUpTo(Screen.DynamicTaskDetail.route) { inclusive = true }
+                        }
                     }
                 )
             }

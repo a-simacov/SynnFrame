@@ -1,9 +1,11 @@
 package com.synngate.synnframe.presentation.ui.dynamicmenu.task.component
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
+import com.synngate.synnframe.presentation.common.status.TaskXStatusIndicator
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.ScreenComponent
 import com.synngate.synnframe.util.html.HtmlUtils
 
@@ -92,6 +95,7 @@ class TaskListComponent<S>(
         modifier: Modifier = Modifier
     ) {
         val annotatedName = HtmlUtils.htmlToAnnotatedString(task.name)
+        val taskStatus = task.getTaskStatus()
 
         Card(
             modifier = modifier
@@ -107,11 +111,22 @@ class TaskListComponent<S>(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                Text(
-                    text = annotatedName,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                // Показываем название задания и его статус
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = annotatedName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Отображаем индикатор статуса
+                    TaskXStatusIndicator(status = taskStatus)
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -124,6 +139,15 @@ class TaskListComponent<S>(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                // Отображаем информацию об исполнителе, если она есть
+                task.executorId?.let { executorId ->
+                    Text(
+                        text = stringResource(id = R.string.task_executor_fmt, executorId),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
