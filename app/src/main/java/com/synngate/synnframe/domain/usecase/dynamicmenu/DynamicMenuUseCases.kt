@@ -1,6 +1,7 @@
 package com.synngate.synnframe.domain.usecase.dynamicmenu
 
 import com.synngate.synnframe.data.remote.api.ApiResult
+import com.synngate.synnframe.data.remote.dto.TaskXStartResponseDto
 import com.synngate.synnframe.domain.entity.DynamicMenuItemType
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
@@ -62,6 +63,15 @@ class DynamicMenuUseCases(
             dynamicMenuRepository.getDynamicProducts(endpoint, params)
         } catch (e: Exception) {
             Timber.e(e, "Error in getDynamicProducts use case")
+            ApiResult.Error(500, e.message ?: "Unknown error")
+        }
+    }
+
+    suspend fun startDynamicTask(endpoint: String, taskId: String): ApiResult<TaskXStartResponseDto> {
+        return try {
+            dynamicMenuRepository.startDynamicTask(endpoint, taskId)
+        } catch (e: Exception) {
+            Timber.e(e, "Error in startDynamicTask use case")
             ApiResult.Error(500, e.message ?: "Unknown error")
         }
     }

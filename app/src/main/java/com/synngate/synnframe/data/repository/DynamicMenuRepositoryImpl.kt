@@ -2,6 +2,7 @@ package com.synngate.synnframe.data.repository
 
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.api.DynamicMenuApi
+import com.synngate.synnframe.data.remote.dto.TaskXStartResponseDto
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
@@ -25,5 +26,9 @@ class DynamicMenuRepositoryImpl(
 
     override suspend fun getDynamicProducts(endpoint: String, params: Map<String, String>): ApiResult<List<DynamicProduct>> {
         return dynamicMenuApi.getDynamicProducts(endpoint, params)
+    }
+
+    override suspend fun startDynamicTask(endpoint: String, taskId: String): ApiResult<TaskXStartResponseDto> {
+        return dynamicMenuApi.startDynamicTask(endpoint, taskId)
     }
 }

@@ -1,6 +1,7 @@
 package com.synngate.synnframe.data.remote.api
 
 import com.synngate.synnframe.data.remote.dto.ApiErrorItem
+import com.synngate.synnframe.data.remote.dto.TaskXStartResponseDto
 import com.synngate.synnframe.data.remote.service.ServerProvider
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
@@ -294,6 +295,52 @@ class DynamicMenuApiImpl(
             ApiResult.Error(
                 HttpStatusCode.InternalServerError.value,
                 e.message ?: "Products request execution failed"
+            )
+        }
+    }
+
+    override suspend fun startDynamicTask(endpoint: String, taskId: String): ApiResult<TaskXStartResponseDto> {
+        val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
+            HttpStatusCode.InternalServerError.value,
+            "No active server configured"
+        )
+
+        val (httpMethod, path) = parseEndpoint(endpoint)
+        val baseUrl = "${server.apiUrl}${path}"
+
+        val userId = serverProvider.getCurrentUserId() ?: ""
+        val authHeader = "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}"
+
+        return try {
+            val response = client.post(baseUrl) {
+                header("Authorization", authHeader)
+                header("User-Auth-Id", userId)
+                contentType(ContentType.Application.Json)
+                setBody(mapOf(
+                    "taskId" to taskId,
+                    "start" to true
+                ))
+            }
+
+            if (response.status.isSuccess()) {
+                try {
+                    val startResponse = response.body<TaskXStartResponseDto>()
+                    ApiResult.Success(startResponse)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error parsing task start response: ${e.message}")
+                    ApiResult.Error(
+                        HttpStatusCode.InternalServerError.value,
+                        "Error parsing task start response: ${e.message}"
+                    )
+                }
+            } else {
+                createErrorResult(response)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error starting dynamic task: $taskId")
+            ApiResult.Error(
+                HttpStatusCode.InternalServerError.value,
+                e.message ?: "Task start failed"
             )
         }
     }
