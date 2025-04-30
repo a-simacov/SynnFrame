@@ -420,7 +420,8 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         ActionStepExecutionService(
             taskXRepository = taskXRepository,
             validationService = validationService,
-            actionDataCacheService = actionDataCacheService
+            actionDataCacheService = actionDataCacheService,
+            taskContextManager = taskContextManager // Добавляем параметр taskContextManager
         )
     }
 
