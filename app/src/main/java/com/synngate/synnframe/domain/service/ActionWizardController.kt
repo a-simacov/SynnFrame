@@ -5,7 +5,6 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionWizardState
 import com.synngate.synnframe.domain.model.wizard.WizardStep
-import com.synngate.synnframe.domain.repository.TaskXRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,12 +13,12 @@ import java.time.LocalDateTime
 
 /**
  * Контроллер для управления визардом действий
+ * Упрощенная версия, работающая только с TaskContextManager
  */
 class ActionWizardController(
-    private val taskXRepository: TaskXRepository,
     private val actionExecutionService: ActionExecutionService,
     private val actionStepExecutionService: ActionStepExecutionService,
-    private val taskContextManager: TaskContextManager // Добавлен TaskContextManager
+    private val taskContextManager: TaskContextManager
 ) {
     private val _wizardState = MutableStateFlow<ActionWizardState?>(null)
     val wizardState: StateFlow<ActionWizardState?> = _wizardState.asStateFlow()
@@ -28,13 +27,12 @@ class ActionWizardController(
         return try {
             _wizardState.value = null
 
-            val contextTask = taskContextManager.lastStartedTaskX.value
+            // Получаем данные только из TaskContextManager
+            val task = taskContextManager.lastStartedTaskX.value
+                ?: return Result.failure(IllegalArgumentException("Task not found in context: $taskId"))
 
-            val task = if (contextTask != null && contextTask.id == taskId) {
-                contextTask
-            } else {
-                taskXRepository.getTaskById(taskId)
-                    ?: return Result.failure(IllegalArgumentException("Task not found: $taskId"))
+            if (task.id != taskId) {
+                return Result.failure(IllegalArgumentException("Task ID mismatch: expected $taskId, got ${task.id}"))
             }
 
             val action = task.plannedActions.find { it.id == actionId }
@@ -56,7 +54,7 @@ class ActionWizardController(
                 startedAt = LocalDateTime.now(),
                 isInitialized = true,
                 lastScannedBarcode = null,
-                isProcessingStep = false // Явно устанавливаем в false
+                isProcessingStep = false
             )
 
             Result.success(true)
@@ -140,8 +138,8 @@ class ActionWizardController(
         _wizardState.value = state.copy(
             currentStepIndex = state.currentStepIndex + 1,
             results = updatedResults,
-            lastScannedBarcode = null,  // Сбрасываем последний отсканированный штрихкод
-            isProcessingStep = false     // Сбрасываем флаг обработки
+            lastScannedBarcode = null,
+            isProcessingStep = false
         )
     }
 
@@ -168,8 +166,8 @@ class ActionWizardController(
         if (!state.isCompleted && currentStep != null && state.results.containsKey(currentStep.id)) {
             _wizardState.value = state.copy(
                 currentStepIndex = state.currentStepIndex + 1,
-                lastScannedBarcode = null,  // Сбрасываем последний отсканированный штрихкод
-                isProcessingStep = false     // Сбрасываем флаг обработки
+                lastScannedBarcode = null,
+                isProcessingStep = false
             )
         } else {
             _wizardState.value = state.copy(isProcessingStep = false)
@@ -181,15 +179,15 @@ class ActionWizardController(
             if (state.steps.isNotEmpty()) {
                 _wizardState.value = state.copy(
                     currentStepIndex = state.steps.size - 1,
-                    lastScannedBarcode = null,  // Сбрасываем последний отсканированный штрихкод
-                    isProcessingStep = false     // Сбрасываем флаг обработки шага
+                    lastScannedBarcode = null,
+                    isProcessingStep = false
                 )
             }
         } else if (state.canGoBack && state.currentStepIndex > 0) {
             _wizardState.value = state.copy(
                 currentStepIndex = state.currentStepIndex - 1,
-                lastScannedBarcode = null,  // Сбрасываем последний отсканированный штрихкод
-                isProcessingStep = false     // Сбрасываем флаг обработки шага
+                lastScannedBarcode = null,
+                isProcessingStep = false
             )
         } else {
             Timber.d("Cannot go back from first step or step doesn't allow back navigation")
@@ -207,19 +205,11 @@ class ActionWizardController(
 
             _wizardState.value = currentState.copy(
                 lastScannedBarcode = barcode,
-                isProcessingStep = true  // Добавляем установку флага обработки
+                isProcessingStep = true
             )
 
-            val currentStep = currentState.currentStep ?: return
-            val stepId = currentStep.id
-
-            if (currentState.isCompleted) {
-                _wizardState.value = _wizardState.value?.copy(isProcessingStep = false)
-                return
-            }
-
-            val action = currentState.action ?: return
-            val actionStep = findActionStepForWizardStep(action, stepId)
+            // Никакой логики взаимодействия с репозиторием здесь нет,
+            // просто обновляем состояние штрихкода для обработки в UI
 
             _wizardState.value = _wizardState.value?.copy(isProcessingStep = false)
         } catch (e: Exception) {

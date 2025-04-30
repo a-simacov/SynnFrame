@@ -14,10 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -30,7 +27,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,23 +44,18 @@ import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
-import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
-import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scanner.BarcodeHandlerWithState
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
-import com.synngate.synnframe.presentation.ui.taskx.components.ProductItem
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
-import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * Фабрика компонентов для шага выбора продукта с улучшенным интерфейсом
+ * Фабрика компонентов для шага выбора продукта
+ * Упрощенная версия, работающая только с локальными данными
  */
-class ProductSelectionStepFactory(
-    private val wizardViewModel: ActionDataViewModel
-) : ActionStepFactory {
+class ProductSelectionStepFactory : ActionStepFactory {
 
     @Composable
     override fun createComponent(
@@ -72,25 +63,16 @@ class ProductSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Состояния поля поиска и ввода
+        // Состояния UI
         var manualProductCode by remember { mutableStateOf("") }
-        var showProductList by remember { mutableStateOf(false) }
-        var searchQuery by remember { mutableStateOf("") }
-
-        // Состояние для сообщений об ошибках
         var errorMessage by remember { mutableStateOf<String?>(null) }
-
-        // Состояние для диалога сканирования камерой
         var showCameraScannerDialog by remember { mutableStateOf(false) }
 
-        // Для отображения сообщений
+        // Вспомогательные состояния и объекты
         val snackbarHostState = remember { SnackbarHostState() }
         val coroutineScope = rememberCoroutineScope()
 
-        // Получение данных о продуктах из ViewModel
-        val products by wizardViewModel.products.collectAsState()
-
-        // Получаем запланированный продукт
+        // Получаем запланированный продукт из действия
         val plannedProduct = action.storageProduct?.product
 
         // Список запланированных продуктов для отображения
@@ -104,9 +86,6 @@ class ProductSelectionStepFactory(
             (context.results[step.id] as? TaskProduct)?.product
         }
 
-        // Получаем сервис сканера для встроенного сканера
-        val scannerService = LocalScannerService.current
-
         // Функция для показа сообщения об ошибке
         val showError = { message: String ->
             errorMessage = message
@@ -118,7 +97,7 @@ class ProductSelectionStepFactory(
             }
         }
 
-        // Функция поиска продукта по штрихкоду или артикулу
+        // Функция поиска продукта по штрихкоду
         val searchProduct = { barcode: String ->
             if (barcode.isNotEmpty()) {
                 Timber.d("Поиск продукта по штрихкоду: $barcode")
@@ -195,17 +174,8 @@ class ProductSelectionStepFactory(
             val barcode = context.lastScannedBarcode
             if (!barcode.isNullOrEmpty()) {
                 Timber.d("Получен штрихкод от внешнего сканера: $barcode")
-
-                // Просто перенаправляем в функцию поиска продукта
                 searchProduct(barcode)
             }
-        }
-
-        // Загрузка продуктов при изменении поискового запроса
-        LaunchedEffect(searchQuery) {
-            // Получаем IDs продуктов из плана
-            val planProductIds = plannedProduct?.let { setOf(it.id) } ?: emptySet()
-            wizardViewModel.loadProducts(searchQuery, planProductIds)
         }
 
         // Показываем диалог сканирования камерой, если он активирован
@@ -387,73 +357,12 @@ class ProductSelectionStepFactory(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            // Кнопка для выбора из списка (если нет запланированного продукта или есть, но можно выбрать любой)
-            if (plannedProduct == null || !step.validationRules.rules.any { it.type == ValidationType.FROM_PLAN }) {
-                Button(
-                    onClick = {
-                        showProductList = !showProductList
-                        // Загружаем продукты при открытии списка
-                        if (showProductList) {
-                            wizardViewModel.loadProducts("", plannedProduct?.let { setOf(it.id) })
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ViewList,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
-                    Text(if (showProductList) "Скрыть список" else "Выбрать из списка")
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // Список продуктов для выбора (показывается только если активирован)
-            if (showProductList) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    label = { Text(stringResource(R.string.search_product)) },
-                    placeholder = { Text(stringResource(R.string.search_product_hint)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = null
-                        )
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    items(products) { product ->
-                        ProductItem(
-                            product = product,
-                            onClick = {
-                                // Создаем результат в зависимости от типа объекта
-                                val result: Any = if (step.objectType == ActionObjectType.TASK_PRODUCT) {
-                                    TaskProduct(product = product)
-                                } else {
-                                    product
-                                }
-                                context.onComplete(result)
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
+            // Кнопка с уведомлением, что работаем только с планируемыми товарами
+            Button(
+                onClick = { /* Только уведомление */ },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Работаем только с планируемыми товарами")
             }
         }
     }
@@ -467,7 +376,7 @@ class ProductSelectionStepFactory(
         }
     }
 
-    // Изменяем метод обработки штрихкода для товара, чтобы не обращаться к репозиторию
+    // Упрощенный метод обработки штрихкода для товара, работающий только с запланированными товарами
     private fun processBarcodeForProduct(
         barcode: String,
         action: PlannedAction,
@@ -476,16 +385,12 @@ class ProductSelectionStepFactory(
         // Получаем запланированный товар из контекста
         val plannedProduct = action.storageProduct?.product
 
-        // Если есть запланированный товар, проверяем соответствие
+        // Если есть запланированный товар, считаем что штрихкод совпадает и возвращаем запланированный товар
         if (plannedProduct != null) {
-            // В реальном приложении здесь может быть более сложная логика сравнения
-            // Например, проверка соответствия штрихкода одному из штрихкодов товара
-            // Но пока просто возвращаем запланированный товар
             Timber.d("Найден товар из плана: ${plannedProduct.name}")
             onProductFound(plannedProduct)
         } else {
-            // Если запланированного товара нет, создаем временный объект товара
-            // без обращения к репозиторию
+            // Создаем временный товар для демонстрации
             val tempProduct = Product(
                 id = "temp_${System.currentTimeMillis()}",
                 name = "Товар со штрихкодом $barcode",

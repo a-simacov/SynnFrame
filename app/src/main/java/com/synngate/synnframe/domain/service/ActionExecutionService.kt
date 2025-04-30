@@ -8,7 +8,6 @@ import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
-import com.synngate.synnframe.domain.repository.TaskXRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -17,11 +16,11 @@ import java.util.UUID
 
 /**
  * Сервис для выполнения действий задания
+ * Упрощенная версия, работающая только с локальными данными и TaskContextManager
  */
 class ActionExecutionService(
-    private val taskXRepository: TaskXRepository,
     private val validationService: ValidationService,
-    private val taskContextManager: TaskContextManager // Добавлен TaskContextManager
+    private val taskContextManager: TaskContextManager
 ) {
     suspend fun executeAction(
         taskId: String,
@@ -29,26 +28,41 @@ class ActionExecutionService(
         stepResults: Map<String, Any>
     ): Result<TaskX> = withContext(Dispatchers.IO) {
         try {
-            val contextTask = taskContextManager.lastStartedTaskX.value
+            // Получаем задание только из контекста
+            val task = taskContextManager.lastStartedTaskX.value
+                ?: return@withContext Result.failure(IllegalArgumentException("Task not found in context: $taskId"))
 
-            val task = if (contextTask != null && contextTask.id == taskId) {
-                contextTask
-            } else {
-                taskXRepository.getTaskById(taskId)
-                    ?: return@withContext Result.failure(IllegalArgumentException("Task not found: $taskId"))
+            if (task.id != taskId) {
+                return@withContext Result.failure(IllegalArgumentException("Task ID mismatch: expected $taskId, got ${task.id}"))
             }
 
             val action = task.plannedActions.find { it.id == actionId }
                 ?: return@withContext Result.failure(IllegalArgumentException("Planned action not found: $actionId"))
 
+            // Создаем фактическое действие на основе введенных данных
             val factAction = createFactAction(taskId, action, stepResults)
 
-            taskXRepository.addFactAction(factAction)
+            // Создаем обновленное задание с новым фактическим действием
+            // В реальности здесь должен быть вызов API для сохранения факта на сервере,
+            // но мы ограничимся локальным обновлением для примера
+            val factActions = task.factActions.toMutableList()
+            factActions.add(factAction)
 
-            taskXRepository.markPlannedActionCompleted(taskId, actionId, true)
+            // Обновляем запланированное действие, помечая его как выполненное
+            val updatedPlannedActions = task.plannedActions.map {
+                if (it.id == actionId) it.copy(isCompleted = true) else it
+            }
 
-            val updatedTask = taskXRepository.getTaskById(taskId)
-                ?: return@withContext Result.failure(IllegalStateException("Task not found after action execution"))
+            // Создаем обновленное задание
+            val updatedTask = task.copy(
+                plannedActions = updatedPlannedActions,
+                factActions = factActions,
+                lastModifiedAt = LocalDateTime.now()
+            )
+
+            // В полной реализации здесь был бы вызов API для сохранения
+            // Вместо этого мы просто обновляем данные в контексте
+            taskContextManager.updateTask(updatedTask)
 
             Result.success(updatedTask)
         } catch (e: Exception) {
@@ -62,19 +76,26 @@ class ActionExecutionService(
         actionId: String
     ): Result<TaskX> = withContext(Dispatchers.IO) {
         try {
-            val contextTask = taskContextManager.lastStartedTaskX.value
+            val task = taskContextManager.lastStartedTaskX.value
+                ?: return@withContext Result.failure(IllegalArgumentException("Task not found in context: $taskId"))
 
-            val task = if (contextTask != null && contextTask.id == taskId) {
-                contextTask
-            } else {
-                taskXRepository.getTaskById(taskId)
-                    ?: return@withContext Result.failure(IllegalArgumentException("Task not found: $taskId"))
+            if (task.id != taskId) {
+                return@withContext Result.failure(IllegalArgumentException("Task ID mismatch: expected $taskId, got ${task.id}"))
             }
 
-            taskXRepository.markPlannedActionSkipped(taskId, actionId, true)
+            // Обновляем запланированное действие, помечая его как пропущенное
+            val updatedPlannedActions = task.plannedActions.map {
+                if (it.id == actionId) it.copy(isSkipped = true) else it
+            }
 
-            val updatedTask = taskXRepository.getTaskById(taskId)
-                ?: return@withContext Result.failure(IllegalStateException("Task not found after skipping action"))
+            // Создаем обновленное задание
+            val updatedTask = task.copy(
+                plannedActions = updatedPlannedActions,
+                lastModifiedAt = LocalDateTime.now()
+            )
+
+            // Обновляем данные в контексте
+            taskContextManager.updateTask(updatedTask)
 
             Result.success(updatedTask)
         } catch (e: Exception) {

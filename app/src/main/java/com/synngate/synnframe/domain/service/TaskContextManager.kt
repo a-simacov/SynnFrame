@@ -10,6 +10,7 @@ import timber.log.Timber
 
 /**
  * Менеджер контекста заданий для обмена данными между различными экранами заданий
+ * Расширенная версия с поддержкой локального обновления задания
  */
 class TaskContextManager {
 
@@ -21,12 +22,31 @@ class TaskContextManager {
     private val _lastTaskTypeX = MutableStateFlow<TaskTypeX?>(null)
     val lastTaskTypeX: StateFlow<TaskTypeX?> = _lastTaskTypeX.asStateFlow()
 
+    /**
+     * Сохранение задания, полученного с сервера
+     */
     fun saveStartedTask(response: TaskXStartResponseDto) {
         _lastStartedTaskX.value = response.task
         _lastTaskTypeX.value = response.taskType
         Timber.d("Сохранен контекст запущенного задания: ${response.task.id}")
     }
 
+    /**
+     * Обновление существующего задания в контексте
+     * (используется для локального отслеживания изменений состояния задания)
+     */
+    fun updateTask(updatedTask: TaskX) {
+        if (_lastStartedTaskX.value?.id == updatedTask.id) {
+            _lastStartedTaskX.value = updatedTask
+            Timber.d("Обновлен контекст задания: ${updatedTask.id}")
+        } else {
+            Timber.w("Попытка обновить задание, которого нет в контексте: ${updatedTask.id}")
+        }
+    }
+
+    /**
+     * Очистка контекста задания
+     */
     fun clearContext() {
         _lastStartedTaskX.value = null
         _lastTaskTypeX.value = null

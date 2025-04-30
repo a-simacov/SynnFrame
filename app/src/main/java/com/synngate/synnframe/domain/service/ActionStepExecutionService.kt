@@ -7,14 +7,15 @@ import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
-import com.synngate.synnframe.domain.repository.TaskXRepository
 import timber.log.Timber
 
+/**
+ * Сервис для выполнения шагов действия
+ * Упрощенная версия, работающая только с локальными данными и TaskContextManager
+ */
 class ActionStepExecutionService(
-    private val taskXRepository: TaskXRepository,
     private val validationService: ValidationService,
-    private val actionDataCacheService: ActionDataCacheService,
-    private val taskContextManager: TaskContextManager // Добавляем TaskContextManager
+    private val taskContextManager: TaskContextManager
 ) {
 
     suspend fun executeStep(
@@ -74,16 +75,8 @@ class ActionStepExecutionService(
     ): Map<String, Any> {
         val context = mutableMapOf<String, Any>()
 
-        // Проверяем сначала TaskContextManager
-        val contextTask = taskContextManager.lastStartedTaskX.value
-
-        // Используем задание из контекста, если оно есть и соответствует ID
-        val task = if (contextTask != null && contextTask.id == taskId) {
-            contextTask
-        } else {
-            // Иначе получаем из репозитория
-            taskXRepository.getTaskById(taskId)
-        }
+        // Получаем задание только из контекста
+        val task = taskContextManager.lastStartedTaskX.value
 
         // Добавляем данные контекста
         context.putAll(contextData)
@@ -152,11 +145,7 @@ class ActionStepExecutionService(
                 when (value) {
                     is Product -> value
                     is TaskProduct -> value.product
-                    is String -> {
-                        // Предполагаем, что строка - это ID товара, но в реальном приложении
-                        // здесь будет поиск товара в репозитории
-                        null
-                    }
+                    is String -> null // Мы не ищем товар по строке, должен быть объект
                     else -> null
                 }
             }
@@ -170,22 +159,14 @@ class ActionStepExecutionService(
             ActionObjectType.PALLET -> {
                 when (value) {
                     is Pallet -> value
-                    is String -> {
-                        // Предполагаем, что строка - это код паллеты, но в реальном приложении
-                        // здесь будет поиск паллеты в репозитории
-                        null
-                    }
+                    is String -> null // Мы не ищем паллету по строке, должен быть объект
                     else -> null
                 }
             }
             ActionObjectType.BIN -> {
                 when (value) {
                     is BinX -> value
-                    is String -> {
-                        // Предполагаем, что строка - это код ячейки, но в реальном приложении
-                        // здесь будет поиск ячейки в репозитории
-                        null
-                    }
+                    is String -> null // Мы не ищем ячейку по строке, должен быть объект
                     else -> null
                 }
             }
