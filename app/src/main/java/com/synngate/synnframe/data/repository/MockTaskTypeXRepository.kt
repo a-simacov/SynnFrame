@@ -47,7 +47,7 @@ class MockTaskTypeXRepository(
         val movePalletTaskType = TaskTypeX(
             id = "task_type_move_pallet",
             name = "Перемещение паллеты",
-            wmsOperation = WmsOperation.PLACEMENT,
+            wmsOperation = WmsOperation.PUTAWAY,
             allowCompletionWithoutFactActions = false,
             availableActions = listOf(
                 AvailableTaskAction.PAUSE,

@@ -6,9 +6,9 @@ import kotlinx.serialization.Serializable
 data class Product(
     val id: String,
     val name: String,
-    val accountingModel: AccountingModel,
-    val articleNumber: String,
-    val mainUnitId: String,
+    val accountingModel: AccountingModel = AccountingModel.QTY,
+    val articleNumber: String = "",
+    val mainUnitId: String = "",
     val units: List<ProductUnit> = emptyList()
 ) {
 

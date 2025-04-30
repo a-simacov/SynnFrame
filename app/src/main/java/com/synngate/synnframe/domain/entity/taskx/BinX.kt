@@ -7,10 +7,10 @@ import kotlinx.serialization.Serializable
 data class BinX(
     val code: String,          // Код ячейки (для сканирования)
     val zone: String,          // Зона
-    val line: String,          // Линия
-    val rack: String,          // Стеллаж
-    val tier: String,          // Ярус
-    val position: String       // Позиция
+    val line: String = "",          // Линия
+    val rack: String = "",          // Стеллаж
+    val tier: String = "",          // Ярус
+    val position: String = ""       // Позиция
 ) {
     // Метод для получения полного имени ячейки в отформатированном виде
     fun getFullName(): String {

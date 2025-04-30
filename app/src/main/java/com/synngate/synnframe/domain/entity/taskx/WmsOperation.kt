@@ -2,21 +2,27 @@ package com.synngate.synnframe.domain.entity.taskx
 
 enum class WmsOperation {
     RECEIPT,      // Приемка
-    PLACEMENT,    // Размещение
+    PUTAWAY,    // Размещение
     REPLENISHMENT,// Пополнение
     PICKING,      // Отбор
     MOVEMENT,     // Перемещение
-    INVENTORY;    // Инвентаризация
+    PACKING,
+    VERIFICATION,
+    SHIPMENT,
+    RECALCULATION;    // Инвентаризация
 
     companion object {
         fun fromString(value: String): WmsOperation {
             return when (value.uppercase()) {
                 "RECEIPT", "ПРИЕМКА" -> RECEIPT
-                "PLACEMENT", "РАЗМЕЩЕНИЕ" -> PLACEMENT
+                "PUTAWAY", "РАЗМЕЩЕНИЕ" -> PUTAWAY
                 "REPLENISHMENT", "ПОПОЛНЕНИЕ" -> REPLENISHMENT
                 "PICKING", "ОТБОР" -> PICKING
                 "MOVEMENT", "ПЕРЕМЕЩЕНИЕ" -> MOVEMENT
-                "INVENTORY", "ИНВЕНТАРИЗАЦИЯ" -> INVENTORY
+                "RECALCULATION", "ИНВЕНТАРИЗАЦИЯ" -> RECALCULATION
+                "PACKING" -> PACKING
+                "VERIFICATION" -> VERIFICATION
+                "SHIPMENT" -> SHIPMENT
                 else -> RECEIPT
             }
         }

@@ -6,11 +6,11 @@ import kotlinx.serialization.Serializable
 data class ValidationRuleItem(
     val type: ValidationType,
     val parameter: String? = null,
-    val errorMessage: String
+    val errorMessage: String = ""
 )
 
 @Serializable
 data class ValidationRule(
-    val name: String,
+    val name: String = "",
     val rules: List<ValidationRuleItem> = emptyList()
 )
