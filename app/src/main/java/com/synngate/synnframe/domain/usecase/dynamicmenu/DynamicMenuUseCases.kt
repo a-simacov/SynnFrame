@@ -58,6 +58,16 @@ class DynamicMenuUseCases(
         }
     }
 
+    // Новый метод для получения деталей задания
+    suspend fun getTaskDetails(endpoint: String, taskId: String): ApiResult<DynamicTask> {
+        return try {
+            dynamicMenuRepository.getTaskDetails(endpoint, taskId)
+        } catch (e: Exception) {
+            Timber.e(e, "Error in getTaskDetails use case")
+            ApiResult.Error(500, e.message ?: "Unknown error")
+        }
+    }
+
     suspend fun getDynamicProducts(endpoint: String, params: Map<String, String> = emptyMap()): ApiResult<List<DynamicProduct>> {
         return try {
             dynamicMenuRepository.getDynamicProducts(endpoint, params)

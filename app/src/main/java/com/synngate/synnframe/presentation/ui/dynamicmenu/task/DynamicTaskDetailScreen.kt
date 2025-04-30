@@ -36,7 +36,7 @@ import com.synngate.synnframe.util.html.HtmlUtils
 fun DynamicTaskDetailScreen(
     viewModel: DynamicTaskDetailViewModel,
     navigateBack: () -> Unit,
-    navigateToTaskXDetail: (String) -> Unit, // Добавляем функцию навигации к TaskXDetail
+    navigateToTaskXDetail: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -49,18 +49,18 @@ fun DynamicTaskDetailScreen(
                 is DynamicTaskDetailEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(event.message)
                 }
-                is DynamicTaskDetailEvent.StartTaskExecution -> {
-                    // Обработано в ViewModel
-                }
                 is DynamicTaskDetailEvent.NavigateToTaskXDetail -> {
                     // Переходим к экрану выполнения задания
                     navigateToTaskXDetail(event.taskId)
                 }
+
+                DynamicTaskDetailEvent.StartTaskExecution -> TODO()
             }
         }
     }
 
-    val taskName = state.task?.name?.let { HtmlUtils.stripHtml(it) } ?: ""
+    // Извлекаем название задания и статус с безопасной проверкой на null
+    val taskName = state.task?.name?.let { HtmlUtils.stripHtml(it) } ?: stringResource(R.string.loading)
     val taskStatus = state.task?.getTaskStatus() ?: TaskXStatus.TO_DO
 
     AppScaffold(
@@ -139,6 +139,27 @@ fun DynamicTaskDetailScreen(
                         )
                     }
                 }
+            }
+
+            // Если задание ещё загружается, показываем индикатор загрузки
+            if (state.task == null && state.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 32.dp)
+                )
+            }
+
+            // Если произошла ошибка и нет данных задания, показываем сообщение
+            if (state.task == null && state.error != null && !state.isLoading) {
+                Text(
+                    text = stringResource(id = R.string.error_loading_task_details),
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 32.dp)
+                )
             }
         }
     }

@@ -55,7 +55,6 @@ import com.synngate.synnframe.data.service.SynchronizationControllerImpl
 import com.synngate.synnframe.data.service.WebServerControllerImpl
 import com.synngate.synnframe.data.service.WebServerManagerImpl
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
-import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.repository.ActionTemplateRepository
@@ -86,6 +85,7 @@ import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.service.SoundService
 import com.synngate.synnframe.domain.service.SynchronizationController
+import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.UpdateInstallerImpl
 import com.synngate.synnframe.domain.service.ValidationService
@@ -508,6 +508,11 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         )
     }
 
+    val taskContextManager: TaskContextManager by lazy {
+        Timber.d("Creating TaskContextManager")
+        TaskContextManager()
+    }
+
     // Создание контейнера для уровня навигации
     fun createNavigationContainer(): NavigationContainer {
         return createChildContainer { NavigationContainer(this) }
@@ -695,14 +700,33 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
     // Обновленный метод для TaskXDetailViewModel
     fun createTaskXDetailViewModel(taskId: String): TaskXDetailViewModel {
         return getOrCreateViewModel("TaskXDetailViewModel_$taskId") {
-            TaskXDetailViewModel(
-                taskId = taskId,
-                taskXUseCases = appContainer.taskXUseCases,
-                userUseCases = appContainer.userUseCases,
-                actionWizardController = appContainer.actionWizardController,
-                actionWizardContextFactory = appContainer.actionWizardContextFactory,
-                actionStepFactoryRegistry = createActionStepFactoryRegistry()
-            )
+            // Проверяем, есть ли данные в TaskContextManager
+            val contextTask = appContainer.taskContextManager.lastStartedTaskX.value
+            val contextTaskType = appContainer.taskContextManager.lastTaskTypeX.value
+
+            // Если задача в контексте и совпадает по ID, используем её вместе с типом
+            if (contextTask != null && contextTask.id == taskId && contextTaskType != null) {
+                TaskXDetailViewModel(
+                    taskId = taskId,
+                    taskXUseCases = appContainer.taskXUseCases,
+                    userUseCases = appContainer.userUseCases,
+                    actionWizardController = appContainer.actionWizardController,
+                    actionWizardContextFactory = appContainer.actionWizardContextFactory,
+                    actionStepFactoryRegistry = createActionStepFactoryRegistry(),
+                    preloadedTask = contextTask,
+                    preloadedTaskType = contextTaskType
+                )
+            } else {
+                // Иначе создаём обычный ViewModel, который загрузит данные
+                TaskXDetailViewModel(
+                    taskId = taskId,
+                    taskXUseCases = appContainer.taskXUseCases,
+                    userUseCases = appContainer.userUseCases,
+                    actionWizardController = appContainer.actionWizardController,
+                    actionWizardContextFactory = appContainer.actionWizardContextFactory,
+                    actionStepFactoryRegistry = createActionStepFactoryRegistry()
+                )
+            }
         }
     }
 
@@ -768,22 +792,24 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 endpoint = endpoint,
                 screenSettings = screenSettings,
                 dynamicMenuUseCases = appContainer.dynamicMenuUseCases,
-                userUseCases = appContainer.userUseCases // Добавляем UserUseCases
+                userUseCases = appContainer.userUseCases,
+                taskContextManager = appContainer.taskContextManager // Передаем TaskContextManager
             )
         }
     }
 
     // Обновляем метод создания DynamicTaskDetailViewModel
     fun createDynamicTaskDetailViewModel(
-        task: DynamicTask,
-        endpoint: String = ""
+        taskId: String,
+        endpoint: String
     ): DynamicTaskDetailViewModel {
-        return getOrCreateViewModel("DynamicTaskDetailViewModel_${task.id}") {
+        return getOrCreateViewModel("DynamicTaskDetailViewModel_${taskId}") {
             DynamicTaskDetailViewModel(
-                task = task,
+                taskId = taskId,
+                endpoint = endpoint,
                 dynamicMenuUseCases = appContainer.dynamicMenuUseCases,
-                userUseCases = appContainer.userUseCases, // Добавляем UserUseCases
-                endpoint = endpoint // Передаем endpoint
+                userUseCases = appContainer.userUseCases,
+                taskContextManager = appContainer.taskContextManager // Передаем TaskContextManager
             )
         }
     }

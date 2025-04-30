@@ -13,7 +13,9 @@ interface DynamicMenuApi {
 
     suspend fun searchDynamicTask(endpoint: String, searchValue: String): ApiResult<DynamicTask>
 
+    suspend fun getTaskDetails(endpoint: String, taskId: String): ApiResult<DynamicTask>
+
     suspend fun getDynamicProducts(endpoint: String, params: Map<String, String> = emptyMap()): ApiResult<List<DynamicProduct>>
 
-     suspend fun startDynamicTask(endpoint: String, taskId: String): ApiResult<TaskXStartResponseDto>
+    suspend fun startDynamicTask(endpoint: String, taskId: String): ApiResult<TaskXStartResponseDto>
 }

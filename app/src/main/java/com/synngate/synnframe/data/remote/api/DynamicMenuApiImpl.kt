@@ -344,6 +344,49 @@ class DynamicMenuApiImpl(
         }
     }
 
+    override suspend fun getTaskDetails(endpoint: String, taskId: String): ApiResult<DynamicTask> {
+        val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
+            HttpStatusCode.InternalServerError.value,
+            "No active server configured"
+        )
+
+        val (httpMethod, path) = parseEndpoint(endpoint)
+        val baseUrl = "${server.apiUrl}${path}"
+
+        Timber.d("Getting task details from: $baseUrl")
+
+        val userId = serverProvider.getCurrentUserId() ?: ""
+        val authHeader = "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}"
+
+        return try {
+            val response = client.get(baseUrl) {
+                header("Authorization", authHeader)
+                header("User-Auth-Id", userId)
+            }
+
+            if (response.status.isSuccess()) {
+                try {
+                    val task = response.body<DynamicTask>()
+                    ApiResult.Success(task)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error parsing task details: ${e.message}")
+                    ApiResult.Error(
+                        HttpStatusCode.InternalServerError.value,
+                        "Error parsing task details: ${e.message}"
+                    )
+                }
+            } else {
+                createErrorResult(response)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error getting task details for taskId: $taskId")
+            ApiResult.Error(
+                HttpStatusCode.InternalServerError.value,
+                e.message ?: "Failed to get task details"
+            )
+        }
+    }
+
     private suspend fun createErrorResult(response: HttpResponse): ApiResult.Error {
         val statusCode = response.status.value
         val responseBody = response.bodyAsText()

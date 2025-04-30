@@ -737,4 +737,5 @@
 
     <string name="task_executor_fmt">Исполнитель: %s</string>
     <string name="continue_task_execution">Продолжить выполнение</string>
+    <string name="error_loading_task_details">Ошибка загрузки деталей задания</string>
 </resources>

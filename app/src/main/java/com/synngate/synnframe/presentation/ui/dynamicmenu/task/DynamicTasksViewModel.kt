@@ -4,6 +4,7 @@ import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
+import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTasksEvent
@@ -13,12 +14,13 @@ import kotlinx.coroutines.flow.first
 import timber.log.Timber
 
 class DynamicTasksViewModel(
-    private val menuItemId: String,
-    private val menuItemName: String,
-    private val endpoint: String,
-    private val screenSettings: ScreenSettings,
+    menuItemId: String,
+    menuItemName: String,
+    val endpoint: String,
+    screenSettings: ScreenSettings,
     private val dynamicMenuUseCases: DynamicMenuUseCases,
-    private val userUseCases: UserUseCases // Добавляем UserUseCases для проверки текущего пользователя
+    private val userUseCases: UserUseCases,
+    private val taskContextManager: TaskContextManager // Добавляем TaskContextManager
 ) : BaseViewModel<DynamicTasksState, DynamicTasksEvent>(
     DynamicTasksState(
         menuItemId = menuItemId,
@@ -29,10 +31,10 @@ class DynamicTasksViewModel(
 ) {
 
     init {
-        loadTasks()
+        loadDynamicTasks()
     }
 
-    fun loadTasks() {
+    fun loadDynamicTasks() {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
 
@@ -49,11 +51,10 @@ class DynamicTasksViewModel(
                         )
                     }
                 } else {
-                    val error = (result as? ApiResult.Error)?.message ?: "Неизвестная ошибка"
                     updateState {
                         it.copy(
                             isLoading = false,
-                            error = "Ошибка загрузки заданий: $error"
+                            error = "Ошибка загрузки заданий: ${(result as? ApiResult.Error)?.message}"
                         )
                     }
                 }
@@ -62,7 +63,7 @@ class DynamicTasksViewModel(
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка: ${e.message}"
+                        error = "Ошибка при загрузке заданий: ${e.message}"
                     )
                 }
             }
@@ -71,76 +72,106 @@ class DynamicTasksViewModel(
 
     fun onTaskClick(task: DynamicTask) {
         launchIO {
-            try {
-                // Получаем текущего пользователя для проверки, является ли он исполнителем
-                val currentUser = userUseCases.getCurrentUser().first()
+            val currentUser = userUseCases.getCurrentUser().first()
 
-                // Проверяем статус задания и исполнителя
-                val taskStatus = task.getTaskStatus()
-                val isCurrentUserExecutor = task.executorId == currentUser?.id
+            // Проверяем статус задания и исполнителя
+            val taskStatus = task.getTaskStatus()
+            val isCurrentUserExecutor = task.executorId == currentUser?.id
 
-                if ((taskStatus == TaskXStatus.IN_PROGRESS || taskStatus == TaskXStatus.PAUSED) &&
-                    isCurrentUserExecutor) {
-                    // Если задание выполняется или приостановлено и текущий пользователь - исполнитель,
-                    // то сразу переходим к экрану выполнения
-                    Timber.d("Задание уже выполняется текущим пользователем, переходим к TaskXDetail: ${task.id}")
-                    sendEvent(DynamicTasksEvent.NavigateToTaskXDetail(task.id))
-                } else {
-                    // Иначе открываем экран деталей
-                    Timber.d("Открываем экран деталей для задания: ${task.id}")
-                    sendEvent(DynamicTasksEvent.NavigateToTaskDetail(task))
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Ошибка при обработке клика по заданию")
-                // В случае ошибки просто открываем стандартный экран деталей
-                sendEvent(DynamicTasksEvent.NavigateToTaskDetail(task))
+            if ((taskStatus == TaskXStatus.IN_PROGRESS || taskStatus == TaskXStatus.PAUSED) &&
+                isCurrentUserExecutor) {
+                // Если задание выполняется или приостановлено и текущий пользователь - исполнитель,
+                // запускаем задание сразу (без перехода на экран деталей)
+                startTask(task.id)
+            } else {
+                // Иначе переходим к экрану деталей задания
+                navigateToTaskDetail(task.id)
             }
         }
     }
 
-    fun onSearchTasks() {
+    // Метод для запуска задания напрямую
+    fun startTask(taskId: String) {
         launchIO {
-            val searchValue = uiState.value.searchValue
-            if (searchValue.isBlank()) {
-                sendEvent(DynamicTasksEvent.ShowSnackbar("Введите значение для поиска"))
-                return@launchIO
-            }
+            updateState { it.copy(isLoading = true) }
 
+            try {
+                Timber.d("Запуск задания: $taskId через endpoint: $endpoint")
+                val startEndpoint = "$endpoint/$taskId/start"
+                val result = dynamicMenuUseCases.startDynamicTask(startEndpoint, taskId)
+
+                if (result.isSuccess()) {
+                    val startResponse = result.getOrNull()
+                    if (startResponse != null) {
+                        // Сохраняем данные в TaskContextManager
+                        taskContextManager.saveStartedTask(startResponse)
+
+                        Timber.d("Задание успешно запущено, переходим к TaskXDetail: ${startResponse.task.id}")
+                        sendEvent(DynamicTasksEvent.NavigateToTaskXDetail(startResponse.task.id))
+                    } else {
+                        sendEvent(DynamicTasksEvent.ShowSnackbar("Не удалось получить данные для запуска задания"))
+                    }
+                } else {
+                    val error = (result as? ApiResult.Error)?.message ?: "Неизвестная ошибка"
+                    Timber.e("Ошибка запуска задания: $error")
+                    sendEvent(DynamicTasksEvent.ShowSnackbar("Ошибка запуска задания: $error"))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при запуске задания")
+                sendEvent(DynamicTasksEvent.ShowSnackbar("Ошибка: ${e.message}"))
+            } finally {
+                updateState { it.copy(isLoading = false) }
+            }
+        }
+    }
+
+    fun onSearch() {
+        val searchValue = uiState.value.searchValue
+        if (searchValue.isNotEmpty()) {
+            searchTask(searchValue)
+        } else {
+            loadDynamicTasks()
+        }
+    }
+
+    private fun searchTask(searchValue: String) {
+        launchIO {
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
-                val result = dynamicMenuUseCases.searchDynamicTask(endpoint, searchValue)
+                val searchEndpoint = "$endpoint/search"
+                val result = dynamicMenuUseCases.searchDynamicTask(searchEndpoint, searchValue)
 
                 if (result.isSuccess()) {
                     val task = result.getOrNull()
                     if (task != null) {
-                        if (screenSettings.openImmediately) {
-                            // Автоматически открываем детальный экран, если настройки разрешают
-                            sendEvent(DynamicTasksEvent.NavigateToTaskDetail(task))
-                        } else {
-                            // Обновляем состояние с найденной задачей
-                            updateState {
-                                it.copy(
-                                    tasks = listOf(task),
-                                    isLoading = false,
-                                    foundTask = task
-                                )
-                            }
+                        updateState {
+                            it.copy(
+                                tasks = listOf(task),
+                                foundTask = task,
+                                isLoading = false,
+                                error = null
+                            )
+                        }
+
+                        // Если настройка openImmediately = true и нашли ровно одно задание
+                        if (uiState.value.screenSettings.openImmediately) {
+                            navigateToTaskDetail(task.id)
                         }
                     } else {
                         updateState {
                             it.copy(
+                                tasks = emptyList(),
                                 isLoading = false,
                                 error = "Задание не найдено"
                             )
                         }
                     }
                 } else {
-                    val error = (result as? ApiResult.Error)?.message ?: "Неизвестная ошибка"
                     updateState {
                         it.copy(
                             isLoading = false,
-                            error = "Ошибка поиска: $error"
+                            error = "Ошибка поиска: ${(result as? ApiResult.Error)?.message}"
                         )
                     }
                 }
@@ -149,18 +180,26 @@ class DynamicTasksViewModel(
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка: ${e.message}"
+                        error = "Ошибка при поиске задания: ${e.message}"
                     )
                 }
             }
         }
     }
 
-    fun onSearchValueChanged(newValue: String) {
-        updateState { it.copy(searchValue = newValue) }
+    fun onSearchValueChanged(value: String) {
+        updateState { it.copy(searchValue = value) }
     }
 
-    fun navigateBack() {
-        sendEvent(DynamicTasksEvent.NavigateBack)
+    private fun navigateToTaskDetail(taskId: String) {
+        sendEvent(DynamicTasksEvent.NavigateToTaskDetail(taskId, endpoint))
+    }
+
+    fun onRefresh() {
+        loadDynamicTasks()
+    }
+
+    fun clearError() {
+        updateState { it.copy(error = null) }
     }
 }

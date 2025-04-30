@@ -25,7 +25,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
-import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.domain.entity.operation.ScreenElementType
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.status.StatusType
@@ -39,8 +38,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun DynamicTasksScreen(
     viewModel: DynamicTasksViewModel,
-    navigateToTaskDetail: (task: DynamicTask) -> Unit,
-    navigateToTaskXDetail: (taskId: String) -> Unit, // Добавляем функцию навигации к TaskXDetail
+    navigateToTaskDetail: (taskId: String, endpoint: String) -> Unit, // Обновлен параметр
+    navigateToTaskXDetail: (taskId: String) -> Unit,
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -63,7 +62,7 @@ fun DynamicTasksScreen(
                     }
                 }
                 is DynamicTasksEvent.NavigateToTaskDetail -> {
-                    navigateToTaskDetail(event.task)
+                    navigateToTaskDetail(event.taskId, viewModel.endpoint)
                 }
                 is DynamicTasksEvent.NavigateToTaskXDetail -> {
                     // Обрабатываем новое событие навигации
@@ -84,7 +83,7 @@ fun DynamicTasksScreen(
         onTaskClickProvider = { { task -> viewModel.onTaskClick(task) } },
         searchValueProvider = { it.searchValue },
         onSearchValueChangedProvider = { { value -> viewModel.onSearchValueChanged(value) } },
-        onSearchProvider = { { viewModel.onSearchTasks() } }
+        onSearchProvider = { { viewModel.onSearch() } }
     )
 
     // Создаем группы компонентов на основе настроек экрана
@@ -92,14 +91,14 @@ fun DynamicTasksScreen(
 
     AppScaffold(
         title = state.menuItemName,
-        onNavigateBack = { viewModel.navigateBack() },
+        onNavigateBack = navigateBack,
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {
             Pair(it, StatusType.ERROR)
         },
-        onDismissNotification = { /* Очистить ошибку */ },
+        onDismissNotification = { viewModel.clearError() },
         actions = {
-            IconButton(onClick = { viewModel.loadTasks() }) {
+            IconButton(onClick = { viewModel.loadDynamicTasks() }) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
                     contentDescription = stringResource(id = R.string.refresh)

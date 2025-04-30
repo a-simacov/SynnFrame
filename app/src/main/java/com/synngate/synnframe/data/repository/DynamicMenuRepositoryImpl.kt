@@ -24,6 +24,10 @@ class DynamicMenuRepositoryImpl(
         return dynamicMenuApi.searchDynamicTask(endpoint, searchValue)
     }
 
+    override suspend fun getTaskDetails(endpoint: String, taskId: String): ApiResult<DynamicTask> {
+        return dynamicMenuApi.getTaskDetails(endpoint, taskId)
+    }
+
     override suspend fun getDynamicProducts(endpoint: String, params: Map<String, String>): ApiResult<List<DynamicProduct>> {
         return dynamicMenuApi.getDynamicProducts(endpoint, params)
     }

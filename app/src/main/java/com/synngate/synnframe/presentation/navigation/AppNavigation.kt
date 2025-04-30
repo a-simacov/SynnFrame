@@ -21,7 +21,6 @@ import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.synngate.synnframe.SynnFrameApplication
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
-import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.presentation.common.LocalCurrentUser
 import com.synngate.synnframe.presentation.ui.dynamicmenu.menu.DynamicMenuScreen
@@ -263,7 +262,48 @@ fun AppNavigation(
                 )
             }
 
-            // Обновляем настройки composable для DynamicTasks
+            composable(
+                route = Screen.DynamicTaskDetail.route,
+                arguments = listOf(
+                    navArgument("taskId") {
+                        type = NavType.StringType
+                    },
+                    navArgument("endpoint") {
+                        type = NavType.StringType
+                    }
+                )
+            ) { entry ->
+                val taskId = entry.arguments?.getString("taskId") ?: ""
+                val encodedEndpoint = entry.arguments?.getString("endpoint") ?: ""
+                val endpoint = try {
+                    String(Base64.getDecoder().decode(encodedEndpoint))
+                } catch(e: Exception) {
+                    Timber.e(e, "Failed to decode endpoint from Base64, using as is")
+                    encodedEndpoint
+                }
+
+                val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
+                val viewModel = remember(taskId, endpoint) {
+                    screenContainer.createDynamicTaskDetailViewModel(
+                        taskId = taskId,
+                        endpoint = endpoint
+                    )
+                }
+
+                DynamicTaskDetailScreen(
+                    viewModel = viewModel,
+                    navigateBack = {
+                        navController.popBackStack()
+                    },
+                    navigateToTaskXDetail = { taskXId ->
+                        navController.navigate(Screen.TaskXDetail.createRoute(taskXId)) {
+                            // При переходе к экрану выполнения задания закрываем экран деталей
+                            popUpTo(Screen.DynamicTaskDetail.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
             composable(
                 route = Screen.DynamicTasks.route,
                 arguments = listOf(
@@ -324,54 +364,17 @@ fun AppNavigation(
 
                 DynamicTasksScreen(
                     viewModel = viewModel,
-                    navigateToTaskDetail = { task ->
-                        navController.navigate(Screen.DynamicTaskDetail.createRoute(task))
+                    navigateToTaskDetail = { taskId, taskEndpoint ->
+                        navController.navigate(Screen.DynamicTaskDetail.createRoute(
+                            taskId = taskId,
+                            endpoint = taskEndpoint
+                        ))
                     },
-                    // Добавляем обработчик перехода к TaskXDetail
                     navigateToTaskXDetail = { taskId ->
                         navController.navigate(Screen.TaskXDetail.createRoute(taskId))
                     },
                     navigateBack = {
                         navController.popBackStack()
-                    }
-                )
-            }
-
-            composable(
-                route = Screen.DynamicTaskDetail.route,
-                arguments = listOf(
-                    navArgument("taskId") {
-                        type = NavType.StringType
-                    },
-                    navArgument("taskName") {
-                        type = NavType.StringType
-                        nullable = true
-                    }
-                )
-            ) { entry ->
-                val taskId = entry.arguments?.getString("taskId") ?: ""
-                val encodedTaskName = entry.arguments?.getString("taskName") ?: ""
-                val taskName = java.net.URLDecoder.decode(encodedTaskName, "UTF-8")
-
-                val screenContainer = rememberEphemeralScreenContainer(navController, entry, navigationScopeManager)
-                val viewModel = remember(taskId, taskName) {
-                    screenContainer.createDynamicTaskDetailViewModel(
-                        task = DynamicTask(id = taskId, name = taskName),
-                        endpoint = "/tasks/start"
-                    )
-                }
-
-                DynamicTaskDetailScreen(
-                    viewModel = viewModel,
-                    navigateBack = {
-                        navController.popBackStack()
-                    },
-                    // Добавляем функцию навигации к TaskXDetail
-                    navigateToTaskXDetail = { taskXId ->
-                        navController.navigate(Screen.TaskXDetail.createRoute(taskXId)) {
-                            // При переходе к экрану выполнения задания закрываем экран деталей
-                            popUpTo(Screen.DynamicTaskDetail.route) { inclusive = true }
-                        }
                     }
                 )
             }
@@ -815,6 +818,15 @@ sealed class Screen(val route: String) {
     }
 
     object DynamicMenu : Screen("dynamic_menu")
+
+    object DynamicTaskDetail : Screen("dynamic_task_detail/{taskId}/{endpoint}") {
+        fun createRoute(taskId: String, endpoint: String): String {
+            // Кодируем endpoint в Base64 для безопасной передачи
+            val encodedEndpoint = Base64.getEncoder().encodeToString(endpoint.toByteArray())
+            return "dynamic_task_detail/$taskId/$encodedEndpoint"
+        }
+    }
+
     object DynamicTasks : Screen("dynamic_tasks/{menuItemId}/{menuItemName}/{endpoint}?screenSettings={screenSettings}") {
         fun createRoute(
             menuItemId: String,
@@ -835,13 +847,6 @@ sealed class Screen(val route: String) {
             }
 
             return "dynamic_tasks/$menuItemId/$encodedName/$encodedEndpoint$encodedSettings"
-        }
-    }
-
-    object DynamicTaskDetail : Screen("dynamic_task_detail?taskId={taskId}&taskName={taskName}") {
-        fun createRoute(task: DynamicTask): String {
-            val encodedName = encode(task.name, "UTF-8")
-            return "dynamic_task_detail?taskId=${task.id}&taskName=$encodedName"
         }
     }
 

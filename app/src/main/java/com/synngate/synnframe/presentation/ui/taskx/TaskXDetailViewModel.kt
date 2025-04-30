@@ -30,14 +30,32 @@ class TaskXDetailViewModel(
     private val userUseCases: UserUseCases,
     val actionWizardController: ActionWizardController,
     val actionWizardContextFactory: ActionWizardContextFactory,
-    val actionStepFactoryRegistry: ActionStepFactoryRegistry
+    val actionStepFactoryRegistry: ActionStepFactoryRegistry,
+    private val preloadedTask: TaskX? = null,
+    private val preloadedTaskType: TaskTypeX? = null
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
 
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
     private var taskObserverJob: Job? = null
 
     init {
-        loadTask()
+        // Если есть предзагруженные данные из TaskContextManager, используем их
+        if (preloadedTask != null && preloadedTaskType != null) {
+            updateState {
+                it.copy(
+                    task = preloadedTask,
+                    taskType = preloadedTaskType,
+                    isLoading = false,
+                    error = null
+                )
+            }
+            // Инициализируем все зависимые данные
+            updateDependentState(preloadedTask, preloadedTaskType)
+            startObservingTaskChanges()
+        } else {
+            // Иначе загружаем стандартным способом
+            loadTask()
+        }
     }
 
     fun startActionExecution(actionId: String) {
@@ -214,6 +232,22 @@ class TaskXDetailViewModel(
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
+                // Если у нас уже есть предзагруженные данные, просто используем их
+                if (preloadedTask != null && preloadedTaskType != null) {
+                    updateState {
+                        it.copy(
+                            task = preloadedTask,
+                            taskType = preloadedTaskType,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
+                    updateDependentState(preloadedTask, preloadedTaskType)
+                    startObservingTaskChanges()
+                    return@launchIO
+                }
+
+                // Иначе загружаем задание из репозитория
                 val task = taskXUseCases.getTaskById(taskId)
 
                 if (task != null) {
