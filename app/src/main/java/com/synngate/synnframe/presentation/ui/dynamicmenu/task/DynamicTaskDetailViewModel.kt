@@ -31,11 +31,8 @@ class DynamicTaskDetailViewModel(
             updateState { it.copy(isLoading = true) }
 
             try {
-                // Формируем endpoint для получения деталей
                 val detailsEndpoint = "$endpoint/$taskId/details"
 
-                // Выполняем запрос к API
-                Timber.d("Загрузка деталей задания: $taskId через endpoint: $detailsEndpoint")
                 val result = dynamicMenuUseCases.getTaskDetails(detailsEndpoint, taskId)
 
                 if (result.isSuccess()) {
@@ -49,7 +46,6 @@ class DynamicTaskDetailViewModel(
                             )
                         }
 
-                        // После загрузки деталей проверяем статус задания
                         checkTaskStatus(taskDetails)
                     } else {
                         updateState {
@@ -81,7 +77,6 @@ class DynamicTaskDetailViewModel(
     }
 
     private fun checkTaskStatus(task: DynamicTask) {
-        // Проверяем, можно ли автоматически перейти к выполнению задания
         launchIO {
             try {
                 val currentUser = userUseCases.getCurrentUser().first()
@@ -90,8 +85,6 @@ class DynamicTaskDetailViewModel(
 
                 if ((taskStatus == TaskXStatus.IN_PROGRESS || taskStatus == TaskXStatus.PAUSED) &&
                     isCurrentUserExecutor) {
-                    // Если задание уже выполняется текущим пользователем,
-                    // автоматически запускаем задание
                     startTaskExecution()
                 }
             } catch (e: Exception) {
@@ -101,7 +94,6 @@ class DynamicTaskDetailViewModel(
     }
 
     fun onStartTaskExecution() {
-        // Вызываем метод запуска задания
         startTaskExecution()
     }
 
@@ -110,19 +102,14 @@ class DynamicTaskDetailViewModel(
             updateState { it.copy(isLoading = true) }
 
             try {
-                // Формируем endpoint для запуска задания
                 val startEndpoint = "$endpoint/$taskId/start"
 
-                Timber.d("Запуск задания: $taskId через endpoint: $startEndpoint")
                 val result = dynamicMenuUseCases.startDynamicTask(startEndpoint, taskId)
 
                 if (result.isSuccess()) {
                     val startResponse = result.getOrNull()
                     if (startResponse != null) {
-                        // Сохраняем данные в TaskContextManager
                         taskContextManager.saveStartedTask(startResponse)
-
-                        Timber.d("Задание успешно запущено, переходим к TaskXDetail: ${startResponse.task.id}")
                         navigateToTaskXDetail(startResponse.task.id)
                     } else {
                         sendEvent(DynamicTaskDetailEvent.ShowSnackbar("Не удалось получить данные для запуска задания"))

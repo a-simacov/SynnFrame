@@ -21,19 +21,12 @@ class TaskContextManager {
     private val _lastTaskTypeX = MutableStateFlow<TaskTypeX?>(null)
     val lastTaskTypeX: StateFlow<TaskTypeX?> = _lastTaskTypeX.asStateFlow()
 
-    /**
-     * Сохраняет информацию о запущенном задании
-     * @param response Ответ от API с данными задания
-     */
     fun saveStartedTask(response: TaskXStartResponseDto) {
         _lastStartedTaskX.value = response.task
         _lastTaskTypeX.value = response.taskType
         Timber.d("Сохранен контекст запущенного задания: ${response.task.id}")
     }
 
-    /**
-     * Очищает сохраненный контекст
-     */
     fun clearContext() {
         _lastStartedTaskX.value = null
         _lastTaskTypeX.value = null
