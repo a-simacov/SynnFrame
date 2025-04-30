@@ -392,7 +392,7 @@ class BinSelectionStepFactory(
         return value is BinX
     }
 
-    // Метод для обработки отсканированного штрихкода
+    // Изменяем метод обработки штрихкода для ячейки
     private fun processBarcodeForBin(
         barcode: String,
         expectedBarcode: String?,
@@ -405,7 +405,16 @@ class BinSelectionStepFactory(
             return
         }
 
-        // Ищем ячейку по штрихкоду
-        wizardViewModel.findBinByCode(barcode, onBinFound)
+        // Создаем объект ячейки с введенным кодом (без обращения к репозиторию)
+        val bin = BinX(
+            code = barcode,
+            zone = "Неизвестная зона",
+            line = "",
+            rack = "",
+            tier = "",
+            position = ""
+        )
+
+        onBinFound(bin)
     }
 }

@@ -386,20 +386,25 @@ class PalletSelectionStepFactory(
         return value is Pallet
     }
 
-    // Метод для обработки отсканированного штрихкода
+    // Изменяем метод обработки штрихкода для паллеты
     private fun processBarcodeForPallet(
         barcode: String,
         expectedBarcode: String?,
         onPalletFound: (Pallet?) -> Unit
     ) {
-        // Если задан ожидаемый штрихкод, проверяем соответствие
+        // Если задан ожидаемый штрихкод (план), проверяем соответствие
         if (expectedBarcode != null && barcode != expectedBarcode) {
             Timber.w("Несоответствие штрихкода: ожидался $expectedBarcode, получен $barcode")
             onPalletFound(null)
             return
         }
 
-        // Ищем паллету по штрихкоду
-        wizardViewModel.findPalletByCode(barcode, onPalletFound)
+        // Создаем объект паллеты с введенным кодом (без обращения к репозиторию)
+        val pallet = Pallet(
+            code = barcode,
+            isClosed = false
+        )
+
+        onPalletFound(pallet)
     }
 }
