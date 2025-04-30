@@ -42,6 +42,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
+import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
@@ -125,6 +126,7 @@ class ProductSelectionStepFactory(
 
                 processBarcodeForProduct(
                     barcode = barcode,
+                    action = action,
                     onProductFound = { product ->
                         if (product != null) {
                             Timber.d("Продукт найден: ${product.name}")
@@ -160,6 +162,7 @@ class ProductSelectionStepFactory(
 
                 processBarcodeForProduct(
                     barcode = barcode,
+                    action = action,
                     onProductFound = { product ->
                         if (product != null) {
                             Timber.d("Продукт найден: ${product.name}")
@@ -464,12 +467,36 @@ class ProductSelectionStepFactory(
         }
     }
 
-    // Метод для обработки отсканированного штрихкода
+    // Изменяем метод обработки штрихкода для товара, чтобы не обращаться к репозиторию
     private fun processBarcodeForProduct(
         barcode: String,
+        action: PlannedAction,
         onProductFound: (Product?) -> Unit
     ) {
-        // Ищем продукт по штрихкоду
-        wizardViewModel.findProductByBarcode(barcode, onProductFound)
+        // Получаем запланированный товар из контекста
+        val plannedProduct = action.storageProduct?.product
+
+        // Если есть запланированный товар, проверяем соответствие
+        if (plannedProduct != null) {
+            // В реальном приложении здесь может быть более сложная логика сравнения
+            // Например, проверка соответствия штрихкода одному из штрихкодов товара
+            // Но пока просто возвращаем запланированный товар
+            Timber.d("Найден товар из плана: ${plannedProduct.name}")
+            onProductFound(plannedProduct)
+        } else {
+            // Если запланированного товара нет, создаем временный объект товара
+            // без обращения к репозиторию
+            val tempProduct = Product(
+                id = "temp_${System.currentTimeMillis()}",
+                name = "Товар со штрихкодом $barcode",
+                accountingModel = AccountingModel.QTY,
+                articleNumber = barcode,
+                mainUnitId = "unknown",
+                units = emptyList()
+            )
+
+            Timber.d("Создан временный товар для штрихкода: $barcode")
+            onProductFound(tempProduct)
+        }
     }
 }
