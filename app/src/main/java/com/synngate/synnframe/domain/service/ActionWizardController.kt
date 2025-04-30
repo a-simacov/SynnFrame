@@ -18,7 +18,8 @@ import java.time.LocalDateTime
 class ActionWizardController(
     private val taskXRepository: TaskXRepository,
     private val actionExecutionService: ActionExecutionService,
-    private val actionStepExecutionService: ActionStepExecutionService
+    private val actionStepExecutionService: ActionStepExecutionService,
+    private val taskContextManager: TaskContextManager // Добавлен TaskContextManager
 ) {
     private val _wizardState = MutableStateFlow<ActionWizardState?>(null)
     val wizardState: StateFlow<ActionWizardState?> = _wizardState.asStateFlow()
@@ -35,12 +36,22 @@ class ActionWizardController(
             // Сначала сбрасываем текущее состояние
             _wizardState.value = null
 
-            // Получаем задание и запланированное действие
-            val task = taskXRepository.getTaskById(taskId)
-                ?: return Result.failure(IllegalArgumentException("Task not found: $taskId"))
+            // Проверяем наличие задания в TaskContextManager
+            val contextTask = taskContextManager.lastStartedTaskX.value
+
+            // Получаем задание - либо из контекста, либо из репозитория
+            val task = if (contextTask != null && contextTask.id == taskId) {
+                Timber.d("Using task from TaskContextManager: ${contextTask.id}")
+                contextTask
+            } else {
+                // Если задания нет в контексте, загружаем из репозитория
+                Timber.d("Task not found in context, loading from repository")
+                taskXRepository.getTaskById(taskId)
+                    ?: return Result.failure(IllegalArgumentException("Task not found: $taskId"))
+            }
 
             val action = task.plannedActions.find { it.id == actionId }
-                ?: return Result.failure(IllegalArgumentException("Action not found: $actionId"))
+                ?: return Result.failure(IllegalArgumentException("Planned action not found: $actionId"))
 
             // Создаем шаги для визарда на основе шаблона действия
             val steps = createStepsFromAction(action)

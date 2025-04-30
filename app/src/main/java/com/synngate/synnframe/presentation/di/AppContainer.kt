@@ -410,7 +410,8 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         Timber.d("Creating ActionExecutionService")
         ActionExecutionService(
             taskXRepository = taskXRepository,
-            validationService = validationService
+            validationService = validationService,
+            taskContextManager = taskContextManager
         )
     }
 
@@ -428,7 +429,8 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         ActionWizardController(
             taskXRepository = taskXRepository,
             actionExecutionService = actionExecutionService,
-            actionStepExecutionService = actionStepExecutionService
+            actionStepExecutionService = actionStepExecutionService,
+            taskContextManager = taskContextManager // Добавляем параметр taskContextManager
         )
     }
 

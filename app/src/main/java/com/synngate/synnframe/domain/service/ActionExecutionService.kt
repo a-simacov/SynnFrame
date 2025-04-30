@@ -20,7 +20,8 @@ import java.util.UUID
  */
 class ActionExecutionService(
     private val taskXRepository: TaskXRepository,
-    private val validationService: ValidationService
+    private val validationService: ValidationService,
+    private val taskContextManager: TaskContextManager // Добавлен TaskContextManager
 ) {
     /**
      * Выполнить запланированное действие и создать фактическое действие
@@ -37,9 +38,18 @@ class ActionExecutionService(
         try {
             Timber.d("Executing action $actionId for task $taskId")
 
+            // Сначала проверяем, есть ли задание в TaskContextManager
+            val contextTask = taskContextManager.lastStartedTaskX.value
+
             // Получение задания и запланированного действия
-            val task = taskXRepository.getTaskById(taskId)
-                ?: return@withContext Result.failure(IllegalArgumentException("Task not found: $taskId"))
+            val task = if (contextTask != null && contextTask.id == taskId) {
+                Timber.d("Using task from TaskContextManager: ${contextTask.id}")
+                contextTask
+            } else {
+                Timber.d("Task not found in context, loading from repository")
+                taskXRepository.getTaskById(taskId)
+                    ?: return@withContext Result.failure(IllegalArgumentException("Task not found: $taskId"))
+            }
 
             val action = task.plannedActions.find { it.id == actionId }
                 ?: return@withContext Result.failure(IllegalArgumentException("Planned action not found: $actionId"))
@@ -47,13 +57,13 @@ class ActionExecutionService(
             // Создание фактического действия на основе результатов шагов
             val factAction = createFactAction(taskId, action, stepResults)
 
-            // Добавление фактического действия
+            // Добавление фактического действия через репозиторий
             taskXRepository.addFactAction(factAction)
 
             // Отметка запланированного действия как выполненного
             taskXRepository.markPlannedActionCompleted(taskId, actionId, true)
 
-            // Получение обновленного задания
+            // Получение обновленного задания из репозитория
             val updatedTask = taskXRepository.getTaskById(taskId)
                 ?: return@withContext Result.failure(IllegalStateException("Task not found after action execution"))
 
@@ -78,17 +88,26 @@ class ActionExecutionService(
         try {
             Timber.d("Skipping action $actionId for task $taskId")
 
+            // Сначала проверяем, есть ли задание в TaskContextManager
+            val contextTask = taskContextManager.lastStartedTaskX.value
+
             // Проверка существования задания и действия
-            val task = taskXRepository.getTaskById(taskId)
-                ?: return@withContext Result.failure(IllegalArgumentException("Task not found: $taskId"))
+            val task = if (contextTask != null && contextTask.id == taskId) {
+                Timber.d("Using task from TaskContextManager: ${contextTask.id}")
+                contextTask
+            } else {
+                Timber.d("Task not found in context, loading from repository")
+                taskXRepository.getTaskById(taskId)
+                    ?: return@withContext Result.failure(IllegalArgumentException("Task not found: $taskId"))
+            }
 
             val action = task.plannedActions.find { it.id == actionId }
                 ?: return@withContext Result.failure(IllegalArgumentException("Planned action not found: $actionId"))
 
-            // Отметка запланированного действия как пропущенного
+            // Отметка запланированного действия как пропущенного через репозиторий
             taskXRepository.markPlannedActionSkipped(taskId, actionId, true)
 
-            // Получение обновленного задания
+            // Получение обновленного задания из репозитория
             val updatedTask = taskXRepository.getTaskById(taskId)
                 ?: return@withContext Result.failure(IllegalStateException("Task not found after skipping action"))
 
