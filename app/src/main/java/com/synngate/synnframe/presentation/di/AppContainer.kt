@@ -6,12 +6,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.synngate.synnframe.data.barcodescanner.BarcodeScannerFactory
 import com.synngate.synnframe.data.barcodescanner.ScannerService
-import com.synngate.synnframe.data.datasource.BinDataSource
-import com.synngate.synnframe.data.datasource.PalletDataSource
-import com.synngate.synnframe.data.datasource.ProductDataSource
-import com.synngate.synnframe.data.datasource.mock.MockBinDataSource
-import com.synngate.synnframe.data.datasource.mock.MockPalletDataSource
-import com.synngate.synnframe.data.datasource.mock.MockProductDataSource
 import com.synngate.synnframe.data.datastore.AppSettingsDataStore
 import com.synngate.synnframe.data.local.database.AppDatabase
 import com.synngate.synnframe.data.remote.api.AppUpdateApi
@@ -42,9 +36,6 @@ import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
 import com.synngate.synnframe.data.repository.TaskRepositoryImpl
 import com.synngate.synnframe.data.repository.TaskTypeRepositoryImpl
 import com.synngate.synnframe.data.repository.UserRepositoryImpl
-import com.synngate.synnframe.data.repository.WizardBinRepositoryImpl
-import com.synngate.synnframe.data.repository.WizardPalletRepositoryImpl
-import com.synngate.synnframe.data.repository.WizardProductRepositoryImpl
 import com.synngate.synnframe.data.service.ClipboardServiceImpl
 import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
 import com.synngate.synnframe.data.service.FileServiceImpl
@@ -70,9 +61,6 @@ import com.synngate.synnframe.domain.repository.TaskTypeRepository
 import com.synngate.synnframe.domain.repository.TaskTypeXRepository
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.repository.UserRepository
-import com.synngate.synnframe.domain.repository.WizardBinRepository
-import com.synngate.synnframe.domain.repository.WizardPalletRepository
-import com.synngate.synnframe.domain.repository.WizardProductRepository
 import com.synngate.synnframe.domain.service.ActionDataCacheService
 import com.synngate.synnframe.domain.service.ActionExecutionService
 import com.synngate.synnframe.domain.service.ActionStepExecutionService
@@ -228,18 +216,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         }
     }
 
-    val productDataSource: ProductDataSource by lazy {
-        MockProductDataSource()
-    }
-
-    val binDataSource: BinDataSource by lazy {
-        MockBinDataSource()
-    }
-
-    val palletDataSource: PalletDataSource by lazy {
-        MockPalletDataSource()
-    }
-
     // Репозитории
     val logRepository: LogRepository by lazy {
         Timber.d("Creating LogRepository")
@@ -276,18 +252,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
 
     val taskTypeRepository: TaskTypeRepository by lazy {
         TaskTypeRepositoryImpl(taskTypeDao, factLineActionDao, taskTypeApi)
-    }
-
-    val wizardProductRepository: WizardProductRepository by lazy {
-        WizardProductRepositoryImpl(productDataSource)
-    }
-
-    val wizardBinRepository: WizardBinRepository by lazy {
-        WizardBinRepositoryImpl(binDataSource)
-    }
-
-    val wizardPalletRepository: WizardPalletRepository by lazy {
-        WizardPalletRepositoryImpl(palletDataSource)
     }
 
     val dynamicMenuRepository: DynamicMenuRepository by lazy {
@@ -399,17 +363,12 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
 
     val actionDataCacheService by lazy {
         Timber.d("Creating ActionDataCacheService")
-        ActionDataCacheService(
-            productRepository = wizardProductRepository,
-            binRepository = wizardBinRepository,
-            palletRepository = wizardPalletRepository
-        )
+        ActionDataCacheService()
     }
 
     val actionExecutionService by lazy {
         Timber.d("Creating ActionExecutionService")
         ActionExecutionService(
-            taskXRepository = taskXRepository,
             validationService = validationService,
             taskContextManager = taskContextManager
         )
@@ -418,9 +377,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     val actionStepExecutionService by lazy {
         Timber.d("Creating ActionStepExecutionService")
         ActionStepExecutionService(
-            taskXRepository = taskXRepository,
             validationService = validationService,
-            actionDataCacheService = actionDataCacheService,
             taskContextManager = taskContextManager // Добавляем параметр taskContextManager
         )
     }
@@ -428,7 +385,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     val actionWizardController by lazy {
         Timber.d("Creating ActionWizardController")
         ActionWizardController(
-            taskXRepository = taskXRepository,
             actionExecutionService = actionExecutionService,
             actionStepExecutionService = actionStepExecutionService,
             taskContextManager = taskContextManager // Добавляем параметр taskContextManager
@@ -752,12 +708,12 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         // Регистрируем фабрики для различных типов объектов
         registry.registerFactory(
             ActionObjectType.CLASSIFIER_PRODUCT,
-            ProductSelectionStepFactory(actionDataViewModel)
+            ProductSelectionStepFactory()
         )
 
         registry.registerFactory(
             ActionObjectType.TASK_PRODUCT,
-            ProductSelectionStepFactory(actionDataViewModel)
+            ProductSelectionStepFactory()
         )
 
         registry.registerFactory(
