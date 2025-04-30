@@ -23,7 +23,12 @@ class TaskContextManager {
 
     fun updateTask(updatedTask: TaskX) {
         if (_lastStartedTaskX.value?.id == updatedTask.id) {
+            // Используем двухэтапное обновление для гарантии оповещения подписчиков
+            // Сначала устанавливаем null, чтобы форсировать обновление даже при равных ссылках
+            _lastStartedTaskX.value = null
+            // Затем устанавливаем новое значение
             _lastStartedTaskX.value = updatedTask
+            Timber.d("Задание обновлено в контексте: ${updatedTask.id}, факт. действий: ${updatedTask.factActions.size}")
         } else {
             Timber.w("Попытка обновить задание, которого нет в контексте: ${updatedTask.id}")
         }

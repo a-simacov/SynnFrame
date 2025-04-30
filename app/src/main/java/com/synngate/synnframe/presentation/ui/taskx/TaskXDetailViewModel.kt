@@ -212,8 +212,23 @@ class TaskXDetailViewModel(
             try {
                 val result = actionWizardController.complete()
                 if (result.isSuccess) {
-                    loadTask() // Перезагрузка задания
-                    updateState { it.copy(showActionWizard = false) }
+                    // Получаем обновленное задание из результата
+                    val updatedTask = result.getOrNull()
+
+                    if (updatedTask != null) {
+                        // Сразу обновляем состояние с новым заданием
+                        updateState { it.copy(
+                            task = updatedTask,
+                            showActionWizard = false
+                        ) }
+                        // Обновляем зависимые данные (nextActionId, statusActions и т.д.)
+                        updateDependentState(updatedTask, uiState.value.taskType)
+                    } else {
+                        // Если обновленное задание не вернулось, перезагружаем его
+                        loadTask()
+                        updateState { it.copy(showActionWizard = false) }
+                    }
+
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
                 } else {
                     updateState { it.copy(error = "Ошибка при выполнении действия: ${result.exceptionOrNull()?.message}") }
@@ -504,14 +519,18 @@ class TaskXDetailViewModel(
             uiState
                 .map { it.task }
                 .distinctUntilChanged { old, new ->
-                    // Сравниваем только id и статус, игнорируя другие поля
+                    // Расширенное сравнение - теперь учитываем количество фактических действий
+                    // и количество выполненных запланированных действий
                     if (old == null || new == null) false
-                    else old.id == new.id && old.status == new.status
+                    else old.id == new.id &&
+                            old.status == new.status &&
+                            old.factActions.size == new.factActions.size &&
+                            old.plannedActions.count { it.isCompleted } == new.plannedActions.count { it.isCompleted }
                 }
                 .collect { task ->
                     if (task != null) {
                         val taskType = uiState.value.taskType
-                        Timber.d("Статус задания изменился на: ${task.status}")
+                        Timber.d("Задание изменилось, обновляем UI: ${task.status}, факт. действий: ${task.factActions.size}, завершено плановых: ${task.plannedActions.count { it.isCompleted }}")
                         updateDependentState(task, taskType)
                     }
                 }
