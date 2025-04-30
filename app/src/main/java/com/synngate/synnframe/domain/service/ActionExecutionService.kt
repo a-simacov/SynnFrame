@@ -8,6 +8,7 @@ import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
+import com.synngate.synnframe.domain.repository.TaskXRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -16,11 +17,12 @@ import java.util.UUID
 
 /**
  * Сервис для выполнения действий задания
- * Упрощенная версия, работающая только с локальными данными и TaskContextManager
+ * Обновлен для использования TaskXRepository для отправки фактических действий
  */
 class ActionExecutionService(
     private val validationService: ValidationService,
-    private val taskContextManager: TaskContextManager
+    private val taskContextManager: TaskContextManager,
+    private val taskXRepository: TaskXRepository? = null
 ) {
     suspend fun executeAction(
         taskId: String,
@@ -28,7 +30,7 @@ class ActionExecutionService(
         stepResults: Map<String, Any>
     ): Result<TaskX> = withContext(Dispatchers.IO) {
         try {
-            // Получаем задание только из контекста
+            // Получаем задание из контекста
             val task = taskContextManager.lastStartedTaskX.value
                 ?: return@withContext Result.failure(IllegalArgumentException("Task not found in context: $taskId"))
 
@@ -42,9 +44,25 @@ class ActionExecutionService(
             // Создаем фактическое действие на основе введенных данных
             val factAction = createFactAction(taskId, action, stepResults)
 
-            // Создаем обновленное задание с новым фактическим действием
-            // В реальности здесь должен быть вызов API для сохранения факта на сервере,
-            // но мы ограничимся локальным обновлением для примера
+            // Получаем endpoint из контекста
+            val endpoint = taskContextManager.currentEndpoint.value
+
+            // Если есть endpoint и репозиторий, отправляем фактическое действие на сервер
+            if (endpoint != null && taskXRepository != null) {
+                Timber.d("Отправка фактического действия на сервер")
+                val result = taskXRepository.addFactAction(factAction, endpoint)
+
+                // Если запрос выполнен успешно, возвращаем результат
+                if (result.isSuccess) {
+                    return@withContext result
+                } else {
+                    Timber.e(result.exceptionOrNull(), "Ошибка при отправке фактического действия на сервер")
+                }
+            }
+
+            // Если нет endpoint или репозитория, или запрос не выполнен,
+            // выполняем локальное обновление, как раньше
+            Timber.d("Локальное обновление задания")
             val factActions = task.factActions.toMutableList()
             factActions.add(factAction)
 
@@ -60,8 +78,7 @@ class ActionExecutionService(
                 lastModifiedAt = LocalDateTime.now()
             )
 
-            // В полной реализации здесь был бы вызов API для сохранения
-            // Вместо этого мы просто обновляем данные в контексте
+            // Обновляем данные в контексте
             taskContextManager.updateTask(updatedTask)
 
             Result.success(updatedTask)

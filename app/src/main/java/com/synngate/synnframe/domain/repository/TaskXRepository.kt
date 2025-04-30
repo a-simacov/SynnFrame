@@ -1,6 +1,7 @@
 package com.synngate.synnframe.domain.repository
 
 import com.synngate.synnframe.domain.entity.taskx.TaskX
+import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import kotlinx.coroutines.flow.Flow
 
 interface TaskXRepository {
@@ -12,4 +13,16 @@ interface TaskXRepository {
 
     // Обновление задания
     suspend fun updateTask(task: TaskX)
+
+    // Начало выполнения задания
+    suspend fun startTask(id: String, executorId: String, endpoint: String): Result<TaskX>
+
+    // Приостановка выполнения задания
+    suspend fun pauseTask(id: String, endpoint: String): Result<TaskX>
+
+    // Завершение выполнения задания
+    suspend fun finishTask(id: String, endpoint: String): Result<TaskX>
+
+    // Добавление фактического действия
+    suspend fun addFactAction(factAction: FactAction, endpoint: String): Result<TaskX>
 }

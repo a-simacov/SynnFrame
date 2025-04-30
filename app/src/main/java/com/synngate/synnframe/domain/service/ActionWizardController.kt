@@ -5,6 +5,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionWizardState
 import com.synngate.synnframe.domain.model.wizard.WizardStep
+import com.synngate.synnframe.domain.repository.TaskXRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,12 +14,13 @@ import java.time.LocalDateTime
 
 /**
  * Контроллер для управления визардом действий
- * Упрощенная версия, работающая только с TaskContextManager
+ * Обновлен для использования TaskXRepository при необходимости
  */
 class ActionWizardController(
     private val actionExecutionService: ActionExecutionService,
     private val actionStepExecutionService: ActionStepExecutionService,
-    private val taskContextManager: TaskContextManager
+    private val taskContextManager: TaskContextManager,
+    private val taskXRepository: TaskXRepository? = null
 ) {
     private val _wizardState = MutableStateFlow<ActionWizardState?>(null)
     val wizardState: StateFlow<ActionWizardState?> = _wizardState.asStateFlow()

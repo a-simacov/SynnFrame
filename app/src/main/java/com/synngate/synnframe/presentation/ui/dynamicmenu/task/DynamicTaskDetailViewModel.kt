@@ -109,7 +109,7 @@ class DynamicTaskDetailViewModel(
                 if (result.isSuccess()) {
                     val startResponse = result.getOrNull()
                     if (startResponse != null) {
-                        taskContextManager.saveStartedTask(startResponse)
+                        taskContextManager.saveStartedTask(startResponse, endpoint)
                         navigateToTaskXDetail(startResponse.task.id)
                     } else {
                         sendEvent(DynamicTaskDetailEvent.ShowSnackbar("Не удалось получить данные для запуска задания"))

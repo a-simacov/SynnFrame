@@ -20,6 +20,8 @@ import com.synngate.synnframe.data.remote.api.TaskApi
 import com.synngate.synnframe.data.remote.api.TaskApiImpl
 import com.synngate.synnframe.data.remote.api.TaskTypeApi
 import com.synngate.synnframe.data.remote.api.TaskTypeApiImpl
+import com.synngate.synnframe.data.remote.api.TaskXApi
+import com.synngate.synnframe.data.remote.api.TaskXApiImpl
 import com.synngate.synnframe.data.remote.service.ApiService
 import com.synngate.synnframe.data.remote.service.ApiServiceImpl
 import com.synngate.synnframe.data.remote.service.ServerProvider
@@ -30,6 +32,7 @@ import com.synngate.synnframe.data.repository.ServerRepositoryImpl
 import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
 import com.synngate.synnframe.data.repository.TaskRepositoryImpl
 import com.synngate.synnframe.data.repository.TaskTypeRepositoryImpl
+import com.synngate.synnframe.data.repository.TaskXRepositoryImpl
 import com.synngate.synnframe.data.repository.UserRepositoryImpl
 import com.synngate.synnframe.data.service.ClipboardServiceImpl
 import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
@@ -50,6 +53,7 @@ import com.synngate.synnframe.domain.repository.ServerRepository
 import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.domain.repository.TaskRepository
 import com.synngate.synnframe.domain.repository.TaskTypeRepository
+import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.ActionDataCacheService
 import com.synngate.synnframe.domain.service.ActionExecutionService
@@ -360,7 +364,8 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         Timber.d("Creating ActionExecutionService")
         ActionExecutionService(
             validationService = validationService,
-            taskContextManager = taskContextManager
+            taskContextManager = taskContextManager,
+            taskXRepository = taskXRepository // Добавляем TaskXRepository
         )
     }
 
@@ -377,13 +382,24 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         ActionWizardController(
             actionExecutionService = actionExecutionService,
             actionStepExecutionService = actionStepExecutionService,
-            taskContextManager = taskContextManager // Добавляем параметр taskContextManager
+            taskContextManager = taskContextManager,
+            taskXRepository = taskXRepository // Добавляем TaskXRepository
         )
     }
 
     val actionWizardContextFactory by lazy {
         Timber.d("Creating ActionWizardContextFactory")
         ActionWizardContextFactory()
+    }
+
+    val taskXApi: TaskXApi by lazy {
+        Timber.d("Creating TaskXApi")
+        TaskXApiImpl(httpClient, serverProvider)
+    }
+
+    val taskXRepository: TaskXRepository by lazy {
+        Timber.d("Creating TaskXRepository")
+        TaskXRepositoryImpl(taskXApi, taskContextManager)
     }
 
     // Use Cases
@@ -423,7 +439,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     // UseCase для заданий X
     val taskXUseCases: TaskXUseCases by lazy {
         Timber.d("Creating TaskXUseCases")
-        TaskXUseCases(taskContextManager)
+        TaskXUseCases(taskXRepository, taskContextManager)
     }
 
     val taskContextManager: TaskContextManager by lazy {

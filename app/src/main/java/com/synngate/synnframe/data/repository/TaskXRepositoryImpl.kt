@@ -30,6 +30,10 @@ class TaskXRepositoryImpl(
         return taskContextManager.lastStartedTaskX.value?.takeIf { it.id == id }
     }
 
+    override suspend fun updateTask(task: TaskX) {
+        taskContextManager.updateTask(task)
+    }
+
     override suspend fun startTask(id: String, executorId: String, endpoint: String): Result<TaskX> {
         try {
             val result = taskXApi.startTask(id, endpoint)

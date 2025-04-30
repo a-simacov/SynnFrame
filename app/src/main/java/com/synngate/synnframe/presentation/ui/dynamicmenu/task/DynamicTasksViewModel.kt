@@ -104,7 +104,7 @@ class DynamicTasksViewModel(
                     val startResponse = result.getOrNull()
                     if (startResponse != null) {
                         // Сохраняем данные в TaskContextManager
-                        taskContextManager.saveStartedTask(startResponse)
+                        taskContextManager.saveStartedTask(startResponse, endpoint)
 
                         Timber.d("Задание успешно запущено, переходим к TaskXDetail: ${startResponse.task.id}")
                         sendEvent(DynamicTasksEvent.NavigateToTaskXDetail(startResponse.task.id))
