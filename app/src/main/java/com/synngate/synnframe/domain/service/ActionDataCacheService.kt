@@ -9,8 +9,12 @@ import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
 import java.util.UUID
 
+/**
+ * Упрощенный сервис для работы с объектами в процессе выполнения действий
+ * Не использует репозитории, только создает объекты на основе введенных данных
+ */
 class ActionDataCacheService {
-    // Потоки кэшированных данных
+    // Потоки кэшированных данных - сохраняем пустые для обратной совместимости
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products
 
@@ -20,19 +24,27 @@ class ActionDataCacheService {
     private val _pallets = MutableStateFlow<List<Pallet>>(emptyList())
     val pallets: StateFlow<List<Pallet>> = _pallets
 
+    // Методы загрузки данных - теперь просто заглушки
     suspend fun loadProducts(query: String? = null, planProductIds: Set<String>? = null) {
-        try {
-            _products.value = emptyList()
-            Timber.d("Имитация загрузки товаров завершена")
-        } catch (e: Exception) {
-            Timber.e(e, "Ошибка при имитации загрузки товаров")
-            _products.value = emptyList()
-        }
+        // Ничего не делаем, данные приходят из TaskContextManager
+        _products.value = emptyList()
     }
 
+    suspend fun loadBins(query: String? = null, zone: String? = null) {
+        // Ничего не делаем, ячейки создаются по коду
+        _bins.value = emptyList()
+    }
+
+    suspend fun loadPallets(query: String? = null) {
+        // Ничего не делаем, паллеты создаются по коду
+        _pallets.value = emptyList()
+    }
+
+    // Методы поиска по коду - создают новые объекты
     suspend fun findProductByBarcode(barcode: String): Product? {
         return try {
-            val product = Product(
+            // Создаем временный продукт по штрихкоду
+            Product(
                 id = "tmp_${UUID.randomUUID()}",
                 name = "Товар со штрихкодом $barcode",
                 accountingModel = AccountingModel.QTY,
@@ -40,61 +52,43 @@ class ActionDataCacheService {
                 mainUnitId = "unit_1",
                 units = emptyList()
             )
-            product
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при имитации поиска товара по штрихкоду: $barcode")
+            Timber.e(e, "Ошибка при создании временного товара по штрихкоду: $barcode")
             null
-        }
-    }
-
-    suspend fun loadBins(query: String? = null, zone: String? = null) {
-        try {
-            _bins.value = emptyList()
-        } catch (e: Exception) {
-            Timber.e(e, "Ошибка при имитации загрузки ячеек")
-            _bins.value = emptyList()
         }
     }
 
     suspend fun findBinByCode(code: String): BinX? {
         return try {
-            val bin = BinX(
+            // Создаем объект ячейки с введенным кодом
+            BinX(
                 code = code,
-                zone = "Зона приёмки",
-                line = "A",
-                rack = "01",
-                tier = "1",
-                position = "1"
+                zone = "Неизвестная зона",
+                line = "",
+                rack = "",
+                tier = "",
+                position = ""
             )
-            bin
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при имитации поиска ячейки по коду: $code")
+            Timber.e(e, "Ошибка при создании ячейки по коду: $code")
             null
-        }
-    }
-
-    suspend fun loadPallets(query: String? = null) {
-        try {
-            _pallets.value = emptyList()
-        } catch (e: Exception) {
-            Timber.e(e, "Ошибка при имитации загрузки паллет")
-            _pallets.value = emptyList()
         }
     }
 
     suspend fun findPalletByCode(code: String): Pallet? {
         return try {
-            val pallet = Pallet(
+            // Создаем объект паллеты с введенным кодом
+            Pallet(
                 code = code,
                 isClosed = false
             )
-            pallet
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при имитации поиска паллеты по коду: $code")
+            Timber.e(e, "Ошибка при создании паллеты по коду: $code")
             null
         }
     }
 
+    // Методы для работы с паллетами
     suspend fun createPallet(): Result<Pallet> {
         return try {
             val code = "IN${System.currentTimeMillis()}"
@@ -102,30 +96,21 @@ class ActionDataCacheService {
                 code = code,
                 isClosed = false
             )
-            _pallets.value = _pallets.value + pallet
             Result.success(pallet)
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при имитации создания паллеты")
+            Timber.e(e, "Ошибка при создании паллеты")
             Result.failure(e)
         }
     }
 
     suspend fun closePallet(code: String): Result<Boolean> {
-        return try {
-            Result.success(true)
-        } catch (e: Exception) {
-            Timber.e(e, "Ошибка при имитации закрытия паллеты: $code")
-            Result.failure(e)
-        }
+        // Просто возвращаем успех, так как мы не храним состояние паллет
+        return Result.success(true)
     }
 
     suspend fun printPalletLabel(code: String): Result<Boolean> {
-        return try {
-            Result.success(true)
-        } catch (e: Exception) {
-            Timber.e(e, "Ошибка при имитации печати этикетки паллеты: $code")
-            Result.failure(e)
-        }
+        // Просто возвращаем успех, так как мы не выполняем реальную печать
+        return Result.success(true)
     }
 
     fun clearCache() {

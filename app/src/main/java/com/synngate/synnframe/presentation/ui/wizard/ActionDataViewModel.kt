@@ -9,6 +9,7 @@ import timber.log.Timber
 
 /**
  * ViewModel для доступа к данным, используемым в визарде действий
+ * Упрощенная версия, не использующая репозитории
  */
 class ActionDataViewModel(
     private val actionDataCacheService: ActionDataCacheService
@@ -19,10 +20,11 @@ class ActionDataViewModel(
     val bins = actionDataCacheService.bins
     val pallets = actionDataCacheService.pallets
 
-    // Методы для загрузки данных
+    // Методы для загрузки данных - теперь заглушки
     fun loadProducts(query: String? = null, planProductIds: Set<String>? = null) {
         launchIO {
             try {
+                // Просто обновляем пустой список
                 actionDataCacheService.loadProducts(query, planProductIds)
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при загрузке продуктов")
@@ -33,6 +35,7 @@ class ActionDataViewModel(
     fun loadBins(query: String? = null, zone: String? = null) {
         launchIO {
             try {
+                // Просто обновляем пустой список
                 actionDataCacheService.loadBins(query, zone)
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при загрузке ячеек")
@@ -43,6 +46,7 @@ class ActionDataViewModel(
     fun loadPallets(query: String? = null) {
         launchIO {
             try {
+                // Просто обновляем пустой список
                 actionDataCacheService.loadPallets(query)
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при загрузке паллет")
@@ -50,10 +54,11 @@ class ActionDataViewModel(
         }
     }
 
-    // Методы для поиска данных
+    // Методы для поиска данных теперь создают временные объекты
     fun findProductByBarcode(barcode: String, onResult: (Product?) -> Unit) {
         launchIO {
             try {
+                // Создаем временный товар
                 val product = actionDataCacheService.findProductByBarcode(barcode)
                 launchMain {
                     onResult(product)
@@ -70,6 +75,7 @@ class ActionDataViewModel(
     fun findBinByCode(code: String, onResult: (BinX?) -> Unit) {
         launchIO {
             try {
+                // Создаем временную ячейку
                 val bin = actionDataCacheService.findBinByCode(code)
                 launchMain {
                     onResult(bin)
@@ -86,6 +92,7 @@ class ActionDataViewModel(
     fun findPalletByCode(code: String, onResult: (Pallet?) -> Unit) {
         launchIO {
             try {
+                // Создаем временную паллету
                 val pallet = actionDataCacheService.findPalletByCode(code)
                 launchMain {
                     onResult(pallet)

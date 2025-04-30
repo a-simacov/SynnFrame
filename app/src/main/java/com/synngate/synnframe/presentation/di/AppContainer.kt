@@ -26,10 +26,6 @@ import com.synngate.synnframe.data.remote.service.ServerProvider
 import com.synngate.synnframe.data.repository.DynamicMenuRepositoryImpl
 import com.synngate.synnframe.data.repository.LogRepositoryImpl
 import com.synngate.synnframe.data.repository.MockActionTemplateRepository
-import com.synngate.synnframe.data.repository.MockBinXRepository
-import com.synngate.synnframe.data.repository.MockPalletRepository
-import com.synngate.synnframe.data.repository.MockTaskTypeXRepository
-import com.synngate.synnframe.data.repository.MockTaskXRepository
 import com.synngate.synnframe.data.repository.ProductRepositoryImpl
 import com.synngate.synnframe.data.repository.ServerRepositoryImpl
 import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
@@ -49,17 +45,13 @@ import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.repository.ActionTemplateRepository
-import com.synngate.synnframe.domain.repository.BinXRepository
 import com.synngate.synnframe.domain.repository.DynamicMenuRepository
 import com.synngate.synnframe.domain.repository.LogRepository
-import com.synngate.synnframe.domain.repository.PalletRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
 import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.domain.repository.TaskRepository
 import com.synngate.synnframe.domain.repository.TaskTypeRepository
-import com.synngate.synnframe.domain.repository.TaskTypeXRepository
-import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.ActionDataCacheService
 import com.synngate.synnframe.domain.service.ActionExecutionService
@@ -436,35 +428,10 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         MockActionTemplateRepository()
     }
 
-    val taskTypeXRepository: TaskTypeXRepository by lazy {
-        Timber.d("Creating TaskTypeXRepository")
-        MockTaskTypeXRepository(actionTemplateRepository)
-    }
-
-    val taskXRepository: TaskXRepository by lazy {
-        Timber.d("Creating TaskXRepository")
-        MockTaskXRepository(taskTypeXRepository)
-    }
-
-    val binXRepository: BinXRepository by lazy {
-        Timber.d("Creating BinXRepository")
-        MockBinXRepository()
-    }
-
-    val palletRepository: PalletRepository by lazy {
-        Timber.d("Creating PalletRepository")
-        MockPalletRepository()
-    }
-
     // UseCase для заданий X
     val taskXUseCases: TaskXUseCases by lazy {
         Timber.d("Creating TaskXUseCases")
-        TaskXUseCases(
-            taskXRepository = taskXRepository,
-            taskTypeXRepository = taskTypeXRepository,
-            binXRepository = binXRepository,
-            palletRepository = palletRepository
-        )
+        TaskXUseCases(taskContextManager)
     }
 
     val taskContextManager: TaskContextManager by lazy {
