@@ -16,9 +16,15 @@ class TaskContextManager {
     private val _lastTaskTypeX = MutableStateFlow<TaskTypeX?>(null)
     val lastTaskTypeX: StateFlow<TaskTypeX?> = _lastTaskTypeX.asStateFlow()
 
-    fun saveStartedTask(response: TaskXStartResponseDto) {
+    // Добавляем хранение endpoint'а
+    private val _currentEndpoint = MutableStateFlow<String?>(null)
+    val currentEndpoint: StateFlow<String?> = _currentEndpoint.asStateFlow()
+
+    fun saveStartedTask(response: TaskXStartResponseDto, endpoint: String) {
         _lastStartedTaskX.value = response.task
         _lastTaskTypeX.value = response.taskType
+        _currentEndpoint.value = endpoint
+        Timber.d("Saved task with endpoint: $endpoint")
     }
 
     fun updateTask(updatedTask: TaskX) {
@@ -28,14 +34,19 @@ class TaskContextManager {
             _lastStartedTaskX.value = null
             // Затем устанавливаем новое значение
             _lastStartedTaskX.value = updatedTask
-            Timber.d("Задание обновлено в контексте: ${updatedTask.id}, факт. действий: ${updatedTask.factActions.size}")
         } else {
             Timber.w("Попытка обновить задание, которого нет в контексте: ${updatedTask.id}")
         }
     }
 
+    fun setEndpoint(endpoint: String) {
+        _currentEndpoint.value = endpoint
+        Timber.d("Set endpoint: $endpoint")
+    }
+
     fun clearContext() {
         _lastStartedTaskX.value = null
         _lastTaskTypeX.value = null
+        _currentEndpoint.value = null
     }
 }

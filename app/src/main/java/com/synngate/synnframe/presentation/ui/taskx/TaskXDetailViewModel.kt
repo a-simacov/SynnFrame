@@ -212,31 +212,63 @@ class TaskXDetailViewModel(
             try {
                 val result = actionWizardController.complete()
                 if (result.isSuccess) {
-                    // Получаем обновленное задание из результата
-                    val updatedTask = result.getOrNull()
+                    // Получаем фактическое действие из результата
+                    val factAction = result.getOrNull()?.factActions?.lastOrNull()
 
-                    if (updatedTask != null) {
-                        // Сразу обновляем состояние с новым заданием
-                        updateState { it.copy(
-                            task = updatedTask,
-                            showActionWizard = false
-                        ) }
-                        // Обновляем зависимые данные (nextActionId, statusActions и т.д.)
-                        updateDependentState(updatedTask, uiState.value.taskType)
+                    if (factAction != null) {
+                        // Отправляем фактическое действие на сервер
+                        val apiResult = taskXUseCases.addFactAction(factAction)
+
+                        if (apiResult.isSuccess) {
+                            // Получаем обновленное задание из результата
+                            val updatedTask = apiResult.getOrNull()
+
+                            if (updatedTask != null) {
+                                // Сразу обновляем состояние с новым заданием
+                                updateState { it.copy(
+                                    task = updatedTask,
+                                    showActionWizard = false
+                                ) }
+                                // Обновляем зависимые данные (nextActionId, statusActions и т.д.)
+                                updateDependentState(updatedTask, uiState.value.taskType)
+                            } else {
+                                // Если обновленное задание не вернулось, перезагружаем его
+                                loadTask()
+                                updateState { it.copy(showActionWizard = false) }
+                            }
+
+                            sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
+                        } else {
+                            updateState {
+                                it.copy(
+                                    error = "Ошибка при отправке действия: ${apiResult.exceptionOrNull()?.message}",
+                                    showActionWizard = false
+                                )
+                            }
+                            sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при отправке действия"))
+                        }
                     } else {
-                        // Если обновленное задание не вернулось, перезагружаем его
-                        loadTask()
+                        // Если фактическое действие не создалось, просто закрываем визард
                         updateState { it.copy(showActionWizard = false) }
+                        sendEvent(TaskXDetailEvent.ShowSnackbar("Действие завершено"))
                     }
-
-                    sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
                 } else {
-                    updateState { it.copy(error = "Ошибка при выполнении действия: ${result.exceptionOrNull()?.message}") }
+                    updateState {
+                        it.copy(
+                            error = "Ошибка при выполнении действия: ${result.exceptionOrNull()?.message}",
+                            showActionWizard = false
+                        )
+                    }
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось выполнить действие"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error completing action wizard")
-                updateState { it.copy(error = "Ошибка при завершении действия: ${e.message}") }
+                updateState {
+                    it.copy(
+                        error = "Ошибка при завершении действия: ${e.message}",
+                        showActionWizard = false
+                    )
+                }
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось выполнить действие"))
             }
         }
@@ -310,6 +342,7 @@ class TaskXDetailViewModel(
             updateState { it.copy(isProcessing = true) }
 
             try {
+                // Используем API через UseCase
                 val result = taskXUseCases.startTask(task.id, currentUserId)
 
                 if (result.isSuccess) {
@@ -328,6 +361,7 @@ class TaskXDetailViewModel(
                             error = result.exceptionOrNull()?.message ?: "Error on starting task"
                         )
                     }
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при запуске задания"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error on starting task")
@@ -337,6 +371,7 @@ class TaskXDetailViewModel(
                         error = "Error on starting task: ${e.message}"
                     )
                 }
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при запуске задания"))
             }
         }
     }
@@ -361,6 +396,7 @@ class TaskXDetailViewModel(
             updateState { it.copy(isProcessing = true) }
 
             try {
+                // Используем API через UseCase
                 val result = taskXUseCases.completeTask(task.id)
 
                 if (result.isSuccess) {
@@ -381,6 +417,7 @@ class TaskXDetailViewModel(
                             error = result.exceptionOrNull()?.message ?: "Error on completing task"
                         )
                     }
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при завершении задания"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error on completing task")
@@ -391,6 +428,7 @@ class TaskXDetailViewModel(
                         error = "Error on completing task: ${e.message}"
                     )
                 }
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при завершении задания"))
             }
         }
     }
@@ -402,6 +440,7 @@ class TaskXDetailViewModel(
             updateState { it.copy(isProcessing = true) }
 
             try {
+                // Используем API через UseCase
                 val result = taskXUseCases.pauseTask(task.id)
 
                 if (result.isSuccess) {
@@ -420,6 +459,7 @@ class TaskXDetailViewModel(
                             error = result.exceptionOrNull()?.message ?: "Error on pausing task"
                         )
                     }
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при приостановке задания"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error on pausing task")
@@ -429,6 +469,7 @@ class TaskXDetailViewModel(
                         error = "Error on pausing task: ${e.message}"
                     )
                 }
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при приостановке задания"))
             }
         }
     }
@@ -436,11 +477,13 @@ class TaskXDetailViewModel(
     fun resumeTask() {
         launchIO {
             val task = uiState.value.task ?: return@launchIO
+            val currentUserId = uiState.value.currentUserId ?: return@launchIO
 
             updateState { it.copy(isProcessing = true) }
 
             try {
-                val result = taskXUseCases.resumeTask(task.id)
+                // Используем API через UseCase для возобновления (по сути это тот же start)
+                val result = taskXUseCases.startTask(task.id, currentUserId)
 
                 if (result.isSuccess) {
                     val updatedTask = result.getOrNull()
@@ -458,6 +501,7 @@ class TaskXDetailViewModel(
                             error = result.exceptionOrNull()?.message ?: "Error on resuming task"
                         )
                     }
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при возобновлении задания"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error on resuming task")
@@ -467,6 +511,7 @@ class TaskXDetailViewModel(
                         error = "Error on resuming task: ${e.message}"
                     )
                 }
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при возобновлении задания"))
             }
         }
     }

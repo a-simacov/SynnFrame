@@ -25,7 +25,6 @@ import com.synngate.synnframe.data.remote.service.ApiServiceImpl
 import com.synngate.synnframe.data.remote.service.ServerProvider
 import com.synngate.synnframe.data.repository.DynamicMenuRepositoryImpl
 import com.synngate.synnframe.data.repository.LogRepositoryImpl
-import com.synngate.synnframe.data.repository.MockActionTemplateRepository
 import com.synngate.synnframe.data.repository.ProductRepositoryImpl
 import com.synngate.synnframe.data.repository.ServerRepositoryImpl
 import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
@@ -44,7 +43,6 @@ import com.synngate.synnframe.data.service.WebServerManagerImpl
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
-import com.synngate.synnframe.domain.repository.ActionTemplateRepository
 import com.synngate.synnframe.domain.repository.DynamicMenuRepository
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
@@ -420,12 +418,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     val dynamicMenuUseCases: DynamicMenuUseCases by lazy {
         Timber.d("Creating OperationMenuUseCases")
         DynamicMenuUseCases(dynamicMenuRepository)
-    }
-
-    // Репозитории для заданий X
-    val actionTemplateRepository: ActionTemplateRepository by lazy {
-        Timber.d("Creating ActionTemplateRepository")
-        MockActionTemplateRepository()
     }
 
     // UseCase для заданий X
