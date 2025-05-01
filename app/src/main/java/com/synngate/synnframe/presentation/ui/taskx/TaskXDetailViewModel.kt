@@ -212,46 +212,24 @@ class TaskXDetailViewModel(
             try {
                 val result = actionWizardController.complete()
                 if (result.isSuccess) {
-                    // Получаем фактическое действие из результата
-                    val factAction = result.getOrNull()?.factActions?.lastOrNull()
+                    // Получаем обновленное задание из результата
+                    val updatedTask = result.getOrNull()
 
-                    if (factAction != null) {
-                        // Отправляем фактическое действие на сервер
-                        val apiResult = taskXUseCases.addFactAction(factAction)
-
-                        if (apiResult.isSuccess) {
-                            // Получаем обновленное задание из результата
-                            val updatedTask = apiResult.getOrNull()
-
-                            if (updatedTask != null) {
-                                // Сразу обновляем состояние с новым заданием
-                                updateState { it.copy(
-                                    task = updatedTask,
-                                    showActionWizard = false
-                                ) }
-                                // Обновляем зависимые данные (nextActionId, statusActions и т.д.)
-                                updateDependentState(updatedTask, uiState.value.taskType)
-                            } else {
-                                // Если обновленное задание не вернулось, перезагружаем его
-                                loadTask()
-                                updateState { it.copy(showActionWizard = false) }
-                            }
-
-                            sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
-                        } else {
-                            updateState {
-                                it.copy(
-                                    error = "Ошибка при отправке действия: ${apiResult.exceptionOrNull()?.message}",
-                                    showActionWizard = false
-                                )
-                            }
-                            sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при отправке действия"))
-                        }
+                    if (updatedTask != null) {
+                        // Сразу обновляем состояние с новым заданием
+                        updateState { it.copy(
+                            task = updatedTask,
+                            showActionWizard = false
+                        ) }
+                        // Обновляем зависимые данные (nextActionId, statusActions и т.д.)
+                        updateDependentState(updatedTask, uiState.value.taskType)
                     } else {
-                        // Если фактическое действие не создалось, просто закрываем визард
+                        // Если обновленное задание не вернулось, перезагружаем его
+                        loadTask()
                         updateState { it.copy(showActionWizard = false) }
-                        sendEvent(TaskXDetailEvent.ShowSnackbar("Действие завершено"))
                     }
+
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
                 } else {
                     updateState {
                         it.copy(
