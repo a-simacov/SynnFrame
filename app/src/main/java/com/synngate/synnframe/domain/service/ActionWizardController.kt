@@ -56,7 +56,9 @@ class ActionWizardController(
                 startedAt = LocalDateTime.now(),
                 isInitialized = true,
                 lastScannedBarcode = null,
-                isProcessingStep = false
+                isProcessingStep = false,
+                isSending = false,
+                sendError = null
             )
 
             Result.success(true)
@@ -233,17 +235,29 @@ class ActionWizardController(
         }
 
         try {
+            // Устанавливаем флаг отправки данных
+            _wizardState.value = state.copy(isSending = true, sendError = null)
+
             val result = actionExecutionService.executeAction(
                 state.taskId,
                 state.actionId,
                 state.results
             )
 
-            _wizardState.value = null
+            if (result.isSuccess) {
+                // Успешный результат - подготавливаем состояние к закрытию
+                _wizardState.value = state.copy(isSending = false, sendError = null)
+            } else {
+                // Ошибка - сохраняем её в состоянии
+                val errorMessage = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                _wizardState.value = state.copy(isSending = false, sendError = errorMessage)
+            }
 
             return result
         } catch (e: Exception) {
             Timber.e(e, "Error completing action")
+            // Ошибка - сохраняем её в состоянии
+            _wizardState.value = state.copy(isSending = false, sendError = e.message ?: "Неизвестная ошибка")
             return Result.failure(e)
         }
     }

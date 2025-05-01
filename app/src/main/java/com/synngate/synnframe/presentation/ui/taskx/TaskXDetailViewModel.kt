@@ -189,6 +189,8 @@ class TaskXDetailViewModel(
         actionWizardController.cancel()
     }
 
+// app/src/main/java/com/synngate/synnframe/presentation/ui/taskx/TaskXDetailViewModel.kt
+
     fun completeActionWizard() {
         launchIO {
             try {
@@ -209,23 +211,14 @@ class TaskXDetailViewModel(
 
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
                 } else {
-                    updateState {
-                        it.copy(
-                            error = "Ошибка при выполнении действия: ${result.exceptionOrNull()?.message}",
-                            showActionWizard = false
-                        )
-                    }
-                    sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось выполнить действие"))
+                    // Не закрываем диалог в случае ошибки - визард сам отображает ошибку
+                    // Сообщение в Snackbar не показываем, так как ошибка уже отображается в визарде
+                    Timber.e(result.exceptionOrNull(), "Ошибка при выполнении действия")
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error completing action wizard")
-                updateState {
-                    it.copy(
-                        error = "Ошибка при завершении действия: ${e.message}",
-                        showActionWizard = false
-                    )
-                }
-                sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось выполнить действие"))
+                // Не закрываем диалог в случае ошибки
+                // Сообщение в Snackbar не показываем, так как ошибка уже отображается в визарде
             }
         }
     }

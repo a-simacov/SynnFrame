@@ -17,7 +17,9 @@ data class ActionWizardState(
     val errors: Map<String, String> = emptyMap(),
     val isInitialized: Boolean = false,
     val lastScannedBarcode: String? = null,    // Последний отсканированный штрихкод
-    val isProcessingStep: Boolean = false     // Флаг, что идет обработка шага
+    val isProcessingStep: Boolean = false,
+    val isSending: Boolean = false,      // Флаг отправки данных на сервер
+    val sendError: String? = null
 ) {
     val currentStep: WizardStep?
         get() = if (currentStepIndex < steps.size) steps[currentStepIndex] else null

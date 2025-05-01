@@ -3,7 +3,6 @@ package com.synngate.synnframe.domain.usecase.taskx
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
-import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.usecase.BaseUseCase
@@ -104,16 +103,6 @@ class TaskXUseCases(
 
         // Используем репозиторий для отправки запроса на сервер
         return taskXRepository.pauseTask(id, endpoint)
-    }
-
-    // Добавление строки факта
-    suspend fun addFactAction(factAction: FactAction): Result<TaskX> {
-        // Получаем endpoint из контекста
-        val endpoint = taskContextManager.currentEndpoint.value
-            ?: return Result.failure(IllegalStateException("Не найден endpoint для задания"))
-
-        // Используем репозиторий для отправки запроса на сервер
-        return taskXRepository.addFactAction(factAction, endpoint)
     }
 
     // Получение типа задания

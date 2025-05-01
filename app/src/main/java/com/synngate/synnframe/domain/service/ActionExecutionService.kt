@@ -57,6 +57,7 @@ class ActionExecutionService(
                     return@withContext result
                 } else {
                     Timber.e(result.exceptionOrNull(), "Ошибка при отправке фактического действия на сервер")
+                    return@withContext result
                 }
             }
 

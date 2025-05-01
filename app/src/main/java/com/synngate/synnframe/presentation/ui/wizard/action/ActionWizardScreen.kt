@@ -11,16 +11,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -234,6 +240,8 @@ fun ActionWizardScreen(
     }
 }
 
+// app/src/main/java/com/synngate/synnframe/presentation/ui/wizard/action/ActionWizardScreen.kt
+
 @Composable
 private fun WizardActions(
     wizardState: ActionWizardState,
@@ -253,7 +261,8 @@ private fun WizardActions(
                         actionWizardController.processStepResult(null)
                     }
                 },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                enabled = !wizardState.isSending // Блокируем кнопку во время отправки
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -267,9 +276,34 @@ private fun WizardActions(
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        // Кнопка "Вперед" - отображается только если есть результат для текущего шага и визард не завершен
-        if (!wizardState.isCompleted && wizardState.currentStep != null &&
+        // Кнопка "Завершить" - отображается только на итоговом экране
+        if (wizardState.isCompleted) {
+            Button(
+                onClick = onComplete,
+                modifier = Modifier.weight(1f),
+                enabled = !wizardState.isSending // Блокируем кнопку во время отправки
+            ) {
+                if (wizardState.isSending) {
+                    // Показываем индикатор внутри кнопки
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = LocalContentColor.current
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Отправка...")
+                } else {
+                    Text("Завершить")
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Завершить"
+                    )
+                }
+            }
+        } else if (!wizardState.isCompleted && wizardState.currentStep != null &&
             wizardState.hasResultForStep(wizardState.currentStep!!.id)) {
+            // Кнопка "Вперед"
             OutlinedButton(
                 onClick = {
                     coroutineScope.launch {
@@ -285,21 +319,8 @@ private fun WizardActions(
                     contentDescription = "Вперед"
                 )
             }
-        } else if (wizardState.isCompleted) {
-            // Кнопка "Завершить" - отображается только на итоговом экране
-            Button(
-                onClick = onComplete,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Завершить")
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = "Завершить"
-                )
-            }
         } else {
-            // Пустой Spacer для сохранения выравнивания, если нет кнопок "Вперед" или "Завершить"
+            // Пустой Spacer для сохранения выравнивания
             Spacer(modifier = Modifier.weight(1f))
         }
     }
@@ -356,6 +377,8 @@ private fun findActionStepForWizardStep(
     return null
 }
 
+// app/src/main/java/com/synngate/synnframe/presentation/ui/wizard/action/ActionWizardScreen.kt
+
 @Composable
 fun ActionSummaryScreen(
     state: ActionWizardState,
@@ -369,6 +392,58 @@ fun ActionSummaryScreen(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(bottom = 16.dp)
         )
+
+        // Отображаем индикатор загрузки, если идет отправка
+        if (state.isSending) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = "Отправка данных на сервер...",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+
+        // Отображаем ошибку, если она есть
+        if (state.sendError != null) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Error,
+                        contentDescription = "Ошибка",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(end = 12.dp)
+                    )
+                    Text(
+                        text = state.sendError,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
 
         if (action != null) {
             Text(
