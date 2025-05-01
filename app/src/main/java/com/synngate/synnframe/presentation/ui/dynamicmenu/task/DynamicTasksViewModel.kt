@@ -139,7 +139,7 @@ class DynamicTasksViewModel(
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
-                val searchEndpoint = "$endpoint/search"
+                val searchEndpoint = endpoint
                 val result = dynamicMenuUseCases.searchDynamicTask(searchEndpoint, searchValue)
 
                 if (result.isSuccess()) {

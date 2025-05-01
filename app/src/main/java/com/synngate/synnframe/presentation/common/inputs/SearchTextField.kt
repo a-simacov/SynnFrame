@@ -20,7 +20,8 @@ fun SearchTextField(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     onSearch: () -> Unit = {},
-    placeholder: String? = null
+    placeholder: String? = null,
+    trailingIcon: @Composable (() -> Unit) = {}
 ) {
     AppTextField(
         value = value,
@@ -39,6 +40,7 @@ fun SearchTextField(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
+        trailingIcon = trailingIcon,
         placeholder = placeholder?.let {
             { Text(text = it, style = MaterialTheme.typography.bodyLarge) }
         }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -130,8 +131,8 @@ fun DynamicTaskDetailScreen(
             if (state.task == null && state.error != null && !state.isLoading) {
                 Text(
                     text = stringResource(id = R.string.error_loading_task_details),
-                    style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
                         .padding(top = 32.dp)

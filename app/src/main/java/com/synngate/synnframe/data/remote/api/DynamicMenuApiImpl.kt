@@ -204,8 +204,11 @@ class DynamicMenuApiImpl(
 
             if (response.status.isSuccess()) {
                 try {
-                    val tasks = response.body<DynamicTask>()
-                    ApiResult.Success(tasks)
+                    val tasks = response.body<List<DynamicTask>>()
+                    if (tasks.isNotEmpty())
+                        ApiResult.Success(tasks[0])
+                    else
+                        ApiResult.Error(HttpStatusCode.NotFound.value, "Not found tasks")
                 } catch (e: Exception) {
                     Timber.e(e, "Error parsing task search response: ${e.message}")
                     ApiResult.Error(
