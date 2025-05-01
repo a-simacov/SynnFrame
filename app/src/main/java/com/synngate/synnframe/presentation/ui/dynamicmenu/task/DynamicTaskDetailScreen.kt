@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,13 +58,10 @@ fun DynamicTaskDetailScreen(
         }
     }
 
-    // Извлекаем название задания и статус с безопасной проверкой на null
-    val taskName = state.task?.name?.let { HtmlUtils.stripHtml(it) } ?: stringResource(R.string.loading)
     val taskStatus = state.task?.getTaskStatus() ?: TaskXStatus.TO_DO
 
     AppScaffold(
         title = stringResource(id = R.string.task_details),
-        subtitle = taskName, // Для заголовка используем текст без HTML-разметки
         onNavigateBack = navigateBack,
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {
@@ -87,7 +83,6 @@ fun DynamicTaskDetailScreen(
                         value = task.id
                     )
 
-                    // Показываем статус задания
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -112,7 +107,6 @@ fun DynamicTaskDetailScreen(
                             .padding(vertical = 8.dp)
                     )
 
-                    // Показываем информацию об исполнителе, если она есть
                     task.executorId?.let { executorId ->
                         InfoRow(
                             label = stringResource(id = R.string.task_executor),
@@ -123,7 +117,6 @@ fun DynamicTaskDetailScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Добавляем кнопку запуска задания только если оно в статусе "К выполнению"
                 if (taskStatus == TaskXStatus.TO_DO) {
                     ActionButton(
                         text = stringResource(id = R.string.start_task_execution),
@@ -131,26 +124,9 @@ fun DynamicTaskDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !state.isLoading
                     )
-
-                    if (state.isLoading) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        CircularProgressIndicator(
-                            modifier = Modifier.align(Alignment.CenterHorizontally)
-                        )
-                    }
                 }
             }
 
-            // Если задание ещё загружается, показываем индикатор загрузки
-            if (state.task == null && state.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(top = 32.dp)
-                )
-            }
-
-            // Если произошла ошибка и нет данных задания, показываем сообщение
             if (state.task == null && state.error != null && !state.isLoading) {
                 Text(
                     text = stringResource(id = R.string.error_loading_task_details),
