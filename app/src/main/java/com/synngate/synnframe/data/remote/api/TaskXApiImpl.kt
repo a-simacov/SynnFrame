@@ -46,14 +46,17 @@ class TaskXApiImpl(
                         header("Authorization", authHeader)
                         header("User-Auth-Id", userId)
                     }
+
                     HttpMethod.PUT -> httpClient.put(url) {
                         header("Authorization", authHeader)
                         header("User-Auth-Id", userId)
                     }
+
                     HttpMethod.GET -> httpClient.get(url) {
                         header("Authorization", authHeader)
                         header("User-Auth-Id", userId)
                     }
+
                     HttpMethod.DELETE -> httpClient.delete(url) {
                         header("Authorization", authHeader)
                         header("User-Auth-Id", userId)
@@ -64,7 +67,10 @@ class TaskXApiImpl(
                     // Не используем task из ответа, только признак успешности
                     ApiResult.Success(true)
                 } else {
-                    ApiResult.Error(message = response.status.description ?: "Unknown error", code = 500)
+                    ApiResult.Error(
+                        message = response.status.description ?: "Unknown error",
+                        code = 500
+                    )
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error starting task: $taskId")
@@ -83,30 +89,19 @@ class TaskXApiImpl(
                 val authHeader = "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}"
 
                 // Используем метод согласно разбору endpoint
-                val response: HttpResponse = when (httpMethod) {
-                    HttpMethod.POST -> httpClient.post(url) {
-                        header("Authorization", authHeader)
-                        header("User-Auth-Id", userId)
-                    }
-                    HttpMethod.PUT -> httpClient.put(url) {
-                        header("Authorization", authHeader)
-                        header("User-Auth-Id", userId)
-                    }
-                    HttpMethod.GET -> httpClient.get(url) {
-                        header("Authorization", authHeader)
-                        header("User-Auth-Id", userId)
-                    }
-                    HttpMethod.DELETE -> httpClient.delete(url) {
-                        header("Authorization", authHeader)
-                        header("User-Auth-Id", userId)
-                    }
+                val response: HttpResponse = httpClient.post(url) {
+                    header("Authorization", authHeader)
+                    header("User-Auth-Id", userId)
                 }
 
                 if (response.status.isSuccess()) {
                     // Не используем task из ответа, только признак успешности
                     ApiResult.Success(true)
                 } else {
-                    ApiResult.Error(message = response.status.description ?: "Unknown error", code = 500)
+                    ApiResult.Error(
+                        message = response.status.description ?: "Unknown error",
+                        code = 500
+                    )
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error pausing task: $taskId")
@@ -125,30 +120,19 @@ class TaskXApiImpl(
                 val authHeader = "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}"
 
                 // Используем метод согласно разбору endpoint
-                val response: HttpResponse = when (httpMethod) {
-                    HttpMethod.POST -> httpClient.post(url) {
-                        header("Authorization", authHeader)
-                        header("User-Auth-Id", userId)
-                    }
-                    HttpMethod.PUT -> httpClient.put(url) {
-                        header("Authorization", authHeader)
-                        header("User-Auth-Id", userId)
-                    }
-                    HttpMethod.GET -> httpClient.get(url) {
-                        header("Authorization", authHeader)
-                        header("User-Auth-Id", userId)
-                    }
-                    HttpMethod.DELETE -> httpClient.delete(url) {
-                        header("Authorization", authHeader)
-                        header("User-Auth-Id", userId)
-                    }
+                val response: HttpResponse = httpClient.post(url) {
+                    header("Authorization", authHeader)
+                    header("User-Auth-Id", userId)
                 }
 
                 if (response.status.isSuccess()) {
                     // Не используем task из ответа, только признак успешности
                     ApiResult.Success(true)
                 } else {
-                    ApiResult.Error(message = response.status.description ?: "Unknown error", code = 500)
+                    ApiResult.Error(
+                        message = response.status.description ?: "Unknown error",
+                        code = 500
+                    )
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error finishing task: $taskId")
@@ -192,7 +176,10 @@ class TaskXApiImpl(
                 if (response.status.isSuccess()) {
                     ApiResult.Success(true)
                 } else {
-                    ApiResult.Error(message = response.status.description ?: "Unknown error", code = 500)
+                    ApiResult.Error(
+                        message = response.status.description ?: "Unknown error",
+                        code = 500
+                    )
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error adding fact action for task: $taskId")

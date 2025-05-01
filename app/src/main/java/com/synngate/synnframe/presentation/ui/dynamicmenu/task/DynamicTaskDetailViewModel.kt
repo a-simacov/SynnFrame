@@ -102,7 +102,7 @@ class DynamicTaskDetailViewModel(
             updateState { it.copy(isLoading = true) }
 
             try {
-                val startEndpoint = "$endpoint/$taskId/start"
+                val startEndpoint = "$endpoint/$taskId/take"
 
                 val result = dynamicMenuUseCases.startDynamicTask(startEndpoint, taskId)
 

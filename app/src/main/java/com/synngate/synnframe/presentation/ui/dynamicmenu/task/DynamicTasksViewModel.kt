@@ -97,7 +97,7 @@ class DynamicTasksViewModel(
 
             try {
                 Timber.d("Запуск задания: $taskId через endpoint: $endpoint")
-                val startEndpoint = "$endpoint/$taskId/start"
+                val startEndpoint = "$endpoint/$taskId/take"
                 val result = dynamicMenuUseCases.startDynamicTask(startEndpoint, taskId)
 
                 if (result.isSuccess()) {
