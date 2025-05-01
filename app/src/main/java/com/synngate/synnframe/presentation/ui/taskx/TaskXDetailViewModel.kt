@@ -39,21 +39,22 @@ class TaskXDetailViewModel(
     private var taskObserverJob: Job? = null
 
     init {
-        // Если есть предзагруженные данные из TaskContextManager, используем их
         if (preloadedTask != null && preloadedTaskType != null) {
-            updateState {
-                it.copy(
-                    task = preloadedTask,
-                    taskType = preloadedTaskType,
-                    isLoading = false,
-                    error = null
-                )
+            launchIO {
+                val currentUser = userUseCases.getCurrentUser().first()
+                updateState {
+                    it.copy(
+                        task = preloadedTask,
+                        taskType = preloadedTaskType,
+                        currentUserId =currentUser?.id,
+                        isLoading = false,
+                        error = null
+                    )
+                }
+                updateDependentState(preloadedTask, preloadedTaskType)
+                startObservingTaskChanges()
             }
-            // Инициализируем все зависимые данные
-            updateDependentState(preloadedTask, preloadedTaskType)
-            startObservingTaskChanges()
         } else {
-            // Иначе загружаем стандартным способом
             loadTask()
         }
     }
@@ -61,22 +62,17 @@ class TaskXDetailViewModel(
     fun startActionExecution(actionId: String) {
         launchIO {
             try {
-                Timber.d("Starting action execution for actionId: $actionId")
-
                 val task = uiState.value.task ?: return@launchIO
 
-                // Проверяем, что задание в статусе "Выполняется"
                 if (task.status != TaskXStatus.IN_PROGRESS) {
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Задание не в статусе 'Выполняется'"))
                     return@launchIO
                 }
 
-                // Проверяем строгий порядок выполнения
                 val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
                 val action = task.plannedActions.find { it.id == actionId }
 
                 if (isStrictOrder && action != null) {
-                    // Если порядок строгий, проверяем, что это первое не выполненное действие
                     val firstNotCompletedAction = task.plannedActions
                         .sortedBy { it.order }
                         .firstOrNull { !it.isCompleted && !it.isSkipped }
@@ -89,8 +85,6 @@ class TaskXDetailViewModel(
 
                 val result = actionWizardController.initialize(taskId, actionId)
                 if (result.isSuccess) {
-                    Timber.d("Action wizard initialized successfully")
-                    // Обновляем состояние, чтобы показать визард
                     updateState { it.copy(showActionWizard = true) }
                 } else {
                     Timber.e("Failed to initialize action wizard: ${result.exceptionOrNull()?.message}")
@@ -105,7 +99,6 @@ class TaskXDetailViewModel(
         }
     }
 
-    // Определение следующего действия
     private fun calculateNextActionId(task: TaskX, taskType: TaskTypeX?): String? {
         val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
 
@@ -119,20 +112,16 @@ class TaskXDetailViewModel(
         }
     }
 
-    // Проверка, можно ли выполнить действие
     fun canExecuteAction(actionId: String): Boolean {
-        val task = uiState.value.task ?: return false
+        uiState.value.task ?: return false
         val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
 
-        // Для задания без строгого порядка - можно выполнять любое действие
         if (!isStrictOrder) return true
 
-        // Для задания со строгим порядком - только первое невыполненное
         val nextActionId = uiState.value.nextActionId
         return nextActionId == actionId
     }
 
-    // Попытка выполнить действие с проверкой порядка
     fun tryExecuteAction(actionId: String) {
         if (canExecuteAction(actionId)) {
             startActionExecution(actionId)
@@ -141,13 +130,11 @@ class TaskXDetailViewModel(
         }
     }
 
-    // Проверка наличия дополнительных действий
     private fun checkHasAdditionalActions(task: TaskX): Boolean {
         return !task.isVerified && isActionAvailable(AvailableTaskAction.VERIFY_TASK) ||
                 isActionAvailable(AvailableTaskAction.PRINT_TASK_LABEL)
     }
 
-    // Формирование списка действий для статуса
     private fun createStatusActions(task: TaskX, taskType: TaskTypeX?): List<StatusActionData> {
         return when (task.status) {
             TaskXStatus.TO_DO -> listOf(
@@ -188,43 +175,34 @@ class TaskXDetailViewModel(
         }
     }
 
-    // Метод для показа сообщения о необходимости соблюдения порядка выполнения
     fun showOrderRequiredMessage() {
         updateState { it.copy(showOrderRequiredMessage = true) }
         sendEvent(TaskXDetailEvent.ShowSnackbar("Необходимо выполнять действия в указанном порядке"))
     }
 
-    // Метод для скрытия сообщения о необходимости соблюдения порядка
     fun hideOrderRequiredMessage() {
         updateState { it.copy(showOrderRequiredMessage = false) }
     }
 
-    // Метод для скрытия визарда
     fun hideActionWizard() {
         updateState { it.copy(showActionWizard = false) }
-        // Отменяем визард при скрытии
         actionWizardController.cancel()
     }
 
-    // Метод для завершения визарда
     fun completeActionWizard() {
         launchIO {
             try {
                 val result = actionWizardController.complete()
                 if (result.isSuccess) {
-                    // Получаем обновленное задание из результата
                     val updatedTask = result.getOrNull()
 
                     if (updatedTask != null) {
-                        // Сразу обновляем состояние с новым заданием
                         updateState { it.copy(
                             task = updatedTask,
                             showActionWizard = false
                         ) }
-                        // Обновляем зависимые данные (nextActionId, statusActions и т.д.)
                         updateDependentState(updatedTask, uiState.value.taskType)
                     } else {
-                        // Если обновленное задание не вернулось, перезагружаем его
                         loadTask()
                         updateState { it.copy(showActionWizard = false) }
                     }
@@ -257,7 +235,6 @@ class TaskXDetailViewModel(
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
-                // Если у нас уже есть предзагруженные данные, просто используем их
                 if (preloadedTask != null && preloadedTaskType != null) {
                     updateState {
                         it.copy(
@@ -272,7 +249,6 @@ class TaskXDetailViewModel(
                     return@launchIO
                 }
 
-                // Иначе загружаем задание из репозитория
                 val task = taskXUseCases.getTaskById(taskId)
 
                 if (task != null) {
@@ -320,7 +296,6 @@ class TaskXDetailViewModel(
             updateState { it.copy(isProcessing = true) }
 
             try {
-                // Используем API через UseCase
                 val result = taskXUseCases.startTask(task.id, currentUserId)
 
                 if (result.isSuccess) {
@@ -360,11 +335,8 @@ class TaskXDetailViewModel(
             val task = currentState.task ?: return@launchIO
             val taskType = currentState.taskType ?: return@launchIO
 
-            // Проверяем, что все необходимые действия выполнены
             val allActionsCompleted = task.plannedActions.all { it.isCompleted || it.isSkipped }
 
-            // Если не все действия выполнены и не установлен флаг allowCompletionWithoutFactActions,
-            // то показываем предупреждение и не завершаем задание
             if (!allActionsCompleted && !taskType.allowCompletionWithoutFactActions) {
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Необходимо выполнить все запланированные действия"))
                 updateState { it.copy(showCompletionDialog = false) }
@@ -374,7 +346,6 @@ class TaskXDetailViewModel(
             updateState { it.copy(isProcessing = true) }
 
             try {
-                // Используем API через UseCase
                 val result = taskXUseCases.completeTask(task.id)
 
                 if (result.isSuccess) {
@@ -418,7 +389,6 @@ class TaskXDetailViewModel(
             updateState { it.copy(isProcessing = true) }
 
             try {
-                // Используем API через UseCase
                 val result = taskXUseCases.pauseTask(task.id)
 
                 if (result.isSuccess) {
@@ -460,7 +430,6 @@ class TaskXDetailViewModel(
             updateState { it.copy(isProcessing = true) }
 
             try {
-                // Используем API через UseCase для возобновления (по сути это тот же start)
                 val result = taskXUseCases.startTask(task.id, currentUserId)
 
                 if (result.isSuccess) {
@@ -529,15 +498,9 @@ class TaskXDetailViewModel(
         }
     }
 
-    /**
-     * Метод для начала наблюдения за изменениями статуса задания
-     * Автоматически обновляет зависимые данные при изменении статуса
-     */
     private fun startObservingTaskChanges() {
-        // Отменяем предыдущее наблюдение, если оно было
         taskObserverJob?.cancel()
 
-        // Запускаем новое наблюдение
         taskObserverJob = viewModelScope.launch {
             uiState
                 .map { it.task }
@@ -553,16 +516,15 @@ class TaskXDetailViewModel(
                 .collect { task ->
                     if (task != null) {
                         val taskType = uiState.value.taskType
-                        Timber.d("Задание изменилось, обновляем UI: ${task.status}, факт. действий: ${task.factActions.size}, завершено плановых: ${task.plannedActions.count { it.isCompleted }}")
+                        Timber.d("Задание изменилось, обновляем UI: ${task.status}, " +
+                                "факт. действий: ${task.factActions.size}, " +
+                                "завершено плановых: ${task.plannedActions.count { it.isCompleted }}")
                         updateDependentState(task, taskType)
                     }
                 }
         }
     }
 
-    /**
-     * Метод для остановки наблюдения
-     */
     private fun stopObservingTaskChanges() {
         taskObserverJob?.cancel()
         taskObserverJob = null
@@ -590,10 +552,6 @@ class TaskXDetailViewModel(
         updateState { it.copy(showCompletionDialog = false) }
     }
 
-    fun showVerificationDialog() {
-        updateState { it.copy(showVerificationDialog = true) }
-    }
-
     fun hideVerificationDialog() {
         updateState { it.copy(showVerificationDialog = false) }
     }
@@ -602,21 +560,10 @@ class TaskXDetailViewModel(
         return dateTime?.format(dateFormatter) ?: "Не указано"
     }
 
-    fun formatTaskStatus(status: TaskXStatus): String {
-        return when (status) {
-            TaskXStatus.TO_DO -> "К выполнению"
-            TaskXStatus.IN_PROGRESS -> "Выполняется"
-            TaskXStatus.PAUSED -> "Приостановлено"
-            TaskXStatus.COMPLETED -> "Завершено"
-            TaskXStatus.CANCELLED -> "Отменено"
-        }
-    }
-
     fun formatTaskType(taskTypeId: String): String {
         return uiState.value.taskType?.name ?: "Неизвестный тип"
     }
 
-    // Методы для переключения видов
     fun showPlannedActions() {
         updateState { it.copy(activeView = TaskXDetailView.PLANNED_ACTIONS) }
     }

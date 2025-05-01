@@ -6,7 +6,6 @@ import com.synngate.synnframe.domain.entity.taskx.TaskX
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import timber.log.Timber
 
 class TaskContextManager {
 
@@ -16,32 +15,47 @@ class TaskContextManager {
     private val _lastTaskTypeX = MutableStateFlow<TaskTypeX?>(null)
     val lastTaskTypeX: StateFlow<TaskTypeX?> = _lastTaskTypeX.asStateFlow()
 
-    // Добавляем хранение endpoint'а
     private val _currentEndpoint = MutableStateFlow<String?>(null)
     val currentEndpoint: StateFlow<String?> = _currentEndpoint.asStateFlow()
 
     fun saveStartedTask(response: TaskXStartResponseDto, endpoint: String) {
-        _lastStartedTaskX.value = response.task
+        val processedTask = processTaskActions(response.task)
+
+        _lastStartedTaskX.value = processedTask
         _lastTaskTypeX.value = response.taskType
         _currentEndpoint.value = endpoint
-        Timber.d("Saved task with endpoint: $endpoint")
     }
 
     fun updateTask(updatedTask: TaskX) {
         if (_lastStartedTaskX.value?.id == updatedTask.id) {
+            val processedTask = processTaskActions(updatedTask)
             // Используем двухэтапное обновление для гарантии оповещения подписчиков
             // Сначала устанавливаем null, чтобы форсировать обновление даже при равных ссылках
             _lastStartedTaskX.value = null
             // Затем устанавливаем новое значение
-            _lastStartedTaskX.value = updatedTask
-        } else {
-            Timber.w("Попытка обновить задание, которого нет в контексте: ${updatedTask.id}")
+            _lastStartedTaskX.value = processedTask
         }
     }
 
-    fun setEndpoint(endpoint: String) {
-        _currentEndpoint.value = endpoint
-        Timber.d("Set endpoint: $endpoint")
+    private fun processTaskActions(task: TaskX): TaskX {
+        if (task.factActions.isEmpty()) {
+            return task
+        }
+
+        val factActionsByPlannedId = task.factActions
+            .filter { it.plannedActionId != null }
+            .groupBy { it.plannedActionId!! }
+
+        val updatedPlannedActions = task.plannedActions.map { plannedAction ->
+            val hasFactAction = factActionsByPlannedId.containsKey(plannedAction.id)
+            if (hasFactAction && !plannedAction.isCompleted) {
+                plannedAction.copy(isCompleted = true)
+            } else {
+                plannedAction
+            }
+        }
+
+        return task.copy(plannedActions = updatedPlannedActions)
     }
 
     fun clearContext() {

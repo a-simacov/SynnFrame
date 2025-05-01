@@ -41,17 +41,14 @@ class TaskXRepositoryImpl(
             val result = taskXApi.startTask(id, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    // Получаем задание из контекста
                     val task = taskContextManager.lastStartedTaskX.value
                     if (task != null && task.id == id) {
-                        // Обновляем статус задания в памяти
                         val updatedTask = task.copy(
                             status = TaskXStatus.IN_PROGRESS,
                             executorId = executorId,
                             startedAt = LocalDateTime.now(),
                             lastModifiedAt = LocalDateTime.now()
                         )
-                        // Обновляем задание в контекстном менеджере
                         taskContextManager.updateTask(updatedTask)
                         Result.success(updatedTask)
                     } else {
@@ -73,15 +70,12 @@ class TaskXRepositoryImpl(
             val result = taskXApi.pauseTask(id, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    // Получаем задание из контекста
                     val task = taskContextManager.lastStartedTaskX.value
                     if (task != null && task.id == id) {
-                        // Обновляем статус задания в памяти
                         val updatedTask = task.copy(
                             status = TaskXStatus.PAUSED,
                             lastModifiedAt = LocalDateTime.now()
                         )
-                        // Обновляем задание в контекстном менеджере
                         taskContextManager.updateTask(updatedTask)
                         Result.success(updatedTask)
                     } else {
@@ -103,16 +97,13 @@ class TaskXRepositoryImpl(
             val result = taskXApi.finishTask(id, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    // Получаем задание из контекста
                     val task = taskContextManager.lastStartedTaskX.value
                     if (task != null && task.id == id) {
-                        // Обновляем статус задания в памяти
                         val updatedTask = task.copy(
                             status = TaskXStatus.COMPLETED,
                             completedAt = LocalDateTime.now(),
                             lastModifiedAt = LocalDateTime.now()
                         )
-                        // Обновляем задание в контекстном менеджере
                         taskContextManager.updateTask(updatedTask)
                         Result.success(updatedTask)
                     } else {
@@ -137,25 +128,31 @@ class TaskXRepositoryImpl(
             val result = taskXApi.addFactAction(factAction.taskId, factAction, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    // Получаем задание из контекста
                     val task = taskContextManager.lastStartedTaskX.value
                     if (task != null && task.id == factAction.taskId) {
-                        // Добавляем фактическое действие в память
                         val updatedFactActions = task.factActions.toMutableList()
                         updatedFactActions.add(factAction)
 
-                        // Обновляем запланированное действие, помечая его как выполненное
                         val updatedPlannedActions = task.plannedActions.map {
-                            if (it.id == factAction.plannedActionId) it.copy(isCompleted = true) else it
+                            if (it.id == factAction.plannedActionId) {
+                                it.copy(isCompleted = true)
+                            } else if (factAction.plannedActionId == null &&
+                                it.storageProduct?.product?.id == factAction.storageProduct?.product?.id &&
+                                it.wmsAction == factAction.wmsAction) {
+                                // Дополнительно проверяем соответствие по продукту и действию,
+                                // если plannedActionId не указан
+                                it.copy(isCompleted = true)
+                            } else {
+                                it
+                            }
                         }
 
-                        // Обновляем задание в памяти
                         val updatedTask = task.copy(
                             plannedActions = updatedPlannedActions,
                             factActions = updatedFactActions,
                             lastModifiedAt = LocalDateTime.now()
                         )
-                        // Обновляем задание в контекстном менеджере
+
                         taskContextManager.updateTask(updatedTask)
                         Result.success(updatedTask)
                     } else {
