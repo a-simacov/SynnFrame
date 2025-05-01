@@ -3,12 +3,14 @@ package com.synngate.synnframe.data.repository
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.api.TaskXApi
 import com.synngate.synnframe.domain.entity.taskx.TaskX
+import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.service.TaskContextManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import timber.log.Timber
+import java.time.LocalDateTime
 
 class TaskXRepositoryImpl(
     private val taskXApi: TaskXApi,
@@ -39,13 +41,21 @@ class TaskXRepositoryImpl(
             val result = taskXApi.startTask(id, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    val responseDto = result.data
-                    if (responseDto.success && responseDto.task != null) {
+                    // Получаем задание из контекста
+                    val task = taskContextManager.lastStartedTaskX.value
+                    if (task != null && task.id == id) {
+                        // Обновляем статус задания в памяти
+                        val updatedTask = task.copy(
+                            status = TaskXStatus.IN_PROGRESS,
+                            executorId = executorId,
+                            startedAt = LocalDateTime.now(),
+                            lastModifiedAt = LocalDateTime.now()
+                        )
                         // Обновляем задание в контекстном менеджере
-                        taskContextManager.updateTask(responseDto.task)
-                        Result.success(responseDto.task)
+                        taskContextManager.updateTask(updatedTask)
+                        Result.success(updatedTask)
                     } else {
-                        Result.failure(Exception(responseDto.message ?: "Unknown error"))
+                        Result.failure(Exception("Task not found in context"))
                     }
                 }
                 is ApiResult.Error -> {
@@ -63,13 +73,19 @@ class TaskXRepositoryImpl(
             val result = taskXApi.pauseTask(id, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    val responseDto = result.data
-                    if (responseDto.success && responseDto.task != null) {
+                    // Получаем задание из контекста
+                    val task = taskContextManager.lastStartedTaskX.value
+                    if (task != null && task.id == id) {
+                        // Обновляем статус задания в памяти
+                        val updatedTask = task.copy(
+                            status = TaskXStatus.PAUSED,
+                            lastModifiedAt = LocalDateTime.now()
+                        )
                         // Обновляем задание в контекстном менеджере
-                        taskContextManager.updateTask(responseDto.task)
-                        Result.success(responseDto.task)
+                        taskContextManager.updateTask(updatedTask)
+                        Result.success(updatedTask)
                     } else {
-                        Result.failure(Exception(responseDto.message ?: "Unknown error"))
+                        Result.failure(Exception("Task not found in context"))
                     }
                 }
                 is ApiResult.Error -> {
@@ -87,13 +103,20 @@ class TaskXRepositoryImpl(
             val result = taskXApi.finishTask(id, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    val responseDto = result.data
-                    if (responseDto.success && responseDto.task != null) {
+                    // Получаем задание из контекста
+                    val task = taskContextManager.lastStartedTaskX.value
+                    if (task != null && task.id == id) {
+                        // Обновляем статус задания в памяти
+                        val updatedTask = task.copy(
+                            status = TaskXStatus.COMPLETED,
+                            completedAt = LocalDateTime.now(),
+                            lastModifiedAt = LocalDateTime.now()
+                        )
                         // Обновляем задание в контекстном менеджере
-                        taskContextManager.updateTask(responseDto.task)
-                        Result.success(responseDto.task)
+                        taskContextManager.updateTask(updatedTask)
+                        Result.success(updatedTask)
                     } else {
-                        Result.failure(Exception(responseDto.message ?: "Unknown error"))
+                        Result.failure(Exception("Task not found in context"))
                     }
                 }
                 is ApiResult.Error -> {
@@ -114,13 +137,29 @@ class TaskXRepositoryImpl(
             val result = taskXApi.addFactAction(factAction.taskId, factAction, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    val responseDto = result.data
-                    if (responseDto.success && responseDto.task != null) {
+                    // Получаем задание из контекста
+                    val task = taskContextManager.lastStartedTaskX.value
+                    if (task != null && task.id == factAction.taskId) {
+                        // Добавляем фактическое действие в память
+                        val updatedFactActions = task.factActions.toMutableList()
+                        updatedFactActions.add(factAction)
+
+                        // Обновляем запланированное действие, помечая его как выполненное
+                        val updatedPlannedActions = task.plannedActions.map {
+                            if (it.id == factAction.plannedActionId) it.copy(isCompleted = true) else it
+                        }
+
+                        // Обновляем задание в памяти
+                        val updatedTask = task.copy(
+                            plannedActions = updatedPlannedActions,
+                            factActions = updatedFactActions,
+                            lastModifiedAt = LocalDateTime.now()
+                        )
                         // Обновляем задание в контекстном менеджере
-                        taskContextManager.updateTask(responseDto.task)
-                        Result.success(responseDto.task)
+                        taskContextManager.updateTask(updatedTask)
+                        Result.success(updatedTask)
                     } else {
-                        Result.failure(Exception(responseDto.message ?: "Unknown error"))
+                        Result.failure(Exception("Task not found in context"))
                     }
                 }
                 is ApiResult.Error -> {
