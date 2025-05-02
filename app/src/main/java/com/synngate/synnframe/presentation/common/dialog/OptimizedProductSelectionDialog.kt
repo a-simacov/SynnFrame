@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -29,11 +30,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -44,22 +44,20 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.synngate.synnframe.R
 import com.synngate.synnframe.SynnFrameApplication
 import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.scanner.ScanButton
 import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * Оптимизированный диалог выбора товара с прямым доступом к репозиторию
- * и эффективной загрузкой для больших списков
+ * Оптимизированный диалог выбора товара с использованием ViewModel для управления данными
  */
 @Composable
 fun OptimizedProductSelectionDialog(
@@ -69,83 +67,42 @@ fun OptimizedProductSelectionDialog(
     isSelectionMode: Boolean = true,
     title: String = stringResource(id = R.string.select_product),
     planProductIds: Set<String>? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Параметр для инъекции репозитория (для тестирования)
+    productRepository: ProductRepository? = null
 ) {
-    // Получаем репозиторий продуктов из контекста приложения
-    val appContext = LocalContext.current.applicationContext as? SynnFrameApplication
-    val productRepository = appContext?.appContainer?.productRepository
+    // Получаем репозиторий продуктов
+    val repo = productRepository ?: run {
+        val appContext = LocalContext.current.applicationContext as? SynnFrameApplication
+        appContext?.appContainer?.productRepository
+    }
 
-    // Если репозиторий не доступен, показываем обычный диалог
-    if (productRepository == null) {
-        ProductSelectionDialog(
-            products = emptyList(),
-            onProductSelected = onProductSelected,
-            onDismiss = onDismiss,
-            initialFilter = initialFilter,
-            isLoading = true,
-            title = title,
-            planProductIds = planProductIds
+    // Если репозиторий не доступен, показываем сообщение об ошибке
+    if (repo == null) {
+        ErrorDialog(
+            message = "Не удалось инициализировать диалог: репозиторий продуктов недоступен",
+            onDismiss = onDismiss
         )
         return
     }
 
-    // Состояния для оптимизированного диалога
-    var filter by remember { mutableStateOf(initialFilter) }
-    var isLoading by remember { mutableStateOf(false) }
-    var products by remember { mutableStateOf<List<Product>>(emptyList()) }
-    var visibleProducts by remember { mutableStateOf<List<Product>>(emptyList()) }
-    var searchJob: Job? by remember { mutableStateOf(null) }
-    var showScanner by remember { mutableStateOf(false) }
+    // Создаем ViewModel с фабрикой
+    val viewModel: ProductSelectionDialogViewModel = viewModel(
+        factory = ProductSelectionDialogViewModel.Factory(repo, planProductIds)
+    )
 
-    val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
+    // Получаем состояние UI из ViewModel
+    val uiState by viewModel.uiState.collectAsState()
+
+    // Обрабатываем входной фильтр
+    LaunchedEffect(initialFilter) {
+        if (initialFilter.isNotEmpty()) {
+            viewModel.updateSearchQuery(initialFilter)
+        }
+    }
+
+    // Запрашиваем фокус для поля поиска
     val focusRequester = remember { FocusRequester() }
-
-    // Функция для обновления отображаемых продуктов в соответствии с planProductIds
-    val updateVisibleProducts = { allProducts: List<Product>, planIds: Set<String>? ->
-        visibleProducts = if (planIds != null && planIds.isNotEmpty()) {
-            allProducts.filter { planIds.contains(it.id) }
-        } else {
-            allProducts
-        }
-    }
-
-    // Загружаем начальные данные при открытии диалога или изменении фильтра
-    LaunchedEffect(filter, planProductIds) {
-        searchJob?.cancel()
-        searchJob = coroutineScope.launch {
-            delay(300) // Небольшая задержка для предотвращения частых запросов
-
-            isLoading = true
-            try {
-                if (planProductIds != null && planProductIds.isNotEmpty()) {
-                    // Если есть запланированные товары, загружаем только их, без ограничений
-                    val planProducts = productRepository.getProductsByIds(planProductIds)
-                    products = planProducts
-                    visibleProducts = planProducts
-                } else if (filter.isNotEmpty()) {
-                    // Если нет запланированных товаров, но есть фильтр, загружаем по фильтру
-                    productRepository.getProductsByNameFilter(filter).collectLatest { filteredProducts ->
-                        products = filteredProducts
-                        visibleProducts = filteredProducts
-                        isLoading = false
-                    }
-                } else {
-                    // Если нет ни запланированных товаров, ни фильтра - показываем пустой список
-                    products = emptyList()
-                    visibleProducts = emptyList()
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Ошибка при загрузке продуктов")
-                products = emptyList()
-                visibleProducts = emptyList()
-            } finally {
-                isLoading = false
-            }
-        }
-    }
-
-    // Запрашиваем фокус при открытии диалога
     LaunchedEffect(Unit) {
         delay(100) // Небольшая задержка для правильной работы
         try {
@@ -155,56 +112,35 @@ fun OptimizedProductSelectionDialog(
         }
     }
 
+    // Корутин скоуп для обработки событий UI
+    val coroutineScope = rememberCoroutineScope()
+
     // Слушатель сканера штрихкодов
     ScannerListener(
         onBarcodeScanned = { barcode ->
-            coroutineScope.launch {
-                try {
-                    val product = productRepository.findProductByBarcode(barcode)
-                    if (product != null) {
-                        // Проверка, что товар входит в планируемые, если они заданы
-                        if (planProductIds == null || planProductIds.isEmpty() || planProductIds.contains(product.id)) {
-                            onProductSelected(product)
-                            onDismiss()
-                        } else {
-                            Timber.w("Отсканированный товар ${product.id} не входит в планируемые")
-                        }
-                    } else {
-                        Timber.w("Продукт со штрихкодом $barcode не найден")
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "Ошибка при поиске продукта по штрихкоду: $barcode")
+            viewModel.findProductByBarcode(barcode) { product ->
+                if (product != null) {
+                    onProductSelected(product)
+                    onDismiss()
                 }
             }
         }
     )
 
     // Показываем диалог сканера, если он активирован
-    if (showScanner) {
+    if (uiState.showScanner) {
         UniversalScannerDialog(
             onBarcodeScanned = { barcode ->
-                coroutineScope.launch {
-                    try {
-                        val product = productRepository.findProductByBarcode(barcode)
-                        if (product != null) {
-                            // Проверка, что товар входит в планируемые, если они заданы
-                            if (planProductIds == null || planProductIds.isEmpty() || planProductIds.contains(product.id)) {
-                                onProductSelected(product)
-                                onDismiss()
-                            } else {
-                                Timber.w("Отсканированный товар ${product.id} не входит в планируемые")
-                            }
-                        } else {
-                            Timber.w("Продукт со штрихкодом $barcode не найден")
-                        }
-                    } catch (e: Exception) {
-                        Timber.e(e, "Ошибка при поиске продукта по штрихкоду: $barcode")
+                viewModel.findProductByBarcode(barcode) { product ->
+                    if (product != null) {
+                        onProductSelected(product)
+                        onDismiss()
                     }
                 }
-                showScanner = false
+                viewModel.setShowScanner(false)
             },
             onClose = {
-                showScanner = false
+                viewModel.setShowScanner(false)
             },
             instructionText = stringResource(id = R.string.scan_product)
         )
@@ -231,50 +167,29 @@ fun OptimizedProductSelectionDialog(
                     .padding(16.dp)
             ) {
                 // Заголовок диалога
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    ScanButton(
-                        onClick = { showScanner = true }
-                    )
-
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = stringResource(id = R.string.close)
-                        )
-                    }
-                }
+                DialogHeader(
+                    title = title,
+                    onScanClick = { viewModel.setShowScanner(true) },
+                    onClose = onDismiss
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Поле поиска по имени, артикулу или штрихкоду
+                // Поле поиска
                 SearchTextField(
-                    value = filter,
-                    onValueChange = { newValue -> filter = newValue },
+                    value = uiState.searchQuery,
+                    onValueChange = { viewModel.updateSearchQuery(it) },
                     label = stringResource(id = R.string.search_by_name_article_barcode),
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester),
                     placeholder = stringResource(id = R.string.search_product_hint),
                     onSearch = {
-                        if (filter.isNotEmpty()) {
-                            coroutineScope.launch {
-                                try {
-                                    val exactProduct = productRepository.findProductByBarcode(filter)
-                                    if (exactProduct != null && (planProductIds == null || planProductIds.isEmpty() || planProductIds.contains(exactProduct.id))) {
-                                        onProductSelected(exactProduct)
-                                        onDismiss()
-                                    }
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Ошибка при поиске продукта: $filter")
+                        if (uiState.searchQuery.isNotEmpty()) {
+                            viewModel.findProductByBarcode(uiState.searchQuery) { product ->
+                                if (product != null) {
+                                    onProductSelected(product)
+                                    onDismiss()
                                 }
                             }
                         }
@@ -283,67 +198,15 @@ fun OptimizedProductSelectionDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Отображение статуса или подсказки
-                when {
-                    isLoading -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                    visibleProducts.isEmpty() && filter.isEmpty() && (planProductIds == null || planProductIds.isEmpty()) -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "Поиск",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    visibleProducts.isEmpty() -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(id = R.string.no_products_found),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    else -> {
-                        // Список товаров
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            state = listState,
-                            contentPadding = PaddingValues(vertical = 4.dp)
-                        ) {
-                            items(
-                                items = visibleProducts,
-                                key = { it.id }
-                            ) { product ->
-                                OptimizedProductItem(
-                                    product = product,
-                                    onClick = { onProductSelected(product) }
-                                )
-                            }
-                        }
-                    }
-                }
+                // Основное содержимое диалога
+                DialogContent(
+                    uiState = uiState,
+                    onProductClick = { product ->
+                        onProductSelected(product)
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f)
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -361,13 +224,130 @@ fun OptimizedProductSelectionDialog(
     // Очистка ресурсов при закрытии диалога
     DisposableEffect(Unit) {
         onDispose {
-            searchJob?.cancel()
+            // В будущем здесь могут быть дополнительные действия по очистке ресурсов
         }
     }
 }
 
 @Composable
-private fun OptimizedProductItem(
+private fun DialogHeader(
+    title: String,
+    onScanClick: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.weight(1f)
+        )
+
+        ScanButton(
+            onClick = onScanClick
+        )
+
+        IconButton(onClick = onClose) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = stringResource(id = R.string.close)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DialogContent(
+    uiState: ProductSelectionUiState,
+    onProductClick: (Product) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier.fillMaxWidth()) {
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+            uiState.error != null -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = uiState.error,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+            uiState.products.isEmpty() && uiState.searchQuery.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Введите текст для поиска",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            uiState.products.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.no_products_found),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            else -> {
+                ProductsList(
+                    products = uiState.products,
+                    onProductClick = onProductClick
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProductsList(
+    products: List<Product>,
+    onProductClick: (Product) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val listState = rememberLazyListState()
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        state = listState,
+        contentPadding = PaddingValues(vertical = 4.dp)
+    ) {
+        items(
+            items = products,
+            key = { it.id }
+        ) { product ->
+            ProductItem(
+                product = product,
+                onClick = { onProductClick(product) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProductItem(
     product: Product,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -407,43 +387,33 @@ private fun OptimizedProductItem(
             )
         }
 
-        // Отображаем штрихкоды и единицы измерения
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Отображаем основной штрихкод, если есть
-            val mainUnit = product.getMainUnit()
-            if (mainUnit != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+        // Отображаем основную единицу измерения и штрихкод
+        product.getMainUnit()?.let { mainUnit ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(id = R.string.unit_fmt, mainUnit.name),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
-                ) {
-                    // Отображаем единицу измерения
-                    Text(
-                        text = stringResource(id = R.string.unit_fmt, mainUnit.name),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                )
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Отображаем основной штрихкод
-                    if (mainUnit.mainBarcode.isNotEmpty()) {
-                        Card(
-                            shape = MaterialTheme.shapes.small,
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            )
-                        ) {
-                            Text(
-                                text = mainUnit.mainBarcode,
-                                style = MaterialTheme.typography.labelMedium,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
+                if (mainUnit.mainBarcode.isNotEmpty()) {
+                    Card(
+                        shape = MaterialTheme.shapes.small,
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Text(
+                            text = mainUnit.mainBarcode,
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
                     }
                 }
             }
@@ -453,4 +423,16 @@ private fun OptimizedProductItem(
             modifier = Modifier.padding(top = 8.dp)
         )
     }
+}
+
+@Composable
+private fun ErrorDialog(
+    message: String,
+    onDismiss: () -> Unit
+) {
+    CustomAlertDialog(
+        title = "Ошибка",
+        text = message,
+        onDismiss = onDismiss
+    )
 }
