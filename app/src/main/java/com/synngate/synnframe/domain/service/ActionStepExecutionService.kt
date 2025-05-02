@@ -87,10 +87,17 @@ class ActionStepExecutionService(
         // Добавляем данные задания
         task?.let {
             // Если шаг для выбора товара, добавляем список товаров из плана
-            if (step.objectType == ActionObjectType.CLASSIFIER_PRODUCT ||
-                step.objectType == ActionObjectType.TASK_PRODUCT) {
+            if (step.objectType == ActionObjectType.TASK_PRODUCT) {
                 val planProducts = task.plannedActions
                     .mapNotNull { it.storageProduct }
+                    .toList()
+
+                context["planItems"] = planProducts
+            }
+
+            if (step.objectType == ActionObjectType.CLASSIFIER_PRODUCT) {
+                val planProducts = task.plannedActions
+                    .mapNotNull { it.storageProduct?.product }
                     .toList()
 
                 context["planItems"] = planProducts

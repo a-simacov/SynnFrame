@@ -85,9 +85,14 @@ class ProductSelectionStepFactory(
         // Получаем запланированный продукт из действия
         val plannedProduct = action.storageProduct?.product
 
-        // Список запланированных продуктов для отображения
+        // Список запланированных продуктов для отображения и фильтрации
         val planProducts = remember(action) {
             listOfNotNull(action.storageProduct)
+        }
+
+        // Создаем набор ID запланированных продуктов для передачи в диалог
+        val planProductIds = remember(planProducts) {
+            planProducts.mapNotNull { it.product.id }.toSet()
         }
 
         // Получаем уже выбранный продукт из контекста, если есть
@@ -128,8 +133,14 @@ class ProductSelectionStepFactory(
                         action = action,
                         onProductFound = { product ->
                             if (product != null) {
-                                Timber.d("Продукт найден: ${product.name}")
-                                context.onComplete(createResultFromProduct(product))
+                                // Проверяем, входит ли продукт в запланированные, если они есть
+                                if (planProductIds.isEmpty() || planProductIds.contains(product.id)) {
+                                    Timber.d("Продукт найден: ${product.name}")
+                                    context.onComplete(createResultFromProduct(product))
+                                } else {
+                                    Timber.w("Продукт не входит в план: ${product.name}")
+                                    showError("Продукт не соответствует плану")
+                                }
                             } else {
                                 Timber.w("Продукт не найден: $barcode")
                                 showError("Продукт со штрихкодом '$barcode' не найден")
@@ -157,8 +168,15 @@ class ProductSelectionStepFactory(
                         action = action,
                         onProductFound = { product ->
                             if (product != null) {
-                                Timber.d("Продукт найден: ${product.name}")
-                                context.onComplete(createResultFromProduct(product))
+                                // Проверяем, входит ли продукт в запланированные, если они есть
+                                if (planProductIds.isEmpty() || planProductIds.contains(product.id)) {
+                                    Timber.d("Продукт найден: ${product.name}")
+                                    context.onComplete(createResultFromProduct(product))
+                                } else {
+                                    Timber.w("Продукт не входит в план: ${product.name}")
+                                    showError("Продукт не соответствует плану")
+                                    setProcessingState(false) // Сбрасываем состояние обработки
+                                }
                             } else {
                                 Timber.w("Продукт не найден: $barcode")
                                 showError("Продукт со штрихкодом '$barcode' не найден")
@@ -211,9 +229,10 @@ class ProductSelectionStepFactory(
                 onDismiss = {
                     showProductSelectionDialog = false
                 },
-                initialFilter = "",
+                initialFilter = "", // Начинаем с пустым фильтром
                 title = "Выберите товар",
-                planProductIds = planProducts.mapNotNull { it.product.id }.toSet()
+                // Передаем ID запланированных продуктов для фильтрации в диалоге
+                planProductIds = if (planProductIds.isNotEmpty()) planProductIds else null
             )
         }
 

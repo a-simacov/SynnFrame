@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,7 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,7 +47,6 @@ import androidx.compose.ui.window.DialogProperties
 import com.synngate.synnframe.R
 import com.synngate.synnframe.SynnFrameApplication
 import com.synngate.synnframe.domain.entity.Product
-import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.scanner.ScanButton
 import com.synngate.synnframe.presentation.common.scanner.ScannerListener
@@ -62,7 +59,7 @@ import timber.log.Timber
 
 /**
  * Оптимизированный диалог выбора товара с прямым доступом к репозиторию
- * и эффективной пагинацией для больших списков
+ * и эффективной загрузкой для больших списков
  */
 @Composable
 fun OptimizedProductSelectionDialog(
@@ -97,21 +94,12 @@ fun OptimizedProductSelectionDialog(
     var isLoading by remember { mutableStateOf(false) }
     var products by remember { mutableStateOf<List<Product>>(emptyList()) }
     var visibleProducts by remember { mutableStateOf<List<Product>>(emptyList()) }
-    var hasMoreData by remember { mutableStateOf(true) }
     var searchJob: Job? by remember { mutableStateOf(null) }
     var showScanner by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
-
-    // Определяем, находимся ли мы в конце списка
-    val endOfListReached by remember {
-        derivedStateOf {
-            listState.layoutInfo.visibleItemsInfo.isNotEmpty() &&
-                    listState.layoutInfo.visibleItemsInfo.last().index >= products.size - 5
-        }
-    }
 
     // Функция для обновления отображаемых продуктов в соответствии с planProductIds
     val updateVisibleProducts = { allProducts: List<Product>, planIds: Set<String>? ->
@@ -122,45 +110,36 @@ fun OptimizedProductSelectionDialog(
         }
     }
 
-    // Загружаем больше продуктов при достижении конца списка
-    LaunchedEffect(endOfListReached) {
-        if (endOfListReached && hasMoreData && !isLoading && products.isNotEmpty()) {
-            loadMoreProducts(
-                productRepository,
-                filter,
-                products,
-                onDataLoaded = { newData, hasMore ->
-                    products = newData
-                    updateVisibleProducts(newData, planProductIds)
-                    hasMoreData = hasMore
-                    isLoading = false
-                },
-                onLoading = { isLoading = it }
-            )
-        }
-    }
-
     // Загружаем начальные данные при открытии диалога или изменении фильтра
-    LaunchedEffect(filter) {
+    LaunchedEffect(filter, planProductIds) {
         searchJob?.cancel()
         searchJob = coroutineScope.launch {
             delay(300) // Небольшая задержка для предотвращения частых запросов
 
             isLoading = true
             try {
-                // Загружаем первую страницу данных
-                initialLoadProducts(
-                    productRepository,
-                    filter,
-                    onDataLoaded = { initialData, hasMore ->
-                        products = initialData
-                        updateVisibleProducts(initialData, planProductIds)
-                        hasMoreData = hasMore
+                if (planProductIds != null && planProductIds.isNotEmpty()) {
+                    // Если есть запланированные товары, загружаем только их, без ограничений
+                    val planProducts = productRepository.getProductsByIds(planProductIds)
+                    products = planProducts
+                    visibleProducts = planProducts
+                } else if (filter.isNotEmpty()) {
+                    // Если нет запланированных товаров, но есть фильтр, загружаем по фильтру
+                    productRepository.getProductsByNameFilter(filter).collectLatest { filteredProducts ->
+                        products = filteredProducts
+                        visibleProducts = filteredProducts
                         isLoading = false
                     }
-                )
+                } else {
+                    // Если нет ни запланированных товаров, ни фильтра - показываем пустой список
+                    products = emptyList()
+                    visibleProducts = emptyList()
+                }
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при загрузке продуктов")
+                products = emptyList()
+                visibleProducts = emptyList()
+            } finally {
                 isLoading = false
             }
         }
@@ -183,8 +162,13 @@ fun OptimizedProductSelectionDialog(
                 try {
                     val product = productRepository.findProductByBarcode(barcode)
                     if (product != null) {
-                        onProductSelected(product)
-                        onDismiss()
+                        // Проверка, что товар входит в планируемые, если они заданы
+                        if (planProductIds == null || planProductIds.isEmpty() || planProductIds.contains(product.id)) {
+                            onProductSelected(product)
+                            onDismiss()
+                        } else {
+                            Timber.w("Отсканированный товар ${product.id} не входит в планируемые")
+                        }
                     } else {
                         Timber.w("Продукт со штрихкодом $barcode не найден")
                     }
@@ -203,8 +187,13 @@ fun OptimizedProductSelectionDialog(
                     try {
                         val product = productRepository.findProductByBarcode(barcode)
                         if (product != null) {
-                            onProductSelected(product)
-                            onDismiss()
+                            // Проверка, что товар входит в планируемые, если они заданы
+                            if (planProductIds == null || planProductIds.isEmpty() || planProductIds.contains(product.id)) {
+                                onProductSelected(product)
+                                onDismiss()
+                            } else {
+                                Timber.w("Отсканированный товар ${product.id} не входит в планируемые")
+                            }
                         } else {
                             Timber.w("Продукт со штрихкодом $barcode не найден")
                         }
@@ -280,7 +269,7 @@ fun OptimizedProductSelectionDialog(
                             coroutineScope.launch {
                                 try {
                                     val exactProduct = productRepository.findProductByBarcode(filter)
-                                    if (exactProduct != null) {
+                                    if (exactProduct != null && (planProductIds == null || planProductIds.isEmpty() || planProductIds.contains(exactProduct.id))) {
                                         onProductSelected(exactProduct)
                                         onDismiss()
                                     }
@@ -294,60 +283,63 @@ fun OptimizedProductSelectionDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Список товаров
-                if (isLoading && products.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+                // Отображение статуса или подсказки
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
-                } else if (visibleProducts.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(id = R.string.no_products_found),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        state = listState,
-                        contentPadding = PaddingValues(vertical = 4.dp)
-                    ) {
-                        items(
-                            items = visibleProducts,
-                            key = { it.id }
-                        ) { product ->
-                            OptimizedProductItem(
-                                product = product,
-                                onClick = { onProductSelected(product) }
+                    visibleProducts.isEmpty() && filter.isEmpty() && (planProductIds == null || planProductIds.isEmpty()) -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Поиск",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-
-                        if (isLoading && products.isNotEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        strokeWidth = 2.dp
-                                    )
-                                }
+                    }
+                    visibleProducts.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.no_products_found),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    else -> {
+                        // Список товаров
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            state = listState,
+                            contentPadding = PaddingValues(vertical = 4.dp)
+                        ) {
+                            items(
+                                items = visibleProducts,
+                                key = { it.id }
+                            ) { product ->
+                                OptimizedProductItem(
+                                    product = product,
+                                    onClick = { onProductSelected(product) }
+                                )
                             }
                         }
                     }
@@ -460,96 +452,5 @@ private fun OptimizedProductItem(
         HorizontalDivider(
             modifier = Modifier.padding(top = 8.dp)
         )
-    }
-}
-
-/**
- * Асинхронная загрузка начальных данных из репозитория
- */
-private suspend fun initialLoadProducts(
-    repository: ProductRepository,
-    filter: String,
-    onDataLoaded: (List<Product>, Boolean) -> Unit,
-    pageSize: Int = 20
-) {
-    try {
-        val result = if (filter.isEmpty()) {
-            repository.getProducts().collectLatest { products ->
-                val firstPage = products.take(pageSize)
-                val hasMore = products.size > pageSize
-                onDataLoaded(firstPage, hasMore)
-            }
-        } else {
-            repository.getProductsByNameFilter(filter).collectLatest { products ->
-                val firstPage = products.take(pageSize)
-                val hasMore = products.size > pageSize
-                onDataLoaded(firstPage, hasMore)
-            }
-        }
-    } catch (e: Exception) {
-        Timber.e(e, "Ошибка при загрузке продуктов")
-        onDataLoaded(emptyList(), false)
-    }
-}
-
-/**
- * Асинхронная загрузка дополнительных данных из репозитория
- */
-private suspend fun loadMoreProducts(
-    repository: ProductRepository,
-    filter: String,
-    currentProducts: List<Product>,
-    onDataLoaded: (List<Product>, Boolean) -> Unit,
-    onLoading: (Boolean) -> Unit,
-    pageSize: Int = 20
-) {
-    onLoading(true)
-    try {
-        val lastId = currentProducts.lastOrNull()?.id
-        if (lastId == null) {
-            onLoading(false)
-            return
-        }
-
-        val result = if (filter.isEmpty()) {
-            repository.getProducts().collectLatest { allProducts ->
-                // Находим индекс последнего загруженного продукта
-                val lastIndex = allProducts.indexOfFirst { it.id == lastId }
-                if (lastIndex >= 0 && lastIndex < allProducts.size - 1) {
-                    // Берем следующую страницу после последнего известного ID
-                    val nextProducts = allProducts.subList(lastIndex + 1,
-                        minOf(lastIndex + 1 + pageSize, allProducts.size))
-
-                    val updatedList = currentProducts + nextProducts
-                    val hasMore = lastIndex + 1 + pageSize < allProducts.size
-
-                    onDataLoaded(updatedList, hasMore)
-                } else {
-                    onDataLoaded(currentProducts, false)
-                }
-            }
-        } else {
-            repository.getProductsByNameFilter(filter).collectLatest { filteredProducts ->
-                // Находим индекс последнего загруженного продукта
-                val lastIndex = filteredProducts.indexOfFirst { it.id == lastId }
-                if (lastIndex >= 0 && lastIndex < filteredProducts.size - 1) {
-                    // Берем следующую страницу после последнего известного ID
-                    val nextProducts = filteredProducts.subList(lastIndex + 1,
-                        minOf(lastIndex + 1 + pageSize, filteredProducts.size))
-
-                    val updatedList = currentProducts + nextProducts
-                    val hasMore = lastIndex + 1 + pageSize < filteredProducts.size
-
-                    onDataLoaded(updatedList, hasMore)
-                } else {
-                    onDataLoaded(currentProducts, false)
-                }
-            }
-        }
-    } catch (e: Exception) {
-        Timber.e(e, "Ошибка при загрузке продуктов")
-        onDataLoaded(currentProducts, false)
-    } finally {
-        onLoading(false)
     }
 }
