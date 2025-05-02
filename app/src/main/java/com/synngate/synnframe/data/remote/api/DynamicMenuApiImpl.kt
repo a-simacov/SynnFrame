@@ -4,6 +4,7 @@ import com.synngate.synnframe.data.remote.dto.ApiErrorItem
 import com.synngate.synnframe.data.remote.dto.TaskStartRequestDto
 import com.synngate.synnframe.data.remote.dto.TaskXStartResponseDto
 import com.synngate.synnframe.data.remote.service.ServerProvider
+import com.synngate.synnframe.domain.entity.Server
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
@@ -22,6 +23,8 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 
@@ -42,189 +45,170 @@ class DynamicMenuApiImpl(
         DELETE
     }
 
-    override suspend fun getDynamicMenu(menuItemId: String?): ApiResult<List<DynamicMenuItem>> {
-        val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
-            HttpStatusCode.InternalServerError.value,
-            "No active server configured"
-        )
+    /**
+     * Выполняет API-запрос с обработкой ошибок и типизированным ответом
+     * @param endpoint Строка эндпоинта (может начинаться с HTTP-метода)
+     * @param params Параметры запроса
+     * @param methodOverride Принудительно заданный метод (перекрывает метод из endpoint)
+     * @param body Тело запроса (используется вместо params для не-GET запросов)
+     */
+    private suspend inline fun <reified T> executeApiRequest(
+        endpoint: String,
+        params: Map<String, String> = emptyMap(),
+        methodOverride: HttpMethod? = null,
+        body: Any? = null
+    ): ApiResult<T> = withContext(Dispatchers.IO) {
+        try {
+            // Получаем данные сервера
+            val server = serverProvider.getActiveServer() ?:
+            return@withContext createApiError<T>("No active server configured")
 
-        return try {
-            val url = if (menuItemId == null) {
-                "${server.apiUrl}/menu"
-            } else {
-                "${server.apiUrl}/menu/$menuItemId"
-            }
+            // Разбираем endpoint и определяем метод
+            val (method, path) = parseEndpoint(endpoint)
+            val actualMethod = methodOverride ?: method
 
-            val response = client.get(url) {
-                header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
-                header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
-            }
+            Timber.d("Executing $actualMethod request to $path")
 
-            if (response.status.isSuccess()) {
-                try {
-                    val menuItems = response.body<List<DynamicMenuItem>>()
-                    ApiResult.Success(menuItems)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error parsing dynamic menu JSON: ${e.message}")
-                    ApiResult.Error(
-                        HttpStatusCode.InternalServerError.value,
-                        "Error parsing dynamic menu: ${e.message}"
-                    )
-                }
-            } else {
-                createErrorResult(response)
-            }
+            // Строим URL с параметрами
+            val url = buildUrl(server, path, params, actualMethod)
+
+            // Получаем данные аутентификации
+            val userId = serverProvider.getCurrentUserId() ?: ""
+            val authHeader = buildAuthHeader(server)
+
+            // Выполняем запрос с соответствующим методом
+            val response = executeHttpRequest(actualMethod, url, authHeader, userId, body, params)
+
+            // Обрабатываем ответ
+            processResponse<T>(response)
         } catch (e: Exception) {
-            Timber.e(e, "Error getting dynamic menu from server")
-            ApiResult.Error(
-                HttpStatusCode.InternalServerError.value,
-                e.message ?: "Failed to fetch dynamic menu"
-            )
+            Timber.e(e, "Error executing request to $endpoint: ${e.message}")
+            createApiError("Network error: ${e.message}")
         }
+    }
+
+    /**
+     * Строит URL с учетом метода и параметров
+     */
+    private fun buildUrl(
+        server: Server,
+        path: String,
+        params: Map<String, String>,
+        method: HttpMethod
+    ): String {
+        val baseUrl = "${server.apiUrl}${path}"
+
+        // Добавляем параметры к URL только для GET-запросов
+        return if (params.isNotEmpty() && method == HttpMethod.GET) {
+            val queryParams = params.entries.joinToString("&") { "${it.key}=${it.value}" }
+            "$baseUrl?$queryParams"
+        } else {
+            baseUrl
+        }
+    }
+
+    /**
+     * Создает заголовок авторизации
+     */
+    private fun buildAuthHeader(server: Server): String {
+        return "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}"
+    }
+
+    /**
+     * Выполняет HTTP-запрос с соответствующим методом
+     */
+    private suspend fun executeHttpRequest(
+        method: HttpMethod,
+        url: String,
+        authHeader: String,
+        userId: String,
+        body: Any?,
+        params: Map<String, String>
+    ): HttpResponse {
+        return when (method) {
+            HttpMethod.GET -> client.get(url) {
+                header("Authorization", authHeader)
+                header("User-Auth-Id", userId)
+            }
+            HttpMethod.POST -> client.post(url) {
+                header("Authorization", authHeader)
+                header("User-Auth-Id", userId)
+                contentType(ContentType.Application.Json)
+                if (body != null) setBody(body) else if (params.isNotEmpty()) setBody(params)
+            }
+            HttpMethod.PUT -> client.put(url) {
+                header("Authorization", authHeader)
+                header("User-Auth-Id", userId)
+                contentType(ContentType.Application.Json)
+                if (body != null) setBody(body) else if (params.isNotEmpty()) setBody(params)
+            }
+            HttpMethod.DELETE -> client.delete(url) {
+                header("Authorization", authHeader)
+                header("User-Auth-Id", userId)
+            }
+        }
+    }
+
+    /**
+     * Обрабатывает HTTP-ответ и преобразует его в типизированный результат
+     */
+    private suspend inline fun <reified T> processResponse(response: HttpResponse): ApiResult<T> {
+        return if (response.status.isSuccess()) {
+            try {
+                val result = response.body<T>()
+                ApiResult.Success(result)
+            } catch (e: Exception) {
+                Timber.e(e, "Error parsing response: ${e.message}")
+                createApiError("Error parsing response: ${e.message}")
+            }
+        } else {
+            createErrorResult(response)
+        }
+    }
+
+    /**
+     * Создает типизированный результат ошибки
+     */
+    private inline fun <reified T> createApiError(
+        message: String,
+        code: Int = HttpStatusCode.InternalServerError.value
+    ): ApiResult<T> {
+        return ApiResult.Error(code, message)
+    }
+
+    override suspend fun getDynamicMenu(menuItemId: String?): ApiResult<List<DynamicMenuItem>> {
+        // Формируем endpoint в зависимости от наличия menuItemId
+        val endpoint = if (menuItemId == null) "/menu" else "/menu/$menuItemId"
+
+        return executeApiRequest(endpoint)
     }
 
     override suspend fun getDynamicTasks(
         endpoint: String,
         params: Map<String, String>
     ): ApiResult<List<DynamicTask>> {
-        val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
-            HttpStatusCode.InternalServerError.value,
-            "No active server configured"
-        )
-
-        val (httpMethod, path) = parseEndpoint(endpoint)
-
-        Timber.d("Executing $httpMethod request to $path")
-
-        val baseUrl = "${server.apiUrl}${path}"
-        val url = if (params.isNotEmpty() && httpMethod == HttpMethod.GET) {
-            val queryParams = params.entries.joinToString("&") { "${it.key}=${it.value}" }
-            "$baseUrl?$queryParams"
-        } else {
-            baseUrl
-        }
-
-        val userId = serverProvider.getCurrentUserId() ?: ""
-        val authHeader = "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}"
-
-        return try {
-            val response = when (httpMethod) {
-                HttpMethod.GET -> client.get(url) {
-                    header("Authorization", authHeader)
-                    header("User-Auth-Id", userId)
-                }
-                HttpMethod.POST -> client.post(url) {
-                    header("Authorization", authHeader)
-                    header("User-Auth-Id", userId)
-                    contentType(ContentType.Application.Json)
-                    if (params.isNotEmpty()) {
-                        setBody(params)
-                    }
-                }
-                HttpMethod.PUT -> client.put(url) {
-                    header("Authorization", authHeader)
-                    header("User-Auth-Id", userId)
-                    contentType(ContentType.Application.Json)
-                    if (params.isNotEmpty()) {
-                        setBody(params)
-                    }
-                }
-                HttpMethod.DELETE -> client.delete(url) {
-                    header("Authorization", authHeader)
-                    header("User-Auth-Id", userId)
-                }
-            }
-
-            if (response.status.isSuccess()) {
-                try {
-                    val tasks = response.body<List<DynamicTask>>()
-                    ApiResult.Success(tasks)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error parsing tasks response: ${e.message}")
-                    ApiResult.Error(
-                        HttpStatusCode.InternalServerError.value,
-                        "Error parsing tasks: ${e.message}"
-                    )
-                }
-            } else {
-                createErrorResult(response)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error executing $httpMethod tasks request")
-            ApiResult.Error(
-                HttpStatusCode.InternalServerError.value,
-                e.message ?: "Tasks request execution failed"
-            )
-        }
+        return executeApiRequest(endpoint, params)
     }
 
-    override suspend fun searchDynamicTask(endpoint: String, searchValue: String): ApiResult<DynamicTask> {
-        val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
-            HttpStatusCode.InternalServerError.value,
-            "No active server configured"
+    override suspend fun searchDynamicTask(
+        endpoint: String,
+        searchValue: String
+    ): ApiResult<DynamicTask> {
+        // Выполняем запрос, ожидая получить список задач
+        val result = executeApiRequest<List<DynamicTask>>(
+            endpoint,
+            params = mapOf("value" to searchValue)
         )
 
-        val (httpMethod, path) = parseEndpoint(endpoint)
-
-        Timber.d("Executing $httpMethod search request to $path with value: $searchValue")
-
-        val baseUrl = "${server.apiUrl}${path}"
-        val url = if (httpMethod == HttpMethod.GET) {
-            "$baseUrl?value=$searchValue"
-        } else {
-            baseUrl
-        }
-
-        val userId = serverProvider.getCurrentUserId() ?: ""
-        val authHeader = "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}"
-
-        return try {
-            val response = when (httpMethod) {
-                HttpMethod.GET -> client.get(url) {
-                    header("Authorization", authHeader)
-                    header("User-Auth-Id", userId)
-                }
-                HttpMethod.POST -> client.post(url) {
-                    header("Authorization", authHeader)
-                    header("User-Auth-Id", userId)
-                    contentType(ContentType.Application.Json)
-                    setBody(mapOf("value" to searchValue))
-                }
-                HttpMethod.PUT -> client.put(url) {
-                    header("Authorization", authHeader)
-                    header("User-Auth-Id", userId)
-                    contentType(ContentType.Application.Json)
-                    setBody(mapOf("value" to searchValue))
-                }
-                HttpMethod.DELETE -> client.delete(url) {
-                    header("Authorization", authHeader)
-                    header("User-Auth-Id", userId)
+        return when (result) {
+            is ApiResult.Success -> {
+                if (result.data.isNotEmpty()) {
+                    ApiResult.Success(result.data.first())
+                } else {
+                    ApiResult.Error(HttpStatusCode.NotFound.value, "Task not found")
                 }
             }
-
-            if (response.status.isSuccess()) {
-                try {
-                    val tasks = response.body<List<DynamicTask>>()
-                    if (tasks.isNotEmpty())
-                        ApiResult.Success(tasks[0])
-                    else
-                        ApiResult.Error(HttpStatusCode.NotFound.value, "Not found tasks")
-                } catch (e: Exception) {
-                    Timber.e(e, "Error parsing task search response: ${e.message}")
-                    ApiResult.Error(
-                        HttpStatusCode.InternalServerError.value,
-                        "Error parsing task search result: ${e.message}"
-                    )
-                }
-            } else {
-                createErrorResult(response)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error searching task with $httpMethod request")
-            ApiResult.Error(
-                HttpStatusCode.InternalServerError.value,
-                e.message ?: "Task search failed"
-            )
+            is ApiResult.Error -> result
         }
     }
 
@@ -232,171 +216,40 @@ class DynamicMenuApiImpl(
         endpoint: String,
         params: Map<String, String>
     ): ApiResult<List<DynamicProduct>> {
-        val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
-            HttpStatusCode.InternalServerError.value,
-            "No active server configured"
-        )
-
-        val (httpMethod, path) = parseEndpoint(endpoint)
-
-        Timber.d("Executing $httpMethod request to $path")
-
-        val baseUrl = "${server.apiUrl}${path}"
-        val url = if (params.isNotEmpty() && httpMethod == HttpMethod.GET) {
-            val queryParams = params.entries.joinToString("&") { "${it.key}=${it.value}" }
-            "$baseUrl?$queryParams"
-        } else {
-            baseUrl
-        }
-
-        val userId = serverProvider.getCurrentUserId() ?: ""
-        val authHeader = "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}"
-
-        return try {
-            val response = when (httpMethod) {
-                HttpMethod.GET -> client.get(url) {
-                    header("Authorization", authHeader)
-                    header("User-Auth-Id", userId)
-                }
-                HttpMethod.POST -> client.post(url) {
-                    header("Authorization", authHeader)
-                    header("User-Auth-Id", userId)
-                    contentType(ContentType.Application.Json)
-                    if (params.isNotEmpty()) {
-                        setBody(params)
-                    }
-                }
-                HttpMethod.PUT -> client.put(url) {
-                    header("Authorization", authHeader)
-                    header("User-Auth-Id", userId)
-                    contentType(ContentType.Application.Json)
-                    if (params.isNotEmpty()) {
-                        setBody(params)
-                    }
-                }
-                HttpMethod.DELETE -> client.delete(url) {
-                    header("Authorization", authHeader)
-                    header("User-Auth-Id", userId)
-                }
-            }
-
-            if (response.status.isSuccess()) {
-                try {
-                    val products = response.body<List<DynamicProduct>>()
-                    ApiResult.Success(products)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error parsing products response: ${e.message}")
-                    ApiResult.Error(
-                        HttpStatusCode.InternalServerError.value,
-                        "Error parsing products: ${e.message}"
-                    )
-                }
-            } else {
-                createErrorResult(response)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error executing $httpMethod products request")
-            ApiResult.Error(
-                HttpStatusCode.InternalServerError.value,
-                e.message ?: "Products request execution failed"
-            )
-        }
+        return executeApiRequest(endpoint, params)
     }
 
-    override suspend fun startDynamicTask(endpoint: String, taskId: String): ApiResult<TaskXStartResponseDto> {
-        val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
-            HttpStatusCode.InternalServerError.value,
-            "No active server configured"
+    override suspend fun startDynamicTask(
+        endpoint: String,
+        taskId: String
+    ): ApiResult<TaskXStartResponseDto> {
+        // Создаем тело запроса
+        val requestBody = TaskStartRequestDto(taskId = taskId, start = true)
+
+        return executeApiRequest(
+            endpoint = endpoint,
+            methodOverride = HttpMethod.POST,
+            body = requestBody
         )
-
-        val (httpMethod, path) = parseEndpoint(endpoint)
-        val baseUrl = "${server.apiUrl}${path}"
-
-        val userId = serverProvider.getCurrentUserId() ?: ""
-        val authHeader = "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}"
-
-        return try {
-            val response = client.post(baseUrl) {
-                header("Authorization", authHeader)
-                header("User-Auth-Id", userId)
-                contentType(ContentType.Application.Json)
-                // Используем специальный DTO вместо Map
-                setBody(TaskStartRequestDto(taskId = taskId, start = true))
-            }
-
-            if (response.status.isSuccess()) {
-                try {
-                    val startResponse = response.body<TaskXStartResponseDto>()
-                    ApiResult.Success(startResponse)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error parsing task start response: ${e.message}")
-                    ApiResult.Error(
-                        HttpStatusCode.InternalServerError.value,
-                        "Error parsing task start response: ${e.message}"
-                    )
-                }
-            } else {
-                createErrorResult(response)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error starting dynamic task: $taskId")
-            ApiResult.Error(
-                HttpStatusCode.InternalServerError.value,
-                e.message ?: "Task start failed"
-            )
-        }
     }
 
-    override suspend fun getTaskDetails(endpoint: String, taskId: String): ApiResult<DynamicTask> {
-        val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
-            HttpStatusCode.InternalServerError.value,
-            "No active server configured"
-        )
-
-        val (httpMethod, path) = parseEndpoint(endpoint)
-        val baseUrl = "${server.apiUrl}${path}"
-
-        Timber.d("Getting task details from: $baseUrl")
-
-        val userId = serverProvider.getCurrentUserId() ?: ""
-        val authHeader = "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}"
-
-        return try {
-            val response = client.get(baseUrl) {
-                header("Authorization", authHeader)
-                header("User-Auth-Id", userId)
-            }
-
-            if (response.status.isSuccess()) {
-                try {
-                    val task = response.body<DynamicTask>()
-                    ApiResult.Success(task)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error parsing task details: ${e.message}")
-                    ApiResult.Error(
-                        HttpStatusCode.InternalServerError.value,
-                        "Error parsing task details: ${e.message}"
-                    )
-                }
-            } else {
-                createErrorResult(response)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error getting task details for taskId: $taskId")
-            ApiResult.Error(
-                HttpStatusCode.InternalServerError.value,
-                e.message ?: "Failed to get task details"
-            )
-        }
+    override suspend fun getTaskDetails(
+        endpoint: String,
+        taskId: String
+    ): ApiResult<DynamicTask> {
+        return executeApiRequest(endpoint)
     }
 
-    private suspend fun createErrorResult(response: HttpResponse): ApiResult.Error {
+    /**
+     * Обрабатывает ошибки HTTP-ответа
+     */
+    private suspend inline fun <reified T> createErrorResult(response: HttpResponse): ApiResult<T> {
         val statusCode = response.status.value
         val responseBody = response.bodyAsText()
 
         try {
+            // Пробуем разобрать как список ошибок
             val errorItems = jsonParser.decodeFromString<List<ApiErrorItem>>(responseBody)
-
             if (errorItems.isNotEmpty()) {
                 val errorMessage = errorItems.joinToString("\n") { it.title }
                 return ApiResult.Error(statusCode, errorMessage)
@@ -405,36 +258,39 @@ class DynamicMenuApiImpl(
             Timber.d("Response is not a list of error items: ${e.message}")
 
             try {
+                // Пробуем разобрать как одиночную ошибку
                 val errorItem = jsonParser.decodeFromString<ApiErrorItem>(responseBody)
                 return ApiResult.Error(statusCode, errorItem.title)
             } catch (e: Exception) {
                 Timber.d("Response is not a single error item: ${e.message}")
-
-                return ApiResult.Error(
-                    statusCode,
-                    if (responseBody.isNotBlank()) responseBody
-                    else "Server returned status code: $statusCode"
-                )
             }
         }
 
+        // Если не удалось разобрать, возвращаем тело ответа или статус-код
         return ApiResult.Error(
             statusCode,
-            "Server returned status code: $statusCode"
+            if (responseBody.isNotBlank()) responseBody
+            else "Server returned status code: $statusCode"
         )
     }
 
+    /**
+     * Разбирает строку эндпоинта и определяет HTTP-метод
+     */
     private fun parseEndpoint(endpoint: String): Pair<HttpMethod, String> {
+        // Если эндпоинт начинается с '/', используем GET
         if (endpoint.startsWith("/")) {
             return Pair(HttpMethod.GET, endpoint)
         }
 
+        // Пробуем разобрать как "METHOD path"
         val parts = endpoint.trim().split(" ", limit = 2)
         if (parts.size == 2) {
             try {
                 val method = HttpMethod.valueOf(parts[0].uppercase())
                 val path = parts[1]
 
+                // Форматируем путь, добавляя '/' если нужно
                 val formattedPath = if (path.startsWith("/")) path else "/$path"
                 return Pair(method, formattedPath)
             } catch (e: IllegalArgumentException) {
@@ -442,6 +298,7 @@ class DynamicMenuApiImpl(
             }
         }
 
+        // По умолчанию используем GET
         val defaultPath = if (endpoint.startsWith("/")) endpoint else "/$endpoint"
         return Pair(HttpMethod.GET, defaultPath)
     }
