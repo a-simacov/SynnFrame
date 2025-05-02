@@ -124,7 +124,47 @@ class ActionWizardController(
             if (result == null) {
                 handleBackStep(state)
             } else {
-                handleStepResult(state, result)
+                // Получаем текущий шаг и действие
+                val currentStep = state.currentStep ?: return
+                val action = state.action ?: return
+
+                // Находим объект ActionStep для текущего WizardStep
+                val actionStep = findActionStepForWizardStep(action, currentStep.id)
+
+                if (actionStep != null) {
+                    // Вызываем executeStep из ActionStepExecutionService
+                    val validationResult = actionStepExecutionService.executeStep(
+                        taskId = state.taskId,
+                        action = action,
+                        step = actionStep,
+                        value = result,
+                        contextData = state.results
+                    )
+
+                    when (validationResult) {
+                        is StepExecutionResult.Success -> {
+                            // Используем обработанное значение из результата валидации
+                            handleStepResult(state, validationResult.value)
+                        }
+                        is StepExecutionResult.Error -> {
+                            // Обработка ошибки валидации
+                            _wizardState.value = state.copy(
+                                errors = state.errors + (currentStep.id to validationResult.message),
+                                isProcessingStep = false
+                            )
+                        }
+                        is StepExecutionResult.Skipped -> {
+                            // Перейти к следующему шагу без сохранения результата
+                            _wizardState.value = state.copy(
+                                currentStepIndex = state.currentStepIndex + 1,
+                                isProcessingStep = false
+                            )
+                        }
+                    }
+                } else {
+                    // Если ActionStep не найден, обрабатываем результат как раньше
+                    handleStepResult(state, result)
+                }
             }
         } catch (e: Exception) {
             Timber.e(e, "Error processing step result")

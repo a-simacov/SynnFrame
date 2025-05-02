@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.wizard.action
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -65,7 +66,9 @@ class ProductSelectionStepFactory : ActionStepFactory {
     ) {
         // Состояния UI
         var manualProductCode by remember { mutableStateOf("") }
-        var errorMessage by remember { mutableStateOf<String?>(null) }
+        var errorMessage by remember(context.validationError) {
+            mutableStateOf<String?>(context.validationError)
+        }
         var showCameraScannerDialog by remember { mutableStateOf(false) }
 
         // Вспомогательные состояния и объекты
@@ -204,7 +207,32 @@ class ProductSelectionStepFactory : ActionStepFactory {
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Поле для ручного ввода штрихкода продукта
+            if (context.validationError != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                        .background(
+                            MaterialTheme.colorScheme.errorContainer,
+                            shape = MaterialTheme.shapes.small
+                        )
+                        .padding(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Error,
+                        contentDescription = "Ошибка валидации",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text(
+                        text = context.validationError,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+
             OutlinedTextField(
                 value = manualProductCode,
                 onValueChange = {

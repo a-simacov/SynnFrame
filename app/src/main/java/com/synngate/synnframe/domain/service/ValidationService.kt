@@ -68,20 +68,14 @@ class ValidationService(
                 }
 
                 ValidationType.API_REQUEST -> {
-                    // Новый тип валидации - API запрос
+                    // Проверка через API запрос
                     if (validationApiService != null && ruleItem.apiEndpoint != null) {
-                        val valueAsString = when (value) {
-                            is String -> value
-                            is Number -> value.toString()
-                            is Boolean -> value.toString()
-                            is BinX -> value.code
-                            is Pallet -> value.code
-                            is Product -> value.id
-                            is TaskProduct -> value.product.id
-                            else -> value?.toString() ?: ""
-                        }
+                        Timber.d("Performing API validation with endpoint: ${ruleItem.apiEndpoint}")
 
-                        // Используем runBlocking для выполнения асинхронного запроса в синхронном контексте
+                        // Преобразуем значение в строку, которую можно отправить в API
+                        val valueAsString = valueToString(value)
+
+                        // Выполняем запрос и получаем результат
                         val (isValid, errorMessage) = runBlocking {
                             validationApiService.validate(ruleItem.apiEndpoint, valueAsString)
                         }
@@ -93,7 +87,7 @@ class ValidationService(
                         }
                     } else {
                         // Если сервис не инициализирован или не указан эндпоинт
-                        Timber.e("API validation failed: validationApiService is null or apiEndpoint is missing")
+                        Timber.w("API validation failed: validationApiService is null or apiEndpoint is missing")
                         return ValidationResult.Error(
                             ruleItem.errorMessage.ifEmpty { "Ошибка настройки API-валидации" }
                         )
@@ -105,6 +99,20 @@ class ValidationService(
         // Если все проверки пройдены, возвращаем успех
         Timber.d("Validation succeeded")
         return ValidationResult.Success
+    }
+
+    // Вспомогательный метод для преобразования различных типов значений в строку
+    private fun valueToString(value: Any?): String {
+        return when (value) {
+            is String -> value
+            is Number -> value.toString()
+            is Boolean -> value.toString()
+            is BinX -> value.code
+            is Pallet -> value.code
+            is Product -> value.id
+            is TaskProduct -> value.product.id
+            else -> value?.toString() ?: ""
+        }
     }
 
     /**

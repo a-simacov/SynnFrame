@@ -43,9 +43,15 @@ class ActionStepExecutionService(
                 return StepExecutionResult.Skipped
             }
 
+            val processedValue = processValueByObjectType(value, step.objectType)
+            if (processedValue == null) {
+                return StepExecutionResult.Error("Неверный тип данных для этого шага")
+            }
+
+            // Выполняем валидацию
             val validationResult = validationService.validate(
                 rule = step.validationRules,
-                value = value,
+                value = processedValue,
                 context = context
             )
 
@@ -53,9 +59,6 @@ class ActionStepExecutionService(
                 val error = (validationResult as ValidationResult.Error).message
                 return StepExecutionResult.Error(error)
             }
-
-            val processedValue = processValueByObjectType(value, step.objectType)
-                ?: return StepExecutionResult.Error("Неверный тип данных для этого шага")
 
             return StepExecutionResult.Success(
                 stepId = step.id,

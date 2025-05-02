@@ -93,26 +93,18 @@ fun ActionWizardScreen(
     // Проверка и включение сканера при открытии визарда
     LaunchedEffect(scannerService) {
         scannerService?.let {
-            // Проверяем, есть ли реальный сканер перед его активацией
             if (it.hasRealScanner()) {
                 if (!it.isEnabled()) {
                     it.enable()
-                    Timber.d("ActionWizardScreen: Сканер был отключен, выполняем принудительное включение")
-                } else {
-                    Timber.d("ActionWizardScreen: Сканер уже включен")
                 }
-            } else {
-                Timber.d("ActionWizardScreen: Пропуск включения сканера (пустой сканер)")
             }
         }
     }
 
-    // Переменная для отслеживания обработки штрихкода
     var isProcessingGlobalBarcode by remember { mutableStateOf(false) }
 
     LaunchedEffect(state?.currentStepIndex) {
         isProcessingGlobalBarcode = false
-        Timber.d("ActionWizardScreen: Сброс флага isProcessingGlobalBarcode при смене шага")
     }
 
     // Глобальный слушатель сканера нужен только для итогового экрана
@@ -240,8 +232,6 @@ fun ActionWizardScreen(
     }
 }
 
-// app/src/main/java/com/synngate/synnframe/presentation/ui/wizard/action/ActionWizardScreen.kt
-
 @Composable
 private fun WizardActions(
     wizardState: ActionWizardState,
@@ -253,7 +243,6 @@ private fun WizardActions(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Кнопка "Назад"
         if ((wizardState.canGoBack && wizardState.currentStepIndex > 0) || wizardState.isCompleted) {
             OutlinedButton(
                 onClick = {
@@ -262,7 +251,7 @@ private fun WizardActions(
                     }
                 },
                 modifier = Modifier.weight(1f),
-                enabled = !wizardState.isSending // Блокируем кнопку во время отправки
+                enabled = !wizardState.isSending
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -276,15 +265,13 @@ private fun WizardActions(
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        // Кнопка "Завершить" - отображается только на итоговом экране
         if (wizardState.isCompleted) {
             Button(
                 onClick = onComplete,
                 modifier = Modifier.weight(1f),
-                enabled = !wizardState.isSending // Блокируем кнопку во время отправки
+                enabled = !wizardState.isSending
             ) {
                 if (wizardState.isSending) {
-                    // Показываем индикатор внутри кнопки
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
@@ -303,7 +290,6 @@ private fun WizardActions(
             }
         } else if (!wizardState.isCompleted && wizardState.currentStep != null &&
             wizardState.hasResultForStep(wizardState.currentStep!!.id)) {
-            // Кнопка "Вперед"
             OutlinedButton(
                 onClick = {
                     coroutineScope.launch {
@@ -377,8 +363,6 @@ private fun findActionStepForWizardStep(
     return null
 }
 
-// app/src/main/java/com/synngate/synnframe/presentation/ui/wizard/action/ActionWizardScreen.kt
-
 @Composable
 fun ActionSummaryScreen(
     state: ActionWizardState,
@@ -393,7 +377,6 @@ fun ActionSummaryScreen(
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // Отображаем индикатор загрузки, если идет отправка
         if (state.isSending) {
             Row(
                 modifier = Modifier
@@ -414,7 +397,6 @@ fun ActionSummaryScreen(
             }
         }
 
-        // Отображаем ошибку, если она есть
         if (state.sendError != null) {
             Card(
                 colors = CardDefaults.cardColors(

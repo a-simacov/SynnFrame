@@ -46,4 +46,12 @@ data class ActionWizardState(
     fun hasResultForStep(stepId: String): Boolean {
         return results.containsKey(stepId)
     }
+
+    fun hasErrorForStep(stepId: String): Boolean {
+        return errors.containsKey(stepId)
+    }
+
+    fun getErrorForStep(stepId: String): String? {
+        return errors[stepId]
+    }
 }
