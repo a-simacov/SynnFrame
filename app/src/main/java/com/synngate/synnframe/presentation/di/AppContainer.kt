@@ -680,22 +680,23 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
     }
 
     // Создаем реестр фабрик компонентов шагов
+// Только измененная часть метода createActionStepFactoryRegistry в AppContainer
     fun createActionStepFactoryRegistry(): ActionStepFactoryRegistry {
-        // Создаем реестр напрямую, а не через getOrCreateViewModel
+        // Создаем реестр напрямую
         val registry = ActionStepFactoryRegistry()
 
-        // Получаем ViewModel для фабрик - обновлено название метода
+        // Получаем ViewModel для данных
         val actionDataViewModel = createActionDataViewModel()
 
-        // Регистрируем фабрики для различных типов объектов
+        // Регистрируем фабрики для различных типов объектов с доступом к репозиторию
         registry.registerFactory(
             ActionObjectType.CLASSIFIER_PRODUCT,
-            ProductSelectionStepFactory()
+            ProductSelectionStepFactory(appContainer.productRepository)
         )
 
         registry.registerFactory(
             ActionObjectType.TASK_PRODUCT,
-            ProductSelectionStepFactory()
+            ProductSelectionStepFactory(appContainer.productRepository)
         )
 
         registry.registerFactory(
