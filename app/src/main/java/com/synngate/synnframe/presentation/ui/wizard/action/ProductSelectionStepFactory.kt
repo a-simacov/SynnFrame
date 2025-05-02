@@ -15,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -48,19 +47,18 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.repository.ProductRepository
-import com.synngate.synnframe.presentation.common.dialog.ProductSelectionDialog
+import com.synngate.synnframe.presentation.common.dialog.OptimizedProductSelectionDialog
 import com.synngate.synnframe.presentation.common.scanner.BarcodeHandlerWithState
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /**
  * Фабрика компонентов для шага выбора продукта
- * Улучшенная версия с поддержкой поиска в базе данных
+ * Улучшенная версия с использованием оптимизированного диалога выбора товаров
  */
 class ProductSelectionStepFactory(
     private val productRepository: ProductRepository
@@ -79,9 +77,6 @@ class ProductSelectionStepFactory(
         }
         var showCameraScannerDialog by remember { mutableStateOf(false) }
         var showProductSelectionDialog by remember { mutableStateOf(false) }
-        var products by remember { mutableStateOf<List<Product>>(emptyList()) }
-        var isLoadingProducts by remember { mutableStateOf(false) }
-        var productFilterText by remember { mutableStateOf("") }
 
         // Вспомогательные состояния и объекты
         val snackbarHostState = remember { SnackbarHostState() }
@@ -148,36 +143,6 @@ class ProductSelectionStepFactory(
             }
         }
 
-        // Функция для загрузки товаров
-        val loadProducts = { filter: String ->
-            coroutineScope.launch {
-                try {
-                    isLoadingProducts = true
-                    val planProductIds = planProducts.mapNotNull { it.product.id }.toSet()
-
-                    withContext(Dispatchers.IO) {
-                        if (filter.isNotEmpty()) {
-                            val flowProducts = productRepository.getProductsByNameFilter(filter)
-                            products = flowProducts.first()
-                        } else {
-                            val flowProducts = productRepository.getProducts()
-                            products = flowProducts.first()
-                        }
-                    }
-
-                    // После успешной загрузки, если мы загружали для диалога, открываем его
-                    if (!showProductSelectionDialog) {
-                        showProductSelectionDialog = true
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "Ошибка при загрузке списка товаров")
-                    showError("Ошибка при загрузке списка товаров: ${e.message}")
-                } finally {
-                    isLoadingProducts = false
-                }
-            }
-        }
-
         // Использование BarcodeHandlerWithState для обработки штрихкодов
         BarcodeHandlerWithState(
             stepKey = step.id,
@@ -236,10 +201,9 @@ class ProductSelectionStepFactory(
             )
         }
 
-        // Показываем диалог выбора продукта, если он активирован
+        // Показываем оптимизированный диалог выбора продукта, если он активирован
         if (showProductSelectionDialog) {
-            ProductSelectionDialog(
-                products = products,
+            OptimizedProductSelectionDialog(
                 onProductSelected = { product ->
                     context.onComplete(createResultFromProduct(product))
                     showProductSelectionDialog = false
@@ -247,32 +211,9 @@ class ProductSelectionStepFactory(
                 onDismiss = {
                     showProductSelectionDialog = false
                 },
-                initialFilter = productFilterText,
-                isLoading = isLoadingProducts,
+                initialFilter = "",
                 title = "Выберите товар",
-                planProductIds = planProducts.mapNotNull { it.product.id }.toSet(),
-                onFilterChanged = { filter ->
-                    productFilterText = filter
-                    // Загружаем товары при изменении фильтра
-                    coroutineScope.launch {
-                        try {
-                            isLoadingProducts = true
-                            withContext(Dispatchers.IO) {
-                                if (filter.isNotEmpty()) {
-                                    val flowProducts = productRepository.getProductsByNameFilter(filter)
-                                    products = flowProducts.first()
-                                } else {
-                                    val flowProducts = productRepository.getProducts()
-                                    products = flowProducts.first()
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Timber.e(e, "Ошибка при фильтрации списка товаров")
-                        } finally {
-                            isLoadingProducts = false
-                        }
-                    }
-                }
+                planProductIds = planProducts.mapNotNull { it.product.id }.toSet()
             )
         }
 
@@ -462,7 +403,7 @@ class ProductSelectionStepFactory(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            // Кнопка для выбора товара из списка
+            // Кнопка для открытия оптимизированного диалога выбора товара
             Button(
                 onClick = { showProductSelectionDialog = true },
                 modifier = Modifier.fillMaxWidth(),
@@ -471,11 +412,6 @@ class ProductSelectionStepFactory(
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             ) {
-                Icon(
-                    imageVector = Icons.Default.ViewList,
-                    contentDescription = null,
-                    modifier = Modifier.padding(end = 4.dp)
-                )
                 Text("Выбрать из списка товаров")
             }
         }
@@ -490,7 +426,7 @@ class ProductSelectionStepFactory(
         }
     }
 
-    // Обновленный метод для поиска товара в БД по штрихкоду
+    // Метод для поиска товара в БД по штрихкоду
     private suspend fun processBarcodeForProduct(
         barcode: String,
         action: PlannedAction,
