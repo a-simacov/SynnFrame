@@ -54,12 +54,7 @@ import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescriptio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 
-/**
- * Фабрика компонентов для шага выбора продукта
- * Улучшенная версия с использованием оптимизированного диалога выбора товаров
- */
 class ProductSelectionStepFactory(
     private val productRepository: ProductRepository
 ) : ActionStepFactory {
@@ -70,38 +65,31 @@ class ProductSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Состояния UI
         var manualProductCode by remember { mutableStateOf("") }
         var errorMessage by remember(context.validationError) {
-            mutableStateOf<String?>(context.validationError)
+            mutableStateOf(context.validationError)
         }
         var showCameraScannerDialog by remember { mutableStateOf(false) }
         var showProductSelectionDialog by remember { mutableStateOf(false) }
 
-        // Вспомогательные состояния и объекты
         val snackbarHostState = remember { SnackbarHostState() }
         val coroutineScope = rememberCoroutineScope()
 
-        // Получаем запланированный продукт из действия
         val plannedProduct = action.storageProduct?.product
 
-        // Список запланированных продуктов для отображения и фильтрации
         val planProducts = remember(action) {
             listOfNotNull(action.storageProduct)
         }
 
-        // Создаем набор ID запланированных продуктов для передачи в диалог
         val planProductIds = remember(planProducts) {
             planProducts.mapNotNull { it.product.id }.toSet()
         }
 
-        // Получаем уже выбранный продукт из контекста, если есть
         val selectedProduct = remember(context.results) {
             context.results[step.id] as? Product ?:
             (context.results[step.id] as? TaskProduct)?.product
         }
 
-        // Создает результат в зависимости от типа объекта
         fun createResultFromProduct(product: Product): Any {
             return if (step.objectType == ActionObjectType.TASK_PRODUCT) {
                 TaskProduct(product = product)
@@ -110,7 +98,6 @@ class ProductSelectionStepFactory(
             }
         }
 
-        // Функция для показа сообщения об ошибке
         val showError = { message: String ->
             errorMessage = message
             coroutineScope.launch {
@@ -121,11 +108,9 @@ class ProductSelectionStepFactory(
             }
         }
 
-        // Функция поиска продукта по штрихкоду
         val searchProduct = { barcode: String ->
             if (barcode.isNotEmpty()) {
-                Timber.d("Поиск продукта по штрихкоду: $barcode")
-                errorMessage = null // Сбрасываем предыдущую ошибку
+                errorMessage = null
 
                 coroutineScope.launch {
                     processBarcodeForProduct(
@@ -133,34 +118,27 @@ class ProductSelectionStepFactory(
                         action = action,
                         onProductFound = { product ->
                             if (product != null) {
-                                // Проверяем, входит ли продукт в запланированные, если они есть
                                 if (planProductIds.isEmpty() || planProductIds.contains(product.id)) {
-                                    Timber.d("Продукт найден: ${product.name}")
                                     context.onComplete(createResultFromProduct(product))
                                 } else {
-                                    Timber.w("Продукт не входит в план: ${product.name}")
                                     showError("Продукт не соответствует плану")
                                 }
                             } else {
-                                Timber.w("Продукт не найден: $barcode")
                                 showError("Продукт со штрихкодом '$barcode' не найден")
                             }
                         }
                     )
                 }
 
-                // Очищаем поле ввода после поиска
                 manualProductCode = ""
             }
         }
 
-        // Использование BarcodeHandlerWithState для обработки штрихкодов
         BarcodeHandlerWithState(
             stepKey = step.id,
             stepResult = context.getCurrentStepResult(),
             onBarcodeScanned = { barcode, setProcessingState ->
-                Timber.d("Получен штрихкод от сканера: $barcode")
-                errorMessage = null // Сбрасываем предыдущую ошибку
+                errorMessage = null
 
                 coroutineScope.launch {
                     processBarcodeForProduct(
@@ -168,44 +146,34 @@ class ProductSelectionStepFactory(
                         action = action,
                         onProductFound = { product ->
                             if (product != null) {
-                                // Проверяем, входит ли продукт в запланированные, если они есть
                                 if (planProductIds.isEmpty() || planProductIds.contains(product.id)) {
-                                    Timber.d("Продукт найден: ${product.name}")
                                     context.onComplete(createResultFromProduct(product))
                                 } else {
-                                    Timber.w("Продукт не входит в план: ${product.name}")
                                     showError("Продукт не соответствует плану")
-                                    setProcessingState(false) // Сбрасываем состояние обработки
+                                    setProcessingState(false)
                                 }
                             } else {
-                                Timber.w("Продукт не найден: $barcode")
                                 showError("Продукт со штрихкодом '$barcode' не найден")
-                                // Сбрасываем состояние обработки, чтобы можно было повторить сканирование
                                 setProcessingState(false)
                             }
                         }
                     )
                 }
 
-                // Очищаем поле ввода после поиска
                 manualProductCode = ""
             }
         )
 
-        // Обработка внешнего штрихкода из контекста
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
             if (!barcode.isNullOrEmpty()) {
-                Timber.d("Получен штрихкод от внешнего сканера: $barcode")
                 searchProduct(barcode)
             }
         }
 
-        // Показываем диалог сканирования камерой, если он активирован
         if (showCameraScannerDialog) {
             UniversalScannerDialog(
                 onBarcodeScanned = { barcode ->
-                    Timber.d("Получен штрихкод от камеры: $barcode")
                     searchProduct(barcode)
                     showCameraScannerDialog = false
                 },
@@ -219,7 +187,6 @@ class ProductSelectionStepFactory(
             )
         }
 
-        // Показываем оптимизированный диалог выбора продукта, если он активирован
         if (showProductSelectionDialog) {
             OptimizedProductSelectionDialog(
                 onProductSelected = { product ->
@@ -229,15 +196,13 @@ class ProductSelectionStepFactory(
                 onDismiss = {
                     showProductSelectionDialog = false
                 },
-                initialFilter = "", // Начинаем с пустым фильтром
+                initialFilter = "",
                 title = "Выберите товар",
-                // Передаем ID запланированных продуктов для фильтрации в диалоге
-                planProductIds = if (planProductIds.isNotEmpty()) planProductIds else null
+                planProductIds = planProductIds.ifEmpty { null }
             )
         }
 
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Заголовок с описанием действия WMS
             Text(
                 text = "${step.promptText} (${getWmsActionDescription(action.wmsAction)})",
                 style = MaterialTheme.typography.titleMedium,
@@ -311,7 +276,6 @@ class ProductSelectionStepFactory(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Отображаем выбранный продукт, если есть
             if (selectedProduct != null) {
                 Text(
                     text = "Выбранный продукт:",
@@ -348,7 +312,6 @@ class ProductSelectionStepFactory(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            // Отображаем запланированные продукты, если они есть
             if (planProducts.isNotEmpty()) {
                 Text(
                     text = "По плану:",
@@ -422,7 +385,6 @@ class ProductSelectionStepFactory(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            // Кнопка для открытия оптимизированного диалога выбора товара
             Button(
                 onClick = { showProductSelectionDialog = true },
                 modifier = Modifier.fillMaxWidth(),
@@ -437,7 +399,6 @@ class ProductSelectionStepFactory(
     }
 
     override fun validateStepResult(step: ActionStep, value: Any?): Boolean {
-        // Проверяем тип результата
         return when (step.objectType) {
             ActionObjectType.CLASSIFIER_PRODUCT -> value is Product
             ActionObjectType.TASK_PRODUCT -> value is TaskProduct
@@ -445,40 +406,32 @@ class ProductSelectionStepFactory(
         }
     }
 
-    // Метод для поиска товара в БД по штрихкоду
     private suspend fun processBarcodeForProduct(
         barcode: String,
         action: PlannedAction,
         onProductFound: (Product?) -> Unit
     ) {
-        // Получаем запланированный товар из контекста
         val plannedProduct = action.storageProduct?.product
 
-        // Если есть запланированный товар, сначала проверяем его штрихкоды
         if (plannedProduct != null) {
             val plannedBarcodes = plannedProduct.getAllBarcodes()
             if (plannedBarcodes.contains(barcode)) {
-                Timber.d("Найден совпадающий штрихкод в запланированном товаре: ${plannedProduct.name}")
                 onProductFound(plannedProduct)
                 return
             }
         }
 
-        // Поиск в репозитории товаров
         try {
             val product = withContext(Dispatchers.IO) {
                 productRepository.findProductByBarcode(barcode)
             }
 
             if (product != null) {
-                Timber.d("Найден товар в БД: ${product.name}")
                 onProductFound(product)
             } else {
-                Timber.w("Товар с штрихкодом $barcode не найден в БД")
                 onProductFound(null)
             }
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при поиске товара по штрихкоду: $barcode")
             onProductFound(null)
         }
     }
