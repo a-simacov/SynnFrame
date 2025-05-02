@@ -70,6 +70,7 @@ import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.UpdateInstallerImpl
+import com.synngate.synnframe.domain.service.ValidationApiService
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.domain.service.WebServerManager
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
@@ -288,6 +289,12 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         DynamicMenuApiImpl(httpClient, serverProvider)
     }
 
+    // Добавляем ValidationApiService
+    val validationApiService by lazy {
+        Timber.d("Creating ValidationApiService")
+        ValidationApiService(httpClient, serverProvider)
+    }
+
     // Сервисы
     val loggingService: LoggingService by lazy {
         Timber.d("Creating LoggingService")
@@ -352,7 +359,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     // Сервисы для работы с визардом действий
     val validationService by lazy {
         Timber.d("Creating ValidationService")
-        ValidationService()
+        ValidationService(validationApiService)
     }
 
     val actionDataCacheService by lazy {

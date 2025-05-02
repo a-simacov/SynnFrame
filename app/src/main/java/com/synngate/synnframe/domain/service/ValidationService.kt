@@ -6,12 +6,15 @@ import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.validation.ValidationRule
 import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 
 /**
  * Сервис для проверки данных по правилам валидации
  */
-class ValidationService {
+class ValidationService(
+    private val validationApiService: ValidationApiService? = null // Добавлен новый сервис
+) {
     /**
      * Проверяет значение по правилам валидации
      * @param rule Правило валидации
@@ -39,6 +42,7 @@ class ValidationService {
                         }
                     }
                 }
+
                 ValidationType.NOT_EMPTY -> {
                     // Проверка, что значение не пустое
                     if (value == null || (value is String && value.isBlank())) {
@@ -46,6 +50,7 @@ class ValidationService {
                         return ValidationResult.Error(ruleItem.errorMessage)
                     }
                 }
+
                 ValidationType.MATCHES_REGEX -> {
                     // Проверка на соответствие регулярному выражению
                     if (value is String && ruleItem.parameter != null) {
@@ -59,6 +64,39 @@ class ValidationService {
                             Timber.e(e, "Invalid regex pattern: ${ruleItem.parameter}")
                             return ValidationResult.Error("Invalid regex pattern: ${e.message}")
                         }
+                    }
+                }
+
+                ValidationType.API_REQUEST -> {
+                    // Новый тип валидации - API запрос
+                    if (validationApiService != null && ruleItem.apiEndpoint != null) {
+                        val valueAsString = when (value) {
+                            is String -> value
+                            is Number -> value.toString()
+                            is Boolean -> value.toString()
+                            is BinX -> value.code
+                            is Pallet -> value.code
+                            is Product -> value.id
+                            is TaskProduct -> value.product.id
+                            else -> value?.toString() ?: ""
+                        }
+
+                        // Используем runBlocking для выполнения асинхронного запроса в синхронном контексте
+                        val (isValid, errorMessage) = runBlocking {
+                            validationApiService.validate(ruleItem.apiEndpoint, valueAsString)
+                        }
+
+                        if (!isValid) {
+                            val finalErrorMessage = errorMessage ?: ruleItem.errorMessage
+                            Timber.w("API Validation failed: $finalErrorMessage")
+                            return ValidationResult.Error(finalErrorMessage)
+                        }
+                    } else {
+                        // Если сервис не инициализирован или не указан эндпоинт
+                        Timber.e("API validation failed: validationApiService is null or apiEndpoint is missing")
+                        return ValidationResult.Error(
+                            ruleItem.errorMessage.ifEmpty { "Ошибка настройки API-валидации" }
+                        )
                     }
                 }
             }
