@@ -22,7 +22,8 @@ data class TaskXDetailState(
     val showOrderRequiredMessage: Boolean = false,
     val nextActionId: String? = null,
     val hasAdditionalActions: Boolean = false,
-    val statusActions: List<StatusActionData> = emptyList()
+    val statusActions: List<StatusActionData> = emptyList(),
+    val actionsDisplayMode: ActionDisplayMode = ActionDisplayMode.CURRENT
 )
 
 sealed class TaskXDetailEvent {

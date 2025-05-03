@@ -7,8 +7,10 @@ import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.service.ActionWizardContextFactory
 import com.synngate.synnframe.domain.service.ActionWizardController
+import com.synngate.synnframe.domain.service.FinalActionsValidator
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
+import com.synngate.synnframe.presentation.ui.taskx.model.ActionDisplayMode
 import com.synngate.synnframe.presentation.ui.taskx.model.StatusActionData
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
@@ -28,6 +30,7 @@ class TaskXDetailViewModel(
     private val taskId: String,
     private val taskXUseCases: TaskXUseCases,
     private val userUseCases: UserUseCases,
+    private val finalActionsValidator: FinalActionsValidator, // Добавили FinalActionsValidator
     val actionWizardController: ActionWizardController,
     val actionWizardContextFactory: ActionWizardContextFactory,
     val actionStepFactoryRegistry: ActionStepFactoryRegistry,
@@ -46,7 +49,7 @@ class TaskXDetailViewModel(
                     it.copy(
                         task = preloadedTask,
                         taskType = preloadedTaskType,
-                        currentUserId =currentUser?.id,
+                        currentUserId = currentUser?.id,
                         isLoading = false,
                         error = null
                     )
@@ -73,11 +76,8 @@ class TaskXDetailViewModel(
                 val action = task.plannedActions.find { it.id == actionId }
 
                 if (isStrictOrder && action != null) {
-                    val firstNotCompletedAction = task.plannedActions
-                        .sortedBy { it.order }
-                        .firstOrNull { !it.isCompleted && !it.isSkipped }
-
-                    if (firstNotCompletedAction?.id != actionId) {
+                    val nextActionId = finalActionsValidator.getNextActionIdInStrictOrder(task)
+                    if (nextActionId != actionId) {
                         showOrderRequiredMessage()
                         return@launchIO
                     }
@@ -100,78 +100,72 @@ class TaskXDetailViewModel(
     }
 
     private fun calculateNextActionId(task: TaskX, taskType: TaskTypeX?): String? {
-        val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
+        val isStrictOrder = taskType?.strictActionOrder == true
 
-        return if (isStrictOrder) {
-            task.plannedActions
-                .sortedBy { it.order }
-                .firstOrNull { !it.isCompleted && !it.isSkipped }
-                ?.id
-        } else {
-            null
+        if (isStrictOrder) {
+            // Используем FinalActionsValidator для определения следующего действия
+            return finalActionsValidator.getNextActionIdInStrictOrder(task)
         }
+
+        return null
     }
 
-    fun canExecuteAction(actionId: String): Boolean {
-        uiState.value.task ?: return false
-        val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
+    /**
+     * Проверка возможности выполнения финальных действий
+     */
+    fun canExecuteFinalActions(task: TaskX): Boolean {
+        // Используем FinalActionsValidator вместо прямой реализации
+        return finalActionsValidator.canExecuteFinalActions(task)
+    }
 
+    /**
+     * Проверка возможности выполнения конкретного действия с учетом финальных действий
+     */
+    fun canExecuteAction(actionId: String): Boolean {
+        val task = uiState.value.task ?: return false
+        val action = task.plannedActions.find { it.id == actionId } ?: return false
+
+        // Проверяем, можно ли выполнять финальные действия
+        if (action.isFinalAction && !finalActionsValidator.canExecuteFinalActions(task)) {
+            return false
+        }
+
+        // Проверка строгого порядка для всех действий
+        val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
         if (!isStrictOrder) return true
 
         val nextActionId = uiState.value.nextActionId
         return nextActionId == actionId
     }
 
+    /**
+     * Устанавливает режим отображения действий
+     */
+    fun setActionsDisplayMode(mode: ActionDisplayMode) {
+        updateState { it.copy(actionsDisplayMode = mode) }
+    }
+
+    /**
+     * Показывает сообщение о недоступности финальных действий
+     */
+    fun showFinalActionNotAvailableMessage() {
+        sendEvent(TaskXDetailEvent.ShowSnackbar("Сначала выполните все обычные действия"))
+    }
+
     fun tryExecuteAction(actionId: String) {
+        val task = uiState.value.task ?: return
+        val action = task.plannedActions.find { it.id == actionId } ?: return
+
+        // Проверяем доступность финальных действий
+        if (action.isFinalAction && !finalActionsValidator.canExecuteFinalActions(task)) {
+            showFinalActionNotAvailableMessage()
+            return
+        }
+
         if (canExecuteAction(actionId)) {
             startActionExecution(actionId)
         } else {
             showOrderRequiredMessage()
-        }
-    }
-
-    private fun checkHasAdditionalActions(task: TaskX): Boolean {
-        return !task.isVerified && isActionAvailable(AvailableTaskAction.VERIFY_TASK) ||
-                isActionAvailable(AvailableTaskAction.PRINT_TASK_LABEL)
-    }
-
-    private fun createStatusActions(task: TaskX, taskType: TaskTypeX?): List<StatusActionData> {
-        return when (task.status) {
-            TaskXStatus.TO_DO -> listOf(
-                StatusActionData(
-                    id = "start",
-                    iconName = "play_arrow",
-                    text = "Старт",
-                    description = "Начать выполнение",
-                    onClick = ::startTask
-                )
-            )
-            TaskXStatus.IN_PROGRESS -> listOf(
-                StatusActionData(
-                    id = "pause",
-                    iconName = "pause",
-                    text = "Пауза",  // Добавлен текст кнопки
-                    description = "Приостановить",
-                    onClick = ::pauseTask
-                ),
-                StatusActionData(
-                    id = "finish",
-                    iconName = "check_circle",
-                    text = "Финиш",  // Добавлен текст кнопки
-                    description = "Завершить",
-                    onClick = ::showCompletionDialog,
-                )
-            )
-            TaskXStatus.PAUSED -> listOf(
-                StatusActionData(
-                    id = "resume",
-                    iconName = "play_arrow",
-                    description = "Продолжить",
-                    text = "Старт",  // Добавлен текст кнопки
-                    onClick = ::resumeTask
-                )
-            )
-            else -> emptyList()
         }
     }
 
@@ -188,8 +182,6 @@ class TaskXDetailViewModel(
         updateState { it.copy(showActionWizard = false) }
         actionWizardController.cancel()
     }
-
-// app/src/main/java/com/synngate/synnframe/presentation/ui/taskx/TaskXDetailViewModel.kt
 
     fun completeActionWizard() {
         launchIO {
@@ -534,6 +526,51 @@ class TaskXDetailViewModel(
                 hasAdditionalActions = hasAdditionalActions,
                 statusActions = statusActions
             )
+        }
+    }
+
+    private fun checkHasAdditionalActions(task: TaskX): Boolean {
+        return !task.isVerified && isActionAvailable(AvailableTaskAction.VERIFY_TASK) ||
+                isActionAvailable(AvailableTaskAction.PRINT_TASK_LABEL)
+    }
+
+    private fun createStatusActions(task: TaskX, taskType: TaskTypeX?): List<StatusActionData> {
+        return when (task.status) {
+            TaskXStatus.TO_DO -> listOf(
+                StatusActionData(
+                    id = "start",
+                    iconName = "play_arrow",
+                    text = "Старт",
+                    description = "Начать выполнение",
+                    onClick = ::startTask
+                )
+            )
+            TaskXStatus.IN_PROGRESS -> listOf(
+                StatusActionData(
+                    id = "pause",
+                    iconName = "pause",
+                    text = "Пауза",  // Добавлен текст кнопки
+                    description = "Приостановить",
+                    onClick = ::pauseTask
+                ),
+                StatusActionData(
+                    id = "finish",
+                    iconName = "check_circle",
+                    text = "Финиш",  // Добавлен текст кнопки
+                    description = "Завершить",
+                    onClick = ::showCompletionDialog,
+                )
+            )
+            TaskXStatus.PAUSED -> listOf(
+                StatusActionData(
+                    id = "resume",
+                    iconName = "play_arrow",
+                    description = "Продолжить",
+                    text = "Старт",  // Добавлен текст кнопки
+                    onClick = ::resumeTask
+                )
+            )
+            else -> emptyList()
         }
     }
 

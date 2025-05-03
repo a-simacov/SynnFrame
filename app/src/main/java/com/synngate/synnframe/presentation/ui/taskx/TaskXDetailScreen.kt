@@ -44,10 +44,13 @@ import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.common.status.TaskXStatusIndicator
+import com.synngate.synnframe.presentation.ui.taskx.components.ActionDisplayModeSwitcher
 import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableTaskInfoCard
 import com.synngate.synnframe.presentation.ui.taskx.components.FactActionsView
 import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionsView
+import com.synngate.synnframe.presentation.ui.taskx.components.TaskProgressIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXVerificationDialog
+import com.synngate.synnframe.presentation.ui.taskx.model.ActionDisplayMode
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionWizardScreen
@@ -208,6 +211,20 @@ fun TaskXDetailScreen(
                 }
             }
 
+            // Добавляем индикатор прогресса задания
+            TaskProgressIndicator(
+                task = task,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Переключатель режимов отображения действий
+            ActionDisplayModeSwitcher(
+                currentMode = state.actionsDisplayMode,
+                onModeChange = { viewModel.setActionsDisplayMode(it) },
+                hasFinalActions = task.plannedActions.any { it.isFinalAction },
+                modifier = Modifier.fillMaxWidth()
+            )
+
             Spacer(modifier = Modifier.height(4.dp))
 
             // Панель переключения вида
@@ -246,12 +263,26 @@ fun TaskXDetailScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Содержимое в зависимости от выбранного вида
+            // Основное содержимое в зависимости от выбранного вида
             when (state.activeView) {
                 TaskXDetailView.PLANNED_ACTIONS -> {
                     Box(modifier = Modifier.weight(1f)) {
+                        // Проверка доступности финальных действий
+                        val canExecuteFinalActions = viewModel.canExecuteFinalActions(task)
+
+                        // Фильтруем действия в соответствии с выбранным режимом
+                        val filteredActions = when (state.actionsDisplayMode) {
+                            ActionDisplayMode.CURRENT -> task.plannedActions
+                                .filter { !it.isCompleted && !it.isSkipped && (!it.isFinalAction || canExecuteFinalActions) }
+                            ActionDisplayMode.COMPLETED -> task.plannedActions
+                                .filter { it.isCompleted }
+                            ActionDisplayMode.ALL -> task.plannedActions
+                            ActionDisplayMode.FINALS -> task.plannedActions
+                                .filter { it.isFinalAction }
+                        }
+
                         PlannedActionsView(
-                            plannedActions = task.plannedActions,
+                            plannedActions = filteredActions,
                             nextActionId = nextActionId,
                             onActionClick = { action ->
                                 // Проверяем, что задание в статусе "Выполняется"
@@ -295,7 +326,7 @@ fun TaskXDetailScreen(
                             horizontalArrangement = Arrangement.Center,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                //.padding(vertical = 8.dp)
+                            //.padding(vertical = 8.dp)
                         ) {
                             state.statusActions.forEach { actionData ->
                                 Button(

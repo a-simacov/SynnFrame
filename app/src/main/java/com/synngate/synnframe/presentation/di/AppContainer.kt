@@ -64,6 +64,7 @@ import com.synngate.synnframe.domain.service.ActionWizardController
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.FileService
+import com.synngate.synnframe.domain.service.FinalActionsValidator
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.service.SoundService
@@ -454,6 +455,11 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         TaskContextManager()
     }
 
+    val finalActionsValidator by lazy {
+        Timber.d("Creating FinalActionsValidator")
+        FinalActionsValidator()
+    }
+
     // Создание контейнера для уровня навигации
     fun createNavigationContainer(): NavigationContainer {
         return createChildContainer { NavigationContainer(this) }
@@ -651,6 +657,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                     taskId = taskId,
                     taskXUseCases = appContainer.taskXUseCases,
                     userUseCases = appContainer.userUseCases,
+                    finalActionsValidator = appContainer.finalActionsValidator, // Добавляем validator
                     actionWizardController = appContainer.actionWizardController,
                     actionWizardContextFactory = appContainer.actionWizardContextFactory,
                     actionStepFactoryRegistry = createActionStepFactoryRegistry(),
@@ -663,6 +670,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                     taskId = taskId,
                     taskXUseCases = appContainer.taskXUseCases,
                     userUseCases = appContainer.userUseCases,
+                    finalActionsValidator = appContainer.finalActionsValidator, // Добавляем validator
                     actionWizardController = appContainer.actionWizardController,
                     actionWizardContextFactory = appContainer.actionWizardContextFactory,
                     actionStepFactoryRegistry = createActionStepFactoryRegistry()

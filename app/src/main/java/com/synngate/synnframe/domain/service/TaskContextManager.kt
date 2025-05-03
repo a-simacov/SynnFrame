@@ -3,9 +3,11 @@ package com.synngate.synnframe.domain.service
 import com.synngate.synnframe.data.remote.dto.TaskXStartResponseDto
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
+import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.UUID
 
 class TaskContextManager {
 
@@ -19,7 +21,30 @@ class TaskContextManager {
     val currentEndpoint: StateFlow<String?> = _currentEndpoint.asStateFlow()
 
     fun saveStartedTask(response: TaskXStartResponseDto, endpoint: String) {
-        val processedTask = processTaskActions(response.task)
+        // Объединяем обычные и финальные действия
+        val allPlannedActions = response.task.plannedActions.toMutableList()
+
+        // Создаем плановые действия из шаблонов финальных действий, если они есть
+        val finalPlannedActions = response.taskType.finalActions?.map { template ->
+            PlannedAction(
+                id = UUID.randomUUID().toString(),
+                // Высокий порядковый номер ставит финальные действия в конец списка
+                order = 1000 + allPlannedActions.size,
+                actionTemplate = template,
+                wmsAction = template.wmsAction,
+                isFinalAction = true // Маркируем как финальные действия
+            )
+        } ?: emptyList()
+
+        // Добавляем финальные действия в общий список
+        allPlannedActions.addAll(finalPlannedActions)
+
+        // Обновляем задание с полным списком действий
+        val taskWithAllActions = response.task.copy(
+            plannedActions = allPlannedActions
+        )
+
+        val processedTask = processTaskActions(taskWithAllActions)
 
         _lastStartedTaskX.value = processedTask
         _lastTaskTypeX.value = response.taskType

@@ -13,22 +13,25 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.NoEncryption
 import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
@@ -99,9 +102,11 @@ fun PlannedActionItem(
     isNextAction: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    // Определяем цвет фона в зависимости от состояния и типа действия
     val backgroundColor = when {
         action.isCompleted -> MaterialTheme.colorScheme.secondaryContainer
         action.isSkipped -> MaterialTheme.colorScheme.tertiaryContainer
+        action.isFinalAction -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
         isNextAction -> MaterialTheme.colorScheme.primaryContainer
         else -> MaterialTheme.colorScheme.surface
     }
@@ -133,22 +138,28 @@ fun PlannedActionItem(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Row(
-//                        modifier = Modifier
-//                            .fillMaxWidth()
-//                            .background(
-//                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-//                                shape = MaterialTheme.shapes.small
-//                            )
-//                            .padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Если это финальное действие, добавляем иконку молнии
+                        if (action.isFinalAction) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_final_action),
+                                contentDescription = "Финальное действие",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
+                        }
+
                         if (isNextAction) {
                             IconWithTooltip(
-                                icon = Icons.Default.ArrowForward,
+                                icon = Icons.AutoMirrored.Filled.ArrowForward,
                                 description = "Следующее действие",
                                 tint = MaterialTheme.colorScheme.primary
                             )
+
+                            Spacer(modifier = Modifier.width(4.dp))
                         }
+
                         Text(
                             text = action.actionTemplate.name,
                             style = MaterialTheme.typography.titleMedium,
@@ -186,8 +197,6 @@ fun PlannedActionItem(
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
 
             // Отображение товара, если есть
             action.storageProduct?.let { product ->

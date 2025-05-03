@@ -17,7 +17,8 @@ data class PlannedAction(
     val placementPallet: Pallet? = null,
     val placementBin: BinX? = null,
     val isCompleted: Boolean = false,
-    val isSkipped: Boolean = false
+    val isSkipped: Boolean = false,
+    val isFinalAction: Boolean = false
 ) {
 
     fun isClickable(): Boolean = !isCompleted && !isSkipped
