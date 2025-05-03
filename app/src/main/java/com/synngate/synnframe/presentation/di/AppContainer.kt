@@ -22,6 +22,7 @@ import com.synngate.synnframe.data.remote.api.TaskTypeApi
 import com.synngate.synnframe.data.remote.api.TaskTypeApiImpl
 import com.synngate.synnframe.data.remote.api.TaskXApi
 import com.synngate.synnframe.data.remote.api.TaskXApiImpl
+import com.synngate.synnframe.data.remote.api.ValidationApiServiceImpl
 import com.synngate.synnframe.data.remote.service.ApiService
 import com.synngate.synnframe.data.remote.service.ApiServiceImpl
 import com.synngate.synnframe.data.remote.service.ServerProvider
@@ -70,7 +71,6 @@ import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.UpdateInstallerImpl
-import com.synngate.synnframe.domain.service.ValidationApiService
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.domain.service.WebServerManager
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
@@ -292,7 +292,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     // Добавляем ValidationApiService
     val validationApiService by lazy {
         Timber.d("Creating ValidationApiService")
-        ValidationApiService(httpClient, serverProvider)
+        ValidationApiServiceImpl(httpClient, serverProvider)
     }
 
     // Сервисы
