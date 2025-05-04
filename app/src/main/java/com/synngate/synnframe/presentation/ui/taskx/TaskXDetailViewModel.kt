@@ -5,6 +5,7 @@ import com.synngate.synnframe.domain.entity.taskx.AvailableTaskAction
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
+import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.service.ActionWizardContextFactory
 import com.synngate.synnframe.domain.service.ActionWizardController
 import com.synngate.synnframe.domain.service.FinalActionsValidator
@@ -143,6 +144,7 @@ class TaskXDetailViewModel(
      */
     fun setActionsDisplayMode(mode: ActionDisplayMode) {
         updateState { it.copy(actionsDisplayMode = mode) }
+        updateFilteredActions()
     }
 
     /**
@@ -527,6 +529,9 @@ class TaskXDetailViewModel(
                 statusActions = statusActions
             )
         }
+
+        // Добавляем вызов обновления фильтрованных действий
+        updateFilteredActions()
     }
 
     private fun checkHasAdditionalActions(task: TaskX): Boolean {
@@ -605,6 +610,48 @@ class TaskXDetailViewModel(
     fun isActionAvailable(action: AvailableTaskAction): Boolean {
         val taskType = uiState.value.taskType ?: return false
         return action in taskType.availableActions
+    }
+
+    private fun updateFilteredActions() {
+        val task = uiState.value.task ?: return
+        val mode = uiState.value.actionsDisplayMode
+
+        val filteredActions = filterActionsByMode(task, mode)
+
+        updateState { it.copy(filteredActions = filteredActions) }
+    }
+
+    /**
+     * Фильтрует действия задания в зависимости от выбранного режима отображения
+     */
+    private fun filterActionsByMode(task: TaskX, mode: ActionDisplayMode): List<PlannedAction> {
+        val canExecuteFinals = canExecuteFinalActions(task)
+
+        return when (mode) {
+            ActionDisplayMode.CURRENT -> task.plannedActions
+                .filter { !it.isCompleted && !it.isSkipped && (!it.isFinalAction || canExecuteFinals) }
+                .sortedBy { it.order }
+
+            ActionDisplayMode.COMPLETED -> task.plannedActions
+                .filter { it.isCompleted }
+                .sortedBy { it.order }
+
+            ActionDisplayMode.ALL -> task.plannedActions
+                .sortedBy { it.order }
+
+            ActionDisplayMode.FINALS -> task.plannedActions
+                .filter { it.isFinalAction }
+                .sortedBy { it.order }
+        }
+    }
+
+    fun formatDisplayMode(mode: ActionDisplayMode): String {
+        return when (mode) {
+            ActionDisplayMode.CURRENT -> "Текущие"
+            ActionDisplayMode.COMPLETED -> "Выполненные"
+            ActionDisplayMode.FINALS -> "Финальные"
+            ActionDisplayMode.ALL -> "Все"
+        }
     }
 
     override fun dispose() {

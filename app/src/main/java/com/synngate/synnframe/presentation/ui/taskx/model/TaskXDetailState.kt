@@ -2,10 +2,11 @@ package com.synngate.synnframe.presentation.ui.taskx.model
 
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
+import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 
 enum class TaskXDetailView {
-    PLANNED_ACTIONS,  // Запланированные действия
-    FACT_ACTIONS      // Фактические действия
+    PLANNED_ACTIONS,
+    FACT_ACTIONS
 }
 
 data class TaskXDetailState(
@@ -23,7 +24,8 @@ data class TaskXDetailState(
     val nextActionId: String? = null,
     val hasAdditionalActions: Boolean = false,
     val statusActions: List<StatusActionData> = emptyList(),
-    val actionsDisplayMode: ActionDisplayMode = ActionDisplayMode.CURRENT
+    val actionsDisplayMode: ActionDisplayMode = ActionDisplayMode.CURRENT,
+    val filteredActions: List<PlannedAction> = emptyList()
 )
 
 sealed class TaskXDetailEvent {
@@ -32,10 +34,9 @@ sealed class TaskXDetailEvent {
     object HideActionWizard : TaskXDetailEvent()
 }
 
-// Вспомогательные классы для UI
 data class StatusActionData(
     val id: String,
-    val iconName: String,    // Имя иконки для сопоставления в UI
+    val iconName: String,
     val text: String,
     val description: String,
     val onClick: () -> Unit

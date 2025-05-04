@@ -1,6 +1,5 @@
 package com.synngate.synnframe.domain.entity.taskx
 
-import com.synngate.synnframe.domain.entity.taskx.action.ActionTemplate
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -13,5 +12,4 @@ data class TaskTypeX(
     val allowExceedPlanQuantity: Boolean = false, // Разрешено ли превышение планового количества
     val strictActionOrder: Boolean = true,  // Требовать строгий порядок выполнения действий
     val availableActions: List<AvailableTaskAction> = emptyList(), // Доступные действия
-    val finalActions: List<ActionTemplate>? = emptyList() // Финальные действия перед завершением
 )

@@ -25,7 +25,6 @@ data class TaskX(
     val completedAt: LocalDateTime? = null,   // Дата и время завершения
     val plannedActions: List<PlannedAction> = emptyList(), // Запланированные действия
     val factActions: List<FactAction> = emptyList(),       // Фактические действия
-    val finalActions: List<FactAction> = emptyList(),      // Финальные действия
     val allowCompletionWithoutFactActions: Boolean = false // Разрешить завершение без факт. действий
 ) {
     // Можно ли начать выполнение задания

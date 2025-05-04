@@ -1,14 +1,16 @@
 package com.synngate.synnframe.presentation.ui.taskx.components
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -22,71 +24,73 @@ fun ActionDisplayModeSwitcher(
     hasFinalActions: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val scrollState = rememberScrollState()
     Row(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
+            .horizontalScroll(scrollState)
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        ActionModeButton(
-            text = "Текущие",
-            isSelected = currentMode == ActionDisplayMode.CURRENT,
+        FilterChip(
+            label = { Text( "Текущие" ) },
+            selected = currentMode == ActionDisplayMode.CURRENT,
             onClick = { onModeChange(ActionDisplayMode.CURRENT) },
-            modifier = Modifier.weight(1f)
+            leadingIcon = if (currentMode == ActionDisplayMode.CURRENT) {
+                {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(FilterChipDefaults.IconSize)
+                    )
+                }
+            } else null
         )
 
-        Spacer(modifier = Modifier.width(4.dp))
-
-        ActionModeButton(
-            text = "Выполненные",
-            isSelected = currentMode == ActionDisplayMode.COMPLETED,
+        FilterChip(
+            label = { Text( "Выполненные") },
+            selected = currentMode == ActionDisplayMode.COMPLETED,
             onClick = { onModeChange(ActionDisplayMode.COMPLETED) },
-            modifier = Modifier.weight(1f)
+            leadingIcon = if (currentMode == ActionDisplayMode.COMPLETED) {
+                {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(FilterChipDefaults.IconSize)
+                    )
+                }
+            } else null
         )
 
-        Spacer(modifier = Modifier.width(4.dp))
-
-        ActionModeButton(
-            text = "Все",
-            isSelected = currentMode == ActionDisplayMode.ALL,
+        FilterChip(
+            label = { Text( "Все") },
+            selected = currentMode == ActionDisplayMode.ALL,
             onClick = { onModeChange(ActionDisplayMode.ALL) },
-            modifier = Modifier.weight(1f)
+            leadingIcon = if (currentMode == ActionDisplayMode.ALL) {
+                {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(FilterChipDefaults.IconSize)
+                    )
+                }
+            } else null
         )
 
         if (hasFinalActions) {
-            Spacer(modifier = Modifier.width(4.dp))
-
-            ActionModeButton(
-                text = "Финальные",
-                isSelected = currentMode == ActionDisplayMode.FINALS,
+            FilterChip(
+                label = { Text( "Финальные") },
+                selected = currentMode == ActionDisplayMode.FINALS,
                 onClick = { onModeChange(ActionDisplayMode.FINALS) },
-                modifier = Modifier.weight(1f)
+                leadingIcon = if (currentMode == ActionDisplayMode.FINALS) {
+                    {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(FilterChipDefaults.IconSize)
+                        )
+                    }
+                } else null
             )
         }
-    }
-}
-
-@Composable
-fun ActionModeButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Button(
-        onClick = onClick,
-        modifier = modifier,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = if (isSelected)
-                MaterialTheme.colorScheme.onPrimaryContainer
-            else
-                MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    ) {
-        Text(text)
     }
 }
