@@ -3,7 +3,6 @@ package com.synngate.synnframe.presentation.ui.taskx.components
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -27,8 +26,7 @@ fun ActionDisplayModeSwitcher(
     val scrollState = rememberScrollState()
     Row(
         modifier = modifier
-            .horizontalScroll(scrollState)
-            .padding(vertical = 8.dp),
+            .horizontalScroll(scrollState),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         FilterChip(

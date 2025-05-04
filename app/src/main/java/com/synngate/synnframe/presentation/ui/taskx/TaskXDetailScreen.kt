@@ -251,9 +251,6 @@ fun TaskXDetailScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Основное содержимое в зависимости от выбранного вида
             when (state.activeView) {
                 TaskXDetailView.PLANNED_ACTIONS -> {
                     ActionDisplayModeSwitcher(
