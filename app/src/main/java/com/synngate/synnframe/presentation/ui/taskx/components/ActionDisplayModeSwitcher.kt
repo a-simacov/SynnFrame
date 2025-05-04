@@ -12,9 +12,21 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.presentation.ui.taskx.model.ActionDisplayMode
+
+/**
+ * Статические данные о возможных режимах отображения.
+ * Определены вне компонентов Compose для предотвращения пересоздания.
+ */
+private val ALL_DISPLAY_MODES = mapOf(
+    ActionDisplayMode.CURRENT to "Текущие",
+    ActionDisplayMode.COMPLETED to "Выполненные",
+    ActionDisplayMode.ALL to "Все",
+    ActionDisplayMode.FINALS to "Финальные"
+)
 
 @Composable
 fun ActionDisplayModeSwitcher(
@@ -24,68 +36,42 @@ fun ActionDisplayModeSwitcher(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+
+    // Используем remember с ключом hasFinalActions для кэширования списка
+    val displayModes = remember(hasFinalActions) {
+        buildList {
+            add(ActionDisplayMode.CURRENT)
+            add(ActionDisplayMode.COMPLETED)
+            add(ActionDisplayMode.ALL)
+            if (hasFinalActions) {
+                add(ActionDisplayMode.FINALS)
+            }
+        }
+    }
+
     Row(
         modifier = modifier
             .horizontalScroll(scrollState),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        FilterChip(
-            label = { Text( "Текущие" ) },
-            selected = currentMode == ActionDisplayMode.CURRENT,
-            onClick = { onModeChange(ActionDisplayMode.CURRENT) },
-            leadingIcon = if (currentMode == ActionDisplayMode.CURRENT) {
-                {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(FilterChipDefaults.IconSize)
-                    )
-                }
-            } else null
-        )
+        displayModes.forEach { mode ->
+            val label = ALL_DISPLAY_MODES[mode] ?: "Неизвестно"
+            val isSelected = currentMode == mode
 
-        FilterChip(
-            label = { Text( "Выполненные") },
-            selected = currentMode == ActionDisplayMode.COMPLETED,
-            onClick = { onModeChange(ActionDisplayMode.COMPLETED) },
-            leadingIcon = if (currentMode == ActionDisplayMode.COMPLETED) {
-                {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(FilterChipDefaults.IconSize)
-                    )
-                }
-            } else null
-        )
-
-        FilterChip(
-            label = { Text( "Все") },
-            selected = currentMode == ActionDisplayMode.ALL,
-            onClick = { onModeChange(ActionDisplayMode.ALL) },
-            leadingIcon = if (currentMode == ActionDisplayMode.ALL) {
-                {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(FilterChipDefaults.IconSize)
-                    )
-                }
-            } else null
-        )
-
-        if (hasFinalActions) {
             FilterChip(
-                label = { Text( "Финальные") },
-                selected = currentMode == ActionDisplayMode.FINALS,
-                onClick = { onModeChange(ActionDisplayMode.FINALS) },
-                leadingIcon = if (currentMode == ActionDisplayMode.FINALS) {
-                    {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(FilterChipDefaults.IconSize)
-                        )
+                label = { Text(label) },
+                selected = isSelected,
+                onClick = { onModeChange(mode) },
+                leadingIcon = if (isSelected) {
+                    // Используем remember для предотвращения пересоздания лямбды
+                    remember {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(FilterChipDefaults.IconSize)
+                            )
+                        }
                     }
                 } else null
             )
