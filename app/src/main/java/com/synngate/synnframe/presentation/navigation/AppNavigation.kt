@@ -46,9 +46,6 @@ import timber.log.Timber
 import java.net.URLEncoder.encode
 import java.util.Base64
 
-/**
- * Основной навигационный компонент приложения
- */
 @Composable
 fun AppNavigation(
     startDestination: String = Screen.ServerList.route,
