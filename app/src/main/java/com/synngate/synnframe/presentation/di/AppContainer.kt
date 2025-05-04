@@ -109,6 +109,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryReg
 import com.synngate.synnframe.presentation.ui.wizard.action.BinSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.PalletSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.ProductSelectionStepFactory
+import com.synngate.synnframe.presentation.ui.wizard.action.QuantityProductSelectionStepFactory
 import com.synngate.synnframe.util.network.NetworkMonitor
 import com.synngate.synnframe.util.resources.ResourceProvider
 import com.synngate.synnframe.util.resources.ResourceProviderImpl
@@ -704,7 +705,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
 
         registry.registerFactory(
             ActionObjectType.TASK_PRODUCT,
-            ProductSelectionStepFactory(appContainer.productRepository)
+            QuantityProductSelectionStepFactory(appContainer.productRepository)
         )
 
         registry.registerFactory(
