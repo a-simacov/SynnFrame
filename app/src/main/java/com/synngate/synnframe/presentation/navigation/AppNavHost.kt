@@ -17,13 +17,16 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.synngate.synnframe.SynnFrameApplication
 import com.synngate.synnframe.presentation.common.LocalCurrentUser
+import com.synngate.synnframe.presentation.navigation.graphs.authRoutes
 import com.synngate.synnframe.presentation.navigation.graphs.dynamicNavGraph
+import com.synngate.synnframe.presentation.navigation.graphs.logsNavGraph
+import com.synngate.synnframe.presentation.navigation.graphs.productsNavGraph
 import com.synngate.synnframe.presentation.navigation.graphs.serverNavGraph
 import com.synngate.synnframe.presentation.navigation.graphs.settingsNavGraph
-import com.synngate.synnframe.presentation.navigation.routes.AuthRoutes
+import com.synngate.synnframe.presentation.navigation.graphs.taskXNavGraph
+import com.synngate.synnframe.presentation.navigation.graphs.tasksNavGraph
 import com.synngate.synnframe.presentation.navigation.routes.MainRoutes
 import com.synngate.synnframe.presentation.navigation.routes.ServerRoutes
-import com.synngate.synnframe.presentation.ui.login.LoginScreen
 import com.synngate.synnframe.presentation.ui.main.MainMenuScreen
 import timber.log.Timber
 
@@ -40,6 +43,7 @@ fun AppNavHost(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val activity = context as? Activity
 
     // Получаем приложение
     val app = context.applicationContext as SynnFrameApplication
@@ -82,38 +86,16 @@ fun AppNavHost(
                 navController = navController,
                 navigationScopeManager = navigationScopeManager,
                 navigateToLogin = {
-                    navController.navigate(AuthRoutes.Login.route) {
-                        popUpTo(ServerRoutes.ServerList.route) { inclusive = false }
-                    }
+                    navController.navigateToLogin()
                 }
             )
 
-            // Экран логина
-            composable(AuthRoutes.Login.route) { entry ->
-                val screenContainer = rememberEphemeralScreenContainer(
-                    navController = navController,
-                    navBackStackEntry = entry,
-                    navigationScopeManager = navigationScopeManager
-                )
-                val viewModel = remember { screenContainer.createLoginViewModel() }
-
-                LoginScreen(
-                    viewModel = viewModel,
-                    navigateToMainMenu = {
-                        navController.navigate(MainRoutes.MainMenu.route) {
-                            popUpTo(AuthRoutes.Login.route) { inclusive = true }
-                        }
-                    },
-                    navigateToServersList = {
-                        navController.navigate(ServerRoutes.ServerList.route) {
-                            popUpTo(AuthRoutes.Login.route) { inclusive = false }
-                        }
-                    },
-                    exitApp = {
-                        (context as? Activity)?.finish()
-                    }
-                )
-            }
+            // Маршруты аутентификации
+            authRoutes(
+                navController = navController,
+                navigationScopeManager = navigationScopeManager,
+                exitApp = { activity?.finish() }
+            )
 
             // Главное меню
             composable(MainRoutes.MainMenu.route) { entry ->
@@ -126,7 +108,6 @@ fun AppNavHost(
 
                 MainMenuScreen(
                     viewModel = viewModel,
-                    // Функции навигации вынесены в отдельные лямбды для краткости
                     navigateToTasks = {
                         navController.navigateToTaskList()
                     },
@@ -148,9 +129,7 @@ fun AppNavHost(
                     navigateToDynamicMenu = {
                         navController.navigateToDynamicMenu()
                     },
-                    exitApp = {
-                        (context as? Activity)?.finish()
-                    }
+                    exitApp = { activity?.finish() }
                 )
             }
 

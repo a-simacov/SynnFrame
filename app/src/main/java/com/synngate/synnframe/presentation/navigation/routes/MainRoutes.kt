@@ -1,4 +1,8 @@
 package com.synngate.synnframe.presentation.navigation.routes
 
-class MainRoutes {
+object MainRoutes {
+
+    object MainMenu : Route {
+        override val route = "main_menu"
+    }
 }

@@ -18,8 +18,9 @@ import com.synngate.synnframe.SynnFrameApplication
 import com.synngate.synnframe.data.barcodescanner.DataWedgeReceiver
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.di.AppContainer
-import com.synngate.synnframe.presentation.navigation.AppNavigation
-import com.synngate.synnframe.presentation.navigation.Screen
+import com.synngate.synnframe.presentation.navigation.AppNavHost
+import com.synngate.synnframe.presentation.navigation.routes.AuthRoutes
+import com.synngate.synnframe.presentation.navigation.routes.ServerRoutes
 import com.synngate.synnframe.presentation.theme.SynnFrameTheme
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import com.synngate.synnframe.presentation.util.LocaleHelper
@@ -51,9 +52,9 @@ class MainActivity : ComponentActivity() {
         val fromSplash = intent.getBooleanExtra(EXTRA_FROM_SPLASH, false)
 
         val startDestination = if (showServersScreen) {
-            Screen.ServerList.route
+            ServerRoutes.ServerList.route
         } else {
-            Screen.Login.route
+            AuthRoutes.Login.route
         }
 
         Timber.d("MainActivity onCreate, startDestination=$startDestination, fromSplash=$fromSplash")
@@ -73,10 +74,7 @@ class MainActivity : ComponentActivity() {
                     CompositionLocalProvider(
                         LocalScannerService provides app.appContainer.scannerService
                     ) {
-                        // Основная навигация приложения
-                        AppNavigation(
-                            startDestination = startDestination
-                        )
+                        AppNavHost(startDestination = startDestination)
                     }
                 }
             }
