@@ -50,6 +50,7 @@ import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
+import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionWizardState
 import com.synngate.synnframe.domain.service.ActionWizardContextFactory
@@ -460,6 +461,24 @@ fun ActionSummaryScreen(
             if (productEntry != null) {
                 val (stepId, taskProduct) = productEntry
 
+                // Получаем информацию о фактических действиях из контекста
+                val factActionsInfo = state.results["factActions"] as? Map<*, *> ?: emptyMap<String, Any>()
+
+                // Получаем список фактических действий для текущего планового действия
+                @Suppress("UNCHECKED_CAST")
+                val relatedFactActions = (factActionsInfo[action.id] as? List<FactAction>) ?: emptyList()
+
+                // Рассчитываем общее выполненное количество из предыдущих действий
+                val previousCompletedQuantity = relatedFactActions.sumOf {
+                    it.storageProduct?.quantity?.toDouble() ?: 0.0
+                }.toFloat()
+
+                // Текущее введенное количество
+                val currentQuantity = taskProduct.quantity
+
+                // Общее количество (предыдущие действия + текущее)
+                val totalQuantity = previousCompletedQuantity + currentQuantity
+
                 // Отображаем карточку товара с количеством
                 Card(
                     modifier = Modifier
@@ -503,7 +522,7 @@ fun ActionSummaryScreen(
                             if (it.product.id == taskProduct.product.id) it.quantity else 0f
                         } ?: 0f
 
-                        // Отображаем плановое и фактическое количество
+                        // Отображаем плановое, текущее и общее количество
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -522,6 +541,28 @@ fun ActionSummaryScreen(
                             )
                         }
 
+                        // Добавляем информацию о предыдущих выполненных действиях
+                        if (previousCompletedQuantity > 0f) {
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Ранее выполнено:",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+
+                                Text(
+                                    text = previousCompletedQuantity.toString(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Row(
@@ -529,17 +570,53 @@ fun ActionSummaryScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Фактическое количество:",
+                                text = "Текущее количество:",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
 
                             Text(
-                                text = taskProduct.quantity.toString(),
+                                text = currentQuantity.toString(),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 fontWeight = FontWeight.Bold
                             )
+                        }
+
+                        // Добавляем информацию об общем выполненном количестве
+                        if (previousCompletedQuantity > 0f) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            HorizontalDivider()
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Всего будет выполнено:",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Text(
+                                    text = totalQuantity.toString(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            // Показываем индикацию, если общее количество превысит плановое
+                            if (plannedQuantity > 0f && totalQuantity > plannedQuantity) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Внимание: общее количество превышает плановое!",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                 }
