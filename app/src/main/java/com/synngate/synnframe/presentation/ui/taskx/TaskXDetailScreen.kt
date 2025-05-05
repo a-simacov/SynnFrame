@@ -133,7 +133,10 @@ fun TaskXDetailScreen(
                     actionWizardController = viewModel.actionWizardController,
                     actionWizardContextFactory = viewModel.actionWizardContextFactory,
                     actionStepFactoryRegistry = viewModel.actionStepFactoryRegistry,
-                    onComplete = { viewModel.completeActionWizard() },
+                    // Изменяем вызов onComplete, передавая флаг finalizePlannedAction
+                    onComplete = { finalizePlannedAction ->
+                        viewModel.completeActionWizard(finalizePlannedAction)
+                    },
                     onCancel = { viewModel.hideActionWizard() },
                     modifier = Modifier.fillMaxSize()
                 )

@@ -196,10 +196,23 @@ class TaskXDetailViewModel(
         actionWizardController.cancel()
     }
 
-    fun completeActionWizard() {
+    fun completeActionWizard(finalizePlannedAction: Boolean = true) {
         launchIO {
             try {
-                val result = actionWizardController.complete()
+                // Если нажали "Добавить еще действие", то не нужно вызывать complete(),
+                // так как он уже был вызван в ActionWizardScreen с параметром false
+                if (!finalizePlannedAction) {
+                    // Только закрываем визард и обновляем данные задания
+                    loadTask() // Загружаем актуальные данные
+                    updateState { it.copy(showActionWizard = false) }
+
+                    // Показываем сообщение пользователю
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Действие добавлено, можно продолжить"))
+                    return@launchIO
+                }
+
+                // Стандартная логика для завершения действия (finalizePlannedAction = true)
+                val result = actionWizardController.complete(true)
                 if (result.isSuccess) {
                     val updatedTask = result.getOrNull()
 

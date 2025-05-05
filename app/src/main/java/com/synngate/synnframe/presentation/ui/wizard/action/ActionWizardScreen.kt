@@ -68,7 +68,7 @@ fun ActionWizardScreen(
     actionWizardController: ActionWizardController,
     actionWizardContextFactory: ActionWizardContextFactory,
     actionStepFactoryRegistry: ActionStepFactoryRegistry,
-    onComplete: () -> Unit,
+    onComplete: (Boolean) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -177,7 +177,7 @@ fun ActionWizardScreen(
                             coroutineScope.launch {
                                 val result = actionWizardController.complete(false)
                                 if (result.isSuccess) {
-                                    onComplete()
+                                    onComplete(false)
                                 }
                             }
                         },
@@ -186,7 +186,7 @@ fun ActionWizardScreen(
                             coroutineScope.launch {
                                 val result = actionWizardController.complete(true)
                                 if (result.isSuccess) {
-                                    onComplete()
+                                    onComplete(true)
                                 }
                             }
                         }
@@ -256,7 +256,7 @@ fun ActionWizardScreen(
                     wizardState = wizardState,
                     coroutineScope = coroutineScope,
                     actionWizardController = actionWizardController,
-                    onComplete = onComplete,
+                    onComplete = onComplete, // Теперь он принимает Boolean
                     onShowOptions = { showCompletionOptions = true }
                 )
             } else {
@@ -277,7 +277,7 @@ private fun CompletionButtons(
     wizardState: ActionWizardState,
     coroutineScope: CoroutineScope,
     actionWizardController: ActionWizardController,
-    onComplete: () -> Unit,
+    onComplete: (Boolean) -> Unit,
     onShowOptions: () -> Unit
 ) {
     Row(
@@ -337,7 +337,7 @@ private fun CompletionButtons(
                     coroutineScope.launch {
                         val result = actionWizardController.complete(true)
                         if (result.isSuccess) {
-                            onComplete()
+                            onComplete(true) // Передаем true - полное завершение
                         }
                     }
                 },
