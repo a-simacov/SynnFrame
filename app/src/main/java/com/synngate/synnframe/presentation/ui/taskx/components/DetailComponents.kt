@@ -17,21 +17,21 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.NoEncryption
 import androidx.compose.material.icons.filled.PendingActions
-import androidx.compose.material.icons.filled.SyncProblem
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
@@ -98,20 +98,14 @@ fun FactActionsView(
 @Composable
 fun PlannedActionItem(
     action: PlannedAction,
-    factActions: List<FactAction> = emptyList(),
     onClick: () -> Unit,
     isNextAction: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    // Определяем прогресс действия
-    val isPartiallyCompleted = action.isPartiallyCompleted(factActions)
-    val completionProgress = action.getCompletionProgress(factActions)
-
     // Определяем цвет фона в зависимости от состояния и типа действия
     val backgroundColor = when {
         action.isCompleted -> MaterialTheme.colorScheme.secondaryContainer
         action.isSkipped -> MaterialTheme.colorScheme.tertiaryContainer
-        isPartiallyCompleted -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f)
         action.isFinalAction -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
         isNextAction -> MaterialTheme.colorScheme.primaryContainer
         else -> MaterialTheme.colorScheme.surface
@@ -128,7 +122,7 @@ fun PlannedActionItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable(enabled = action.isClickable() || isPartiallyCompleted, onClick = onClick),
+            .clickable(enabled = action.isClickable(), onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
         ),
@@ -149,7 +143,7 @@ fun PlannedActionItem(
                         // Если это финальное действие, добавляем иконку молнии
                         if (action.isFinalAction) {
                             Icon(
-                                imageVector = Icons.Default.SyncProblem,
+                                painter = painterResource(id = R.drawable.ic_final_action),
                                 contentDescription = "Финальное действие",
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(end = 8.dp)
@@ -193,14 +187,6 @@ fun PlannedActionItem(
                             iconSize = 24
                         )
                     }
-                    isPartiallyCompleted -> {
-                        IconWithTooltip(
-                            icon = Icons.Default.SyncProblem,
-                            description = "Выполнено частично",
-                            tint = MaterialTheme.colorScheme.tertiary,
-                            iconSize = 24
-                        )
-                    }
                     else -> {
                         IconWithTooltip(
                             icon = Icons.Default.PendingActions,
@@ -218,14 +204,6 @@ fun PlannedActionItem(
                     text = "Товар: ${product.product.name}",
                     style = MaterialTheme.typography.bodyMedium
                 )
-
-                // Отображаем плановое количество
-                if (product.quantity > 0) {
-                    Text(
-                        text = "Плановое количество: ${product.quantity}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
             }
 
             // Отображение паллеты хранения, если есть
@@ -265,45 +243,6 @@ fun PlannedActionItem(
                 Text(
                     text = "Паллета размещения: ${pallet.code}",
                     style = MaterialTheme.typography.bodyMedium
-                )
-            }
-
-            // Отображение прогресса для частично выполненных действий
-            if (isPartiallyCompleted) {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Получаем выполненное количество
-                val completedQuantity = action.getCompletedQuantity(factActions)
-                val plannedQuantity = action.plannedQuantity
-
-                // Отображаем информацию о прогрессе
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Выполнено: $completedQuantity из $plannedQuantity",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = "${(completionProgress * 100).toInt()}%",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Отображаем индикатор прогресса
-                LinearProgressIndicator(
-                    progress = { completionProgress },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.tertiary,
-                    trackColor = MaterialTheme.colorScheme.tertiaryContainer
                 )
             }
         }

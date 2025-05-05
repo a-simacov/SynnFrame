@@ -120,20 +120,12 @@ class TaskXRepositoryImpl(
         }
     }
 
-    /**
-     * Добавляет фактическое действие к заданию
-     * @param factAction Фактическое действие
-     * @param endpoint Endpoint API
-     * @param finalizePlannedAction Завершить плановое действие (true) или только создать факт (false)
-     * @return Результат операции - обновленное задание
-     */
     override suspend fun addFactAction(
         factAction: FactAction,
-        endpoint: String,
-        finalizePlannedAction: Boolean
+        endpoint: String
     ): Result<TaskX> {
         try {
-            val result = taskXApi.addFactAction(factAction.taskId, factAction, endpoint, finalizePlannedAction)
+            val result = taskXApi.addFactAction(factAction.taskId, factAction, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
                     val task = taskContextManager.lastStartedTaskX.value
@@ -141,10 +133,14 @@ class TaskXRepositoryImpl(
                         val updatedFactActions = task.factActions.toMutableList()
                         updatedFactActions.add(factAction)
 
-                        // Обновляем запланированные действия в зависимости от флага finalizePlannedAction
                         val updatedPlannedActions = task.plannedActions.map {
-                            if (it.id == factAction.plannedActionId && finalizePlannedAction) {
-                                // Если нужно завершить действие - помечаем его как выполненное
+                            if (it.id == factAction.plannedActionId) {
+                                it.copy(isCompleted = true)
+                            } else if (factAction.plannedActionId == null &&
+                                it.storageProduct?.product?.id == factAction.storageProduct?.product?.id &&
+                                it.wmsAction == factAction.wmsAction) {
+                                // Дополнительно проверяем соответствие по продукту и действию,
+                                // если plannedActionId не указан
                                 it.copy(isCompleted = true)
                             } else {
                                 it

@@ -19,42 +19,30 @@ import com.synngate.synnframe.presentation.ui.taskx.model.ActionDisplayMode
 
 /**
  * Статические данные о возможных режимах отображения.
+ * Определены вне компонентов Compose для предотвращения пересоздания.
  */
 private val ALL_DISPLAY_MODES = mapOf(
     ActionDisplayMode.CURRENT to "Текущие",
-    ActionDisplayMode.PARTIALLY_COMPLETED to "Частично",
     ActionDisplayMode.COMPLETED to "Выполненные",
     ActionDisplayMode.ALL to "Все",
     ActionDisplayMode.FINALS to "Финальные"
 )
 
-/**
- * Компонент для переключения режимов отображения действий
- */
 @Composable
 fun ActionDisplayModeSwitcher(
     currentMode: ActionDisplayMode,
     onModeChange: (ActionDisplayMode) -> Unit,
     hasFinalActions: Boolean,
-    hasPartiallyCompletedActions: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
 
-    // Используем remember с ключами для кэширования списка
-    val displayModes = remember(hasFinalActions, hasPartiallyCompletedActions) {
+    // Используем remember с ключом hasFinalActions для кэширования списка
+    val displayModes = remember(hasFinalActions) {
         buildList {
             add(ActionDisplayMode.CURRENT)
-
-            // Добавляем режим "Частично" только если есть частично выполненные действия
-            if (hasPartiallyCompletedActions) {
-                add(ActionDisplayMode.PARTIALLY_COMPLETED)
-            }
-
             add(ActionDisplayMode.COMPLETED)
             add(ActionDisplayMode.ALL)
-
-            // Добавляем режим "Финальные" только если есть финальные действия
             if (hasFinalActions) {
                 add(ActionDisplayMode.FINALS)
             }

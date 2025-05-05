@@ -23,16 +23,6 @@ interface TaskXRepository {
     // Завершение выполнения задания
     suspend fun finishTask(id: String, endpoint: String): Result<TaskX>
 
-    /**
-     * Добавление фактического действия
-     * @param factAction Фактическое действие
-     * @param endpoint Endpoint API
-     * @param finalizePlannedAction Завершить плановое действие (true) или только создать факт (false)
-     * @return Результат операции - обновленное задание
-     */
-    suspend fun addFactAction(
-        factAction: FactAction,
-        endpoint: String,
-        finalizePlannedAction: Boolean = true
-    ): Result<TaskX>
+    // Добавление фактического действия
+    suspend fun addFactAction(factAction: FactAction, endpoint: String): Result<TaskX>
 }

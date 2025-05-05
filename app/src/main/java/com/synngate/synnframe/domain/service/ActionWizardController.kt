@@ -14,6 +14,7 @@ import java.time.LocalDateTime
 
 /**
  * Контроллер для управления визардом действий
+ * Обновлен для использования TaskXRepository при необходимости
  */
 class ActionWizardController(
     private val actionExecutionService: ActionExecutionService,
@@ -24,12 +25,6 @@ class ActionWizardController(
     private val _wizardState = MutableStateFlow<ActionWizardState?>(null)
     val wizardState: StateFlow<ActionWizardState?> = _wizardState.asStateFlow()
 
-    /**
-     * Инициализирует визард для указанного действия
-     * @param taskId ID задания
-     * @param actionId ID действия
-     * @return Результат инициализации
-     */
     suspend fun initialize(taskId: String, actionId: String): Result<Boolean> {
         return try {
             _wizardState.value = null
@@ -63,54 +58,12 @@ class ActionWizardController(
                 lastScannedBarcode = null,
                 isProcessingStep = false,
                 isSending = false,
-                sendError = null,
-                isPartiallyCompleted = false  // Новое поле для отслеживания частичного выполнения
+                sendError = null
             )
 
             Result.success(true)
         } catch (e: Exception) {
             Timber.e(e, "Error initializing wizard: ${e.message}")
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Инициализирует визард для продолжения частично выполненного действия
-     * @param taskId ID задания
-     * @param actionId ID действия
-     * @return Результат инициализации
-     */
-    suspend fun restartForAction(taskId: String, actionId: String): Result<Boolean> {
-        return try {
-            val task = taskContextManager.lastStartedTaskX.value
-                ?: return Result.failure(IllegalArgumentException("Task not found in context: $taskId"))
-
-            if (task.id != taskId) {
-                return Result.failure(IllegalArgumentException("Task ID mismatch"))
-            }
-
-            // Проверяем, можно ли продолжить выполнение этого действия
-            if (!task.canContinueAction(actionId)) {
-                return Result.failure(IllegalStateException("Cannot continue action: not available"))
-            }
-
-            // Используем стандартную инициализацию, но устанавливаем флаг частичного выполнения
-            val result = initialize(taskId, actionId)
-
-            if (result.isSuccess) {
-                val currentState = _wizardState.value
-                if (currentState != null) {
-                    _wizardState.value = currentState.copy(
-                        isPartiallyCompleted = true,
-                        // Добавляем факт. действия для отображения в интерфейсе
-                        relatedFactActions = task.getFactActionsForPlannedAction(actionId)
-                    )
-                }
-            }
-
-            return result
-        } catch (e: Exception) {
-            Timber.e(e, "Error restarting wizard for action: ${e.message}")
             Result.failure(e)
         }
     }
@@ -313,12 +266,7 @@ class ActionWizardController(
         _wizardState.value = null
     }
 
-    /**
-     * Завершает выполнение визарда и создает фактическое действие
-     * @param finalizePlannedAction Завершить плановое действие (true) или только создать факт (false)
-     * @return Результат выполнения - обновленное задание
-     */
-    suspend fun complete(finalizePlannedAction: Boolean = true): Result<TaskX> {
+    suspend fun complete(): Result<TaskX> {
         val state = _wizardState.value
             ?: return Result.failure(IllegalStateException("Wizard is not initialized"))
 
@@ -333,8 +281,7 @@ class ActionWizardController(
             val result = actionExecutionService.executeAction(
                 state.taskId,
                 state.actionId,
-                state.results,
-                finalizePlannedAction  // Передаем параметр завершения планового действия
+                state.results
             )
 
             if (result.isSuccess) {

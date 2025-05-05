@@ -16,9 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.Button
@@ -74,9 +72,6 @@ fun ActionWizardScreen(
 ) {
     val state by actionWizardController.wizardState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
-
-    // Локальное состояние для выбора между полным и частичным выполнением
-    var showCompletionOptions by remember { mutableStateOf(false) }
 
     if (state == null) {
         Box(
@@ -169,27 +164,7 @@ fun ActionWizardScreen(
 
                 if (currentStep == null || wizardState.isCompleted) {
                     ActionSummaryScreen(
-                        state = wizardState,
-                        // Отображаем кнопки выбора режима завершения, если это возможно
-                        showCompletionOptions = showCompletionOptions && wizardState.canPartialExecution(),
-                        onContinuePartial = {
-                            showCompletionOptions = false
-                            coroutineScope.launch {
-                                val result = actionWizardController.complete(false)
-                                if (result.isSuccess) {
-                                    onComplete()
-                                }
-                            }
-                        },
-                        onCompleteFull = {
-                            showCompletionOptions = false
-                            coroutineScope.launch {
-                                val result = actionWizardController.complete(true)
-                                if (result.isSuccess) {
-                                    onComplete()
-                                }
-                            }
-                        }
+                        state = wizardState
                     )
                 } else if (action != null) {
                     val actionStep = findActionStepForWizardStep(action, currentStep.id)
@@ -250,22 +225,7 @@ fun ActionWizardScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Выводим разные кнопки в зависимости от состояния визарда
-            if (wizardState.isCompleted) {
-                CompletionButtons(
-                    wizardState = wizardState,
-                    coroutineScope = coroutineScope,
-                    actionWizardController = actionWizardController,
-                    onComplete = onComplete,
-                    onShowOptions = { showCompletionOptions = true }
-                )
-            } else {
-                NavigationButtons(
-                    wizardState = wizardState,
-                    coroutineScope = coroutineScope,
-                    actionWizardController = actionWizardController
-                )
-            }
+            WizardActions(wizardState, coroutineScope, actionWizardController, onComplete)
 
             Spacer(modifier = Modifier.weight(0.1f))
         }
@@ -273,18 +233,17 @@ fun ActionWizardScreen(
 }
 
 @Composable
-private fun CompletionButtons(
+private fun WizardActions(
     wizardState: ActionWizardState,
     coroutineScope: CoroutineScope,
     actionWizardController: ActionWizardController,
-    onComplete: () -> Unit,
-    onShowOptions: () -> Unit
+    onComplete: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (wizardState.canGoBack) {
+        if ((wizardState.canGoBack && wizardState.currentStepIndex > 0) || wizardState.isCompleted) {
             OutlinedButton(
                 onClick = {
                     coroutineScope.launch {
@@ -306,10 +265,9 @@ private fun CompletionButtons(
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        // Проверяем, можно ли выполнить действие частично
-        if (wizardState.canPartialExecution()) {
+        if (wizardState.isCompleted) {
             Button(
-                onClick = onShowOptions,
+                onClick = onComplete,
                 modifier = Modifier.weight(1f),
                 enabled = !wizardState.isSending
             ) {
@@ -330,74 +288,7 @@ private fun CompletionButtons(
                     )
                 }
             }
-        } else {
-            // Стандартная кнопка Завершить, если нельзя выполнить частично
-            Button(
-                onClick = {
-                    coroutineScope.launch {
-                        val result = actionWizardController.complete(true)
-                        if (result.isSuccess) {
-                            onComplete()
-                        }
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                enabled = !wizardState.isSending
-            ) {
-                if (wizardState.isSending) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = LocalContentColor.current
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Отправка...")
-                } else {
-                    Text("Завершить")
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Завершить"
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun NavigationButtons(
-    wizardState: ActionWizardState,
-    coroutineScope: CoroutineScope,
-    actionWizardController: ActionWizardController
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        if (wizardState.canGoBack && wizardState.currentStepIndex > 0) {
-            OutlinedButton(
-                onClick = {
-                    coroutineScope.launch {
-                        actionWizardController.processStepResult(null)
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                enabled = !wizardState.isProcessingStep
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Назад"
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Назад")
-            }
-        } else {
-            // Пустой Spacer для сохранения выравнивания, если кнопка "Назад" отсутствует
-            Spacer(modifier = Modifier.weight(1f))
-        }
-
-        if (!wizardState.isCompleted && wizardState.currentStep != null &&
+        } else if (!wizardState.isCompleted && wizardState.currentStep != null &&
             wizardState.hasResultForStep(wizardState.currentStep!!.id)) {
             OutlinedButton(
                 onClick = {
@@ -405,8 +296,7 @@ private fun NavigationButtons(
                         actionWizardController.processForwardStep()
                     }
                 },
-                modifier = Modifier.weight(1f),
-                enabled = !wizardState.isProcessingStep
+                modifier = Modifier.weight(1f)
             ) {
                 Text("Вперед")
                 Spacer(modifier = Modifier.width(4.dp))
@@ -440,22 +330,6 @@ private fun WizardHeader(
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.weight(1f)
         )
-
-        // Отображаем индикатор для частично выполненного действия
-        if (wizardState.isPartiallyCompleted) {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                )
-            ) {
-                Text(
-                    text = "Частичное выполнение",
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.padding(4.dp)
-                )
-            }
-        }
 
         scannerService?.let { scanner ->
             ScannerStatusIndicator(
@@ -492,10 +366,7 @@ private fun findActionStepForWizardStep(
 @Composable
 fun ActionSummaryScreen(
     state: ActionWizardState,
-    modifier: Modifier = Modifier,
-    showCompletionOptions: Boolean = false,
-    onContinuePartial: () -> Unit = {},
-    onCompleteFull: () -> Unit = {}
+    modifier: Modifier = Modifier
 ) {
     val action = state.action
 
@@ -552,100 +423,6 @@ fun ActionSummaryScreen(
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         style = MaterialTheme.typography.bodyMedium
                     )
-                }
-            }
-        }
-
-        // Отображение текущих связанных фактических действий, если это частичное выполнение
-        if (state.isPartiallyCompleted && state.relatedFactActions.isNotEmpty()) {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Уже выполнено:",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    state.relatedFactActions.forEach { factAction ->
-                        val quantity = factAction.storageProduct?.quantity ?: 0f
-                        Text(
-                            text = "✓ ${factAction.storageProduct?.product?.name ?: "Товар"}: $quantity шт",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Показываем общее выполненное количество
-                    val totalCompleted = state.relatedFactActions.sumOf {
-                        (it.storageProduct?.quantity ?: 0f).toDouble()
-                    }.toFloat()
-
-                    val planned = action?.plannedQuantity ?: 0f
-
-                    if (planned > 0f) {
-                        Text(
-                            text = "Всего выполнено: $totalCompleted из $planned (${(totalCompleted/planned*100).toInt()}%)",
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                    }
-                }
-            }
-        }
-
-        // Отображение опций для завершения частичного действия
-        if (showCompletionOptions) {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Выберите способ завершения:",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = onContinuePartial,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Добавить еще",
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        Text("Добавить еще действие")
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Button(
-                        onClick = onCompleteFull,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "Завершить",
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        Text("Завершить и перейти дальше")
-                    }
                 }
             }
         }

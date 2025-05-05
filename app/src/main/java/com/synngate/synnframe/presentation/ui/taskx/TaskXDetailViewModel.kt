@@ -78,24 +78,13 @@ class TaskXDetailViewModel(
 
                 if (isStrictOrder && action != null) {
                     val nextActionId = finalActionsValidator.getNextActionIdInStrictOrder(task)
-                    if (nextActionId != actionId && !task.isPlannedActionPartiallyCompleted(actionId)) {
+                    if (nextActionId != actionId) {
                         showOrderRequiredMessage()
                         return@launchIO
                     }
                 }
 
-                // Проверяем, частично ли выполнено действие
-                val isPartiallyCompleted = task.isPlannedActionPartiallyCompleted(actionId)
-
-                // Запускаем визард в зависимости от статуса действия
-                val result = if (isPartiallyCompleted) {
-                    // Продолжаем выполнение частично выполненного действия
-                    actionWizardController.restartForAction(taskId, actionId)
-                } else {
-                    // Начинаем новое выполнение действия
-                    actionWizardController.initialize(taskId, actionId)
-                }
-
+                val result = actionWizardController.initialize(taskId, actionId)
                 if (result.isSuccess) {
                     updateState { it.copy(showActionWizard = true) }
                 } else {
@@ -647,9 +636,6 @@ class TaskXDetailViewModel(
                 .filter { it.isCompleted }
                 .sortedBy { it.order }
 
-            ActionDisplayMode.PARTIALLY_COMPLETED -> task.getPartiallyCompletedActions()
-                .sortedBy { it.order }
-
             ActionDisplayMode.ALL -> task.plannedActions
                 .sortedBy { it.order }
 
@@ -663,7 +649,6 @@ class TaskXDetailViewModel(
         return when (mode) {
             ActionDisplayMode.CURRENT -> "Текущие"
             ActionDisplayMode.COMPLETED -> "Выполненные"
-            ActionDisplayMode.PARTIALLY_COMPLETED -> "Частично выполненные"
             ActionDisplayMode.FINALS -> "Финальные"
             ActionDisplayMode.ALL -> "Все"
         }

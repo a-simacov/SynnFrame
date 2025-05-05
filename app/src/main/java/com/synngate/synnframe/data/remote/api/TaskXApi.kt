@@ -11,18 +11,9 @@ interface TaskXApi {
 
     suspend fun finishTask(taskId: String, endpoint: String): ApiResult<CommonResponseDto>
 
-    /**
-     * Добавление фактического действия
-     * @param taskId ID задания
-     * @param factAction Фактическое действие
-     * @param endpoint Endpoint API
-     * @param finalizePlannedAction Завершить плановое действие (true) или только создать факт (false)
-     * @return Результат операции
-     */
     suspend fun addFactAction(
         taskId: String,
         factAction: FactAction,
-        endpoint: String,
-        finalizePlannedAction: Boolean = true
+        endpoint: String
     ): ApiResult<CommonResponseDto>
 }

@@ -30,7 +30,7 @@ data class TaskX(
     // Можно ли начать выполнение задания
     fun canStart(): Boolean = status == TaskXStatus.TO_DO
 
-    // Можно ли завершить задание
+    // Можно ли завершить задание (изменена логика)
     fun canComplete(): Boolean {
         return status == TaskXStatus.IN_PROGRESS &&
                 (factActions.isNotEmpty() || allowCompletionWithoutFactActions)
@@ -48,82 +48,5 @@ data class TaskX(
     // Получить следующее запланированное действие
     fun getNextAction(): PlannedAction? {
         return plannedActions.firstOrNull { !it.isCompleted && !it.isSkipped }
-    }
-
-    /**
-     * Получает факт. действия для конкретного планового действия
-     * @param plannedActionId ID планового действия
-     * @return список фактических действий
-     */
-    fun getFactActionsForPlannedAction(plannedActionId: String): List<FactAction> {
-        return factActions.filter { it.plannedActionId == plannedActionId }
-    }
-
-    /**
-     * Проверяет, частично ли выполнено действие
-     * @param plannedActionId ID планового действия
-     * @return true, если действие выполнено частично
-     */
-    fun isPlannedActionPartiallyCompleted(plannedActionId: String): Boolean {
-        val plannedAction = plannedActions.find { it.id == plannedActionId } ?: return false
-        return plannedAction.isPartiallyCompleted(factActions)
-    }
-
-    /**
-     * Получает частично выполненные действия
-     * @return список частично выполненных действий
-     */
-    fun getPartiallyCompletedActions(): List<PlannedAction> {
-        return plannedActions.filter {
-            !it.isCompleted && !it.isSkipped && it.isPartiallyCompleted(factActions)
-        }
-    }
-
-    /**
-     * Проверяет, можно ли продолжить выполнение частично выполненного действия
-     * @param plannedActionId ID планового действия
-     * @return true, если можно продолжить
-     */
-    fun canContinueAction(plannedActionId: String): Boolean {
-        val plannedAction = plannedActions.find { it.id == plannedActionId } ?: return false
-
-        // Проверяем, что действие не завершено, не пропущено и имеет связанные факт. действия
-        return status == TaskXStatus.IN_PROGRESS &&
-                !plannedAction.isCompleted &&
-                !plannedAction.isSkipped &&
-                getFactActionsForPlannedAction(plannedActionId).isNotEmpty()
-    }
-
-    /**
-     * Рассчитывает общий прогресс выполнения задания
-     * @return процент выполнения от 0.0 до 1.0
-     */
-    fun calculateTotalProgress(): Float {
-        if (plannedActions.isEmpty()) return 0f
-
-        val totalPlanned = plannedActions.sumOf {
-            (if (it.isSkipped) 0f else it.plannedQuantity).toDouble()
-        }.toFloat()
-
-        if (totalPlanned <= 0) {
-            // Если нет данных о плановом количестве, считаем по числу действий
-            val total = plannedActions.size
-            val completed = plannedActions.count { it.isCompleted || it.isSkipped }
-            return if (total > 0) completed.toFloat() / total else 0f
-        }
-
-        // Суммируем фактически выполненные количества
-        var completedQuantity = 0f
-        plannedActions.forEach { action ->
-            if (action.isCompleted) {
-                // Для завершенных действий учитываем плановое количество
-                completedQuantity += action.plannedQuantity
-            } else if (!action.isSkipped) {
-                // Для незавершенных действий учитываем фактически выполненное
-                completedQuantity += action.getCompletedQuantity(factActions)
-            }
-        }
-
-        return (completedQuantity / totalPlanned).coerceIn(0f, 1f)
     }
 }

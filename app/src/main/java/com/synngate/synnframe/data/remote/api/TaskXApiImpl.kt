@@ -44,22 +44,9 @@ class TaskXApiImpl(
     override suspend fun addFactAction(
         taskId: String,
         factAction: FactAction,
-        endpoint: String,
-        finalizePlannedAction: Boolean
+        endpoint: String
     ): ApiResult<CommonResponseDto> {
         val requestDto = FactActionRequestDto.fromDomain(factAction)
-
-        // Добавляем параметр finalizePlannedAction в запрос
-        val params = mapOf("finalizePlannedAction" to finalizePlannedAction.toString())
-
-        val (_, path) = parseEndpoint(endpoint)
-        val targetPath = "$path/$taskId/fact-action"
-
-        // Выполняем запрос с дополнительными параметрами
-        return executeApiRequest(
-            endpoint = "POST $targetPath",
-            body = requestDto,
-            params = params
-        )
+        return executeTaskAction(taskId, endpoint, "fact-action", requestDto)
     }
 }
