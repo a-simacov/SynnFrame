@@ -52,8 +52,9 @@ import java.time.LocalDateTime
 @Composable
 fun PlannedActionsView(
     plannedActions: List<PlannedAction>,
+    factActions: List<FactAction> = emptyList(), // Добавляем параметр фактических действий
     onActionClick: (PlannedAction) -> Unit,
-    nextActionId: String? = null, // Добавлен параметр для идентификации следующего действия
+    nextActionId: String? = null,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -64,8 +65,9 @@ fun PlannedActionsView(
                 items(plannedActions.sortedBy { it.order }) { action ->
                     PlannedActionItem(
                         action = action,
+                        factActions = factActions, // Передаем фактические действия
                         onClick = { onActionClick(action) },
-                        isNextAction = action.id == nextActionId // Передаем флаг для выделения
+                        isNextAction = action.id == nextActionId
                     )
                 }
             }

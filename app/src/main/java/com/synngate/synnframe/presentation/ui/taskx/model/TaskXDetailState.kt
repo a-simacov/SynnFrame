@@ -23,6 +23,7 @@ data class TaskXDetailState(
     val showOrderRequiredMessage: Boolean = false,
     val nextActionId: String? = null,
     val hasAdditionalActions: Boolean = false,
+    val hasPartiallyCompletedActions: Boolean = false,
     val statusActions: List<StatusActionData> = emptyList(),
     val actionsDisplayMode: ActionDisplayMode = ActionDisplayMode.CURRENT,
     val filteredActions: List<PlannedAction> = emptyList()

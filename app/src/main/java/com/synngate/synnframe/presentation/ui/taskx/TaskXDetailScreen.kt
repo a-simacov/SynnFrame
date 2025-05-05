@@ -260,18 +260,20 @@ fun TaskXDetailScreen(
                         currentMode = state.actionsDisplayMode,
                         onModeChange = { mode -> viewModel.setActionsDisplayMode(mode) },
                         hasFinalActions = task.plannedActions.any { it.isFinalAction },
+                        hasPartiallyCompletedActions = task.getPartiallyCompletedActions().isNotEmpty(), // Добавляем проверку наличия частично выполненных действий
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                     )
 
                     Box(modifier = Modifier.weight(1f)) {
                         PlannedActionsView(
                             plannedActions = state.filteredActions,
+                            factActions = task.factActions, // Добавляем передачу фактических действий для отображения прогресса
                             nextActionId = nextActionId,
                             onActionClick = { action ->
                                 // Проверяем, что задание в статусе "Выполняется"
                                 if (task.status == TaskXStatus.IN_PROGRESS &&
-                                    !action.isCompleted &&
-                                    !action.isSkipped
+                                    (!action.isCompleted && !action.isSkipped ||
+                                            task.isPlannedActionPartiallyCompleted(action.id))
                                 ) {
                                     viewModel.tryExecuteAction(action.id)
                                 }
