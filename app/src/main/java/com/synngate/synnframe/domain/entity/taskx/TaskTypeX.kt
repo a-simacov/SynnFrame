@@ -12,4 +12,7 @@ data class TaskTypeX(
     val allowExceedPlanQuantity: Boolean = false, // Разрешено ли превышение планового количества
     val strictActionOrder: Boolean = true,  // Требовать строгий порядок выполнения действий
     val availableActions: List<AvailableTaskAction> = emptyList(), // Доступные действия
+
+    // Новое поле для поддержки множественных фактических действий
+    val allowMultipleFactActions: Boolean = false // Разрешены ли множественные фактические действия
 )

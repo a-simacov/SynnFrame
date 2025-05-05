@@ -14,46 +14,42 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.Announcement
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.NoEncryption
 import androidx.compose.material.icons.filled.PendingActions
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
-import com.synngate.synnframe.domain.entity.taskx.WmsAction
-import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
-import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
-import com.synngate.synnframe.domain.entity.taskx.action.ActionTemplate
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
-import com.synngate.synnframe.domain.entity.taskx.validation.ValidationRule
-import com.synngate.synnframe.domain.entity.taskx.validation.ValidationRuleItem
-import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
-import com.synngate.synnframe.presentation.theme.SynnFrameTheme
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import java.time.LocalDateTime
 
 @Composable
 fun PlannedActionsView(
     plannedActions: List<PlannedAction>,
+    factActions: List<FactAction>,
     onActionClick: (PlannedAction) -> Unit,
-    nextActionId: String? = null, // Добавлен параметр для идентификации следующего действия
+    onToggleCompletion: ((PlannedAction, Boolean) -> Unit)? = null,
+    nextActionId: String? = null,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -64,8 +60,12 @@ fun PlannedActionsView(
                 items(plannedActions.sortedBy { it.order }) { action ->
                     PlannedActionItem(
                         action = action,
+                        factActions = factActions,
                         onClick = { onActionClick(action) },
-                        isNextAction = action.id == nextActionId // Передаем флаг для выделения
+                        onToggleCompletion = onToggleCompletion?.let { toggle ->
+                            { completed -> toggle(action, completed) }
+                        },
+                        isNextAction = action.id == nextActionId
                     )
                 }
             }
@@ -98,21 +98,52 @@ fun FactActionsView(
 @Composable
 fun PlannedActionItem(
     action: PlannedAction,
+    factActions: List<FactAction>,
     onClick: () -> Unit,
+    onToggleCompletion: ((Boolean) -> Unit)? = null,
     isNextAction: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    // Определяем цвет фона в зависимости от состояния и типа действия
+    // Определяем цвет фона и информацию о статусе действия
+    val isCompleted = action.isActionCompleted(factActions)
+    val progress = action.calculateProgress(factActions)
+    val hasMultipleFactActions = action.canHaveMultipleFactActions()
+
+    // Определяем, было ли действие завершено вручную
+    val isManuallyCompleted = action.manuallyCompleted
+
+    // Рассчитываем плановое и фактическое количество для отображения
+    val plannedQuantity = action.getPlannedQuantity()
+    val completedQuantity = action.getCompletedQuantity(factActions)
+
+    // Цвет фона в зависимости от состояния
     val backgroundColor = when {
-        action.isCompleted -> MaterialTheme.colorScheme.secondaryContainer
+        isCompleted -> MaterialTheme.colorScheme.secondaryContainer
         action.isSkipped -> MaterialTheme.colorScheme.tertiaryContainer
         action.isFinalAction -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
         isNextAction -> MaterialTheme.colorScheme.primaryContainer
         else -> MaterialTheme.colorScheme.surface
     }
 
-    // Определяем границу карточки - только для следующего действия
-    val border = if (isNextAction) {
+    // Определяем иконку и описание статуса
+    val (statusIcon, statusDescription) = when {
+        isCompleted && isManuallyCompleted -> Pair(
+            Icons.Default.CheckCircle,
+            "Завершено вручную${action.manuallyCompleted}"
+        )
+        isCompleted -> Pair(Icons.Default.CheckCircle, "Выполнено")
+        action.isSkipped -> Pair(Icons.Default.NoEncryption, "Пропущено")
+        else -> Pair(Icons.Default.PendingActions, "Ожидает выполнения")
+    }
+
+    // Определяем цвет прогресса и иконок
+    val progressColor = when {
+        isCompleted -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    // Border для карточки если это следующее действие
+    val cardBorder = if (isNextAction && !isCompleted) {
         BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
     } else {
         null
@@ -126,40 +157,42 @@ fun PlannedActionItem(
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
         ),
-        border = border
+        border = cardBorder
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
+            // Верхняя часть карточки с названием и статусом
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
             ) {
+                // Основная информация о действии
                 Column(modifier = Modifier.weight(1f)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Если это финальное действие, добавляем иконку молнии
                         if (action.isFinalAction) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_final_action),
-                                contentDescription = "Финальное действие",
+                            IconWithTooltip(
+                                icon = Icons.AutoMirrored.Outlined.Announcement,
+                                description = "Финальное действие",
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(end = 8.dp)
                             )
                         }
 
-                        if (isNextAction) {
+                        if (isNextAction && !isCompleted) {
                             IconWithTooltip(
                                 icon = Icons.AutoMirrored.Filled.ArrowForward,
                                 description = "Следующее действие",
                                 tint = MaterialTheme.colorScheme.primary
                             )
-
                             Spacer(modifier = Modifier.width(4.dp))
                         }
 
+                        // Название действия
                         Text(
                             text = action.actionTemplate.name,
                             style = MaterialTheme.typography.titleMedium,
@@ -170,50 +203,42 @@ fun PlannedActionItem(
                 }
 
                 // Иконка статуса с подсказкой
-                when {
-                    action.isCompleted -> {
-                        IconWithTooltip(
-                            icon = Icons.Default.CheckCircle,
-                            description = "Выполнено",
-                            tint = MaterialTheme.colorScheme.secondary,
-                            iconSize = 24
-                        )
-                    }
-                    action.isSkipped -> {
-                        IconWithTooltip(
-                            icon = Icons.Default.NoEncryption,
-                            description = "Пропущено",
-                            tint = MaterialTheme.colorScheme.tertiary,
-                            iconSize = 24
-                        )
-                    }
-                    else -> {
-                        IconWithTooltip(
-                            icon = Icons.Default.PendingActions,
-                            description = "Ожидает выполнения",
-                            tint = MaterialTheme.colorScheme.primary,
-                            iconSize = 24
-                        )
-                    }
-                }
+                IconWithTooltip(
+                    icon = statusIcon,
+                    description = statusDescription,
+                    tint = progressColor,
+                    iconSize = 24
+                )
             }
 
-            // Отображение товара, если есть
+            // Дополнительная информация о товаре, если есть
             action.storageProduct?.let { product ->
                 Text(
                     text = "Товар: ${product.product.name}",
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
+
+                // Показываем количество для действий с учетом количества
+                if (hasMultipleFactActions && plannedQuantity > 0) {
+                    Text(
+                        text = "Количество: $completedQuantity / $plannedQuantity",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
             }
 
             // Отображение паллеты хранения, если есть
             action.storagePallet?.let { pallet ->
                 Text(
                     text = "Паллета хранения: ${pallet.code}",
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
             }
 
+            // Информация о типе действия
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(top = 4.dp)
@@ -234,7 +259,8 @@ fun PlannedActionItem(
             action.placementBin?.let { bin ->
                 Text(
                     text = "Ячейка размещения: ${bin.code}",
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
             }
 
@@ -242,85 +268,64 @@ fun PlannedActionItem(
             action.placementPallet?.let { pallet ->
                 Text(
                     text = "Паллета размещения: ${pallet.code}",
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
+            }
+
+            // Индикатор прогресса для действий с учетом количества
+            if (hasMultipleFactActions && !action.isSkipped) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Прогресс-бар
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = progressColor
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Количество фактических действий
+                val relatedFacts = factActions.filter { it.plannedActionId == action.id }
+                if (relatedFacts.isNotEmpty()) {
+                    Text(
+                        text = "Выполнено действий: ${relatedFacts.size}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.alpha(0.8f)
+                    )
+                }
+
+                // Кнопка для ручного управления статусом выполнения
+                if (onToggleCompletion != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        if (isCompleted) {
+                            OutlinedButton(
+                                onClick = { onToggleCompletion(false) },
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text("Отметить как невыполненное")
+                            }
+                        } else {
+                            Button(
+                                onClick = { onToggleCompletion(true) }
+                            ) {
+                                Text("Отметить как выполненное")
+                            }
+                        }
+                    }
+                }
             }
         }
     }
-}
-
-@Preview
-@Composable
-private fun PlannedActionItemPreview() {
-
-    val fromPlanValidationRule = ValidationRule(
-        name = "Из плана",
-        rules = listOf(
-            ValidationRuleItem(
-                type = ValidationType.FROM_PLAN,
-                errorMessage = "Выберите объект из плана"
-            ),
-            ValidationRuleItem(
-                type = ValidationType.NOT_EMPTY,
-                errorMessage = "Объект не должен быть пустым"
-            )
-        )
-    )
-
-    val takePalletTemplate = ActionTemplate(
-        id = "template_take_pallet",
-        name = "Взять определенную паллету из определенной ячейки",
-        wmsAction = WmsAction.TAKE_FROM,
-        storageObjectType = ActionObjectType.PALLET,
-        placementObjectType = ActionObjectType.BIN,
-        storageSteps = listOf(
-            ActionStep(
-                id = "step_select_planned_pallet",
-                order = 1,
-                name = "Выберите паллету из запланированного действия",
-                promptText = "Выберите паллету из запланированного действия",
-                objectType = ActionObjectType.PALLET,
-                validationRules = fromPlanValidationRule,
-                isRequired = true,
-                canSkip = false
-            )
-        ),
-        placementSteps = listOf(
-            ActionStep(
-                id = "step_select_planned_bin",
-                order = 2,
-                name = "Выберите ячейку из запланированного действия",
-                promptText = "Выберите ячейку из запланированного действия",
-                objectType = ActionObjectType.BIN,
-                validationRules = fromPlanValidationRule,
-                isRequired = true,
-                canSkip = false
-            )
-        )
-    )
-
-    SynnFrameTheme {
-        PlannedActionItem(
-            action = PlannedAction(
-                id = "action1",
-                order = 1,
-                actionTemplate = takePalletTemplate,
-                storagePallet = Pallet(code = "IN00000000003", isClosed = false),
-                wmsAction = WmsAction.TAKE_FROM,
-                placementBin = BinX(
-                    code = "B00211",
-                    zone = "Хранение",
-                    line = "B",
-                    rack = "02",
-                    tier = "1",
-                    position = "1"
-                )
-            ),
-            onClick = { /*TODO*/ },
-            isNextAction = true
-        )
-    }
-
 }
 
 @Composable

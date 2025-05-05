@@ -261,20 +261,39 @@ fun TaskXDetailScreen(
                     )
 
                     Box(modifier = Modifier.weight(1f)) {
+                        // Обновляем компонент для отображения действий
                         PlannedActionsView(
                             plannedActions = state.filteredActions,
+                            factActions = task.factActions, // Передаем фактические действия
                             nextActionId = nextActionId,
                             onActionClick = { action ->
                                 // Проверяем, что задание в статусе "Выполняется"
                                 if (task.status == TaskXStatus.IN_PROGRESS &&
-                                    !action.isCompleted &&
                                     !action.isSkipped
                                 ) {
-                                    viewModel.tryExecuteAction(action.id)
+                                    // Если действие уже отмечено как выполненное, но разрешено
+                                    // множественное выполнение - запускаем выполнение
+                                    if (action.isActionCompleted(task.factActions) &&
+                                        viewModel.supportsMultipleFactActions() &&
+                                        viewModel.isQuantityBasedAction(action)
+                                    ) {
+                                        // Запускаем выполнение действия без изменения статуса
+                                        viewModel.startActionExecution(action.id)
+                                    } else if (!action.isActionCompleted(task.factActions)) {
+                                        // Обычный запуск действия
+                                        viewModel.tryExecuteAction(action.id)
+                                    }
+                                }
+                            },
+                            onToggleCompletion = { action, completed ->
+                                // Проверяем, можно ли управлять статусом выполнения
+                                if (viewModel.canManageCompletionStatus(action)) {
+                                    viewModel.toggleActionCompletion(action.id, completed)
                                 }
                             }
                         )
                     }
+
 
                     if (task.status == TaskXStatus.IN_PROGRESS &&
                         state.taskType?.strictActionOrder != true) {

@@ -6,6 +6,7 @@ import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
+import com.synngate.synnframe.domain.entity.taskx.action.ProgressType
 import com.synngate.synnframe.domain.service.ActionWizardContextFactory
 import com.synngate.synnframe.domain.service.ActionWizardController
 import com.synngate.synnframe.domain.service.FinalActionsValidator
@@ -626,14 +627,24 @@ class TaskXDetailViewModel(
      */
     private fun filterActionsByMode(task: TaskX, mode: ActionDisplayMode): List<PlannedAction> {
         val canExecuteFinals = canExecuteFinalActions(task)
+        val factActions = task.factActions
 
         return when (mode) {
             ActionDisplayMode.CURRENT -> task.plannedActions
-                .filter { !it.isCompleted && !it.isSkipped && (!it.isFinalAction || canExecuteFinals) }
+                .filter {
+                    // Текущее действие:
+                    // 1. Не пропущено
+                    // 2. Не отмечено как выполненное через isCompleted или manuallyCompleted
+                    // 3. Для действий с учетом количества - не достигнуто плановое количество
+                    // 4. Для финальных действий - доступны финальные действия
+                    !it.isSkipped &&
+                            !it.isActionCompleted(factActions) &&
+                            (!it.isFinalAction || canExecuteFinals)
+                }
                 .sortedBy { it.order }
 
             ActionDisplayMode.COMPLETED -> task.plannedActions
-                .filter { it.isCompleted }
+                .filter { it.isActionCompleted(factActions) }
                 .sortedBy { it.order }
 
             ActionDisplayMode.ALL -> task.plannedActions
@@ -652,6 +663,76 @@ class TaskXDetailViewModel(
             ActionDisplayMode.FINALS -> "Финальные"
             ActionDisplayMode.ALL -> "Все"
         }
+    }
+
+    fun toggleActionCompletion(actionId: String, completed: Boolean) {
+        launchIO {
+            try {
+                val result = actionExecutionService.setActionCompletionStatus(
+                    taskId = taskId,
+                    actionId = actionId,
+                    completed = completed
+                )
+
+                if (result.isSuccess) {
+                    result.getOrNull()?.let { updatedTask ->
+                        updateState { state ->
+                            state.copy(
+                                task = updatedTask,
+                                error = null
+                            )
+                        }
+
+                        // Обновляем зависимые состояния
+                        updateDependentState(updatedTask, uiState.value.taskType)
+
+                        val message = if (completed) {
+                            "Действие отмечено как выполненное"
+                        } else {
+                            "Отметка о выполнении действия снята"
+                        }
+
+                        sendEvent(TaskXDetailEvent.ShowSnackbar(message))
+                    }
+                } else {
+                    Timber.e(result.exceptionOrNull(), "Ошибка при изменении статуса действия")
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при изменении статуса действия"))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при изменении статуса действия")
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при изменении статуса действия"))
+            }
+        }
+    }
+
+    /**
+     * Проверяет, поддерживается ли множественное выполнение действий для задания
+     */
+    fun supportsMultipleFactActions(): Boolean {
+        return uiState.value.task?.taskType?.allowMultipleFactActions == true
+    }
+
+    /**
+     * Проверяет, является ли действие с учетом количества
+     */
+    fun isQuantityBasedAction(action: PlannedAction): Boolean {
+        return action.progressType == ProgressType.QUANTITY
+    }
+
+    /**
+     * Проверяет, можно ли управлять статусом выполнения действия вручную
+     */
+    fun canManageCompletionStatus(action: PlannedAction): Boolean {
+        val task = uiState.value.task ?: return false
+
+        // Проверяем, что:
+        // 1. Задание в статусе "Выполняется"
+        // 2. Разрешены множественные фактические действия
+        // 3. Действие с учетом количества
+        return task.status == TaskXStatus.IN_PROGRESS &&
+                task.taskType?.allowMultipleFactActions == true &&
+                action.progressType == ProgressType.QUANTITY &&
+                !action.isSkipped
     }
 
     override fun dispose() {
