@@ -17,17 +17,25 @@ import java.util.UUID
 
 /**
  * Сервис для выполнения действий задания
- * Обновлен для использования TaskXRepository для отправки фактических действий
  */
 class ActionExecutionService(
     private val validationService: ValidationService,
     private val taskContextManager: TaskContextManager,
     private val taskXRepository: TaskXRepository? = null
 ) {
+    /**
+     * Выполняет действие на основе введенных данных
+     * @param taskId ID задания
+     * @param actionId ID действия
+     * @param stepResults результаты шагов
+     * @param finalizePlannedAction Завершить плановое действие (true) или только создать факт (false)
+     * @return Результат выполнения - обновленное задание
+     */
     suspend fun executeAction(
         taskId: String,
         actionId: String,
-        stepResults: Map<String, Any>
+        stepResults: Map<String, Any>,
+        finalizePlannedAction: Boolean = true
     ): Result<TaskX> = withContext(Dispatchers.IO) {
         try {
             // Получаем задание из контекста
@@ -50,7 +58,7 @@ class ActionExecutionService(
             // Если есть endpoint и репозиторий, отправляем фактическое действие на сервер
             if (endpoint != null && taskXRepository != null) {
                 Timber.d("Отправка фактического действия на сервер")
-                val result = taskXRepository.addFactAction(factAction, endpoint)
+                val result = taskXRepository.addFactAction(factAction, endpoint, finalizePlannedAction)
 
                 // Если запрос выполнен успешно, возвращаем результат
                 if (result.isSuccess) {
@@ -61,15 +69,18 @@ class ActionExecutionService(
                 }
             }
 
-            // Если нет endpoint или репозитория, или запрос не выполнен,
-            // выполняем локальное обновление, как раньше
+            // Если нет endpoint или репозитория, выполняем локальное обновление
             Timber.d("Локальное обновление задания")
             val factActions = task.factActions.toMutableList()
             factActions.add(factAction)
 
-            // Обновляем запланированное действие, помечая его как выполненное
+            // Обновляем запланированное действие в зависимости от параметра finalizePlannedAction
             val updatedPlannedActions = task.plannedActions.map {
-                if (it.id == actionId) it.copy(isCompleted = true) else it
+                if (it.id == actionId && finalizePlannedAction) {
+                    it.copy(isCompleted = true)
+                } else {
+                    it
+                }
             }
 
             // Создаем обновленное задание

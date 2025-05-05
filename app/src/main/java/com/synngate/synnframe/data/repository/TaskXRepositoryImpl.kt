@@ -120,12 +120,20 @@ class TaskXRepositoryImpl(
         }
     }
 
+    /**
+     * Добавляет фактическое действие к заданию
+     * @param factAction Фактическое действие
+     * @param endpoint Endpoint API
+     * @param finalizePlannedAction Завершить плановое действие (true) или только создать факт (false)
+     * @return Результат операции - обновленное задание
+     */
     override suspend fun addFactAction(
         factAction: FactAction,
-        endpoint: String
+        endpoint: String,
+        finalizePlannedAction: Boolean
     ): Result<TaskX> {
         try {
-            val result = taskXApi.addFactAction(factAction.taskId, factAction, endpoint)
+            val result = taskXApi.addFactAction(factAction.taskId, factAction, endpoint, finalizePlannedAction)
             return when (result) {
                 is ApiResult.Success -> {
                     val task = taskContextManager.lastStartedTaskX.value
@@ -133,14 +141,10 @@ class TaskXRepositoryImpl(
                         val updatedFactActions = task.factActions.toMutableList()
                         updatedFactActions.add(factAction)
 
+                        // Обновляем запланированные действия в зависимости от флага finalizePlannedAction
                         val updatedPlannedActions = task.plannedActions.map {
-                            if (it.id == factAction.plannedActionId) {
-                                it.copy(isCompleted = true)
-                            } else if (factAction.plannedActionId == null &&
-                                it.storageProduct?.product?.id == factAction.storageProduct?.product?.id &&
-                                it.wmsAction == factAction.wmsAction) {
-                                // Дополнительно проверяем соответствие по продукту и действию,
-                                // если plannedActionId не указан
+                            if (it.id == factAction.plannedActionId && finalizePlannedAction) {
+                                // Если нужно завершить действие - помечаем его как выполненное
                                 it.copy(isCompleted = true)
                             } else {
                                 it

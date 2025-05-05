@@ -1,5 +1,6 @@
 package com.synngate.synnframe.domain.model.wizard
 
+import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import java.time.LocalDateTime
 
@@ -18,8 +19,10 @@ data class ActionWizardState(
     val isInitialized: Boolean = false,
     val lastScannedBarcode: String? = null,    // Последний отсканированный штрихкод
     val isProcessingStep: Boolean = false,
-    val isSending: Boolean = false,      // Флаг отправки данных на сервер
-    val sendError: String? = null
+    val isSending: Boolean = false,           // Флаг отправки данных на сервер
+    val sendError: String? = null,
+    val isPartiallyCompleted: Boolean = false, // Флаг частичного выполнения
+    val relatedFactActions: List<FactAction> = emptyList() // Связанные факт. действия
 ) {
     val currentStep: WizardStep?
         get() = if (currentStepIndex < steps.size) steps[currentStepIndex] else null
@@ -53,5 +56,12 @@ data class ActionWizardState(
 
     fun getErrorForStep(stepId: String): String? {
         return errors[stepId]
+    }
+
+    /**
+     * Проверяет, возможно ли выполнение только частичное (не завершать действие)
+     */
+    fun canPartialExecution(): Boolean {
+        return (action?.plannedQuantity ?: 0f) > 0f
     }
 }
