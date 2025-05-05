@@ -180,6 +180,17 @@ class ActionStepExecutionService(
                     else -> null
                 }
             }
+
+            ActionObjectType.PRODUCT_QUANTITY -> {
+                // Для типа PRODUCT_QUANTITY ожидаем TaskProduct с указанным количеством
+                when (value) {
+                    is TaskProduct -> {
+                        // Проверяем, что количество указано и больше нуля
+                        if (value.quantity > 0) value else null
+                    }
+                    else -> null
+                }
+            }
         }
     }
 }

@@ -23,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -41,6 +42,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.data.barcodescanner.ScannerService
 import com.synngate.synnframe.domain.entity.Product
@@ -370,6 +372,9 @@ fun ActionSummaryScreen(
 ) {
     val action = state.action
 
+    // Находим последний результат с товаром и количеством
+    val productEntry = findMostRelevantProductEntry(state.results)
+
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = "Проверьте информацию перед завершением",
@@ -451,61 +456,154 @@ fun ActionSummaryScreen(
                 )
             }
 
+            // Отображаем информацию о товаре и количестве, если есть
+            if (productEntry != null) {
+                val (stepId, taskProduct) = productEntry
+
+                // Отображаем карточку товара с количеством
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Товар",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = taskProduct.product.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+
+                        Text(
+                            text = "Артикул: ${taskProduct.product.articleNumber}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Получаем плановое количество из действия
+                        val plannedQuantity = action.storageProduct?.let {
+                            if (it.product.id == taskProduct.product.id) it.quantity else 0f
+                        } ?: 0f
+
+                        // Отображаем плановое и фактическое количество
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Плановое количество:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+
+                            Text(
+                                text = plannedQuantity.toString(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Фактическое количество:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+
+                            Text(
+                                text = taskProduct.quantity.toString(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Отображаем другие результаты, не связанные с товаром
             for ((stepId, value) in state.results.entries) {
-                when (value) {
-                    is TaskProduct -> {
-                        Text(
-                            text = "Товар: ${value.product.name}",
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-                        Text(
-                            text = "Количество: ${value.quantity}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                    }
+                if (value !is TaskProduct && value !is Product) { // Исключаем товары, они уже отображены выше
+                    when (value) {
+                        is Pallet -> {
+                            Text(
+                                text = "Паллета: ${value.code}",
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            Text(
+                                text = "Статус: ${if (value.isClosed) "Закрыта" else "Открыта"}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
 
-                    is Pallet -> {
-                        Text(
-                            text = "Паллета: ${value.code}",
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-                        Text(
-                            text = "Статус: ${if (value.isClosed) "Закрыта" else "Открыта"}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                    }
-
-                    is BinX -> {
-                        Text(
-                            text = "Ячейка: ${value.code}",
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-                        Text(
-                            text = "Зона: ${value.zone}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                    }
-
-                    is Product -> {
-                        Text(
-                            text = "Товар: ${value.name}",
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-                        Text(
-                            text = "Артикул: ${value.articleNumber}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
+                        is BinX -> {
+                            Text(
+                                text = "Ячейка: ${value.code}",
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            Text(
+                                text = "Зона: ${value.zone}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * Находит наиболее релевантную запись с товаром и количеством.
+ * Приоритет отдается результату шага с типом PRODUCT_QUANTITY (ввод количества),
+ * если он есть, иначе возвращает первый найденный TaskProduct.
+ */
+private fun findMostRelevantProductEntry(results: Map<String, Any>): Pair<String, TaskProduct>? {
+    // Сначала ищем результаты шага ввода количества (они будут иметь ненулевое количество)
+    val quantityProductEntry = results.entries.find { (_, value) ->
+        value is TaskProduct && value.quantity > 0
+    }
+
+    if (quantityProductEntry != null) {
+        return Pair(quantityProductEntry.key, quantityProductEntry.value as TaskProduct)
+    }
+
+    // Если не нашли, возвращаем первый найденный TaskProduct
+    val productEntry = results.entries.find { (_, value) ->
+        value is TaskProduct
+    }
+
+    return if (productEntry != null) {
+        Pair(productEntry.key, productEntry.value as TaskProduct)
+    } else {
+        null
     }
 }

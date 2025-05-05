@@ -108,8 +108,9 @@ import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
 import com.synngate.synnframe.presentation.ui.wizard.action.BinSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.PalletSelectionStepFactory
+import com.synngate.synnframe.presentation.ui.wizard.action.ProductQuantityStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.ProductSelectionStepFactory
-import com.synngate.synnframe.presentation.ui.wizard.action.QuantityProductSelectionStepFactory
+import com.synngate.synnframe.presentation.ui.wizard.action.TaskProductSelectionStepFactory
 import com.synngate.synnframe.util.network.NetworkMonitor
 import com.synngate.synnframe.util.resources.ResourceProvider
 import com.synngate.synnframe.util.resources.ResourceProviderImpl
@@ -689,7 +690,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
     }
 
     // Создаем реестр фабрик компонентов шагов
-// Только измененная часть метода createActionStepFactoryRegistry в AppContainer
     fun createActionStepFactoryRegistry(): ActionStepFactoryRegistry {
         // Создаем реестр напрямую
         val registry = ActionStepFactoryRegistry()
@@ -705,7 +705,12 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
 
         registry.registerFactory(
             ActionObjectType.TASK_PRODUCT,
-            QuantityProductSelectionStepFactory(appContainer.productRepository)
+            TaskProductSelectionStepFactory(appContainer.productRepository)
+        )
+
+        registry.registerFactory(
+            ActionObjectType.PRODUCT_QUANTITY,
+            ProductQuantityStepFactory()
         )
 
         registry.registerFactory(

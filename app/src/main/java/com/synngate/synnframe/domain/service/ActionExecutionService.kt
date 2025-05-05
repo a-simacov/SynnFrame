@@ -150,6 +150,14 @@ class ActionExecutionService(
         action: PlannedAction,
         stepResults: Map<String, Any>
     ): TaskProduct? {
+        // Сначала ищем TaskProduct с ненулевым количеством (результат шага ввода количества)
+        for ((_, value) in stepResults) {
+            if (value is TaskProduct && value.quantity > 0) {
+                return value
+            }
+        }
+
+        // Если не нашли с ненулевым количеством, ищем любой TaskProduct
         for ((_, value) in stepResults) {
             if (value is TaskProduct) {
                 return value
@@ -158,6 +166,7 @@ class ActionExecutionService(
             }
         }
 
+        // Если в результатах шагов нет товара, используем из действия
         return action.storageProduct
     }
 
