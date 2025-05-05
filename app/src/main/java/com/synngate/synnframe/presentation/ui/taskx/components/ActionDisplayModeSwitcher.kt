@@ -36,7 +36,7 @@ fun ActionDisplayModeSwitcher(
     currentMode: ActionDisplayMode,
     onModeChange: (ActionDisplayMode) -> Unit,
     hasFinalActions: Boolean,
-    hasPartiallyCompletedActions: Boolean = false, // Добавляем параметр для частично выполненных действий
+    hasPartiallyCompletedActions: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()

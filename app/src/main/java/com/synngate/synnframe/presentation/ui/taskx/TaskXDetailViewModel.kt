@@ -137,11 +137,6 @@ class TaskXDetailViewModel(
         val task = uiState.value.task ?: return false
         val action = task.plannedActions.find { it.id == actionId } ?: return false
 
-        // Если действие частично выполнено, его всегда можно продолжить
-        if (task.isPlannedActionPartiallyCompleted(actionId)) {
-            return true
-        }
-
         // Проверяем, можно ли выполнять финальные действия
         if (action.isFinalAction && !finalActionsValidator.canExecuteFinalActions(task)) {
             return false
@@ -173,12 +168,6 @@ class TaskXDetailViewModel(
     fun tryExecuteAction(actionId: String) {
         val task = uiState.value.task ?: return
         val action = task.plannedActions.find { it.id == actionId } ?: return
-
-        // Для частично выполненных действий пропускаем проверки
-        if (task.isPlannedActionPartiallyCompleted(actionId)) {
-            startActionExecution(actionId)
-            return
-        }
 
         // Проверяем доступность финальных действий
         if (action.isFinalAction && !finalActionsValidator.canExecuteFinalActions(task)) {
@@ -247,6 +236,7 @@ class TaskXDetailViewModel(
             } catch (e: Exception) {
                 Timber.e(e, "Error completing action wizard")
                 // Не закрываем диалог в случае ошибки
+                // Сообщение в Snackbar не показываем, так как ошибка уже отображается в визарде
             }
         }
     }
@@ -555,26 +545,16 @@ class TaskXDetailViewModel(
         val nextActionId = calculateNextActionId(task, taskType)
         val hasAdditionalActions = checkHasAdditionalActions(task)
         val statusActions = createStatusActions(task, taskType)
-        val hasPartiallyCompletedActions = task.getPartiallyCompletedActions().isNotEmpty()
 
         updateState { currentState ->
             currentState.copy(
                 nextActionId = nextActionId,
                 hasAdditionalActions = hasAdditionalActions,
-                statusActions = statusActions,
-                // Добавим автоматическое переключение на режим PARTIALLY_COMPLETED, если появились
-                // частично выполненные действия и текущий режим CURRENT
-                actionsDisplayMode = if (hasPartiallyCompletedActions &&
-                    currentState.actionsDisplayMode == ActionDisplayMode.CURRENT &&
-                    currentState.filteredActions.isEmpty()) {
-                    ActionDisplayMode.PARTIALLY_COMPLETED
-                } else {
-                    currentState.actionsDisplayMode
-                }
+                statusActions = statusActions
             )
         }
 
-        // Обновляем отфильтрованные действия
+        // Добавляем вызов обновления фильтрованных действий
         updateFilteredActions()
     }
 
