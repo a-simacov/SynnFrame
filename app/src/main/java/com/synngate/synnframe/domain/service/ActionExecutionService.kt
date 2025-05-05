@@ -52,7 +52,8 @@ class ActionExecutionService(
                 ?: return@withContext Result.failure(IllegalArgumentException("Planned action not found: $actionId"))
 
             // Проверяем, разрешены ли множественные фактические действия для этого типа задания
-            val allowMultipleFactActions = task.taskType?.allowMultipleFactActions == true
+            val taskType = taskContextManager.lastTaskTypeX.value
+            val allowMultipleFactActions = taskType?.allowMultipleFactActions == true
 
             // Создаем фактическое действие на основе введенных данных
             val factAction = createFactAction(taskId, action, stepResults)
@@ -81,7 +82,7 @@ class ActionExecutionService(
             factActions.add(factAction)
 
             // Проверяем, нужно ли отмечать действие как выполненное
-            val shouldCompleteAction = if (allowMultipleFactActions && action.progressType == ProgressType.QUANTITY) {
+            val shouldCompleteAction = if (allowMultipleFactActions && action.getProgressType() == ProgressType.QUANTITY) {
                 // Для множественных фактических действий с учетом количества
                 // проверяем достижение планового количества или принудительное завершение
                 val plannedQuantity = action.storageProduct?.quantity ?: 0f
@@ -156,10 +157,11 @@ class ActionExecutionService(
                 ?: return@withContext Result.failure(IllegalArgumentException("Planned action not found: $actionId"))
 
             // Проверяем, разрешены ли множественные фактические действия для этого типа задания
-            val allowMultipleFactActions = task.taskType?.allowMultipleFactActions == true
+            val taskType = taskContextManager.lastTaskTypeX.value
+            val allowMultipleFactActions = taskType?.allowMultipleFactActions == true
 
             // Проверяем, можно ли изменить статус выполнения вручную
-            if (!allowMultipleFactActions && action.progressType != ProgressType.QUANTITY) {
+            if (!allowMultipleFactActions && action.getProgressType() != ProgressType.QUANTITY) {
                 return@withContext Result.failure(IllegalStateException("Manual completion status change is not allowed for this action"))
             }
 
@@ -209,8 +211,6 @@ class ActionExecutionService(
         }
     }
 
-    // ... остальные методы класса остаются без изменений ...
-
     private fun createFactAction(
         taskId: String,
         action: PlannedAction,
@@ -239,14 +239,47 @@ class ActionExecutionService(
         action: PlannedAction,
         stepResults: Map<String, Any>
     ): TaskProduct? {
+        // 1. Сначала ищем готовый TaskProduct с ненулевым количеством
         for ((_, value) in stepResults) {
-            if (value is TaskProduct) {
+            if (value is TaskProduct && value.quantity > 0f) {
                 return value
-            } else if (value is Product) {
-                return TaskProduct(product = value)
             }
         }
 
+        // 2. Если не нашли готовый TaskProduct, ищем обычный Product
+        // и создаем из него TaskProduct с количеством
+        for ((_, value) in stepResults) {
+            if (value is Product) {
+                // Поиск количества в stepResults
+                var quantity = 0f
+                for ((_, quantityValue) in stepResults) {
+                    if (quantityValue is Float) {
+                        quantity = quantityValue
+                        break
+                    } else if (quantityValue is Double) {
+                        quantity = quantityValue.toFloat()
+                        break
+                    } else if (quantityValue is Int) {
+                        quantity = quantityValue.toFloat()
+                        break
+                    } else if (quantityValue is String && quantityValue.toFloatOrNull() != null) {
+                        quantity = quantityValue.toFloat()
+                        break
+                    }
+                }
+
+                // Если количество не найдено, используем 1 как значение по умолчанию
+                if (quantity <= 0f) {
+                    // Проверяем, есть ли количество в действии
+                    quantity = action.storageProduct?.quantity ?: 1f
+                }
+
+                return TaskProduct(product = value, quantity = quantity)
+            }
+        }
+
+        // 3. Если не нашли ни TaskProduct, ни Product, возвращаем storageProduct из действия
+        // Это важно для действий типа TAKE_FROM, где продукт уже задан в плане
         return action.storageProduct
     }
 

@@ -646,7 +646,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         }
     }
 
-    // Обновленный метод для TaskXDetailViewModel
     fun createTaskXDetailViewModel(taskId: String): TaskXDetailViewModel {
         return getOrCreateViewModel("TaskXDetailViewModel_$taskId") {
             // Проверяем, есть ли данные в TaskContextManager
@@ -659,10 +658,11 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                     taskId = taskId,
                     taskXUseCases = appContainer.taskXUseCases,
                     userUseCases = appContainer.userUseCases,
-                    finalActionsValidator = appContainer.finalActionsValidator, // Добавляем validator
+                    finalActionsValidator = appContainer.finalActionsValidator,
                     actionWizardController = appContainer.actionWizardController,
                     actionWizardContextFactory = appContainer.actionWizardContextFactory,
                     actionStepFactoryRegistry = createActionStepFactoryRegistry(),
+                    actionExecutionService = appContainer.actionExecutionService, // Добавлено
                     preloadedTask = contextTask,
                     preloadedTaskType = contextTaskType
                 )
@@ -672,10 +672,11 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                     taskId = taskId,
                     taskXUseCases = appContainer.taskXUseCases,
                     userUseCases = appContainer.userUseCases,
-                    finalActionsValidator = appContainer.finalActionsValidator, // Добавляем validator
+                    finalActionsValidator = appContainer.finalActionsValidator,
                     actionWizardController = appContainer.actionWizardController,
                     actionWizardContextFactory = appContainer.actionWizardContextFactory,
-                    actionStepFactoryRegistry = createActionStepFactoryRegistry()
+                    actionStepFactoryRegistry = createActionStepFactoryRegistry(),
+                    actionExecutionService = appContainer.actionExecutionService // Добавлено
                 )
             }
         }

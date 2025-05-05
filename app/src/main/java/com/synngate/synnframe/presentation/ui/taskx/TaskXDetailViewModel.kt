@@ -7,6 +7,7 @@ import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.entity.taskx.action.ProgressType
+import com.synngate.synnframe.domain.service.ActionExecutionService
 import com.synngate.synnframe.domain.service.ActionWizardContextFactory
 import com.synngate.synnframe.domain.service.ActionWizardController
 import com.synngate.synnframe.domain.service.FinalActionsValidator
@@ -32,10 +33,11 @@ class TaskXDetailViewModel(
     private val taskId: String,
     private val taskXUseCases: TaskXUseCases,
     private val userUseCases: UserUseCases,
-    private val finalActionsValidator: FinalActionsValidator, // Добавили FinalActionsValidator
+    private val finalActionsValidator: FinalActionsValidator,
     val actionWizardController: ActionWizardController,
     val actionWizardContextFactory: ActionWizardContextFactory,
     val actionStepFactoryRegistry: ActionStepFactoryRegistry,
+    private val actionExecutionService: ActionExecutionService, // Добавлено это поле
     private val preloadedTask: TaskX? = null,
     private val preloadedTaskType: TaskTypeX? = null
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
@@ -74,7 +76,7 @@ class TaskXDetailViewModel(
                     return@launchIO
                 }
 
-                val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
+                val isStrictOrder = uiState.value.taskType?.strictActionOrder == true // Исправлено
                 val action = task.plannedActions.find { it.id == actionId }
 
                 if (isStrictOrder && action != null) {
@@ -102,7 +104,7 @@ class TaskXDetailViewModel(
     }
 
     private fun calculateNextActionId(task: TaskX, taskType: TaskTypeX?): String? {
-        val isStrictOrder = taskType?.strictActionOrder == true
+        val isStrictOrder = taskType?.strictActionOrder == true // Исправлено
 
         if (isStrictOrder) {
             // Используем FinalActionsValidator для определения следующего действия
@@ -133,7 +135,7 @@ class TaskXDetailViewModel(
         }
 
         // Проверка строгого порядка для всех действий
-        val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
+        val isStrictOrder = uiState.value.taskType?.strictActionOrder == true // Исправлено
         if (!isStrictOrder) return true
 
         val nextActionId = uiState.value.nextActionId
@@ -555,14 +557,14 @@ class TaskXDetailViewModel(
                 StatusActionData(
                     id = "pause",
                     iconName = "pause",
-                    text = "Пауза",  // Добавлен текст кнопки
+                    text = "Пауза",
                     description = "Приостановить",
                     onClick = ::pauseTask
                 ),
                 StatusActionData(
                     id = "finish",
                     iconName = "check_circle",
-                    text = "Финиш",  // Добавлен текст кнопки
+                    text = "Финиш",
                     description = "Завершить",
                     onClick = ::showCompletionDialog,
                 )
@@ -572,7 +574,7 @@ class TaskXDetailViewModel(
                     id = "resume",
                     iconName = "play_arrow",
                     description = "Продолжить",
-                    text = "Старт",  // Добавлен текст кнопки
+                    text = "Старт",
                     onClick = ::resumeTask
                 )
             )
@@ -665,6 +667,7 @@ class TaskXDetailViewModel(
         }
     }
 
+    // Метод для управления статусом выполнения действия
     fun toggleActionCompletion(actionId: String, completed: Boolean) {
         launchIO {
             try {
@@ -709,14 +712,15 @@ class TaskXDetailViewModel(
      * Проверяет, поддерживается ли множественное выполнение действий для задания
      */
     fun supportsMultipleFactActions(): Boolean {
-        return uiState.value.task?.taskType?.allowMultipleFactActions == true
+        return uiState.value.taskType?.allowMultipleFactActions == true // Исправлено
     }
 
     /**
      * Проверяет, является ли действие с учетом количества
      */
     fun isQuantityBasedAction(action: PlannedAction): Boolean {
-        return action.progressType == ProgressType.QUANTITY
+        // Используем метод getProgressType вместо прямого обращения к полю
+        return action.getProgressType() == ProgressType.QUANTITY
     }
 
     /**
@@ -728,10 +732,10 @@ class TaskXDetailViewModel(
         // Проверяем, что:
         // 1. Задание в статусе "Выполняется"
         // 2. Разрешены множественные фактические действия
-        // 3. Действие с учетом количества
+        // 3. Действие с учетом количества (используем getProgressType)
         return task.status == TaskXStatus.IN_PROGRESS &&
-                task.taskType?.allowMultipleFactActions == true &&
-                action.progressType == ProgressType.QUANTITY &&
+                uiState.value.taskType?.allowMultipleFactActions == true &&
+                action.getProgressType() == ProgressType.QUANTITY &&
                 !action.isSkipped
     }
 

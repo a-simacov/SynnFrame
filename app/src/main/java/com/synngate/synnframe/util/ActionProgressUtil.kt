@@ -59,7 +59,7 @@ object ActionProgressUtil {
         val plannedQuantity = action.storageProduct?.quantity ?: 0f
 
         // Вычисляем процент выполнения
-        val progressPercent = if (action.progressType == ProgressType.QUANTITY && plannedQuantity > 0f) {
+        val progressPercent = if (action.getProgressType() == ProgressType.QUANTITY && plannedQuantity > 0f) {
             (completedQuantity / plannedQuantity).coerceIn(0f, 1f) * 100f
         } else if (action.isCompleted || action.manuallyCompleted) {
             100f
