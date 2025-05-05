@@ -52,22 +52,18 @@ data class PlannedAction(
     fun calculateProgress(factActions: List<FactAction>): Float {
         // Для обычных действий возвращаем бинарный статус
         if (getProgressType() == ProgressType.SIMPLE) {
-            return if (isCompleted || manuallyCompleted) 1f else 0f
+            return if (isCompleted || manuallyCompleted || factActions.any { it.plannedActionId == id }) 1f else 0f
         }
 
         // Для действий с учетом количества
         if (getProgressType() == ProgressType.QUANTITY && storageProduct != null) {
             // Суммируем количество из всех связанных фактических действий
-            val relatedFacts = factActions.filter { it.plannedActionId == id }
-            val completedQuantity = relatedFacts.sumOf {
-                it.storageProduct?.quantity?.toDouble() ?: 0.0
-            }.toFloat()
-
+            val completedQuantity = getCompletedQuantity(factActions)
             val plannedQuantity = storageProduct.quantity
 
-            // Если плановое количество отсутствует или равно нулю
-            if (plannedQuantity <= 0f) {
-                return if (isCompleted || manuallyCompleted || relatedFacts.isNotEmpty()) 1f else 0f
+            // Если плановое количество отсутствует или равно нулю, или установлен признак ручного завершения
+            if (plannedQuantity <= 0f || manuallyCompleted) {
+                return 1f
             }
 
             // Вычисляем процент выполнения
@@ -86,13 +82,20 @@ data class PlannedAction(
         // Если действие отмечено как завершенное вручную
         if (manuallyCompleted) return true
 
-        // Для действий с учетом количества проверяем прогресс
+        // Для действий с учетом количества проверяем соотношение план/факт
         if (getProgressType() == ProgressType.QUANTITY && storageProduct != null) {
-            val progress = calculateProgress(factActions)
-            return progress >= 1f
+            val plannedQuantity = storageProduct.quantity
+            if (plannedQuantity <= 0f) return false
+
+            // Считаем суммарное фактическое количество
+            val completedQuantity = getCompletedQuantity(factActions)
+
+            // Действие завершено, если факт >= план
+            return completedQuantity >= plannedQuantity
         }
 
-        return false
+        // Для обычных действий - проверяем наличие хотя бы одного фактического действия
+        return factActions.any { it.plannedActionId == id }
     }
 
     // Проверка, может ли действие иметь несколько фактических действий
@@ -122,6 +125,23 @@ data class PlannedAction(
         val plannedQuantity = getPlannedQuantity()
         val completedQuantity = getCompletedQuantity(factActions)
 
+        // Если установлен признак ручного завершения, возвращаем 0
+        if (manuallyCompleted) {
+            return 0f
+        }
+
         return (plannedQuantity - completedQuantity).coerceAtLeast(0f)
+    }
+
+    // Проверка, полностью ли выполнено действие по количеству
+    fun isQuantityFulfilled(factActions: List<FactAction>): Boolean {
+        if (getProgressType() != ProgressType.QUANTITY || storageProduct == null) {
+            return false
+        }
+
+        val plannedQuantity = getPlannedQuantity()
+        val completedQuantity = getCompletedQuantity(factActions)
+
+        return completedQuantity >= plannedQuantity
     }
 }

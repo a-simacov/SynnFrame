@@ -14,7 +14,7 @@ import java.time.LocalDateTime
 
 /**
  * Контроллер для управления визардом действий
- * Обновлен для использования TaskXRepository при необходимости
+ * Обновлен для передачи информации о фактических действиях в контекст
  */
 class ActionWizardController(
     private val actionExecutionService: ActionExecutionService,
@@ -46,13 +46,25 @@ class ActionWizardController(
                 return Result.failure(IllegalStateException("No steps created for this action"))
             }
 
-            // Создаем начальное состояние
+            // Подготавливаем дополнительные данные для контекста
+            // Добавляем информацию о фактических действиях для выбранного планового действия
+            val factActionsInfo = mapOf(
+                actionId to task.factActions.filter { it.plannedActionId == actionId }
+            )
+
+            // Добавляем статус задания
+            val taskStatus = task.status
+
+            // Создаем начальное состояние с дополнительными данными
             _wizardState.value = ActionWizardState(
                 taskId = taskId,
                 actionId = actionId,
                 action = action,
                 steps = steps,
-                results = mapOf(),
+                results = mapOf(
+                    "factActions" to factActionsInfo,
+                    "taskStatus" to taskStatus
+                ),
                 startedAt = LocalDateTime.now(),
                 isInitialized = true,
                 lastScannedBarcode = null,

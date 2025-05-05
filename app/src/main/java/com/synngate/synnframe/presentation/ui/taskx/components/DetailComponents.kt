@@ -58,7 +58,8 @@ fun PlannedActionsView(
         } else {
             LazyColumn {
                 items(plannedActions.sortedBy { it.order }) { action ->
-                    PlannedActionItem(
+                    // Используем новый компонент с поддержкой свайпа
+                    SwipeablePlannedActionItem(
                         action = action,
                         factActions = factActions,
                         onClick = { onActionClick(action) },

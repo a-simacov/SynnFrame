@@ -17,11 +17,11 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,7 +61,19 @@ class ProductQuantityStepFactory : ActionStepFactory {
         }
 
         // Состояние для количества
-        var quantity by remember { mutableStateOf("1") }
+        // Получаем ранее введенное значение или используем "1" при первом открытии
+        val initialValue = remember {
+            if (context.hasStepResult) {
+                // Если уже есть результат этого шага, используем его
+                val currentResult = context.getCurrentStepResult() as? TaskProduct
+                currentResult?.quantity?.toString() ?: "1"
+            } else {
+                // Иначе устанавливаем "1" по умолчанию
+                "1"
+            }
+        }
+
+        var quantity by remember { mutableStateOf(initialValue) }
         var errorMessage by remember(context.validationError) {
             mutableStateOf(context.validationError)
         }
@@ -74,15 +86,23 @@ class ProductQuantityStepFactory : ActionStepFactory {
             0f
         }
 
-        // Вычисляем оставшееся количество (в будущем можно будет учитывать уже выполненные действия)
-        val remainingQuantity = plannedQuantity
+        // Получаем фактические действия для расчета оставшегося количества
+        val relatedFactActions = action.getRelatedFactActions(context)
 
-        // Инициализация количества из планового, если еще не задано
-        LaunchedEffect(selectedProduct) {
-            if (quantity == "1" && plannedQuantity > 0) {
-                quantity = plannedQuantity.toString()
-            }
-        }
+        // Вычисляем выполненное количество (сумма всех фактов)
+        val completedQuantity = relatedFactActions.sumOf {
+            it.storageProduct?.quantity?.toDouble() ?: 0.0
+        }.toFloat()
+
+        // Вычисляем оставшееся количество
+        val remainingQuantity = (plannedQuantity - completedQuantity).coerceAtLeast(0f)
+
+        // Вычисляем, каким будет итоговое количество после текущего действия
+        val currentInputQuantity = quantity.toFloatOrNull() ?: 0f
+        val projectedTotalQuantity = completedQuantity + currentInputQuantity
+
+        // Определяем, превысит ли итоговое количество плановое
+        val willExceedPlan = plannedQuantity > 0f && projectedTotalQuantity > plannedQuantity
 
         // Основной интерфейс
         Column(
@@ -112,10 +132,13 @@ class ProductQuantityStepFactory : ActionStepFactory {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Информация о количестве (плановом и оставшемся)
+            // Информация о количестве (плановом, итоговом и оставшемся)
             QuantityInfoCard(
                 plannedQuantity = plannedQuantity,
+                completedQuantity = completedQuantity,
                 remainingQuantity = remainingQuantity,
+                projectedTotal = projectedTotalQuantity,
+                willExceedPlan = willExceedPlan,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -157,13 +180,22 @@ class ProductQuantityStepFactory : ActionStepFactory {
     }
 
     /**
+     * Получает список связанных фактических действий из контекста
+     */
+    private fun PlannedAction.getRelatedFactActions(context: ActionContext): List<com.synngate.synnframe.domain.entity.taskx.action.FactAction> {
+        // Получаем информацию о фактических действиях из контекста
+        val factActionsInfo = context.results["factActions"] as? Map<*, *> ?: emptyMap<String, Any>()
+
+        // Получаем список фактических действий для текущего планового действия
+        @Suppress("UNCHECKED_CAST")
+        return (factActionsInfo[id] as? List<com.synngate.synnframe.domain.entity.taskx.action.FactAction>) ?: emptyList()
+    }
+
+    /**
      * Поиск результата предыдущего шага (выбора товара)
      */
     private fun findPreviousStepResult(context: ActionContext): Any? {
-        // Находим все шаги, выполненные перед текущим
-        val allStepIds = context.results.keys
-
-        // Ищем результат типа TaskProduct из предыдущих шагов
+        // Сначала проверяем, есть ли результат предыдущего шага в текущих результатах
         for ((stepId, value) in context.results) {
             if (stepId != context.stepId && value is TaskProduct) {
                 return value
@@ -264,7 +296,10 @@ class ProductQuantityStepFactory : ActionStepFactory {
     @Composable
     private fun QuantityInfoCard(
         plannedQuantity: Float,
+        completedQuantity: Float,
         remainingQuantity: Float,
+        projectedTotal: Float,
+        willExceedPlan: Boolean,
         modifier: Modifier = Modifier
     ) {
         Card(
@@ -284,44 +319,79 @@ class ProductQuantityStepFactory : ActionStepFactory {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Плановое количество:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                // Плановое количество
+                QuantityRow(
+                    label = "Плановое количество:",
+                    value = plannedQuantity.toString()
+                )
 
-                    Text(
-                        text = plannedQuantity.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                // Фактическое количество (сумма всех выполненных)
+                QuantityRow(
+                    label = "Уже выполнено:",
+                    value = completedQuantity.toString()
+                )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                // Оставшееся количество
+                QuantityRow(
+                    label = "Осталось выполнить:",
+                    value = remainingQuantity.toString(),
+                    highlight = true
+                )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Осталось выполнить:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+                )
 
+                // Прогнозируемое итоговое количество
+                QuantityRow(
+                    label = "Будет выполнено всего:",
+                    value = projectedTotal.toString(),
+                    highlight = true,
+                    warning = willExceedPlan
+                )
+
+                // Предупреждение, если превышено плановое количество
+                if (willExceedPlan) {
                     Text(
-                        text = remainingQuantity.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.Bold
+                        text = "Внимание: превышение планового количества!",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
             }
+        }
+    }
+
+    @Composable
+    private fun QuantityRow(
+        label: String,
+        value: String,
+        highlight: Boolean = false,
+        warning: Boolean = false
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 2.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (warning)
+                    MaterialTheme.colorScheme.error
+                else
+                    MaterialTheme.colorScheme.onPrimaryContainer,
+                fontWeight = if (highlight) FontWeight.Bold else FontWeight.Normal
+            )
         }
     }
 
