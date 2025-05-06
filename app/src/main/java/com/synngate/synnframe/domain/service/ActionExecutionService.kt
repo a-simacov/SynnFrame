@@ -61,40 +61,52 @@ class ActionExecutionService(
             // Получаем endpoint из контекста
             val endpoint = taskContextManager.currentEndpoint.value
 
+            // Переменная для хранения результата из API
+            var apiResult: Result<TaskX>? = null
+
             // Если есть endpoint и репозиторий, отправляем фактическое действие на сервер
             if (endpoint != null && taskXRepository != null) {
                 Timber.d("Отправка фактического действия на сервер")
-                val result = taskXRepository.addFactAction(factAction, endpoint)
+                apiResult = taskXRepository.addFactAction(factAction, endpoint)
 
-                // Если запрос выполнен успешно, возвращаем результат
-                if (result.isSuccess) {
-                    return@withContext result
-                } else {
-                    Timber.e(result.exceptionOrNull(), "Ошибка при отправке фактического действия на сервер")
-                    return@withContext result
+                // Если запрос выполнен неуспешно, только логируем ошибку
+                if (!apiResult.isSuccess) {
+                    Timber.e(apiResult.exceptionOrNull(), "Ошибка при отправке фактического действия на сервер")
                 }
             }
 
-            // Если нет endpoint или репозитория, или запрос не выполнен,
-            // выполняем локальное обновление
+            // Всегда выполняем локальное обновление, даже если есть результат от сервера
+            // (это нужно для правильной обработки статуса действия)
             Timber.d("Локальное обновление задания")
             val factActions = task.factActions.toMutableList()
             factActions.add(factAction)
 
             // Проверяем, нужно ли отмечать действие как выполненное
-            val shouldCompleteAction = if (allowMultipleFactActions && action.getProgressType() == ProgressType.QUANTITY) {
-                // Для множественных фактических действий с учетом количества
-                // проверяем достижение планового количества или принудительное завершение
-                val plannedQuantity = action.storageProduct?.quantity ?: 0f
-                val completedQuantity = factActions
-                    .filter { it.plannedActionId == action.id }
-                    .sumOf { it.storageProduct?.quantity?.toDouble() ?: 0.0 }
-                    .toFloat()
-
-                completeAction || completedQuantity >= plannedQuantity
-            } else {
-                // Для стандартных действий отмечаем как выполненное всегда
+            // ИСПРАВЛЕНО: логика определения необходимости завершения действия
+            val shouldCompleteAction = if (completeAction) {
+                // Если запрошено принудительное завершение
                 true
+            } else if (allowMultipleFactActions && action.getProgressType() == ProgressType.QUANTITY) {
+                // Только для действий с учетом количества и если разрешены множественные действия
+                val plannedQuantity = action.storageProduct?.quantity ?: 0f
+                if (plannedQuantity <= 0f) {
+                    // Если плановое количество не указано, то считаем как обычное действие
+                    // (должно быть хотя бы одно фактическое)
+                    factActions.any { it.plannedActionId == action.id }
+                } else {
+                    // Вычисляем общее выполненное количество
+                    val completedQuantity = factActions
+                        .filter { it.plannedActionId == action.id }
+                        .sumOf { it.storageProduct?.quantity?.toDouble() ?: 0.0 }
+                        .toFloat()
+
+                    // Автоматически отмечаем как выполненное только когда факт >= план
+                    completedQuantity >= plannedQuantity
+                }
+            } else {
+                // Для стандартных действий (без учета количества) или если не разрешены множественные действия
+                // всегда отмечаем как выполненное при наличии хотя бы одного фактического действия
+                factActions.any { it.plannedActionId == action.id }
             }
 
             // Обновляем запланированное действие, помечая его как выполненное при необходимости
@@ -125,7 +137,10 @@ class ActionExecutionService(
             // Обновляем данные в контексте
             taskContextManager.updateTask(updatedTask)
 
-            Result.success(updatedTask)
+            // Возвращаем результат от API, если он есть и успешен,
+            // иначе возвращаем результат локального обновления
+            return@withContext apiResult?.takeIf { it.isSuccess }
+                ?: Result.success(updatedTask)
         } catch (e: Exception) {
             Timber.e(e, "Error executing action $actionId for task $taskId")
             Result.failure(e)
@@ -161,7 +176,8 @@ class ActionExecutionService(
             val allowMultipleFactActions = taskType?.allowMultipleFactActions == true
 
             // Проверяем, можно ли изменить статус выполнения вручную
-            if (!allowMultipleFactActions && action.getProgressType() != ProgressType.QUANTITY) {
+            // Только действия с учетом количества и при разрешении множественных фактических действий
+            if (!allowMultipleFactActions || action.getProgressType() != ProgressType.QUANTITY) {
                 return@withContext Result.failure(IllegalStateException("Manual completion status change is not allowed for this action"))
             }
 
