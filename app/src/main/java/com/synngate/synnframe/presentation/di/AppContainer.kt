@@ -373,7 +373,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     val actionExecutionService by lazy {
         Timber.d("Creating ActionExecutionService")
         ActionExecutionService(
-            validationService = validationService,
             taskContextManager = taskContextManager,
             taskXRepository = taskXRepository // Добавляем TaskXRepository
         )

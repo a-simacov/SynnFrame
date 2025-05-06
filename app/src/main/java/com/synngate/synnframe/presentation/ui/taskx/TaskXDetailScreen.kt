@@ -153,6 +153,7 @@ fun TaskXDetailScreen(
                     actionStepFactoryRegistry = viewModel.actionStepFactoryRegistry,
                     onComplete = { viewModel.completeActionWizard() },
                     onCancel = { viewModel.hideActionWizard() },
+                    onRetryComplete = { viewModel.retryActionWizardComplete() }, // Новый колбэк для повторной отправки
                     modifier = Modifier.fillMaxSize()
                 )
             }

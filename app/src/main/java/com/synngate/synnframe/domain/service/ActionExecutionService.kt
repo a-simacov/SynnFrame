@@ -18,23 +18,11 @@ import timber.log.Timber
 import java.time.LocalDateTime
 import java.util.UUID
 
-/**
- * Сервис для выполнения действий задания
- * Обновлен для поддержки множественных фактических действий
- */
 class ActionExecutionService(
-    private val validationService: ValidationService,
     private val taskContextManager: TaskContextManager,
     private val taskXRepository: TaskXRepository? = null
 ) {
-    /**
-     * Выполняет действие задания
-     * @param taskId ID задания
-     * @param actionId ID действия
-     * @param stepResults Результаты шагов действия
-     * @param completeAction Принудительно отметить действие как выполненное
-     * @return Результат операции с обновленным заданием
-     */
+
     suspend fun executeAction(
         taskId: String,
         actionId: String,
@@ -42,7 +30,6 @@ class ActionExecutionService(
         completeAction: Boolean = false
     ): Result<TaskX> = withContext(Dispatchers.IO) {
         try {
-            // Получаем задание из контекста
             val task = taskContextManager.lastStartedTaskX.value
                 ?: return@withContext Result.failure(IllegalArgumentException("Task not found in context: $taskId"))
 
@@ -53,44 +40,35 @@ class ActionExecutionService(
             val action = task.plannedActions.find { it.id == actionId }
                 ?: return@withContext Result.failure(IllegalArgumentException("Planned action not found: $actionId"))
 
-            // Создаем фактическое действие на основе введенных данных
             val factAction = createFactAction(taskId, action, stepResults)
 
-            // Добавляем новое фактическое действие в список
-            val updatedFactActions = task.factActions.toMutableList()
-            updatedFactActions.add(factAction)
-
-            // Получаем endpoint из контекста
             val endpoint = taskContextManager.currentEndpoint.value
 
-            // Переменная для хранения результата из API
-            var apiResult: Result<TaskX>? = null
+            val apiResult: Result<TaskX>?
 
-            // Если есть endpoint и репозиторий, отправляем фактическое действие на сервер
             if (endpoint != null && taskXRepository != null) {
-                Timber.d("Отправка фактического действия на сервер")
                 apiResult = taskXRepository.addFactAction(factAction, endpoint)
 
-                // Если запрос выполнен неуспешно, только логируем ошибку
                 if (!apiResult.isSuccess) {
-                    Timber.e(apiResult.exceptionOrNull(), "Ошибка при отправке фактического действия на сервер")
+                    val errorMessage = apiResult.exceptionOrNull()?.message ?: "Ошибка при отправке данных на сервер"
+                    Timber.e(apiResult.exceptionOrNull(), "Ошибка при отправке фактического действия на сервер: $errorMessage")
+
+                    return@withContext Result.failure(Exception(errorMessage))
                 }
             }
 
-            // Обновляем запланированные действия
+            val updatedFactActions = task.factActions.toMutableList()
+            updatedFactActions.add(factAction)
+
             val updatedPlannedActions = task.plannedActions.map { plannedAction ->
                 if (plannedAction.id == actionId) {
-                    // Проверяем, нужно ли принудительно завершить действие
                     if (completeAction) {
-                        // Если действие завершается вручную
                         plannedAction.copy(
                             isCompleted = true,
                             manuallyCompleted = true,
                             manuallyCompletedAt = LocalDateTime.now()
                         )
                     } else {
-                        // Используем метод isActionCompleted для определения статуса
-                        // Это гарантирует согласованность с другими частями приложения
                         val isCompleted = plannedAction.isActionCompleted(updatedFactActions)
                         plannedAction.copy(isCompleted = isCompleted)
                     }
@@ -99,7 +77,6 @@ class ActionExecutionService(
                 }
             }
 
-            // Создаем обновленное задание
             val updatedTask = task.copy(
                 plannedActions = updatedPlannedActions,
                 factActions = updatedFactActions,
@@ -108,30 +85,19 @@ class ActionExecutionService(
 
             taskContextManager.updateTask(updatedTask, skipStatusProcessing = true)
 
-            // Возвращаем результат от API, если он есть и успешен,
-            // иначе возвращаем результат локального обновления
-            return@withContext apiResult?.takeIf { it.isSuccess }
-                ?: Result.success(updatedTask)
+            return@withContext Result.success(updatedTask)
         } catch (e: Exception) {
             Timber.e(e, "Error executing action $actionId for task $taskId")
             Result.failure(e)
         }
     }
 
-    /**
-     * Изменяет статус выполнения действия вручную
-     * @param taskId ID задания
-     * @param actionId ID действия
-     * @param completed Новый статус выполнения
-     * @return Результат операции с обновленным заданием
-     */
     suspend fun setActionCompletionStatus(
         taskId: String,
         actionId: String,
         completed: Boolean
     ): Result<TaskX> = withContext(Dispatchers.IO) {
         try {
-            // Получаем задание из контекста
             val task = taskContextManager.lastStartedTaskX.value
                 ?: return@withContext Result.failure(IllegalArgumentException("Task not found in context: $taskId"))
 
@@ -142,31 +108,24 @@ class ActionExecutionService(
             val action = task.plannedActions.find { it.id == actionId }
                 ?: return@withContext Result.failure(IllegalArgumentException("Planned action not found: $actionId"))
 
-            // Проверяем, разрешены ли множественные фактические действия для этого типа задания
             val taskType = taskContextManager.lastTaskTypeX.value
             val allowMultipleFactActions = taskType?.allowMultipleFactActions == true
 
-            // Проверяем, можно ли изменить статус выполнения вручную
-            // Только действия с учетом количества и при разрешении множественных фактических действий
             if (!allowMultipleFactActions || action.getProgressType() != ProgressType.QUANTITY) {
                 return@withContext Result.failure(IllegalStateException("Manual completion status change is not allowed for this action"))
             }
 
-            // Текущее время для отметки о ручном выполнении
             val completionTime = LocalDateTime.now()
 
-            // Обновляем статус выполнения действия
             val updatedPlannedActions = task.plannedActions.map {
                 if (it.id == actionId) {
                     if (completed) {
-                        // Если отмечаем как выполненное
                         it.copy(
                             isCompleted = true,
                             manuallyCompleted = true,
                             manuallyCompletedAt = completionTime,
                         )
                     } else {
-                        // Если снимаем отметку о выполнении
                         it.copy(
                             isCompleted = false,
                             manuallyCompleted = false,
@@ -178,7 +137,6 @@ class ActionExecutionService(
                 }
             }
 
-            // Создаем обновленное задание
             val updatedTask = task.copy(
                 plannedActions = updatedPlannedActions,
                 lastModifiedAt = LocalDateTime.now()
@@ -186,17 +144,14 @@ class ActionExecutionService(
 
             taskContextManager.updateTask(updatedTask, skipStatusProcessing = true)
 
-            // Если есть репозиторий и endpoint, отправляем обновление статуса на сервер
             val endpoint = taskContextManager.currentEndpoint.value
             if (endpoint != null && taskXRepository != null) {
-                // Создаем DTO для запроса
                 val requestDto = PlannedActionStatusRequestDto.fromPlannedAction(
                     plannedActionId = actionId,
                     manuallyCompleted = completed,
                     manuallyCompletedAt = if (completed) completionTime else null
                 )
 
-                // Отправляем запрос на сервер
                 try {
                     val apiResult = taskXRepository.setPlannedActionStatus(
                         taskId = taskId,
@@ -206,10 +161,11 @@ class ActionExecutionService(
 
                     if (!apiResult.isSuccess()) {
                         Timber.w("Failed to send action status update to server: ${(apiResult as ApiResult.Error).message}")
+                        return@withContext Result.failure(Exception(apiResult.message))
                     }
                 } catch (e: Exception) {
-                    // Логируем ошибку, но не прерываем выполнение, так как локальное обновление уже произведено
                     Timber.e(e, "Error sending action status update to server")
+                    return@withContext Result.failure(e)
                 }
             }
 
@@ -248,18 +204,14 @@ class ActionExecutionService(
         action: PlannedAction,
         stepResults: Map<String, Any>
     ): TaskProduct? {
-        // 1. Сначала ищем готовый TaskProduct с ненулевым количеством
         for ((_, value) in stepResults) {
             if (value is TaskProduct && value.quantity > 0f) {
                 return value
             }
         }
 
-        // 2. Если не нашли готовый TaskProduct, ищем обычный Product
-        // и создаем из него TaskProduct с количеством
         for ((_, value) in stepResults) {
             if (value is Product) {
-                // Поиск количества в stepResults
                 var quantity = 0f
                 for ((_, quantityValue) in stepResults) {
                     if (quantityValue is Float) {
@@ -277,9 +229,7 @@ class ActionExecutionService(
                     }
                 }
 
-                // Если количество не найдено, используем 1 как значение по умолчанию
                 if (quantity <= 0f) {
-                    // Проверяем, есть ли количество в действии
                     quantity = action.storageProduct?.quantity ?: 1f
                 }
 
@@ -287,8 +237,6 @@ class ActionExecutionService(
             }
         }
 
-        // 3. Если не нашли ни TaskProduct, ни Product, возвращаем storageProduct из действия
-        // Это важно для действий типа TAKE_FROM, где продукт уже задан в плане
         return action.storageProduct
     }
 

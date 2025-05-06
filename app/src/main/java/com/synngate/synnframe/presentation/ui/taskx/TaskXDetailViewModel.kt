@@ -107,52 +107,36 @@ class TaskXDetailViewModel(
         val isStrictOrder = taskType?.strictActionOrder == true // Исправлено
 
         if (isStrictOrder) {
-            // Используем FinalActionsValidator для определения следующего действия
             return finalActionsValidator.getNextActionIdInStrictOrder(task)
         }
 
         return null
     }
 
-    /**
-     * Проверка возможности выполнения финальных действий
-     */
     fun canExecuteFinalActions(task: TaskX): Boolean {
-        // Используем FinalActionsValidator вместо прямой реализации
         return finalActionsValidator.canExecuteFinalActions(task)
     }
 
-    /**
-     * Проверка возможности выполнения конкретного действия с учетом финальных действий
-     */
     fun canExecuteAction(actionId: String): Boolean {
         val task = uiState.value.task ?: return false
         val action = task.plannedActions.find { it.id == actionId } ?: return false
 
-        // Проверяем, можно ли выполнять финальные действия
         if (action.isFinalAction && !finalActionsValidator.canExecuteFinalActions(task)) {
             return false
         }
 
-        // Проверка строгого порядка для всех действий
-        val isStrictOrder = uiState.value.taskType?.strictActionOrder == true // Исправлено
+        val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
         if (!isStrictOrder) return true
 
         val nextActionId = uiState.value.nextActionId
         return nextActionId == actionId
     }
 
-    /**
-     * Устанавливает режим отображения действий
-     */
     fun setActionsDisplayMode(mode: ActionDisplayMode) {
         updateState { it.copy(actionsDisplayMode = mode) }
         updateFilteredActions()
     }
 
-    /**
-     * Показывает сообщение о недоступности финальных действий
-     */
     fun showFinalActionNotAvailableMessage() {
         sendEvent(TaskXDetailEvent.ShowSnackbar("Сначала выполните все обычные действия"))
     }
@@ -161,7 +145,6 @@ class TaskXDetailViewModel(
         val task = uiState.value.task ?: return
         val action = task.plannedActions.find { it.id == actionId } ?: return
 
-        // Проверяем доступность финальных действий
         if (action.isFinalAction && !finalActionsValidator.canExecuteFinalActions(task)) {
             showFinalActionNotAvailableMessage()
             return
@@ -208,14 +191,40 @@ class TaskXDetailViewModel(
 
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
                 } else {
-                    // Не закрываем диалог в случае ошибки - визард сам отображает ошибку
-                    // Сообщение в Snackbar не показываем, так как ошибка уже отображается в визарде
                     Timber.e(result.exceptionOrNull(), "Ошибка при выполнении действия")
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error completing action wizard")
-                // Не закрываем диалог в случае ошибки
-                // Сообщение в Snackbar не показываем, так как ошибка уже отображается в визарде
+            }
+        }
+    }
+
+    fun retryActionWizardComplete() {
+        launchIO {
+            try {
+                val result = actionWizardController.complete()
+                if (result.isSuccess) {
+                    val updatedTask = result.getOrNull()
+
+                    if (updatedTask != null) {
+                        updateState { it.copy(
+                            task = updatedTask,
+                            showActionWizard = false
+                        ) }
+                        updateDependentState(updatedTask, uiState.value.taskType)
+                    } else {
+                        loadTask()
+                        updateState { it.copy(showActionWizard = false) }
+                    }
+
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
+                } else {
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось отправить данные. Проверьте подключение."))
+                    Timber.e(result.exceptionOrNull(), "Ошибка при повторной отправке данных")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error retrying action wizard completion")
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось отправить данные. Проверьте подключение."))
             }
         }
     }
@@ -495,8 +504,6 @@ class TaskXDetailViewModel(
             uiState
                 .map { it.task }
                 .distinctUntilChanged { old, new ->
-                    // Расширенное сравнение - теперь учитываем количество фактических действий
-                    // и количество выполненных запланированных действий
                     if (old == null || new == null) false
                     else old.id == new.id &&
                             old.status == new.status &&
@@ -523,7 +530,7 @@ class TaskXDetailViewModel(
     private fun updateDependentState(task: TaskX, taskType: TaskTypeX?) {
         val nextActionId = calculateNextActionId(task, taskType)
         val hasAdditionalActions = checkHasAdditionalActions(task)
-        val statusActions = createStatusActions(task, taskType)
+        val statusActions = createStatusActions(task)
 
         updateState { currentState ->
             currentState.copy(
@@ -533,7 +540,6 @@ class TaskXDetailViewModel(
             )
         }
 
-        // Добавляем вызов обновления фильтрованных действий
         updateFilteredActions()
     }
 
@@ -542,7 +548,7 @@ class TaskXDetailViewModel(
                 isActionAvailable(AvailableTaskAction.PRINT_TASK_LABEL)
     }
 
-    private fun createStatusActions(task: TaskX, taskType: TaskTypeX?): List<StatusActionData> {
+    private fun createStatusActions(task: TaskX): List<StatusActionData> {
         return when (task.status) {
             TaskXStatus.TO_DO -> listOf(
                 StatusActionData(
@@ -624,15 +630,10 @@ class TaskXDetailViewModel(
         updateState { it.copy(filteredActions = filteredActions) }
     }
 
-    /**
-     * Фильтрует действия задания в зависимости от выбранного режима отображения
-     * Оптимизированная версия с кэшированием результатов проверки isActionCompleted
-     */
     private fun filterActionsByMode(task: TaskX, mode: ActionDisplayMode): List<PlannedAction> {
         val canExecuteFinals = canExecuteFinalActions(task)
         val factActions = task.factActions
 
-        // Предварительно вычисляем состояние выполненности для всех действий
         val completionStatus = task.plannedActions.associateBy(
             { it.id },
             { it.isActionCompleted(factActions) }
@@ -641,10 +642,6 @@ class TaskXDetailViewModel(
         return when (mode) {
             ActionDisplayMode.CURRENT -> task.plannedActions
                 .filter {
-                    // Текущее действие:
-                    // 1. Не пропущено
-                    // 2. Не отмечено как выполненное (используем предвычисленное значение)
-                    // 3. Для финальных действий - доступны финальные действия
                     !it.isSkipped &&
                             !completionStatus[it.id]!! &&
                             (!it.isFinalAction || canExecuteFinals)
@@ -652,7 +649,7 @@ class TaskXDetailViewModel(
                 .sortedBy { it.order }
 
             ActionDisplayMode.COMPLETED -> task.plannedActions
-                .filter { completionStatus[it.id]!! } // Используем предвычисленное значение
+                .filter { completionStatus[it.id]!! }
                 .sortedBy { it.order }
 
             ActionDisplayMode.ALL -> task.plannedActions
@@ -664,16 +661,6 @@ class TaskXDetailViewModel(
         }
     }
 
-    fun formatDisplayMode(mode: ActionDisplayMode): String {
-        return when (mode) {
-            ActionDisplayMode.CURRENT -> "Текущие"
-            ActionDisplayMode.COMPLETED -> "Выполненные"
-            ActionDisplayMode.FINALS -> "Финальные"
-            ActionDisplayMode.ALL -> "Все"
-        }
-    }
-
-    // Метод для управления статусом выполнения действия
     fun toggleActionCompletion(actionId: String, completed: Boolean) {
         launchIO {
             try {
@@ -692,7 +679,6 @@ class TaskXDetailViewModel(
                             )
                         }
 
-                        // Обновляем зависимые состояния
                         updateDependentState(updatedTask, uiState.value.taskType)
 
                         val message = if (completed) {
@@ -714,31 +700,16 @@ class TaskXDetailViewModel(
         }
     }
 
-    /**
-     * Проверяет, поддерживается ли множественное выполнение действий для задания
-     */
     fun supportsMultipleFactActions(): Boolean {
         return uiState.value.taskType?.allowMultipleFactActions == true // Исправлено
     }
 
-    /**
-     * Проверяет, является ли действие с учетом количества
-     */
     fun isQuantityBasedAction(action: PlannedAction): Boolean {
-        // Используем метод getProgressType вместо прямого обращения к полю
         return action.getProgressType() == ProgressType.QUANTITY
     }
 
-    /**
-     * Проверяет, можно ли управлять статусом выполнения действия вручную
-     */
     fun canManageCompletionStatus(action: PlannedAction): Boolean {
         val task = uiState.value.task ?: return false
-
-        // Проверяем, что:
-        // 1. Задание в статусе "Выполняется"
-        // 2. Разрешены множественные фактические действия
-        // 3. Действие с учетом количества (используем getProgressType)
         return task.status == TaskXStatus.IN_PROGRESS &&
                 uiState.value.taskType?.allowMultipleFactActions == true &&
                 action.getProgressType() == ProgressType.QUANTITY &&
@@ -753,14 +724,11 @@ class TaskXDetailViewModel(
         updateState { it.copy(showActionsDialog = false) }
     }
 
-    // Метод handleBackNavigation будет вызываться при попытке выйти с экрана
     fun handleBackNavigation() {
-        // Если задание в процессе выполнения, показываем диалог с действиями
         if (uiState.value.task?.status == TaskXStatus.IN_PROGRESS ||
             uiState.value.task?.status == TaskXStatus.PAUSED) {
             showActionsDialog()
         } else {
-            // Для заданий в других статусах просто показываем диалог без специального сообщения
             showActionsDialog()
         }
     }

@@ -19,7 +19,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -71,6 +73,7 @@ fun ActionWizardScreen(
     actionStepFactoryRegistry: ActionStepFactoryRegistry,
     onComplete: () -> Unit,
     onCancel: () -> Unit,
+    onRetryComplete: () -> Unit, // Новый параметр для повторной отправки
     modifier: Modifier = Modifier
 ) {
     val state by actionWizardController.wizardState.collectAsState()
@@ -228,7 +231,14 @@ fun ActionWizardScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            WizardActions(wizardState, coroutineScope, actionWizardController, onComplete)
+            // Обновляем WizardActions для учета состояния ошибки
+            WizardActions(
+                wizardState = wizardState,
+                coroutineScope = coroutineScope,
+                actionWizardController = actionWizardController,
+                onComplete = onComplete,
+                onRetryComplete = onRetryComplete,
+            )
 
             Spacer(modifier = Modifier.weight(0.1f))
         }
@@ -240,7 +250,8 @@ private fun WizardActions(
     wizardState: ActionWizardState,
     coroutineScope: CoroutineScope,
     actionWizardController: ActionWizardController,
-    onComplete: () -> Unit
+    onComplete: () -> Unit,
+    onRetryComplete: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -269,26 +280,45 @@ private fun WizardActions(
         }
 
         if (wizardState.isCompleted) {
-            Button(
-                onClick = onComplete,
-                modifier = Modifier.weight(1f),
-                enabled = !wizardState.isSending
-            ) {
-                if (wizardState.isSending) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = LocalContentColor.current
+            // Если есть ошибка отправки, показываем кнопку "Повторить"
+            if (wizardState.sendError != null) {
+                Button(
+                    onClick = onRetryComplete,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Отправка...")
-                } else {
-                    Text("Завершить")
-                    Spacer(modifier = Modifier.width(4.dp))
+                ) {
                     Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Завершить"
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Повторить",
+                        modifier = Modifier.padding(end = 4.dp)
                     )
+                    Text("Повторить")
+                }
+            } else {
+                // Кнопка "Завершить" для обычного завершения
+                Button(
+                    onClick = onComplete,
+                    modifier = Modifier.weight(1f),
+                    enabled = !wizardState.isSending
+                ) {
+                    if (wizardState.isSending) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = LocalContentColor.current
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Отправка...")
+                    } else {
+                        Text("Завершить")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Завершить"
+                        )
+                    }
                 }
             }
         } else if (!wizardState.isCompleted && wizardState.currentStep != null &&
@@ -383,6 +413,7 @@ fun ActionSummaryScreen(
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
+        // Индикатор отправки данных
         if (state.isSending) {
             Row(
                 modifier = Modifier
@@ -403,6 +434,7 @@ fun ActionSummaryScreen(
             }
         }
 
+        // Блок с информацией об ошибке
         if (state.sendError != null) {
             Card(
                 colors = CardDefaults.cardColors(
@@ -412,20 +444,33 @@ fun ActionSummaryScreen(
                     .fillMaxWidth()
                     .padding(vertical = 12.dp)
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(16.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Error,
-                        contentDescription = "Ошибка",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(end = 12.dp)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Error,
+                            contentDescription = "Ошибка",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(end = 12.dp)
+                        )
+                        Text(
+                            text = "Ошибка отправки данных",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     Text(
-                        text = state.sendError,
+                        text = state.sendError ?: "Неизвестная ошибка",
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         style = MaterialTheme.typography.bodyMedium
                     )
