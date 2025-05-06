@@ -79,8 +79,8 @@ class ActionExecutionService(
             val updatedPlannedActions = task.plannedActions.map { plannedAction ->
                 if (plannedAction.id == actionId) {
                     // Проверяем, нужно ли принудительно завершить действие
-                    if (completeAction && !plannedAction.isActionCompleted(updatedFactActions)) {
-                        // Если действие завершается вручную, сохраняем информацию об этом
+                    if (completeAction) {
+                        // Если действие завершается вручную
                         plannedAction.copy(
                             isCompleted = true,
                             manuallyCompleted = true,
@@ -104,8 +104,7 @@ class ActionExecutionService(
                 lastModifiedAt = LocalDateTime.now()
             )
 
-            // Обновляем данные в контексте
-            taskContextManager.updateTask(updatedTask)
+            taskContextManager.updateTask(updatedTask, skipStatusProcessing = true)
 
             // Возвращаем результат от API, если он есть и успешен,
             // иначе возвращаем результат локального обновления
@@ -180,8 +179,7 @@ class ActionExecutionService(
                 lastModifiedAt = LocalDateTime.now()
             )
 
-            // Обновляем данные в контексте
-            taskContextManager.updateTask(updatedTask)
+            taskContextManager.updateTask(updatedTask, skipStatusProcessing = true)
 
             // Если есть репозиторий и endpoint, отправляем обновление на сервер
             val endpoint = taskContextManager.currentEndpoint.value

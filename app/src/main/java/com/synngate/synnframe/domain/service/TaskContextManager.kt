@@ -26,9 +26,10 @@ class TaskContextManager {
         _currentEndpoint.value = endpoint
     }
 
-    fun updateTask(updatedTask: TaskX) {
+    fun updateTask(updatedTask: TaskX, skipStatusProcessing: Boolean = false) {
         if (_lastStartedTaskX.value?.id == updatedTask.id) {
-            val processedTask = processTaskActions(updatedTask)
+            val processedTask = if (skipStatusProcessing) updatedTask else processTaskActions(updatedTask)
+
             // Используем двухэтапное обновление для гарантии оповещения подписчиков
             // Сначала устанавливаем null, чтобы форсировать обновление даже при равных ссылках
             _lastStartedTaskX.value = null
