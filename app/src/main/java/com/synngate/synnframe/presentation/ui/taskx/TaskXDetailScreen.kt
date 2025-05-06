@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -76,9 +76,11 @@ fun TaskXDetailScreen(
                         duration = SnackbarDuration.Short
                     )
                 }
+
                 is TaskXDetailEvent.ShowActionWizard -> {
                     // Обработка будет через state.showActionWizard
                 }
+
                 is TaskXDetailEvent.HideActionWizard -> {
                     // Обработка будет через state.showActionWizard
                 }
@@ -257,7 +259,9 @@ fun TaskXDetailScreen(
                         currentMode = state.actionsDisplayMode,
                         onModeChange = { mode -> viewModel.setActionsDisplayMode(mode) },
                         hasFinalActions = task.plannedActions.any { it.isFinalAction },
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp)
                     )
 
                     Box(modifier = Modifier.weight(1f)) {
@@ -295,36 +299,13 @@ fun TaskXDetailScreen(
                     }
 
 
-                    if (task.status == TaskXStatus.IN_PROGRESS &&
-                        state.taskType?.strictActionOrder != true) {
-                        Button(
-                            onClick = {
-                                task.getNextAction()?.let { action ->
-                                    viewModel.startActionExecution(action.id)
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = "Добавить действие",
-                                modifier = Modifier.padding(end = 8.dp)
-                            )
-                            Text("Добавить действие")
-                        }
-                    }
 
-                    if (state.statusActions.isNotEmpty()) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                        ) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                    ) {
+                        if (state.statusActions.isNotEmpty()) {
                             state.statusActions.forEach { actionData ->
                                 Button(
                                     onClick = actionData.onClick,
@@ -347,6 +328,29 @@ fun TaskXDetailScreen(
                                     )
                                     Text(actionData.text)
                                 }
+                            }
+                        }
+                        if (task.status == TaskXStatus.IN_PROGRESS &&
+                            state.taskType?.strictActionOrder != true
+                        ) {
+                            Button(
+                                onClick = {
+                                    task.getNextAction()?.let { action ->
+                                        viewModel.startActionExecution(action.id)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .padding(horizontal = 4.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Icon(
+                                    Icons.Default.PendingActions,
+                                    contentDescription = "Действие",
+                                    modifier = Modifier.padding(end = 8.dp)
+                                )
+                                //Text("Действие")
                             }
                         }
                     }
