@@ -12,17 +12,17 @@ import java.time.LocalDateTime
 @Dao
 interface LogDao {
 
-    @Query("SELECT * FROM logs ORDER BY createdAt DESC")
+    @Query("SELECT id, SUBSTR(message, 1, 500) as message, type, createdAt FROM logs ORDER BY createdAt DESC")
     fun getAllLogs(): Flow<List<LogEntity>>
 
-    @Query("SELECT * FROM logs WHERE type IN (:types) ORDER BY createdAt DESC")
+    @Query("SELECT id, SUBSTR(message, 1, 500) as message, type, createdAt FROM logs WHERE type IN (:types) ORDER BY createdAt DESC")
     fun getLogsByTypes(types: List<String>): Flow<List<LogEntity>>
 
-    @Query("SELECT * FROM logs WHERE message LIKE '%' || :messageFilter || '%' ORDER BY createdAt DESC")
+    @Query("SELECT id, SUBSTR(message, 1, 500) as message, type, createdAt FROM logs WHERE message LIKE '%' || :messageFilter || '%' ORDER BY createdAt DESC")
     fun getLogsByMessageFilter(messageFilter: String): Flow<List<LogEntity>>
 
     @Query("""
-    SELECT * FROM logs
+    SELECT id, SUBSTR(message, 1, 500) as message, type, createdAt FROM logs
 
     WHERE type IN (:types)
     AND message LIKE '%' || :messageFilter || '%'
@@ -31,11 +31,11 @@ interface LogDao {
     """)
     fun getLogsByTypesAndMessageFilter(types: List<String>, messageFilter: String): Flow<List<LogEntity>>
 
-    @Query("SELECT * FROM logs WHERE createdAt BETWEEN :dateFrom AND :dateTo ORDER BY createdAt DESC")
+    @Query("SELECT id, SUBSTR(message, 1, 500) as message, type, createdAt FROM logs WHERE createdAt BETWEEN :dateFrom AND :dateTo ORDER BY createdAt DESC")
     fun getLogsByDateRange(dateFrom: LocalDateTime, dateTo: LocalDateTime): Flow<List<LogEntity>>
 
     @Query("""
-        SELECT * FROM logs
+        SELECT id, SUBSTR(message, 1, 500) as message, type, createdAt FROM logs
     
         WHERE type IN (:types) 
         AND message LIKE '%' || :messageFilter || '%' 
