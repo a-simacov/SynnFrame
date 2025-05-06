@@ -53,6 +53,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.SynnFrameApplication
@@ -64,9 +65,6 @@ import com.synngate.synnframe.presentation.common.status.SyncStatusIndicator
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 
-/**
- * Основной экран приложения с верхней панелью, содержимым и нижней панелью
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppScaffold(
@@ -81,7 +79,7 @@ fun AppScaffold(
     lastSyncTime: String? = null,
     currentUser: String? = null,
     notification: Pair<String, StatusType>? = null,
-    onDismissNotification: (() -> Unit)? = null,  // Новый параметр для обработки закрытия уведомления
+    onDismissNotification: (() -> Unit)? = null,
     drawerState: DrawerState? = null,
     drawerContent: @Composable (() -> Unit)? = null,
     menuItems: List<Pair<String, () -> Unit>>? = null,
@@ -126,18 +124,25 @@ fun AppScaffold(
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
                 Column {
+                    // Используем стандартный TopAppBar, но с уменьшенными отступами
                     TopAppBar(
                         title = {
-                            Column {
+                            Column(
+                                modifier = Modifier.padding(vertical = 0.dp) // Уменьшенные вертикальные отступы
+                            ) {
                                 Text(
                                     text = title,
-                                    style = MaterialTheme.typography.titleLarge
+                                    style = MaterialTheme.typography.titleMedium, // Меньший размер шрифта
+                                    maxLines = 1, // Ограничиваем одной строкой
+                                    overflow = TextOverflow.Ellipsis
                                 )
 
                                 if (subtitle != null) {
                                     Text(
                                         text = subtitle,
-                                        style = MaterialTheme.typography.bodyMedium
+                                        style = MaterialTheme.typography.bodySmall, // Меньший размер подзаголовка
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
@@ -196,7 +201,12 @@ fun AppScaffold(
                                 }
                             }
                         },
-                        scrollBehavior = scrollBehavior
+                        scrollBehavior = scrollBehavior,
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        // Используем небольшие отступы для уменьшения высоты
+                        modifier = Modifier.padding(vertical = 0.dp)
                     )
 
                     // Панель уведомлений с обработкой закрытия
@@ -262,8 +272,6 @@ fun AppScaffold(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                //.navigationBarsPadding()
-                //.padding(paddingValues)
             ) {
                 content(paddingValues)
 
@@ -274,7 +282,7 @@ fun AppScaffold(
                             .background(Color.Black.copy(alpha = 0.3f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        androidx.compose.material3.CircularProgressIndicator()
                     }
                 }
             }

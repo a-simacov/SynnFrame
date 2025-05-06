@@ -111,10 +111,19 @@ fun SynnFrameTheme(
 
     val view = LocalView.current
     if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+        val currentWindow = (view.context as? Activity)?.window
+        if (currentWindow != null) {
+            SideEffect {
+                // Устанавливаем цвет панели навигации и статус-бара в соответствии с темой
+                currentWindow.navigationBarColor = colorScheme.background.toArgb()
+                currentWindow.statusBarColor = colorScheme.background.toArgb()
+
+                // Настраиваем цвет иконок на системных панелях
+                WindowCompat.getInsetsController(currentWindow, view).apply {
+                    isAppearanceLightStatusBars = !darkTheme
+                    isAppearanceLightNavigationBars = !darkTheme
+                }
+            }
         }
     }
 
