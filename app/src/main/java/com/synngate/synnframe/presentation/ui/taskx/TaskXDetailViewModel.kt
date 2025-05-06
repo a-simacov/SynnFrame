@@ -557,14 +557,14 @@ class TaskXDetailViewModel(
                 StatusActionData(
                     id = "pause",
                     iconName = "pause",
-                    text = "Пауза",
+                    text = "Приостановить",
                     description = "Приостановить",
                     onClick = ::pauseTask
                 ),
                 StatusActionData(
                     id = "finish",
                     iconName = "check_circle",
-                    text = "Финиш",
+                    text = "Завершить задание",
                     description = "Завершить",
                     onClick = ::showCompletionDialog,
                 )
@@ -743,6 +743,26 @@ class TaskXDetailViewModel(
                 uiState.value.taskType?.allowMultipleFactActions == true &&
                 action.getProgressType() == ProgressType.QUANTITY &&
                 !action.isSkipped
+    }
+
+    fun showActionsDialog() {
+        updateState { it.copy(showActionsDialog = true) }
+    }
+
+    fun hideActionsDialog() {
+        updateState { it.copy(showActionsDialog = false) }
+    }
+
+    // Метод handleBackNavigation будет вызываться при попытке выйти с экрана
+    fun handleBackNavigation() {
+        // Если задание в процессе выполнения, показываем диалог с действиями
+        if (uiState.value.task?.status == TaskXStatus.IN_PROGRESS ||
+            uiState.value.task?.status == TaskXStatus.PAUSED) {
+            showActionsDialog()
+        } else {
+            // Для заданий в других статусах просто показываем диалог без специального сообщения
+            showActionsDialog()
+        }
     }
 
     override fun dispose() {

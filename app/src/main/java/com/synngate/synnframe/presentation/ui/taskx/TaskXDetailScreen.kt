@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.taskx
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +50,7 @@ import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableTaskInf
 import com.synngate.synnframe.presentation.ui.taskx.components.FactActionsView
 import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionsView
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskProgressIndicator
+import com.synngate.synnframe.presentation.ui.taskx.components.TaskXActionsDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXVerificationDialog
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
@@ -66,6 +68,11 @@ fun TaskXDetailScreen(
     val task = state.task
 
     val nextActionId = state.nextActionId
+
+    // Перехватываем нажатие кнопки Назад
+    BackHandler {
+        viewModel.handleBackNavigation()
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -86,6 +93,15 @@ fun TaskXDetailScreen(
                 }
             }
         }
+    }
+
+    // Отображаем диалог действий
+    if (state.showActionsDialog) {
+        TaskXActionsDialog(
+            onDismiss = { viewModel.hideActionsDialog() },
+            onNavigateBack = navigateBack,
+            statusActions = state.statusActions
+        )
     }
 
     if (state.showCompletionDialog) {
@@ -145,7 +161,8 @@ fun TaskXDetailScreen(
 
     AppScaffold(
         title = task?.taskTypeId?.let { viewModel.formatTaskType(it) } ?: "Unknown",
-        onNavigateBack = navigateBack,
+        // Перехватываем нажатие на кнопку "Назад" в заголовке
+        onNavigateBack = { viewModel.handleBackNavigation() },
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {
             Pair(it, StatusType.ERROR)
@@ -298,40 +315,14 @@ fun TaskXDetailScreen(
                         )
                     }
 
-
-
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
+                    // Кнопка для запуска следующего действия, если задание в статусе "Выполняется"
+                    // и не требуется строгий порядок
+                    if (task.status == TaskXStatus.IN_PROGRESS &&
+                        state.taskType?.strictActionOrder != true
                     ) {
-                        if (state.statusActions.isNotEmpty()) {
-                            state.statusActions.forEach { actionData ->
-                                Button(
-                                    onClick = actionData.onClick,
-                                    modifier = Modifier
-                                        .padding(horizontal = 4.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = when (actionData.id) {
-                                            "start" -> MaterialTheme.colorScheme.primary
-                                            "finish" -> MaterialTheme.colorScheme.secondary
-                                            "pause" -> MaterialTheme.colorScheme.tertiary
-                                            "resume" -> MaterialTheme.colorScheme.primary
-                                            else -> MaterialTheme.colorScheme.primary
-                                        }
-                                    )
-                                ) {
-                                    Icon(
-                                        imageVector = getIconByName(actionData.iconName),
-                                        contentDescription = actionData.description,
-                                        modifier = Modifier.padding(end = 8.dp)
-                                    )
-                                    Text(actionData.text)
-                                }
-                            }
-                        }
-                        if (task.status == TaskXStatus.IN_PROGRESS &&
-                            state.taskType?.strictActionOrder != true
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Button(
                                 onClick = {
@@ -339,18 +330,16 @@ fun TaskXDetailScreen(
                                         viewModel.startActionExecution(action.id)
                                     }
                                 },
-                                modifier = Modifier
-                                    .padding(horizontal = 4.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary
                                 )
                             ) {
                                 Icon(
                                     Icons.Default.PendingActions,
-                                    contentDescription = "Действие",
+                                    contentDescription = "Выполнить следующее действие",
                                     modifier = Modifier.padding(end = 8.dp)
                                 )
-                                //Text("Действие")
+                                Text("Выполнить следующее")
                             }
                         }
                     }
