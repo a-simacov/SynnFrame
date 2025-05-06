@@ -114,17 +114,10 @@ fun MainMenuScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .padding(horizontal = 4.dp)
         ) {
-            Text(
-                text = stringResource(id = R.string.main_functions),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
             NavigationButton(
-                text = stringResource(id = R.string.operations),
+                text = stringResource(id = R.string.tasks),
                 onClick = { viewModel.onDynamicMenuClick() },
                 icon = Icons.AutoMirrored.Outlined.Assignment,
                 contentDescription = stringResource(id = R.string.operations)
@@ -132,25 +125,25 @@ fun MainMenuScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            NavigationButton(
-                text = stringResource(id = R.string.tasks),
-                onClick = { viewModel.onTasksClick() },
-                icon = Icons.AutoMirrored.Outlined.Assignment,
-                contentDescription = stringResource(id = R.string.tasks),
-                badge = state.assignedTasksCount.takeIf { it > 0 }
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            NavigationButton(
-                text = "Расширенные задания",
-                onClick = { viewModel.onTasksXClick() },
-                icon = Icons.AutoMirrored.Outlined.Assignment,
-                contentDescription = "Расширенные задания",
-                badge = null
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
+//            NavigationButton(
+//                text = stringResource(id = R.string.tasks),
+//                onClick = { viewModel.onTasksClick() },
+//                icon = Icons.AutoMirrored.Outlined.Assignment,
+//                contentDescription = stringResource(id = R.string.tasks),
+//                badge = state.assignedTasksCount.takeIf { it > 0 }
+//            )
+//
+//            Spacer(modifier = Modifier.height(12.dp))
+//
+//            NavigationButton(
+//                text = "Расширенные задания",
+//                onClick = { viewModel.onTasksXClick() },
+//                icon = Icons.AutoMirrored.Outlined.Assignment,
+//                contentDescription = "Расширенные задания",
+//                badge = null
+//            )
+//
+//            Spacer(modifier = Modifier.height(12.dp))
 
             NavigationButton(
                 text = stringResource(id = R.string.products),
@@ -192,17 +185,9 @@ fun MainMenuScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Раздел действий с пользователем
-            Text(
-                text = stringResource(id = R.string.user_actions),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Кнопка "Смена пользователя"
             NavigationButton(

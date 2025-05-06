@@ -81,9 +81,6 @@ class SearchComponent(
         }
 
         Column(modifier = modifier) {
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Строка поиска с кнопкой сканирования
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()

@@ -154,16 +154,9 @@ private fun DynamicMenuContent(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = 4.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text(
-            text = stringResource(id = R.string.available_operations),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
         menuItems.forEach { menuItem ->
             val icon = getIconForMenuItemType(menuItem.type)
 

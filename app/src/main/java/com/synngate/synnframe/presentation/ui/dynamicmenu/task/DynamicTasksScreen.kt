@@ -125,7 +125,7 @@ fun DynamicTasksScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
+                        .padding(horizontal = 4.dp)
                 ) {
                     // Отображаем компоненты без веса (обычно поиск, фильтры и т.д.)
                     componentGroups.fixedComponents.forEach { component ->
