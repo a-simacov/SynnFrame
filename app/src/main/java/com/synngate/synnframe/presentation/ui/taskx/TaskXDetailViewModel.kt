@@ -626,27 +626,33 @@ class TaskXDetailViewModel(
 
     /**
      * Фильтрует действия задания в зависимости от выбранного режима отображения
+     * Оптимизированная версия с кэшированием результатов проверки isActionCompleted
      */
     private fun filterActionsByMode(task: TaskX, mode: ActionDisplayMode): List<PlannedAction> {
         val canExecuteFinals = canExecuteFinalActions(task)
         val factActions = task.factActions
+
+        // Предварительно вычисляем состояние выполненности для всех действий
+        val completionStatus = task.plannedActions.associateBy(
+            { it.id },
+            { it.isActionCompleted(factActions) }
+        )
 
         return when (mode) {
             ActionDisplayMode.CURRENT -> task.plannedActions
                 .filter {
                     // Текущее действие:
                     // 1. Не пропущено
-                    // 2. Не отмечено как выполненное через isCompleted или manuallyCompleted
-                    // 3. Для действий с учетом количества - не достигнуто плановое количество
-                    // 4. Для финальных действий - доступны финальные действия
+                    // 2. Не отмечено как выполненное (используем предвычисленное значение)
+                    // 3. Для финальных действий - доступны финальные действия
                     !it.isSkipped &&
-                            !it.isActionCompleted(factActions) &&
+                            !completionStatus[it.id]!! &&
                             (!it.isFinalAction || canExecuteFinals)
                 }
                 .sortedBy { it.order }
 
             ActionDisplayMode.COMPLETED -> task.plannedActions
-                .filter { it.isActionCompleted(factActions) }
+                .filter { completionStatus[it.id]!! } // Используем предвычисленное значение
                 .sortedBy { it.order }
 
             ActionDisplayMode.ALL -> task.plannedActions

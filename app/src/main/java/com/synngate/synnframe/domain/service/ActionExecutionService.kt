@@ -51,12 +51,12 @@ class ActionExecutionService(
             val action = task.plannedActions.find { it.id == actionId }
                 ?: return@withContext Result.failure(IllegalArgumentException("Planned action not found: $actionId"))
 
-            // Проверяем, разрешены ли множественные фактические действия для этого типа задания
-            val taskType = taskContextManager.lastTaskTypeX.value
-            val allowMultipleFactActions = taskType?.allowMultipleFactActions == true
-
             // Создаем фактическое действие на основе введенных данных
             val factAction = createFactAction(taskId, action, stepResults)
+
+            // Добавляем новое фактическое действие в список
+            val updatedFactActions = task.factActions.toMutableList()
+            updatedFactActions.add(factAction)
 
             // Получаем endpoint из контекста
             val endpoint = taskContextManager.currentEndpoint.value
@@ -75,62 +75,32 @@ class ActionExecutionService(
                 }
             }
 
-            // Всегда выполняем локальное обновление, даже если есть результат от сервера
-            // (это нужно для правильной обработки статуса действия)
-            Timber.d("Локальное обновление задания")
-            val factActions = task.factActions.toMutableList()
-            factActions.add(factAction)
-
-            // Проверяем, нужно ли отмечать действие как выполненное
-            // ИСПРАВЛЕНО: логика определения необходимости завершения действия
-            val shouldCompleteAction = if (completeAction) {
-                // Если запрошено принудительное завершение
-                true
-            } else if (allowMultipleFactActions && action.getProgressType() == ProgressType.QUANTITY) {
-                // Только для действий с учетом количества и если разрешены множественные действия
-                val plannedQuantity = action.storageProduct?.quantity ?: 0f
-                if (plannedQuantity <= 0f) {
-                    // Если плановое количество не указано, то считаем как обычное действие
-                    // (должно быть хотя бы одно фактическое)
-                    factActions.any { it.plannedActionId == action.id }
-                } else {
-                    // Вычисляем общее выполненное количество
-                    val completedQuantity = factActions
-                        .filter { it.plannedActionId == action.id }
-                        .sumOf { it.storageProduct?.quantity?.toDouble() ?: 0.0 }
-                        .toFloat()
-
-                    // Автоматически отмечаем как выполненное только когда факт >= план
-                    completedQuantity >= plannedQuantity
-                }
-            } else {
-                // Для стандартных действий (без учета количества) или если не разрешены множественные действия
-                // всегда отмечаем как выполненное при наличии хотя бы одного фактического действия
-                factActions.any { it.plannedActionId == action.id }
-            }
-
-            // Обновляем запланированное действие, помечая его как выполненное при необходимости
-            val updatedPlannedActions = task.plannedActions.map {
-                if (it.id == actionId && shouldCompleteAction) {
-                    // Если действие завершается вручную, сохраняем информацию об этом
-                    if (completeAction && !it.isActionCompleted(factActions)) {
-                        it.copy(
+            // Обновляем запланированные действия
+            val updatedPlannedActions = task.plannedActions.map { plannedAction ->
+                if (plannedAction.id == actionId) {
+                    // Проверяем, нужно ли принудительно завершить действие
+                    if (completeAction && !plannedAction.isActionCompleted(updatedFactActions)) {
+                        // Если действие завершается вручную, сохраняем информацию об этом
+                        plannedAction.copy(
                             isCompleted = true,
                             manuallyCompleted = true,
-                            manuallyCompletedAt = LocalDateTime.now(),
+                            manuallyCompletedAt = LocalDateTime.now()
                         )
                     } else {
-                        it.copy(isCompleted = true)
+                        // Используем метод isActionCompleted для определения статуса
+                        // Это гарантирует согласованность с другими частями приложения
+                        val isCompleted = plannedAction.isActionCompleted(updatedFactActions)
+                        plannedAction.copy(isCompleted = isCompleted)
                     }
                 } else {
-                    it
+                    plannedAction
                 }
             }
 
             // Создаем обновленное задание
             val updatedTask = task.copy(
                 plannedActions = updatedPlannedActions,
-                factActions = factActions,
+                factActions = updatedFactActions,
                 lastModifiedAt = LocalDateTime.now()
             )
 

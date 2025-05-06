@@ -68,8 +68,31 @@ fun SwipeablePlannedActionItem(
     modifier: Modifier = Modifier
 ) {
     // Определяем цвет фона и информацию о статусе действия
-    val isCompleted = action.isActionCompleted(factActions)
-    val progress = action.calculateProgress(factActions)
+    // Определяем цвет фона и информацию о статусе действия
+    // Кэшируем результат isActionCompleted и пересчитываем только
+    // когда меняются данные, влияющие на результат
+    val isCompleted = remember(
+        action.id,
+        action.isCompleted,
+        action.manuallyCompleted,
+        factActions.size,
+        // Хэш-сумма для отслеживания изменений в количестве
+        factActions.filter { it.plannedActionId == action.id }
+            .sumOf { it.storageProduct?.quantity?.toDouble() ?: 0.0 }
+    ) {
+        action.isActionCompleted(factActions)
+    }
+
+    // Кэшируем прогресс, чтобы не пересчитывать его при каждой перерисовке
+    val progress = remember(
+        action.id,
+        isCompleted,
+        factActions.size,
+        factActions.filter { it.plannedActionId == action.id }
+            .sumOf { it.storageProduct?.quantity?.toDouble() ?: 0.0 }
+    ) {
+        action.calculateProgress(factActions)
+    }
     val hasMultipleFactActions = action.canHaveMultipleFactActions()
 
     // Определяем, было ли действие завершено вручную

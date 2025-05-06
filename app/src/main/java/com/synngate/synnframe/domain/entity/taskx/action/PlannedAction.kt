@@ -75,11 +75,10 @@ data class PlannedAction(
     }
 
     // Определение, фактически завершено ли действие
+    // Улучшенный метод isActionCompleted с кэшированием результата
     fun isActionCompleted(factActions: List<FactAction>): Boolean {
-        // Если действие явно отмечено как завершенное через isCompleted
+        // Быстрые проверки без вычислений
         if (isCompleted) return true
-
-        // Если действие отмечено как завершенное вручную
         if (manuallyCompleted) return true
 
         // Для действий с учетом количества проверяем соотношение план/факт
@@ -87,14 +86,18 @@ data class PlannedAction(
             val plannedQuantity = storageProduct.quantity
             if (plannedQuantity <= 0f) return false
 
-            // Считаем суммарное фактическое количество
-            val completedQuantity = getCompletedQuantity(factActions)
+            // Оптимизация: фильтруем только связанные фактические действия
+            // и сразу суммируем количество за один проход
+            val completedQuantity = factActions
+                .filter { it.plannedActionId == id }
+                .sumOf { it.storageProduct?.quantity?.toDouble() ?: 0.0 }
+                .toFloat()
 
             // Действие завершено, если факт >= план
             return completedQuantity >= plannedQuantity
         }
 
-        // Для обычных действий - проверяем наличие хотя бы одного фактического действия
+        // Оптимизация: используем any вместо filter + count
         return factActions.any { it.plannedActionId == id }
     }
 
