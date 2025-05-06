@@ -2,6 +2,8 @@ package com.synngate.synnframe.data.repository
 
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.api.TaskXApi
+import com.synngate.synnframe.data.remote.dto.CommonResponseDto
+import com.synngate.synnframe.data.remote.dto.PlannedActionStatusRequestDto
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
@@ -166,6 +168,22 @@ class TaskXRepositoryImpl(
         } catch (e: Exception) {
             Timber.e(e, "Error adding fact action: ${factAction.id}")
             return Result.failure(e)
+        }
+    }
+
+    override suspend fun setPlannedActionStatus(
+        taskId: String,
+        requestDto: PlannedActionStatusRequestDto,
+        endpoint: String
+    ): ApiResult<CommonResponseDto> {
+        try {
+            return taskXApi.setPlannedActionStatus(taskId, requestDto, endpoint)
+        } catch (e: Exception) {
+            Timber.e(e, "Error setting planned action status for taskId: $taskId, actionId: ${requestDto.plannedActionId}")
+            return ApiResult.Error(
+                code = 500,
+                message = "Error setting planned action status: ${e.message}"
+            )
         }
     }
 }

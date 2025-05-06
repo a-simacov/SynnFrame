@@ -1,5 +1,7 @@
 package com.synngate.synnframe.domain.service
 
+import com.synngate.synnframe.data.remote.api.ApiResult
+import com.synngate.synnframe.data.remote.dto.PlannedActionStatusRequestDto
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
@@ -150,6 +152,9 @@ class ActionExecutionService(
                 return@withContext Result.failure(IllegalStateException("Manual completion status change is not allowed for this action"))
             }
 
+            // Текущее время для отметки о ручном выполнении
+            val completionTime = LocalDateTime.now()
+
             // Обновляем статус выполнения действия
             val updatedPlannedActions = task.plannedActions.map {
                 if (it.id == actionId) {
@@ -158,7 +163,7 @@ class ActionExecutionService(
                         it.copy(
                             isCompleted = true,
                             manuallyCompleted = true,
-                            manuallyCompletedAt = LocalDateTime.now(),
+                            manuallyCompletedAt = completionTime,
                         )
                     } else {
                         // Если снимаем отметку о выполнении
@@ -181,11 +186,31 @@ class ActionExecutionService(
 
             taskContextManager.updateTask(updatedTask, skipStatusProcessing = true)
 
-            // Если есть репозиторий и endpoint, отправляем обновление на сервер
+            // Если есть репозиторий и endpoint, отправляем обновление статуса на сервер
             val endpoint = taskContextManager.currentEndpoint.value
             if (endpoint != null && taskXRepository != null) {
-                // Здесь можно добавить логику отправки обновления статуса на сервер
-                // Например, вызвать специальный метод репозитория
+                // Создаем DTO для запроса
+                val requestDto = PlannedActionStatusRequestDto.fromPlannedAction(
+                    plannedActionId = actionId,
+                    manuallyCompleted = completed,
+                    manuallyCompletedAt = if (completed) completionTime else null
+                )
+
+                // Отправляем запрос на сервер
+                try {
+                    val apiResult = taskXRepository.setPlannedActionStatus(
+                        taskId = taskId,
+                        requestDto = requestDto,
+                        endpoint = endpoint
+                    )
+
+                    if (!apiResult.isSuccess()) {
+                        Timber.w("Failed to send action status update to server: ${(apiResult as ApiResult.Error).message}")
+                    }
+                } catch (e: Exception) {
+                    // Логируем ошибку, но не прерываем выполнение, так как локальное обновление уже произведено
+                    Timber.e(e, "Error sending action status update to server")
+                }
             }
 
             Result.success(updatedTask)

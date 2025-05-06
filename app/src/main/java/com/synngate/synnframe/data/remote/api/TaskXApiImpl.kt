@@ -2,6 +2,7 @@ package com.synngate.synnframe.data.remote.api
 
 import com.synngate.synnframe.data.remote.dto.CommonResponseDto
 import com.synngate.synnframe.data.remote.dto.FactActionRequestDto
+import com.synngate.synnframe.data.remote.dto.PlannedActionStatusRequestDto
 import com.synngate.synnframe.data.remote.service.ServerProvider
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import io.ktor.client.HttpClient
@@ -48,5 +49,13 @@ class TaskXApiImpl(
     ): ApiResult<CommonResponseDto> {
         val requestDto = FactActionRequestDto.fromDomain(factAction)
         return executeTaskAction(taskId, endpoint, "fact-action", requestDto)
+    }
+
+    override suspend fun setPlannedActionStatus(
+        taskId: String,
+        requestDto: PlannedActionStatusRequestDto,
+        endpoint: String
+    ): ApiResult<CommonResponseDto> {
+        return executeTaskAction(taskId, endpoint, "plan-action", requestDto)
     }
 }
