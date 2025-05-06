@@ -54,7 +54,6 @@ import com.synngate.synnframe.presentation.ui.taskx.components.BinItem
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
 class BinSelectionStepFactory(
     private val wizardViewModel: ActionDataViewModel
@@ -71,7 +70,7 @@ class BinSelectionStepFactory(
         var searchQuery by remember { mutableStateOf("") }
 
         var errorMessage by remember(context.validationError) {
-            mutableStateOf<String?>(context.validationError)
+            mutableStateOf(context.validationError)
         }
 
         var showCameraScannerDialog by remember { mutableStateOf(false) }
@@ -105,7 +104,6 @@ class BinSelectionStepFactory(
 
         val searchBin = { code: String ->
             if (code.isNotEmpty()) {
-                Timber.d("Поиск ячейки по коду: $code")
                 errorMessage = null
 
                 processBarcodeForBin(
@@ -113,10 +111,8 @@ class BinSelectionStepFactory(
                     expectedBarcode = plannedBin?.code,
                     onBinFound = { bin ->
                         if (bin != null) {
-                            Timber.d("Ячейка найдена: ${bin.code}")
                             context.onComplete(bin)
                         } else {
-                            Timber.w("Ячейка не найдена: $code")
                             showError("Ячейка с кодом '$code' не найдена")
                         }
                     }
@@ -130,7 +126,6 @@ class BinSelectionStepFactory(
             stepKey = step.id,
             stepResult = context.getCurrentStepResult(),
             onBarcodeScanned = { barcode, setProcessingState ->
-                Timber.d("Получен штрихкод от сканера: $barcode")
                 errorMessage = null
 
                 processBarcodeForBin(
@@ -138,10 +133,8 @@ class BinSelectionStepFactory(
                     expectedBarcode = plannedBin?.code,
                     onBinFound = { bin ->
                         if (bin != null) {
-                            Timber.d("Ячейка найдена: ${bin.code}")
                             context.onComplete(bin)
                         } else {
-                            Timber.w("Ячейка не найдена: $barcode")
                             showError("Ячейка с кодом '$barcode' не найдена")
                             setProcessingState(false)
                         }
@@ -155,7 +148,6 @@ class BinSelectionStepFactory(
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
             if (!barcode.isNullOrEmpty()) {
-                Timber.d("Получен штрихкод от внешнего сканера: $barcode")
                 searchBin(barcode)
             }
         }
@@ -167,7 +159,6 @@ class BinSelectionStepFactory(
         if (showCameraScannerDialog) {
             UniversalScannerDialog(
                 onBarcodeScanned = { barcode ->
-                    Timber.d("Получен штрихкод от камеры: $barcode")
                     searchBin(barcode)
                     showCameraScannerDialog = false
                 },
@@ -189,7 +180,7 @@ class BinSelectionStepFactory(
                 modifier = Modifier.padding(bottom = 4.dp)
             )
 
-            if (context.validationError != null) {
+            if (errorMessage != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -208,7 +199,7 @@ class BinSelectionStepFactory(
                         modifier = Modifier.padding(end = 8.dp)
                     )
                     Text(
-                        text = context.validationError,
+                        text = errorMessage!!,
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -219,7 +210,7 @@ class BinSelectionStepFactory(
                 value = manualBinCode,
                 onValueChange = {
                     manualBinCode = it
-                    errorMessage = null // Сбрасываем ошибку при вводе
+                    errorMessage = null
                 },
                 label = { Text(stringResource(R.string.enter_bin_code)) },
                 modifier = Modifier.fillMaxWidth(),
@@ -232,24 +223,6 @@ class BinSelectionStepFactory(
                             imageVector = Icons.Default.QrCodeScanner,
                             contentDescription = stringResource(R.string.scan_with_camera)
                         )
-                    }
-                },
-                isError = errorMessage != null,
-                supportingText = {
-                    if (errorMessage != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Error,
-                                contentDescription = "Ошибка",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(end = 4.dp)
-                            )
-                            Text(
-                                text = errorMessage!!,
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
                     }
                 }
             )
@@ -293,7 +266,6 @@ class BinSelectionStepFactory(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            // Отображаем запланированные ячейки, если они есть
             if (planBins.isNotEmpty()) {
                 Text(
                     text = "По плану:",
@@ -354,7 +326,6 @@ class BinSelectionStepFactory(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            // Кнопка для выбора из списка (если нет запланированной ячейки или есть, но можно выбрать любую)
             if (plannedBin == null || !step.validationRules.rules.any { it.type == ValidationType.FROM_PLAN }) {
                 Button(
                     onClick = {
@@ -381,7 +352,6 @@ class BinSelectionStepFactory(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Список ячеек для выбора (показывается только если активирован)
             if (showBinList) {
                 OutlinedTextField(
                     value = searchQuery,
@@ -421,20 +391,16 @@ class BinSelectionStepFactory(
         return value is BinX
     }
 
-    // Изменяем метод обработки штрихкода для ячейки
     private fun processBarcodeForBin(
         barcode: String,
         expectedBarcode: String?,
         onBinFound: (BinX?) -> Unit
     ) {
-        // Если задан ожидаемый штрихкод, проверяем соответствие
         if (expectedBarcode != null && barcode != expectedBarcode) {
-            Timber.w("Несоответствие штрихкода: ожидался $expectedBarcode, получен $barcode")
             onBinFound(null)
             return
         }
 
-        // Создаем объект ячейки с введенным кодом (без обращения к репозиторию)
         val bin = BinX(
             code = barcode,
             zone = "Неизвестная зона",
