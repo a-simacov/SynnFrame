@@ -3,12 +3,14 @@ package com.synngate.synnframe.presentation.ui.taskx.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,20 +18,26 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.Announcement
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NoEncryption
 import androidx.compose.material.icons.filled.PendingActions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -146,7 +154,7 @@ fun PlannedActionItem(
         action.isSkipped -> MaterialTheme.colorScheme.tertiaryContainer
         action.isFinalAction -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
         isNextAction -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.surface
+        else -> MaterialTheme.colorScheme.surfaceContainerLow
     }
 
     // Определяем иконку и описание статуса
@@ -233,6 +241,53 @@ fun PlannedActionItem(
                     tint = progressColor,
                     iconSize = 24
                 )
+
+                // Добавляем выпадающее меню для управления статусом выполнения
+                if (onToggleCompletion != null && hasMultipleFactActions && !action.isQuantityFulfilled(factActions)) {
+                    var showMenu by remember { mutableStateOf(false) }
+
+                    Box {
+                        IconButton(
+                            onClick = { showMenu = true },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Действия",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = if (isCompleted)
+                                            "Снять отметку о выполнении"
+                                        else
+                                            "Отметить как выполненное"
+                                    )
+                                },
+                                onClick = {
+                                    onToggleCompletion(!isCompleted)
+                                    showMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = if (isCompleted)
+                                            Icons.Default.Close
+                                        else
+                                            Icons.Default.CheckCircle,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
             }
 
             // Дополнительная информация о товаре, если есть
@@ -319,33 +374,6 @@ fun PlannedActionItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.alpha(0.8f)
                     )
-                }
-
-                // Кнопка для ручного управления статусом выполнения
-                if (onToggleCompletion != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        if (isCompleted) {
-                            OutlinedButton(
-                                onClick = { onToggleCompletion(false) },
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Text("Отметить как невыполненное")
-                            }
-                        } else {
-                            Button(
-                                onClick = { onToggleCompletion(true) }
-                            ) {
-                                Text("Отметить как выполненное")
-                            }
-                        }
-                    }
                 }
             }
         }

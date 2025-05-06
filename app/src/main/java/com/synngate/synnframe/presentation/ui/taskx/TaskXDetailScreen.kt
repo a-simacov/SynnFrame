@@ -208,6 +208,40 @@ fun TaskXDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+
+                // Панель переключения вида
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    FilledTonalButton(
+                        onClick = { viewModel.showPlannedActions() },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (state.activeView == TaskXDetailView.PLANNED_ACTIONS)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Text("План")
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    FilledTonalButton(
+                        onClick = { viewModel.showFactActions() },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (state.activeView == TaskXDetailView.FACT_ACTIONS)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Text("Факт")
+                    }
+                }
             }
 
             TaskProgressIndicator(
@@ -216,40 +250,6 @@ fun TaskXDetailScreen(
             )
 
             Spacer(modifier = Modifier.height(4.dp))
-
-            // Панель переключения вида
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                FilledTonalButton(
-                    onClick = { viewModel.showPlannedActions() },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = if (state.activeView == TaskXDetailView.PLANNED_ACTIONS)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Text("План")
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                FilledTonalButton(
-                    onClick = { viewModel.showFactActions() },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = if (state.activeView == TaskXDetailView.FACT_ACTIONS)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Text("Факт")
-                }
-            }
 
             when (state.activeView) {
                 TaskXDetailView.PLANNED_ACTIONS -> {
