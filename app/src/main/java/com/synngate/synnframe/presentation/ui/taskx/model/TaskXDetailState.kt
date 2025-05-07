@@ -19,7 +19,6 @@ data class TaskXDetailState(
     val showVerificationDialog: Boolean = false,
     val currentUserId: String? = null,
     val showCompletionDialog: Boolean = false,
-    val showActionWizard: Boolean = false,
     val showOrderRequiredMessage: Boolean = false,
     val nextActionId: String? = null,
     val hasAdditionalActions: Boolean = false,
@@ -31,8 +30,6 @@ data class TaskXDetailState(
 
 sealed class TaskXDetailEvent {
     data class ShowSnackbar(val message: String) : TaskXDetailEvent()
-    object ShowActionWizard : TaskXDetailEvent()
-    object HideActionWizard : TaskXDetailEvent()
     data class NavigateToActionWizard(val taskId: String, val actionId: String) : TaskXDetailEvent()
 }
 

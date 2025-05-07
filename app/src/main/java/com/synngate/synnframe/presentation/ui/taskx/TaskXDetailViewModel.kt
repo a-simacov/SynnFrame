@@ -37,7 +37,7 @@ class TaskXDetailViewModel(
     val actionWizardController: ActionWizardController,
     val actionWizardContextFactory: ActionWizardContextFactory,
     val actionStepFactoryRegistry: ActionStepFactoryRegistry,
-    private val actionExecutionService: ActionExecutionService, // Добавлено это поле
+    private val actionExecutionService: ActionExecutionService,
     private val preloadedTask: TaskX? = null,
     private val preloadedTaskType: TaskTypeX? = null
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
@@ -88,7 +88,7 @@ class TaskXDetailViewModel(
                     }
                 }
 
-                // Вместо инициализации визарда отправляем событие навигации к экрану визарда
+                // Отправляем событие навигации к экрану визарда
                 sendEvent(TaskXDetailEvent.NavigateToActionWizard(task.id, actionId))
             } catch (e: Exception) {
                 Timber.e(e, "Error starting action execution")
@@ -99,7 +99,7 @@ class TaskXDetailViewModel(
     }
 
     private fun calculateNextActionId(task: TaskX, taskType: TaskTypeX?): String? {
-        val isStrictOrder = taskType?.strictActionOrder == true // Исправлено
+        val isStrictOrder = taskType?.strictActionOrder == true
 
         if (isStrictOrder) {
             return finalActionsValidator.getNextActionIdInStrictOrder(task)
@@ -159,69 +159,6 @@ class TaskXDetailViewModel(
 
     fun hideOrderRequiredMessage() {
         updateState { it.copy(showOrderRequiredMessage = false) }
-    }
-
-    fun hideActionWizard() {
-        updateState { it.copy(showActionWizard = false) }
-        actionWizardController.cancel()
-    }
-
-    fun completeActionWizard() {
-        launchIO {
-            try {
-                val result = actionWizardController.complete()
-                if (result.isSuccess) {
-                    val updatedTask = result.getOrNull()
-
-                    if (updatedTask != null) {
-                        updateState { it.copy(
-                            task = updatedTask,
-                            showActionWizard = false
-                        ) }
-                        updateDependentState(updatedTask, uiState.value.taskType)
-                    } else {
-                        loadTask()
-                        updateState { it.copy(showActionWizard = false) }
-                    }
-
-                    sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
-                } else {
-                    Timber.e(result.exceptionOrNull(), "Ошибка при выполнении действия")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error completing action wizard")
-            }
-        }
-    }
-
-    fun retryActionWizardComplete() {
-        launchIO {
-            try {
-                val result = actionWizardController.complete()
-                if (result.isSuccess) {
-                    val updatedTask = result.getOrNull()
-
-                    if (updatedTask != null) {
-                        updateState { it.copy(
-                            task = updatedTask,
-                            showActionWizard = false
-                        ) }
-                        updateDependentState(updatedTask, uiState.value.taskType)
-                    } else {
-                        loadTask()
-                        updateState { it.copy(showActionWizard = false) }
-                    }
-
-                    sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
-                } else {
-                    sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось отправить данные. Проверьте подключение."))
-                    Timber.e(result.exceptionOrNull(), "Ошибка при повторной отправке данных")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error retrying action wizard completion")
-                sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось отправить данные. Проверьте подключение."))
-            }
-        }
     }
 
     fun loadTask() {
@@ -696,7 +633,7 @@ class TaskXDetailViewModel(
     }
 
     fun supportsMultipleFactActions(): Boolean {
-        return uiState.value.taskType?.allowMultipleFactActions == true // Исправлено
+        return uiState.value.taskType?.allowMultipleFactActions == true
     }
 
     fun isQuantityBasedAction(action: PlannedAction): Boolean {

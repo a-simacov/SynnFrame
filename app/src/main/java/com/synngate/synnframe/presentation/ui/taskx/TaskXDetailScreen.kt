@@ -61,7 +61,6 @@ fun TaskXDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
-    val wizardState by viewModel.actionWizardController.wizardState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val task = state.task
 
@@ -86,9 +85,6 @@ fun TaskXDetailScreen(
                     Timber.d("Навигация к экрану визарда: ${event.taskId}, ${event.actionId}")
                     navigateToActionWizard(event.taskId, event.actionId)
                 }
-                // Удаляем обработку событий ShowActionWizard и HideActionWizard,
-                // так как они больше не используются
-                else -> { /* Игнорируем другие события */ }
             }
         }
     }
