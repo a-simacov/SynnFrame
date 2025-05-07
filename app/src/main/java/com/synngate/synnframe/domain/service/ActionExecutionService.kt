@@ -2,9 +2,11 @@ package com.synngate.synnframe.domain.service
 
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.dto.PlannedActionStatusRequestDto
+import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.ProductStatus
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
@@ -213,6 +215,9 @@ class ActionExecutionService(
         for ((_, value) in stepResults) {
             if (value is Product) {
                 var quantity = 0f
+                var status = ProductStatus.STANDARD
+                var expirationDate: LocalDateTime? = null
+
                 for ((_, quantityValue) in stepResults) {
                     if (quantityValue is Float) {
                         quantity = quantityValue
@@ -233,10 +238,37 @@ class ActionExecutionService(
                     quantity = action.storageProduct?.quantity ?: 1f
                 }
 
-                return TaskProduct(product = value, quantity = quantity)
+                for ((_, statusValue) in stepResults) {
+                    if (statusValue is ProductStatus) {
+                        status = statusValue
+                        break
+                    }
+                }
+
+                for ((_, dateValue) in stepResults) {
+                    if (dateValue is LocalDateTime) {
+                        expirationDate = dateValue
+                        break
+                    }
+                }
+
+                val finalExpirationDate = if (value.accountingModel == AccountingModel.BATCH && expirationDate != null) {
+                    expirationDate
+                } else {
+                    // Если срок годности не требуется или не указан, используем значение по умолчанию
+                    LocalDateTime.of(1970, 1, 1, 0, 0)
+                }
+
+                return TaskProduct(
+                    product = value,
+                    quantity = quantity,
+                    status = status,
+                    expirationDate = finalExpirationDate
+                )
             }
         }
 
+        // Если ничего не нашли, возвращаем исходный StorageProduct из действия
         return action.storageProduct
     }
 

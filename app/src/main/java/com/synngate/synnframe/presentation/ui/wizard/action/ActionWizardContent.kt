@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.ProductStatus
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
@@ -60,6 +61,7 @@ import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescriptio
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun ActionWizardContent(
@@ -484,6 +486,32 @@ fun ActionSummaryScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
+
+                        // Отображаем статус товара
+                        val statusText = when(taskProduct.status) {
+                            ProductStatus.STANDARD -> "Кондиция (стандарт)"
+                            ProductStatus.DEFECTIVE -> "Брак"
+                            ProductStatus.EXPIRED -> "Просрочен"
+                            else -> "Неизвестный статус"
+                        }
+
+                        Text(
+                            text = "Статус: $statusText",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        // Отображаем срок годности, если он установлен
+                        if (taskProduct.hasExpirationDate()) {
+                            val formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+                            Text(
+                                text = "Срок годности: ${taskProduct.expirationDate.format(formatter)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(8.dp))
                         HorizontalDivider()
