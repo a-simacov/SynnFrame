@@ -31,7 +31,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,12 +51,10 @@ import com.synngate.synnframe.presentation.common.scanner.BarcodeHandlerWithStat
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.BinItem
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
-import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
-class BinSelectionStepFactory(
-    private val wizardViewModel: ActionDataViewModel
-) : ActionStepFactory {
+class BinSelectionStepFactory : ActionStepFactory {
 
     @Composable
     override fun createComponent(
@@ -68,6 +65,7 @@ class BinSelectionStepFactory(
         var manualBinCode by remember { mutableStateOf("") }
         var showBinList by remember { mutableStateOf(false) }
         var searchQuery by remember { mutableStateOf("") }
+        var filteredBins by remember { mutableStateOf<List<BinX>>(emptyList()) }
 
         var errorMessage by remember(context.validationError) {
             mutableStateOf(context.validationError)
@@ -77,8 +75,6 @@ class BinSelectionStepFactory(
 
         val snackbarHostState = remember { SnackbarHostState() }
         val coroutineScope = rememberCoroutineScope()
-
-        val bins by wizardViewModel.bins.collectAsState()
 
         val zoneFilter = action.placementBin?.zone
 
@@ -90,6 +86,17 @@ class BinSelectionStepFactory(
 
         val selectedBin = remember(context.results) {
             context.results[step.id] as? BinX
+        }
+
+        // Обработка фильтрации локально
+        LaunchedEffect(searchQuery, zoneFilter) {
+            // В этой реализации мы просто используем планируемую ячейку
+            // В реальном приложении здесь может быть загрузка из репозитория
+            filteredBins = if (plannedBin != null && (searchQuery.isEmpty() || plannedBin.code.contains(searchQuery, ignoreCase = true))) {
+                listOf(plannedBin)
+            } else {
+                emptyList()
+            }
         }
 
         val showError = { message: String ->
@@ -150,10 +157,6 @@ class BinSelectionStepFactory(
             if (!barcode.isNullOrEmpty()) {
                 searchBin(barcode)
             }
-        }
-
-        LaunchedEffect(searchQuery, zoneFilter) {
-            wizardViewModel.loadBins(searchQuery, zoneFilter)
         }
 
         if (showCameraScannerDialog) {
@@ -330,10 +333,6 @@ class BinSelectionStepFactory(
                 Button(
                     onClick = {
                         showBinList = !showBinList
-                        // Загружаем ячейки при открытии списка
-                        if (showBinList) {
-                            wizardViewModel.loadBins("", zoneFilter)
-                        }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
@@ -374,7 +373,7 @@ class BinSelectionStepFactory(
                         .fillMaxWidth()
                         .weight(1f)
                 ) {
-                    items(bins) { bin ->
+                    items(filteredBins) { bin ->
                         BinItem(
                             bin = bin,
                             onClick = { context.onComplete(bin) }
@@ -397,10 +396,12 @@ class BinSelectionStepFactory(
         onBinFound: (BinX?) -> Unit
     ) {
         if (expectedBarcode != null && barcode != expectedBarcode) {
+            Timber.w("Несоответствие штрихкода: ожидался $expectedBarcode, получен $barcode")
             onBinFound(null)
             return
         }
 
+        // Создаем объект ячейки с введенным кодом (без обращения к репозиторию)
         val bin = BinX(
             code = barcode,
             zone = "Неизвестная зона",

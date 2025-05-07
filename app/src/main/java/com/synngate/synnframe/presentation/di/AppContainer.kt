@@ -56,7 +56,6 @@ import com.synngate.synnframe.domain.repository.TaskRepository
 import com.synngate.synnframe.domain.repository.TaskTypeRepository
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.repository.UserRepository
-import com.synngate.synnframe.domain.service.ActionDataCacheService
 import com.synngate.synnframe.domain.service.ActionExecutionService
 import com.synngate.synnframe.domain.service.ActionStepExecutionService
 import com.synngate.synnframe.domain.service.ActionWizardContextFactory
@@ -104,7 +103,6 @@ import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModel
 import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXListViewModel
-import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
 import com.synngate.synnframe.presentation.ui.wizard.ActionWizardViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
 import com.synngate.synnframe.presentation.ui.wizard.action.BinSelectionStepFactory
@@ -364,11 +362,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     val validationService by lazy {
         Timber.d("Creating ValidationService")
         ValidationService(validationApiService)
-    }
-
-    val actionDataCacheService by lazy {
-        Timber.d("Creating ActionDataCacheService")
-        ActionDataCacheService()
     }
 
     val actionExecutionService by lazy {
@@ -676,19 +669,11 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         }
     }
 
-    fun createActionDataViewModel(): ActionDataViewModel {
-        return getOrCreateViewModel("ActionDataViewModel") {
-            ActionDataViewModel(
-                actionDataCacheService = appContainer.actionDataCacheService
-            )
-        }
-    }
-
     fun createActionStepFactoryRegistry(): ActionStepFactoryRegistry {
+        // Создаем реестр напрямую
         val registry = ActionStepFactoryRegistry()
 
-        val actionDataViewModel = createActionDataViewModel()
-
+        // Регистрируем фабрики для различных типов объектов с доступом к репозиторию
         registry.registerFactory(
             ActionObjectType.CLASSIFIER_PRODUCT,
             ProductSelectionStepFactory(appContainer.productRepository)
@@ -706,12 +691,12 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
 
         registry.registerFactory(
             ActionObjectType.PALLET,
-            PalletSelectionStepFactory(actionDataViewModel)
+            PalletSelectionStepFactory()  // Удаляем передачу ActionDataViewModel
         )
 
         registry.registerFactory(
             ActionObjectType.BIN,
-            BinSelectionStepFactory(actionDataViewModel)
+            BinSelectionStepFactory()  // Удаляем передачу ActionDataViewModel
         )
 
         return registry

@@ -31,7 +31,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,13 +51,10 @@ import com.synngate.synnframe.presentation.common.scanner.BarcodeHandlerWithStat
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.PalletItem
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
-import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class PalletSelectionStepFactory(
-    private val wizardViewModel: ActionDataViewModel
-) : ActionStepFactory {
+class PalletSelectionStepFactory : ActionStepFactory {
 
     @Composable
     override fun createComponent(
@@ -69,9 +65,10 @@ class PalletSelectionStepFactory(
         var manualPalletCode by remember { mutableStateOf("") }
         var showPalletList by remember { mutableStateOf(false) }
         var searchQuery by remember { mutableStateOf("") }
+        var filteredPallets by remember { mutableStateOf<List<Pallet>>(emptyList()) }
 
         var errorMessage by remember(context.validationError) {
-            mutableStateOf<String?>(context.validationError)
+            mutableStateOf(context.validationError)
         }
 
         var showCameraScannerDialog by remember { mutableStateOf(false) }
@@ -79,9 +76,7 @@ class PalletSelectionStepFactory(
         val snackbarHostState = remember { SnackbarHostState() }
         val coroutineScope = rememberCoroutineScope()
 
-        val pallets by wizardViewModel.pallets.collectAsState()
-
-        val isStorageStep = step.id in action.actionTemplate.storageSteps.map { it.id }
+        val isStorageStep = action.actionTemplate.storageSteps.any { it.id == step.id }
 
         val plannedPallet = if (isStorageStep) action.storagePallet else action.placementPallet
 
@@ -91,6 +86,18 @@ class PalletSelectionStepFactory(
 
         val selectedPallet = remember(context.results) {
             context.results[step.id] as? Pallet
+        }
+
+        // Обработка фильтрации локально
+        LaunchedEffect(searchQuery) {
+            // В этой реализации мы просто используем планируемую паллету
+            // В реальном приложении здесь может быть загрузка из репозитория
+            filteredPallets = if (plannedPallet != null &&
+                (searchQuery.isEmpty() || plannedPallet.code.contains(searchQuery, ignoreCase = true))) {
+                listOf(plannedPallet)
+            } else {
+                emptyList()
+            }
         }
 
         val showError = { message: String ->
@@ -156,14 +163,8 @@ class PalletSelectionStepFactory(
             val barcode = context.lastScannedBarcode
             if (!barcode.isNullOrEmpty()) {
                 Timber.d("Получен штрихкод от внешнего сканера: $barcode")
-
-                // Просто перенаправляем в функцию поиска паллеты
                 searchPallet(barcode)
             }
-        }
-
-        LaunchedEffect(searchQuery) {
-            wizardViewModel.loadPallets(searchQuery)
         }
 
         if (showCameraScannerDialog) {
@@ -351,13 +352,7 @@ class PalletSelectionStepFactory(
             // Кнопка для выбора из списка (если нет запланированной паллеты или есть, но можно выбрать любую)
             if (plannedPallet == null || !step.validationRules.rules.any { it.type == ValidationType.FROM_PLAN }) {
                 Button(
-                    onClick = {
-                        showPalletList = !showPalletList
-                        // Загружаем паллеты при открытии списка
-                        if (showPalletList) {
-                            wizardViewModel.loadPallets("")
-                        }
-                    },
+                    onClick = { showPalletList = !showPalletList },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
@@ -398,7 +393,7 @@ class PalletSelectionStepFactory(
                         .fillMaxWidth()
                         .weight(1f)
                 ) {
-                    items(pallets) { pallet ->
+                    items(filteredPallets) { pallet ->
                         PalletItem(
                             pallet = pallet,
                             onClick = { context.onComplete(pallet) }
@@ -415,7 +410,7 @@ class PalletSelectionStepFactory(
         return value is Pallet
     }
 
-    // Изменяем метод обработки штрихкода для паллеты
+    // Реализация метода создания паллеты по штрихкоду
     private fun processBarcodeForPallet(
         barcode: String,
         expectedBarcode: String?,
@@ -435,5 +430,14 @@ class PalletSelectionStepFactory(
         )
 
         onPalletFound(pallet)
+    }
+
+    // Метод для создания новой паллеты (используется для кнопки "Создать паллету")
+    private fun createNewPallet(): Pallet {
+        val code = "PAL${System.currentTimeMillis()}"
+        return Pallet(
+            code = code,
+            isClosed = false
+        )
     }
 }
