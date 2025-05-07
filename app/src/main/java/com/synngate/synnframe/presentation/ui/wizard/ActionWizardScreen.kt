@@ -86,7 +86,7 @@ fun ActionWizardScreen(
             onNavigateBack = { viewModel.cancelWizard() },
             snackbarHostState = snackbarHostState
         ) { paddingValues ->
-            // Используем существующий контент визарда, но теперь в контексте отдельного экрана
+            // Используем компонент ActionWizardContent
             ActionWizardContent(
                 wizardState = wizardState,
                 actionWizardController = viewModel.actionWizardController,
