@@ -83,33 +83,27 @@ class UserUseCases(
             return when (response) {
                 is ApiResult.Success -> {
                     val userDto = response.data
-                    if (userDto != null) {
-                        // Создаем объект пользователя
-                        val user = User(
-                            id = userDto.id,
-                            name = userDto.name,
-                            password = password, // Сохраняем введенный пароль
-                            userGroupId = userDto.userGroupId
-                        )
+                    val user = User(
+                        id = userDto.id,
+                        name = userDto.name,
+                        password = password, // Сохраняем введенный пароль
+                        userGroupId = userDto.userGroupId
+                    )
 
-                        // Сохраняем пользователя в базе данных
-                        val addUserResult = addUser(user)
-                        if (addUserResult.isFailure) {
-                            return addUserResult
-                        }
-
-                        // Устанавливаем его как текущего
-                        val setCurrentUserResult = setCurrentUser(user.id)
-                        if (setCurrentUserResult.isFailure) {
-                            return setCurrentUserResult.map { user }
-                        }
-
-                        Timber.i("User auth was successfull: ${user.name}")
-                        Result.success(user)
-                    } else {
-                        Timber.w("Empty answer on auth")
-                        Result.failure(IOException("Пустой ответ при аутентификации"))
+                    // Сохраняем пользователя в базе данных
+                    val addUserResult = addUser(user)
+                    if (addUserResult.isFailure) {
+                        return addUserResult
                     }
+
+                    // Устанавливаем его как текущего
+                    val setCurrentUserResult = setCurrentUser(user.id)
+                    if (setCurrentUserResult.isFailure) {
+                        return setCurrentUserResult.map { user }
+                    }
+
+                    Timber.i("User auth was successfull: ${user.name}")
+                    Result.success(user)
                 }
                 is ApiResult.Error -> {
                     Timber.w("Error in auth: ${response.message}")

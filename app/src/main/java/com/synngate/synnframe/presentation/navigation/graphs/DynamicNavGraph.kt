@@ -39,7 +39,6 @@ fun NavGraphBuilder.dynamicNavGraph(
         // Экран динамического меню
         composable(DynamicRoutes.DynamicMenu.route) { entry ->
             val screenContainer = rememberEphemeralScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )
@@ -95,7 +94,6 @@ fun NavGraphBuilder.dynamicNavGraph(
             }
 
             val screenContainer = rememberEphemeralScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )
@@ -170,7 +168,6 @@ fun NavGraphBuilder.dynamicNavGraph(
             }
 
             val screenContainer = rememberEphemeralScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )
@@ -252,7 +249,6 @@ fun NavGraphBuilder.dynamicNavGraph(
             }
 
             val screenContainer = rememberEphemeralScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )
@@ -304,7 +300,6 @@ fun NavGraphBuilder.dynamicNavGraph(
             )
 
             val screenContainer = rememberEphemeralScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )

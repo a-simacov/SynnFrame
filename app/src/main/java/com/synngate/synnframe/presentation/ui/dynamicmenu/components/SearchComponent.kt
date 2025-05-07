@@ -24,6 +24,7 @@ import com.synngate.synnframe.R
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.scanner.BarcodeHandlerWithState
+import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import timber.log.Timber
 
@@ -53,15 +54,15 @@ class SearchComponent(
             }
         )
 
-//        ScannerListener(
-//            onBarcodeScanned = { barcode ->
-//                if (barcode.isNotEmpty()) {
-//                    Timber.d("Получен штрихкод от сервиса сканера: $barcode")
-//                    onSearchValueChanged(barcode)
-//                    onSearch()
-//                }
-//            }
-//        )
+        ScannerListener(
+            onBarcodeScanned = { barcode ->
+                if (barcode.isNotEmpty()) {
+                    Timber.d("Получен штрихкод от сервиса сканера: $barcode")
+                    onSearchValueChanged(barcode)
+                    onSearch()
+                }
+            }
+        )
 
         // Диалог сканирования с камеры
         if (showCameraScannerDialog) {

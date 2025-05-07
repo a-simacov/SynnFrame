@@ -61,9 +61,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * Содержимое экрана визарда действий
- */
 @Composable
 fun ActionWizardContent(
     wizardState: ActionWizardState?,
@@ -135,7 +132,7 @@ fun ActionWizardContent(
             val action = wizardState.action
 
             if (currentStep == null || wizardState.isCompleted) {
-                ActionSummaryScreenNew(
+                ActionSummaryScreen(
                     state = wizardState,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -206,9 +203,6 @@ fun ActionWizardContent(
     }
 }
 
-/**
- * Заголовок визарда с информацией о типе действия
- */
 @Composable
 private fun WizardHeader(wizardState: ActionWizardState) {
     Row(
@@ -225,9 +219,6 @@ private fun WizardHeader(wizardState: ActionWizardState) {
     }
 }
 
-/**
- * Кнопки навигации и действий визарда
- */
 @Composable
 private fun WizardActions(
     wizardState: ActionWizardState,
@@ -328,16 +319,12 @@ private fun WizardActions(
     }
 }
 
-/**
- * Экран сводки по выполненному действию
- */
 @Composable
-fun ActionSummaryScreenNew(
+fun ActionSummaryScreen(
     state: ActionWizardState,
     modifier: Modifier = Modifier
 ) {
     val action = state.action
-    val coroutineScope = rememberCoroutineScope()
 
     // Находим последний результат с товаром и количеством
     val productEntry = findMostRelevantProductEntry(state.results)

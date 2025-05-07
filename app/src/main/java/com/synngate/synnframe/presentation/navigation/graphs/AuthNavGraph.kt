@@ -26,7 +26,6 @@ fun NavGraphBuilder.authRoutes(
 ) {
     composable(AuthRoutes.Login.route) { entry ->
         val screenContainer = rememberEphemeralScreenContainer(
-            navController = navController,
             navBackStackEntry = entry,
             navigationScopeManager = navigationScopeManager
         )

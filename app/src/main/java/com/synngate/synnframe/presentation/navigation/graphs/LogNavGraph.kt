@@ -32,7 +32,6 @@ fun NavGraphBuilder.logsNavGraph(
         // Экран списка логов - используем ПОСТОЯННЫЙ контейнер
         composable(LogRoutes.LogList.route) { entry ->
             val screenContainer = rememberPersistentScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )
@@ -63,7 +62,6 @@ fun NavGraphBuilder.logsNavGraph(
         ) { entry ->
             val logId = entry.arguments?.getInt("logId") ?: 0
             val screenContainer = rememberEphemeralScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )

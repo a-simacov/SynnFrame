@@ -29,7 +29,6 @@ fun NavGraphBuilder.taskXNavGraph(
         // Экран списка заданий X
         composable(TaskXRoutes.TaskXList.route) { entry ->
             val screenContainer = rememberPersistentScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )
@@ -57,7 +56,6 @@ fun NavGraphBuilder.taskXNavGraph(
         ) { entry ->
             val taskId = entry.arguments?.getString("taskId") ?: ""
             val screenContainer = rememberEphemeralScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )
@@ -77,8 +75,8 @@ fun NavGraphBuilder.taskXNavGraph(
                     navController.popBackStack()
                 },
                 // Добавляем функцию навигации к экрану визарда
-                navigateToActionWizard = { taskId, actionId ->
-                    navController.navigate(TaskXRoutes.ActionWizardScreen.createRoute(taskId, actionId))
+                navigateToActionWizard = { taskIdLambda, actionId ->
+                    navController.navigate(TaskXRoutes.ActionWizardScreen.createRoute(taskIdLambda, actionId))
                 }
             )
         }
@@ -99,7 +97,6 @@ fun NavGraphBuilder.taskXNavGraph(
             val actionId = entry.arguments?.getString("actionId") ?: ""
 
             val screenContainer = rememberEphemeralScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )

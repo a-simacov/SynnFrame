@@ -157,7 +157,6 @@ class NavigationScopeManager(
  */
 @Composable
 fun rememberEphemeralScreenContainer(
-    navController: NavController,
     navBackStackEntry: NavBackStackEntry,
     navigationScopeManager: NavigationScopeManager
 ): ScreenContainer {
@@ -193,7 +192,6 @@ fun rememberEphemeralScreenContainer(
  */
 @Composable
 fun rememberPersistentScreenContainer(
-    navController: NavController,
     navBackStackEntry: NavBackStackEntry,
     navigationScopeManager: NavigationScopeManager
 ): ScreenContainer {

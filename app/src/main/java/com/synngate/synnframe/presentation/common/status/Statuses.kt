@@ -155,8 +155,7 @@ fun SyncStatusIndicator(
 
 @Composable
 fun TaskStatusIndicator(
-    status: TaskStatus,
-    modifier: Modifier = Modifier
+    status: TaskStatus
 ) {
     val icon = when (status) {
         TaskStatus.TO_DO -> Icons.Default.Schedule
@@ -179,8 +178,7 @@ fun TaskStatusIndicator(
 
 @Composable
 fun TaskXStatusIndicator(
-    status: TaskXStatus,
-    modifier: Modifier = Modifier
+    status: TaskXStatus
 ) {
     val icon = when (status) {
         TaskXStatus.TO_DO -> Icons.Default.Schedule

@@ -40,7 +40,6 @@ fun NavGraphBuilder.productsNavGraph(
         ) { entry ->
             val isSelectionMode = entry.arguments?.getBoolean("isSelectionMode") ?: false
             val screenContainer = rememberPersistentScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )
@@ -74,7 +73,6 @@ fun NavGraphBuilder.productsNavGraph(
         ) { entry ->
             val productId = entry.arguments?.getString("productId") ?: ""
             val screenContainer = rememberEphemeralScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )

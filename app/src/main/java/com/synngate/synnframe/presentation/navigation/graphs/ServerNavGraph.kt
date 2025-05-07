@@ -32,7 +32,6 @@ fun NavGraphBuilder.serverNavGraph(
         // Экран списка серверов
         composable(ServerRoutes.ServerList.route) { entry ->
             val screenContainer = rememberEphemeralScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )
@@ -62,7 +61,6 @@ fun NavGraphBuilder.serverNavGraph(
             val serverId = serverIdArg?.toIntOrNull()
 
             val screenContainer = rememberEphemeralScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )

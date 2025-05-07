@@ -33,7 +33,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -64,7 +63,6 @@ fun OptimizedProductSelectionDialog(
     onProductSelected: (Product) -> Unit,
     onDismiss: () -> Unit,
     initialFilter: String = "",
-    isSelectionMode: Boolean = true,
     title: String = stringResource(id = R.string.select_product),
     planProductIds: Set<String>? = null,
     modifier: Modifier = Modifier,
@@ -111,9 +109,6 @@ fun OptimizedProductSelectionDialog(
             Timber.e(e, "Ошибка при запросе фокуса")
         }
     }
-
-    // Корутин скоуп для обработки событий UI
-    val coroutineScope = rememberCoroutineScope()
 
     // Слушатель сканера штрихкодов
     ScannerListener(

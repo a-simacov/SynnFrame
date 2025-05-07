@@ -96,8 +96,7 @@ fun DynamicTaskDetailScreen(
                         )
 
                         TaskXStatusIndicator(
-                            status = taskStatus,
-                            modifier = Modifier.weight(0.7f)
+                            status = taskStatus
                         )
                     }
 

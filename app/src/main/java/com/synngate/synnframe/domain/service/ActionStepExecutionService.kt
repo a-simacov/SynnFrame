@@ -26,7 +26,7 @@ class ActionStepExecutionService(
         contextData: Map<String, Any> = emptyMap()
     ): StepExecutionResult {
         try {
-            val context = buildStepContext(taskId, action, step, contextData)
+            val context = buildStepContext(action, step, contextData)
 
             if (value == null && step.isRequired) {
                 Timber.w("Step ${step.id} requires a value but received null")
@@ -70,8 +70,7 @@ class ActionStepExecutionService(
         }
     }
 
-    private suspend fun buildStepContext(
-        taskId: String,
+    private fun buildStepContext(
         action: PlannedAction,
         step: ActionStep,
         contextData: Map<String, Any>

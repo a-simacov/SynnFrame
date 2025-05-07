@@ -93,16 +93,15 @@ class SettingsUseCases(
             when (response) {
                 is ApiResult.Success -> {
                     val updateInfo = response.data
-                    val serverVersion = updateInfo?.lastVersion
+                    val serverVersion = updateInfo.lastVersion
 
                     // Проверяем, является ли версия с сервера новее текущей
                     val currentVersion = BuildConfig.VERSION_NAME
-                    val isNewVersionAvailable = serverVersion != null &&
-                            isNewVersionAvailable(currentVersion, serverVersion)
+                    val isNewVersionAvailable = isNewVersionAvailable(currentVersion, serverVersion)
 
                     if (isNewVersionAvailable) {
-                        Timber.i("Checking updates: version available ${updateInfo?.lastVersion}")
-                        Result.success(Pair(updateInfo?.lastVersion, updateInfo?.releaseDate))
+                        Timber.i("Checking updates: version available ${updateInfo.lastVersion}")
+                        Result.success(Pair(updateInfo.lastVersion, updateInfo.releaseDate))
                     } else {
                         Timber.i("Checking updates: not found")
                         Result.success(Pair(null, null))

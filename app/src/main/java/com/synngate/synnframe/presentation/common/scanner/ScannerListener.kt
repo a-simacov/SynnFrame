@@ -10,8 +10,7 @@ import com.synngate.synnframe.presentation.common.LocalScannerService
 
 @Composable
 fun ScannerListener(
-    onBarcodeScanned: (String) -> Unit,
-    modifier: Modifier = Modifier
+    onBarcodeScanned: (String) -> Unit
 ) {
     val scannerService = LocalScannerService.current
 

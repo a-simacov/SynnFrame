@@ -28,7 +28,6 @@ fun NavGraphBuilder.settingsNavGraph(
         // Экран настроек
         composable(SettingsRoutes.Settings.route) { entry ->
             val screenContainer = rememberEphemeralScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )
@@ -53,7 +52,6 @@ fun NavGraphBuilder.settingsNavGraph(
         // Экран истории синхронизации
         composable(SettingsRoutes.SyncHistory.route) { entry ->
             val screenContainer = rememberEphemeralScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )

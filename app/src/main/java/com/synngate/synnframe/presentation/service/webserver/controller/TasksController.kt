@@ -81,7 +81,7 @@ class TasksController(
 
             // Сохраняем запись в историю синхронизаций
             try {
-                val syncId = "webserver-${System.currentTimeMillis()}"
+                "webserver-${System.currentTimeMillis()}"
                 saveSyncHistoryRecord(
                     tasks.size,
                     0,

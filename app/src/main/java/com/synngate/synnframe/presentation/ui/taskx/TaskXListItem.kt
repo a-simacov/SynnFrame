@@ -22,14 +22,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.taskx.TaskX
-import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.presentation.common.status.TaskXStatusIndicator
 import java.time.LocalDateTime
 
 @Composable
 fun TaskXListItem(
     task: TaskX,
-    formatStatus: (TaskXStatus) -> String,
     formatDate: (LocalDateTime) -> String,
     formatTaskType: (String) -> String,
     onClick: () -> Unit,

@@ -32,7 +32,6 @@ fun NavGraphBuilder.tasksNavGraph(
         // Экран списка задач - используем ПОСТОЯННЫЙ контейнер
         composable(TaskRoutes.TaskList.route) { entry ->
             val screenContainer = rememberPersistentScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )
@@ -60,7 +59,6 @@ fun NavGraphBuilder.tasksNavGraph(
         ) { entry ->
             val taskId = entry.arguments?.getString("taskId") ?: ""
             val screenContainer = rememberEphemeralScreenContainer(
-                navController = navController,
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )

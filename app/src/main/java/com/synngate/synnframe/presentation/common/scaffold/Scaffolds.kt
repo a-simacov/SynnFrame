@@ -104,11 +104,10 @@ fun AppScaffold(
 
     // Следим за состоянием синхронизации
     val syncController = remember { app.appContainer.synchronizationController }
-    val syncStatus by syncController.syncStatus.collectAsState(initial = SynchronizationController.SyncStatus.IDLE)
     val lastSyncInfo by syncController.lastSyncInfo.collectAsState(initial = null)
 
     // Определяем, выполняется ли синхронизация и время последней синхронизации
-    val finalIsSyncing = isSyncing ?: (syncStatus == SynchronizationController.SyncStatus.SYNCING)
+    val finalIsSyncing = isSyncing
     val finalLastSyncTime = lastSyncTime ?:
     lastSyncInfo?.timestamp?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
 

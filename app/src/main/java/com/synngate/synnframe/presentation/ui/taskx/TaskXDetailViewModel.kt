@@ -177,7 +177,7 @@ class TaskXDetailViewModel(
                 val task = taskXUseCases.getTaskById(taskId)
 
                 if (task != null) {
-                    val taskType = taskXUseCases.getTaskType(task.taskTypeId)
+                    val taskType = taskXUseCases.getTaskType()
                     val currentUser = userUseCases.getCurrentUser().first()
 
                     updateState {

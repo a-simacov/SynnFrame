@@ -100,7 +100,6 @@ fun AppNavHost(
             // Главное меню
             composable(MainRoutes.MainMenu.route) { entry ->
                 val screenContainer = rememberEphemeralScreenContainer(
-                    navController = navController,
                     navBackStackEntry = entry,
                     navigationScopeManager = navigationScopeManager
                 )
