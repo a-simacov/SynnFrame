@@ -8,8 +8,6 @@ import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.entity.taskx.action.ProgressType
 import com.synngate.synnframe.domain.service.ActionExecutionService
-import com.synngate.synnframe.domain.service.ActionWizardContextFactory
-import com.synngate.synnframe.domain.service.ActionWizardController
 import com.synngate.synnframe.domain.service.FinalActionsValidator
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
@@ -18,7 +16,6 @@ import com.synngate.synnframe.presentation.ui.taskx.model.StatusActionData
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
-import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -34,9 +31,6 @@ class TaskXDetailViewModel(
     private val taskXUseCases: TaskXUseCases,
     private val userUseCases: UserUseCases,
     private val finalActionsValidator: FinalActionsValidator,
-    val actionWizardController: ActionWizardController,
-    val actionWizardContextFactory: ActionWizardContextFactory,
-    val actionStepFactoryRegistry: ActionStepFactoryRegistry,
     private val actionExecutionService: ActionExecutionService,
     private val preloadedTask: TaskX? = null,
     private val preloadedTaskType: TaskTypeX? = null
@@ -536,7 +530,7 @@ class TaskXDetailViewModel(
         return dateTime?.format(dateFormatter) ?: "Не указано"
     }
 
-    fun formatTaskType(taskTypeId: String): String {
+    fun formatTaskType(): String {
         return uiState.value.taskType?.name ?: "Неизвестный тип"
     }
 
@@ -665,14 +659,55 @@ class TaskXDetailViewModel(
         }
     }
 
+    private fun updateSingleAction(actionId: String) {
+        val currentTask = uiState.value.task ?: return
+        currentTask.plannedActions.find { it.id == actionId } ?: return
+
+        launchIO {
+            try {
+                val stepResults = mapOf<String, Any>()
+                val result = actionExecutionService.executeAction(
+                    taskId = currentTask.id,
+                    actionId = actionId,
+                    stepResults = stepResults,
+                    completeAction = false
+                )
+
+                if (result.isSuccess) {
+                    val updatedTask = result.getOrNull()
+
+                    if (updatedTask != null) {
+                        updateState { it.copy(task = updatedTask) }
+                        updateDependentState(updatedTask, uiState.value.taskType)
+
+                        return@launchIO
+                    }
+                }
+
+                val updatedTaskFromApi = taskXUseCases.getTaskById(currentTask.id)
+
+                if (updatedTaskFromApi != null) {
+                    updateState { it.copy(task = updatedTaskFromApi) }
+                    updateDependentState(updatedTaskFromApi, uiState.value.taskType)
+                } else {
+                    Timber.w("Не удалось получить актуальные данные о задании")
+                    loadTask()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при обновлении действия $actionId: ${e.message}")
+                loadTask()
+            }
+        }
+    }
+
     fun onActionCompleted(actionId: String) {
         launchIO {
             try {
-                Timber.d("Обработка успешного завершения действия: $actionId")
-                loadTask() // Перезагружаем задание для получения актуальных данных
+                updateSingleAction(actionId)
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при обработке завершения действия: ${e.message}")
+                loadTask()
             }
         }
     }

@@ -659,9 +659,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                     taskXUseCases = appContainer.taskXUseCases,
                     userUseCases = appContainer.userUseCases,
                     finalActionsValidator = appContainer.finalActionsValidator,
-                    actionWizardController = appContainer.actionWizardController,
-                    actionWizardContextFactory = appContainer.actionWizardContextFactory,
-                    actionStepFactoryRegistry = createActionStepFactoryRegistry(),
                     actionExecutionService = appContainer.actionExecutionService, // Добавлено
                     preloadedTask = contextTask,
                     preloadedTaskType = contextTaskType
@@ -673,9 +670,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                     taskXUseCases = appContainer.taskXUseCases,
                     userUseCases = appContainer.userUseCases,
                     finalActionsValidator = appContainer.finalActionsValidator,
-                    actionWizardController = appContainer.actionWizardController,
-                    actionWizardContextFactory = appContainer.actionWizardContextFactory,
-                    actionStepFactoryRegistry = createActionStepFactoryRegistry(),
                     actionExecutionService = appContainer.actionExecutionService // Добавлено
                 )
             }
@@ -690,15 +684,11 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         }
     }
 
-    // Создаем реестр фабрик компонентов шагов
     fun createActionStepFactoryRegistry(): ActionStepFactoryRegistry {
-        // Создаем реестр напрямую
         val registry = ActionStepFactoryRegistry()
 
-        // Получаем ViewModel для данных
         val actionDataViewModel = createActionDataViewModel()
 
-        // Регистрируем фабрики для различных типов объектов с доступом к репозиторию
         registry.registerFactory(
             ActionObjectType.CLASSIFIER_PRODUCT,
             ProductSelectionStepFactory(appContainer.productRepository)
@@ -735,7 +725,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         }
     }
 
-    // Обновляем метод создания DynamicTasksViewModel
     fun createDynamicTasksViewModel(
         menuItemId: String,
         menuItemName: String,
@@ -755,7 +744,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         }
     }
 
-    // Обновляем метод создания DynamicTaskDetailViewModel
     fun createDynamicTaskDetailViewModel(
         taskId: String,
         endpoint: String

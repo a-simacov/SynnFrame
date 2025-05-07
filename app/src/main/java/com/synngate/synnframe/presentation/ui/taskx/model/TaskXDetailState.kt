@@ -25,7 +25,7 @@ data class TaskXDetailState(
     val statusActions: List<StatusActionData> = emptyList(),
     val actionsDisplayMode: ActionDisplayMode = ActionDisplayMode.CURRENT,
     val filteredActions: List<PlannedAction> = emptyList(),
-    val showActionsDialog: Boolean = false // Новое состояние для диалога действий
+    val showActionsDialog: Boolean = false
 )
 
 sealed class TaskXDetailEvent {

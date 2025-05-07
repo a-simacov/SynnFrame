@@ -114,7 +114,6 @@ fun NavGraphBuilder.taskXNavGraph(
                     navController.popBackStack()
                 },
                 navigateBackWithSuccess = { completedActionId ->
-                    // Сохраняем ID выполненного действия для передачи обратно
                     navController.previousBackStackEntry?.savedStateHandle?.set(
                         "completedActionId",
                         completedActionId

@@ -38,7 +38,7 @@ class TaskTypeRepositoryImpl(
 
             when (result) {
                 is ApiResult.Success -> {
-                    val taskTypes = result.data ?: emptyList()
+                    val taskTypes = result.data
 
                     // Сохраняем типы заданий в БД
                     val taskTypeEntities = taskTypes.map { TaskTypeEntity.fromDomainModel(it) }
