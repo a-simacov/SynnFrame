@@ -42,65 +42,36 @@ abstract class BaseViewModel<S, E>(
         // Здесь можно добавить логику обработки ошибок по умолчанию
     }
 
-    /**
-     * Обновление состояния UI
-     * @param update Функция для обновления состояния
-     */
     protected fun updateState(update: (S) -> S) {
         _uiState.value = update(_uiState.value)
     }
 
-    /**
-     * Отправка события на UI
-     * @param event Событие для отправки
-     */
     protected fun sendEvent(event: E) {
         viewModelScope.launch {
             _events.emit(event)
         }
     }
 
-    /**
-     * Обработка событий состояния
-     * @param event Событие, которое изменяет состояние
-     */
     protected fun handleStateEvent(event: StateEventHandler<S>) {
         updateState { currentState -> event.handle(currentState) }
     }
 
-    /**
-     * Запуск корутины в IO-диспетчере
-     * @param block Блок кода для выполнения
-     * @return Job запущенной корутины
-     */
     protected fun launchIO(block: suspend CoroutineScope.() -> Unit): Job {
         return viewModelScope.launch(ioDispatcher + exceptionHandler) {
             block()
         }
     }
 
-    /**
-     * Запуск корутины в Main-диспетчере
-     * @param block Блок кода для выполнения
-     * @return Job запущенной корутины
-     */
     protected fun launchMain(block: suspend CoroutineScope.() -> Unit): Job {
         return viewModelScope.launch(Dispatchers.Main + exceptionHandler) {
             block()
         }
     }
 
-    /**
-     * Освобождение ресурсов при уничтожении ViewModel
-     */
     override fun dispose() {
         Timber.d("Disposing ViewModel: ${this::class.java.simpleName}")
-        // Переопределяется в подклассах при необходимости
     }
 
-    /**
-     * Вызывается при уничтожении ViewModel
-     */
     override fun onCleared() {
         super.onCleared()
         dispose()
