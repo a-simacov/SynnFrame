@@ -76,7 +76,8 @@ class TaskXDetailViewModel(
                     return@launchIO
                 }
 
-                val isStrictOrder = uiState.value.taskType?.strictActionOrder == true // Исправлено
+                // Проверка на строгий порядок выполнения действий
+                val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
                 val action = task.plannedActions.find { it.id == actionId }
 
                 if (isStrictOrder && action != null) {
@@ -87,16 +88,10 @@ class TaskXDetailViewModel(
                     }
                 }
 
-                val result = actionWizardController.initialize(taskId, actionId)
-                if (result.isSuccess) {
-                    updateState { it.copy(showActionWizard = true) }
-                } else {
-                    Timber.e("Failed to initialize action wizard: ${result.exceptionOrNull()?.message}")
-                    updateState { it.copy(error = "Ошибка при инициализации действия: ${result.exceptionOrNull()?.message}") }
-                    sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось начать выполнение действия"))
-                }
+                // Вместо инициализации визарда отправляем событие навигации к экрану визарда
+                sendEvent(TaskXDetailEvent.NavigateToActionWizard(task.id, actionId))
             } catch (e: Exception) {
-                Timber.e(e, "Error initializing action wizard")
+                Timber.e(e, "Error starting action execution")
                 updateState { it.copy(error = "Ошибка при инициализации действия: ${e.message}") }
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Не удалось начать выполнение действия"))
             }
@@ -730,6 +725,18 @@ class TaskXDetailViewModel(
             showActionsDialog()
         } else {
             showActionsDialog()
+        }
+    }
+
+    fun onActionCompleted(actionId: String) {
+        launchIO {
+            try {
+                Timber.d("Обработка успешного завершения действия: $actionId")
+                loadTask() // Перезагружаем задание для получения актуальных данных
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при обработке завершения действия: ${e.message}")
+            }
         }
     }
 

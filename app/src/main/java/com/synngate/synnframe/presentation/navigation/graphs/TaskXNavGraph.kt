@@ -13,12 +13,10 @@ import com.synngate.synnframe.presentation.navigation.rememberPersistentScreenCo
 import com.synngate.synnframe.presentation.navigation.routes.TaskXRoutes
 import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailScreen
 import com.synngate.synnframe.presentation.ui.taskx.TaskXListScreen
+import com.synngate.synnframe.presentation.ui.wizard.ActionWizardScreen
 
 /**
  * Создает навигационный граф для экранов заданий X.
- *
- * @param navController Контроллер навигации
- * @param navigationScopeManager Менеджер областей навигации для управления контейнерами экранов
  */
 fun NavGraphBuilder.taskXNavGraph(
     navController: NavHostController,
@@ -28,7 +26,7 @@ fun NavGraphBuilder.taskXNavGraph(
         startDestination = TaskXRoutes.TaskXList.route,
         route = TaskXRoutes.TaskXGraph.route
     ) {
-        // Экран списка заданий X - используем ПОСТОЯННЫЙ контейнер
+        // Экран списка заданий X
         composable(TaskXRoutes.TaskXList.route) { entry ->
             val screenContainer = rememberPersistentScreenContainer(
                 navController = navController,
@@ -48,7 +46,7 @@ fun NavGraphBuilder.taskXNavGraph(
             )
         }
 
-        // Экран детальной информации о задании X - используем ВРЕМЕННЫЙ контейнер
+        // Экран детальной информации о задании X
         composable(
             route = TaskXRoutes.TaskXDetail.route,
             arguments = listOf(
@@ -65,9 +63,62 @@ fun NavGraphBuilder.taskXNavGraph(
             )
             val viewModel = remember(taskId) { screenContainer.createTaskXDetailViewModel(taskId) }
 
+            // Проверяем наличие результата от экрана визарда
+            val completedActionId = entry.savedStateHandle.get<String>("completedActionId")
+            if (completedActionId != null) {
+                // Если есть результат, обрабатываем его и очищаем
+                viewModel.onActionCompleted(completedActionId)
+                entry.savedStateHandle.remove<String>("completedActionId")
+            }
+
             TaskXDetailScreen(
                 viewModel = viewModel,
                 navigateBack = {
+                    navController.popBackStack()
+                },
+                // Добавляем функцию навигации к экрану визарда
+                navigateToActionWizard = { taskId, actionId ->
+                    navController.navigate(TaskXRoutes.ActionWizardScreen.createRoute(taskId, actionId))
+                }
+            )
+        }
+
+        // Новый экран визарда действий
+        composable(
+            route = TaskXRoutes.ActionWizardScreen.route,
+            arguments = listOf(
+                navArgument("taskId") {
+                    type = NavType.StringType
+                },
+                navArgument("actionId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { entry ->
+            val taskId = entry.arguments?.getString("taskId") ?: ""
+            val actionId = entry.arguments?.getString("actionId") ?: ""
+
+            val screenContainer = rememberEphemeralScreenContainer(
+                navController = navController,
+                navBackStackEntry = entry,
+                navigationScopeManager = navigationScopeManager
+            )
+
+            val viewModel = remember(taskId, actionId) {
+                screenContainer.createActionWizardViewModel(taskId, actionId)
+            }
+
+            ActionWizardScreen(
+                viewModel = viewModel,
+                navigateBack = {
+                    navController.popBackStack()
+                },
+                navigateBackWithSuccess = { completedActionId ->
+                    // Сохраняем ID выполненного действия для передачи обратно
+                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                        "completedActionId",
+                        completedActionId
+                    )
                     navController.popBackStack()
                 }
             )

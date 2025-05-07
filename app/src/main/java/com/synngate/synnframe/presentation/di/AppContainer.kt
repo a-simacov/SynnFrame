@@ -105,6 +105,7 @@ import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXListViewModel
 import com.synngate.synnframe.presentation.ui.wizard.ActionDataViewModel
+import com.synngate.synnframe.presentation.ui.wizard.ActionWizardViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
 import com.synngate.synnframe.presentation.ui.wizard.action.BinSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.PalletSelectionStepFactory
@@ -798,6 +799,18 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 soundService = appContainer.soundService,
                 productUiMapper = appContainer.productUiMapper,
                 isSelectionMode = isSelectionMode
+            )
+        }
+    }
+
+    fun createActionWizardViewModel(taskId: String, actionId: String): ActionWizardViewModel {
+        return getOrCreateViewModel("ActionWizardViewModel_${taskId}_${actionId}") {
+            ActionWizardViewModel(
+                taskId = taskId,
+                actionId = actionId,
+                actionWizardController = appContainer.actionWizardController,
+                actionWizardContextFactory = appContainer.actionWizardContextFactory,
+                actionStepFactoryRegistry = createActionStepFactoryRegistry()
             )
         }
     }

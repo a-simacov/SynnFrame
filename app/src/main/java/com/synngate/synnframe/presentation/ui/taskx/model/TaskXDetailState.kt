@@ -33,6 +33,7 @@ sealed class TaskXDetailEvent {
     data class ShowSnackbar(val message: String) : TaskXDetailEvent()
     object ShowActionWizard : TaskXDetailEvent()
     object HideActionWizard : TaskXDetailEvent()
+    data class NavigateToActionWizard(val taskId: String, val actionId: String) : TaskXDetailEvent()
 }
 
 data class StatusActionData(

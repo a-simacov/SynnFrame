@@ -25,7 +25,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,8 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
@@ -54,12 +51,13 @@ import com.synngate.synnframe.presentation.ui.taskx.components.TaskXActionsDialo
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXVerificationDialog
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
-import com.synngate.synnframe.presentation.ui.wizard.action.ActionWizardScreen
+import timber.log.Timber
 
 @Composable
 fun TaskXDetailScreen(
     viewModel: TaskXDetailViewModel,
     navigateBack: () -> Unit,
+    navigateToActionWizard: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -83,14 +81,14 @@ fun TaskXDetailScreen(
                         duration = SnackbarDuration.Short
                     )
                 }
-
-                is TaskXDetailEvent.ShowActionWizard -> {
-                    // Обработка будет через state.showActionWizard
+                is TaskXDetailEvent.NavigateToActionWizard -> {
+                    // Навигация к экрану визарда
+                    Timber.d("Навигация к экрану визарда: ${event.taskId}, ${event.actionId}")
+                    navigateToActionWizard(event.taskId, event.actionId)
                 }
-
-                is TaskXDetailEvent.HideActionWizard -> {
-                    // Обработка будет через state.showActionWizard
-                }
+                // Удаляем обработку событий ShowActionWizard и HideActionWizard,
+                // так как они больше не используются
+                else -> { /* Игнорируем другие события */ }
             }
         }
     }
@@ -131,33 +129,6 @@ fun TaskXDetailScreen(
                 }
             }
         )
-    }
-
-    // Показываем визард действий, если он активен
-    if (state.showActionWizard && wizardState != null) {
-        Dialog(
-            onDismissRequest = { viewModel.hideActionWizard() },
-            properties = DialogProperties(
-                dismissOnBackPress = true,
-                dismissOnClickOutside = false,
-                usePlatformDefaultWidth = false
-            )
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
-            ) {
-                ActionWizardScreen(
-                    actionWizardController = viewModel.actionWizardController,
-                    actionWizardContextFactory = viewModel.actionWizardContextFactory,
-                    actionStepFactoryRegistry = viewModel.actionStepFactoryRegistry,
-                    onComplete = { viewModel.completeActionWizard() },
-                    onCancel = { viewModel.hideActionWizard() },
-                    onRetryComplete = { viewModel.retryActionWizardComplete() }, // Новый колбэк для повторной отправки
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
     }
 
     AppScaffold(
