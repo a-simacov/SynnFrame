@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -23,6 +25,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
@@ -40,13 +43,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.taskx.BinX
+import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
+import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.model.wizard.ActionWizardState
 import com.synngate.synnframe.domain.service.ActionWizardContextFactory
 import com.synngate.synnframe.domain.service.ActionWizardController
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.scanner.ScannerListener
+import com.synngate.synnframe.presentation.ui.taskx.components.WmsActionIconWithTooltip
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -327,12 +336,17 @@ fun ActionSummaryScreenNew(
     state: ActionWizardState,
     modifier: Modifier = Modifier
 ) {
-    // Используем существующую реализацию из ActionWizardScreen.kt
-    // Этот код можно скопировать из текущей реализации
-    // Для краткости здесь опущено содержимое метода
+    val action = state.action
+    val coroutineScope = rememberCoroutineScope()
 
-    // В реальном приложении стоит скопировать полную реализацию
-    Column(modifier = modifier.fillMaxWidth()) {
+    // Находим последний результат с товаром и количеством
+    val productEntry = findMostRelevantProductEntry(state.results)
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
         Text(
             text = "Проверьте информацию перед завершением",
             style = MaterialTheme.typography.titleMedium,
@@ -404,9 +418,333 @@ fun ActionSummaryScreenNew(
             }
         }
 
-        // Здесь должно быть отображение информации о выполненном действии
-        // Включая тип действия, выбранный товар, количество, ячейки и т.д.
-        // Код опущен для краткости
+        if (action != null) {
+            Text(
+                text = "Действие: ${action.actionTemplate.name}",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 8.dp)
+            ) {
+                WmsActionIconWithTooltip(
+                    wmsAction = action.wmsAction,
+                    iconSize = 24
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Text(
+                    text = "Тип действия: ${getWmsActionDescription(action.wmsAction)}",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+
+            // Отображаем информацию о товаре и количестве, если есть
+            if (productEntry != null) {
+                val (stepId, taskProduct) = productEntry
+
+                // Получаем информацию о фактических действиях из контекста
+                val factActionsInfo = state.results["factActions"] as? Map<*, *> ?: emptyMap<String, Any>()
+
+                // Получаем список фактических действий для текущего планового действия
+                @Suppress("UNCHECKED_CAST")
+                val relatedFactActions = (factActionsInfo[action.id] as? List<FactAction>) ?: emptyList()
+
+                // Рассчитываем общее выполненное количество из предыдущих действий
+                val previousCompletedQuantity = relatedFactActions.sumOf {
+                    it.storageProduct?.quantity?.toDouble() ?: 0.0
+                }.toFloat()
+
+                // Текущее введенное количество
+                val currentQuantity = taskProduct.quantity
+
+                // Общее количество (предыдущие действия + текущее)
+                val totalQuantity = previousCompletedQuantity + currentQuantity
+
+                // Отображаем карточку товара с количеством
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Товар",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = taskProduct.product.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+
+                        Text(
+                            text = "Артикул: ${taskProduct.product.articleNumber}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Получаем плановое количество из действия
+                        val plannedQuantity = action.storageProduct?.let {
+                            if (it.product.id == taskProduct.product.id) it.quantity else 0f
+                        } ?: 0f
+
+                        // Отображаем плановое, текущее и общее количество
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Плановое количество:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+
+                            Text(
+                                text = plannedQuantity.toString(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Добавляем информацию о предыдущих выполненных действиях
+                        if (previousCompletedQuantity > 0f) {
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Ранее выполнено:",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+
+                                Text(
+                                    text = previousCompletedQuantity.toString(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Текущее количество:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+
+                            Text(
+                                text = currentQuantity.toString(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Добавляем информацию об общем выполненном количестве
+                        if (previousCompletedQuantity > 0f) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            HorizontalDivider()
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Всего будет выполнено:",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Text(
+                                    text = totalQuantity.toString(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            // Показываем индикацию, если общее количество превысит плановое
+                            if (plannedQuantity > 0f && totalQuantity > plannedQuantity) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Внимание: общее количество превышает плановое!",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Отображаем другие результаты, не связанные с товаром
+            for ((stepId, value) in state.results.entries) {
+                if (value !is TaskProduct && value !is Product) { // Исключаем товары, они уже отображены выше
+                    when (value) {
+                        is Pallet -> {
+                            displayPalletInfo(value)
+                        }
+                        is BinX -> {
+                            displayBinInfo(value)
+                        }
+                    }
+                }
+            }
+        } else {
+            // Если действие не определено, показываем сообщение
+            Text(
+                text = "Информация о действии недоступна",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+    }
+}
+
+/**
+ * Отображает информацию о паллете
+ */
+@Composable
+private fun displayPalletInfo(pallet: Pallet) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Паллета",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Код: ${pallet.code}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+
+            Text(
+                text = "Статус: ${if (pallet.isClosed) "Закрыта" else "Открыта"}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+        }
+    }
+}
+
+/**
+ * Отображает информацию о ячейке
+ */
+@Composable
+private fun displayBinInfo(bin: BinX) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Ячейка",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Код: ${bin.code}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+
+            Text(
+                text = "Зона: ${bin.zone}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+
+            if (bin.line.isNotEmpty() || bin.rack.isNotEmpty() || bin.tier.isNotEmpty() || bin.position.isNotEmpty()) {
+                Text(
+                    text = "Расположение: ${bin.getFullName()}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Находит наиболее релевантную запись с товаром и количеством.
+ * Приоритет отдается результату шага с типом PRODUCT_QUANTITY (ввод количества),
+ * если он есть, иначе возвращает первый найденный TaskProduct.
+ */
+private fun findMostRelevantProductEntry(results: Map<String, Any>): Pair<String, TaskProduct>? {
+    // Сначала ищем результаты шага ввода количества (они будут иметь ненулевое количество)
+    val quantityProductEntry = results.entries.find { (_, value) ->
+        value is TaskProduct && value.quantity > 0
+    }
+
+    if (quantityProductEntry != null) {
+        return Pair(quantityProductEntry.key, quantityProductEntry.value as TaskProduct)
+    }
+
+    // Если не нашли, возвращаем первый найденный TaskProduct
+    val productEntry = results.entries.find { (_, value) ->
+        value is TaskProduct
+    }
+
+    return if (productEntry != null) {
+        Pair(productEntry.key, productEntry.value as TaskProduct)
+    } else {
+        null
     }
 }
 
