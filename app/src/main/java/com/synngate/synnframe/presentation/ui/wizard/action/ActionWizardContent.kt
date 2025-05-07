@@ -627,7 +627,7 @@ fun ActionSummaryScreen(
                 if (value !is TaskProduct && value !is Product) { // Исключаем товары, они уже отображены выше
                     when (value) {
                         is Pallet -> {
-                            displayPalletInfo(value)
+                            DisplayPalletInfo(value)
                         }
                         is BinX -> {
                             displayBinInfo(value)
@@ -650,7 +650,7 @@ fun ActionSummaryScreen(
  * Отображает информацию о паллете
  */
 @Composable
-private fun displayPalletInfo(pallet: Pallet) {
+private fun DisplayPalletInfo(pallet: Pallet) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -674,12 +674,6 @@ private fun displayPalletInfo(pallet: Pallet) {
 
             Text(
                 text = "Код: ${pallet.code}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onTertiaryContainer
-            )
-
-            Text(
-                text = "Статус: ${if (pallet.isClosed) "Закрыта" else "Открыта"}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onTertiaryContainer
             )
@@ -724,14 +718,6 @@ private fun displayBinInfo(bin: BinX) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onTertiaryContainer
             )
-
-            if (bin.line.isNotEmpty() || bin.rack.isNotEmpty() || bin.tier.isNotEmpty() || bin.position.isNotEmpty()) {
-                Text(
-                    text = "Расположение: ${bin.getFullName()}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                )
-            }
         }
     }
 }

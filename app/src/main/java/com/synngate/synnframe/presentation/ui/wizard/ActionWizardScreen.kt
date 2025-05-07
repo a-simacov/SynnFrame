@@ -35,12 +35,10 @@ fun ActionWizardScreen(
     val wizardState by viewModel.actionWizardController.wizardState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Обработка нажатия кнопки "Назад"
     BackHandler {
         viewModel.cancelWizard()
     }
 
-    // Получаем сервис сканера
     val scannerService = LocalScannerService.current
 
     // Включаем сканер при открытии экрана
@@ -55,20 +53,16 @@ fun ActionWizardScreen(
         }
     }
 
-    // Обработка событий
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 is ActionWizardEvent.NavigateBack -> {
-                    Timber.d("Навигация назад (действие отменено)")
                     navigateBack()
                 }
                 is ActionWizardEvent.NavigateBackWithSuccess -> {
-                    Timber.d("Навигация назад с результатом: ${event.actionId}")
                     navigateBackWithSuccess(event.actionId)
                 }
                 is ActionWizardEvent.ShowSnackbar -> {
-                    Timber.d("Показ сообщения: ${event.message}")
                     snackbarHostState.showSnackbar(
                         message = event.message,
                         duration = SnackbarDuration.Short

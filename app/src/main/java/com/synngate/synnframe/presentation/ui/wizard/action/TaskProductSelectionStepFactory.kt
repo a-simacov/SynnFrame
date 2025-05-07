@@ -1,19 +1,15 @@
 package com.synngate.synnframe.presentation.ui.wizard.action
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -115,7 +111,6 @@ class TaskProductSelectionStepFactory(
 
             // Создаем TaskProduct и передаем в контекст
             val taskProduct = createResultFromProduct(product)
-            Timber.d("Создан TaskProduct: ${taskProduct.product.name}, статус: ${taskProduct.status}, срок годности: ${taskProduct.expirationDate}")
             context.onComplete(taskProduct)
         }
 
@@ -151,7 +146,6 @@ class TaskProductSelectionStepFactory(
                                             plannedTaskProduct.expirationDate
                                         } else null
                                     }
-                                    Timber.d("Найден продукт: ${product.name}, метод учета: ${product.accountingModel}")
                                 } else {
                                     showError("Продукт не соответствует плану")
                                 }
@@ -218,7 +212,6 @@ class TaskProductSelectionStepFactory(
         LaunchedEffect(context.results[step.id]) {
             val result = context.results[step.id]
             if (result is TaskProduct && result.product != null) {
-                Timber.d("Инициализация из контекста: ${result.product.name}, статус: ${result.status}")
                 selectedProduct = result.product
                 selectedStatus = result.status
                 expirationDate = if (result.hasExpirationDate()) result.expirationDate else null
@@ -273,7 +266,6 @@ class TaskProductSelectionStepFactory(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
         ) {
-            // Заголовок и описание действия
             Text(
                 text = "${step.promptText} (${getWmsActionDescription(action.wmsAction)})",
                 style = MaterialTheme.typography.titleMedium,
@@ -320,13 +312,7 @@ class TaskProductSelectionStepFactory(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Выбор статуса товара - всегда обязательное поле
-                Text(
-                    text = "Статус товара (обязательно):",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-
+                // Выбор статуса товара
                 ProductStatusSelector(
                     selectedStatus = selectedStatus,
                     onStatusSelected = { selectedStatus = it },
@@ -337,43 +323,13 @@ class TaskProductSelectionStepFactory(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Выбор срока годности (если требуется)
-                if (isExpirationDateRequired) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "Срок годности (обязательно):",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-
-                        if (expirationDate == null) {
-                            // Показываем предупреждение, если срок не указан
-                            Row(
-                                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = "Обязательное поле",
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.padding(end = 4.dp)
-                                )
-                                Text(
-                                    text = "Для этого товара требуется указать срок годности",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
-
-                        ExpirationDatePicker(
-                            expirationDate = expirationDate,
-                            onDateSelected = { expirationDate = it },
-                            isRequired = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
+                if (selectedProduct != null && selectedProduct?.accountingModel == AccountingModel.BATCH) {
+                    ExpirationDatePicker(
+                        expirationDate = expirationDate,
+                        onDateSelected = { expirationDate = it },
+                        isRequired = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
 
                 // Кнопка подтверждения
