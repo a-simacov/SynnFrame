@@ -109,17 +109,17 @@ fun ActionWizardContent(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(4.dp)
     ) {
         // Заголовок и описание типа действия
-        WizardHeader(wizardState)
+        //WizardHeader(wizardState)
 
         // Индикатор прогресса
         LinearProgressIndicator(
             progress = { wizardState.progress },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 16.dp)
+                .padding(vertical = 4.dp)
         )
 
         // Основное содержимое в зависимости от текущего шага
@@ -128,7 +128,7 @@ fun ActionWizardContent(
                 .fillMaxWidth()
                 .weight(1f)
                 .background(MaterialTheme.colorScheme.surface)
-                .padding(16.dp)
+                .padding(4.dp)
         ) {
             val currentStep = wizardState.currentStep
             val action = wizardState.action
