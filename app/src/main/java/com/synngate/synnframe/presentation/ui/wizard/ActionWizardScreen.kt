@@ -14,18 +14,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
+import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionWizardContent
 import timber.log.Timber
 
-/**
- * Экран визарда действий
- *
- * @param viewModel ViewModel для экрана
- * @param navigateBack Функция навигации назад
- * @param navigateBackWithSuccess Функция навигации назад с результатом
- * @param modifier Модификатор для компонента
- */
 @Composable
 fun ActionWizardScreen(
     viewModel: ActionWizardViewModel,
@@ -80,6 +73,9 @@ fun ActionWizardScreen(
             title = wizardState?.action?.wmsAction?.let {
                 getWmsActionDescription(it)
             } ?: "Выполнение действия",
+            notification = wizardState?.sendError?.let {
+                Pair(it, StatusType.ERROR)
+            },
             onNavigateBack = { viewModel.cancelWizard() },
             snackbarHostState = snackbarHostState
         ) { paddingValues ->

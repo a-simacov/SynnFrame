@@ -15,4 +15,10 @@ enum class ProductStatus {
             }
         }
     }
+
+    fun format(): String = when (this) {
+        STANDARD -> "Кондиция (стандарт)"
+        DEFECTIVE -> "Брак"
+        EXPIRED -> "Просрочен"
+    }
 }
