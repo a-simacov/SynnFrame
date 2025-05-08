@@ -316,8 +316,8 @@ class TaskProductSelectionStepFactory(
                 ProductStatusSelector(
                     selectedStatus = selectedStatus,
                     onStatusSelected = { selectedStatus = it },
-                    isRequired = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isRequired = true
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
