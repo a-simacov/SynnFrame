@@ -16,6 +16,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,6 +72,20 @@ class TaskProductSelectionStepFactory(
         // Явная проверка, нужен ли срок годности
         val isExpirationDateRequired = selectedProduct?.accountingModel == AccountingModel.BATCH
 
+        // Проверка истечения срока годности
+        val isDateExpired by remember(expirationDate) {
+            derivedStateOf {
+                expirationDate != null && expirationDate!!.isBefore(LocalDateTime.now())
+            }
+        }
+
+        // Автоматически устанавливаем статус "Просрочен" если срок годности истек
+        LaunchedEffect(isDateExpired) {
+            if (isDateExpired && selectedStatus != ProductStatus.EXPIRED) {
+                selectedStatus = ProductStatus.EXPIRED
+            }
+        }
+
         // Состояние валидации
         var isProductFormValid by remember(selectedProduct, selectedStatus, expirationDate, isExpirationDateRequired) {
             mutableStateOf(
@@ -94,10 +109,17 @@ class TaskProductSelectionStepFactory(
         // Вспомогательные функции
         fun createResultFromProduct(product: Product): TaskProduct {
             // Создаем TaskProduct с выбранными статусом и сроком годности
+            // Проверяем срок годности и устанавливаем статус "Просрочен" если нужно
+            val finalStatus = if (expirationDate != null && expirationDate!!.isBefore(LocalDateTime.now())) {
+                ProductStatus.EXPIRED
+            } else {
+                selectedStatus
+            }
+
             return TaskProduct(
                 product = product,
                 quantity = 0f, // Количество будет задано на следующем шаге
-                status = selectedStatus,
+                status = finalStatus,
                 expirationDate = expirationDate ?: LocalDateTime.of(1970, 1, 1, 0, 0)
             )
         }
@@ -145,6 +167,10 @@ class TaskProductSelectionStepFactory(
                                         expirationDate = if (plannedTaskProduct.hasExpirationDate()) {
                                             plannedTaskProduct.expirationDate
                                         } else null
+                                    } else {
+                                        // По умолчанию срок годности не заполнен
+                                        expirationDate = null
+                                        selectedStatus = ProductStatus.STANDARD
                                     }
                                 } else {
                                     showError("Продукт не соответствует плану")
@@ -183,6 +209,10 @@ class TaskProductSelectionStepFactory(
                                         expirationDate = if (plannedTaskProduct.hasExpirationDate()) {
                                             plannedTaskProduct.expirationDate
                                         } else null
+                                    } else {
+                                        // По умолчанию срок годности не заполнен
+                                        expirationDate = null
+                                        selectedStatus = ProductStatus.STANDARD
                                     }
                                 } else {
                                     showError("Продукт не соответствует плану")
@@ -247,6 +277,10 @@ class TaskProductSelectionStepFactory(
                         expirationDate = if (plannedTaskProduct.hasExpirationDate()) {
                             plannedTaskProduct.expirationDate
                         } else null
+                    } else {
+                        // По умолчанию срок годности не заполнен
+                        expirationDate = null
+                        selectedStatus = ProductStatus.STANDARD
                     }
 
                     showProductSelectionDialog = false
@@ -315,9 +349,16 @@ class TaskProductSelectionStepFactory(
                 // Выбор статуса товара
                 ProductStatusSelector(
                     selectedStatus = selectedStatus,
-                    onStatusSelected = { selectedStatus = it },
+                    onStatusSelected = {
+                        selectedStatus = it
+                        // Если пользователь вручную изменил статус с EXPIRED на другой,
+                        // но срок годности все еще истек, вернуть статус EXPIRED
+                        if (it != ProductStatus.EXPIRED && isDateExpired) {
+                            selectedStatus = ProductStatus.EXPIRED
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
-                    isRequired = true
+                    isEnabled = !isDateExpired // Блокируем изменение статуса, если срок годности истек
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -326,7 +367,13 @@ class TaskProductSelectionStepFactory(
                 if (selectedProduct != null && selectedProduct?.accountingModel == AccountingModel.BATCH) {
                     ExpirationDatePicker(
                         expirationDate = expirationDate,
-                        onDateSelected = { expirationDate = it },
+                        onDateSelected = {
+                            expirationDate = it
+                            // Если дата истекла, автоматически установить статус "Просрочен"
+                            if (it != null && it.isBefore(LocalDateTime.now())) {
+                                selectedStatus = ProductStatus.EXPIRED
+                            }
+                        },
                         isRequired = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -335,7 +382,7 @@ class TaskProductSelectionStepFactory(
                 // Кнопка подтверждения
                 Button(
                     onClick = { validateAndComplete(selectedProduct!!) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     ),
@@ -358,6 +405,11 @@ class TaskProductSelectionStepFactory(
                         expirationDate = if (taskProduct.hasExpirationDate()) {
                             taskProduct.expirationDate
                         } else null
+
+                        // Проверяем срок годности и устанавливаем статус "Просрочен" если нужно
+                        if (expirationDate != null && expirationDate!!.isBefore(LocalDateTime.now())) {
+                            selectedStatus = ProductStatus.EXPIRED
+                        }
                     }
                 )
             }

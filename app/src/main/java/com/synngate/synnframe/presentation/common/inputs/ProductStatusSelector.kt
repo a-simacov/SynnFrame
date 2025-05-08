@@ -22,7 +22,7 @@ fun ProductStatusSelector(
     selectedStatus: ProductStatus,
     onStatusSelected: (ProductStatus) -> Unit,
     modifier: Modifier = Modifier,
-    isRequired: Boolean = false
+    isEnabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
 
