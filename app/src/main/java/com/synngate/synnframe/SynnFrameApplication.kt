@@ -44,7 +44,7 @@ class SynnFrameApplication : Application() {
             setAppLocale(languageCode)
         }
 
-        Timber.i("SynnFrame Application initialized")
+        initializeAppInsets()
     }
 
     private fun setAppLocale(languageCode: String) {
@@ -62,11 +62,35 @@ class SynnFrameApplication : Application() {
         }
     }
 
+    private fun initializeAppInsets() {
+        // Здесь можно получить характеристики устройства
+        val displayMetrics = resources.displayMetrics
+        val density = displayMetrics.density
+        val screenWidthDp = displayMetrics.widthPixels / density
+        val screenHeightDp = displayMetrics.heightPixels / density
+
+        // Определяем тип устройства
+        val isTablet = screenWidthDp >= 600 // Стандартный порог для планшетов
+
+        // Устанавливаем значение в статическое поле нашего конфигуратора
+        // Для этого нужно модифицировать AppInsetsConfig, чтобы оно содержало изменяемое поле
+        AppInsetsConfigHolder.initialize(isTablet)
+    }
+
     override fun onTerminate() {
         super.onTerminate()
 
         // Очистка ресурсов при завершении работы приложения
         Timber.i("Cleaning up Application resources")
         appContainer.dispose()
+    }
+}
+
+object AppInsetsConfigHolder {
+    var topInsetDp: Int = 0
+        private set
+
+    fun initialize(isTablet: Boolean) {
+        topInsetDp = if (isTablet) 0 else -16
     }
 }

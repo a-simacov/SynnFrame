@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
+import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionWizardContent
 import timber.log.Timber
 
@@ -76,11 +77,12 @@ fun ActionWizardScreen(
         modifier = modifier.fillMaxSize()
     ) {
         AppScaffold(
-            title = "Выполнение действия",
+            title = wizardState?.action?.wmsAction?.let {
+                getWmsActionDescription(it)
+            } ?: "Выполнение действия",
             onNavigateBack = { viewModel.cancelWizard() },
             snackbarHostState = snackbarHostState
         ) { paddingValues ->
-            // Используем компонент ActionWizardContent
             ActionWizardContent(
                 wizardState = wizardState,
                 actionWizardController = viewModel.actionWizardController,

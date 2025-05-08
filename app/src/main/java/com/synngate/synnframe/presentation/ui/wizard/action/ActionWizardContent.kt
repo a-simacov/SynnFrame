@@ -85,7 +85,6 @@ fun ActionWizardContent(
         return
     }
 
-    // Получаем сервис сканера
     val scannerService = LocalScannerService.current
 
     var isProcessingGlobalBarcode by remember { mutableStateOf(false) }
@@ -111,10 +110,6 @@ fun ActionWizardContent(
             .fillMaxSize()
             .padding(4.dp)
     ) {
-        // Заголовок и описание типа действия
-        //WizardHeader(wizardState)
-
-        // Индикатор прогресса
         LinearProgressIndicator(
             progress = { wizardState.progress },
             modifier = Modifier
@@ -122,7 +117,6 @@ fun ActionWizardContent(
                 .padding(vertical = 4.dp)
         )
 
-        // Основное содержимое в зависимости от текущего шага
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -173,19 +167,16 @@ fun ActionWizardContent(
                             context = context
                         )
                     } else {
-                        // Фабрика не найдена для типа объекта
                         EmptyScreenContent(
                             message = "Нет компонента для типа объекта: ${actionStep.objectType}",
                         )
                     }
                 } else {
-                    // Шаг не найден
                     EmptyScreenContent(
                         message = "Шаг не найден: ${currentStep.id}",
                     )
                 }
             } else {
-                // Действие не найдено
                 EmptyScreenContent(
                     message = "Действие не найдено",
                 )
@@ -194,29 +185,12 @@ fun ActionWizardContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Кнопки навигации и действий
         WizardActions(
             wizardState = wizardState,
             coroutineScope = coroutineScope,
             actionWizardController = actionWizardController,
             onComplete = onComplete,
             onRetryComplete = onRetryComplete,
-        )
-    }
-}
-
-@Composable
-private fun WizardHeader(wizardState: ActionWizardState) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = wizardState.action?.wmsAction?.let {
-                getWmsActionDescription(it)
-            } ?: "Выполнение действия",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.weight(1f)
         )
     }
 }

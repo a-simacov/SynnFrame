@@ -7,10 +7,13 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
@@ -50,14 +53,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.AppInsetsConfigHolder
 import com.synngate.synnframe.R
 import com.synngate.synnframe.SynnFrameApplication
-import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.presentation.common.LocalCurrentUser
 import com.synngate.synnframe.presentation.common.status.NotificationBar
 import com.synngate.synnframe.presentation.common.status.StatusType
@@ -116,6 +121,12 @@ fun AppScaffold(
         isNotificationVisible = notification != null
     }
 
+    // Получаем системные инсеты
+    val topInsetDp = AppInsetsConfigHolder.topInsetDp
+    val topAppBarInsets = WindowInsets.systemBars.only(WindowInsetsSides.Top).add(
+        WindowInsets(top = topInsetDp.dp)
+    )
+
     val mainContent = @Composable {
         Scaffold(
             modifier = Modifier
@@ -123,7 +134,6 @@ fun AppScaffold(
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
                 Column {
-                    // Используем стандартный TopAppBar, но с уменьшенными отступами
                     TopAppBar(
                         title = {
                             Column(
@@ -131,15 +141,15 @@ fun AppScaffold(
                             ) {
                                 Text(
                                     text = title,
-                                    style = MaterialTheme.typography.titleMedium, // Меньший размер шрифта
-                                    maxLines = 1, // Ограничиваем одной строкой
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
 
                                 if (subtitle != null) {
                                     Text(
                                         text = subtitle,
-                                        style = MaterialTheme.typography.bodySmall, // Меньший размер подзаголовка
+                                        style = MaterialTheme.typography.bodySmall,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -204,11 +214,10 @@ fun AppScaffold(
                         colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = MaterialTheme.colorScheme.surface
                         ),
-                        // Используем небольшие отступы для уменьшения высоты
-                        modifier = Modifier.padding(vertical = 0.dp)
+                        modifier = Modifier.padding(vertical = 0.dp),//.height(64.dp),
+                        windowInsets = topAppBarInsets
                     )
 
-                    // Панель уведомлений с обработкой закрытия
                     notification?.let { (message, type) ->
                         NotificationBar(
                             visible = isNotificationVisible,
@@ -232,7 +241,6 @@ fun AppScaffold(
                             .padding(8.dp)
                             .navigationBarsPadding()
                     ) {
-                        // Кастомная нижняя панель
                         bottomBar()
 
                         HorizontalDivider(
@@ -303,6 +311,33 @@ fun AppScaffold(
     } else {
         mainContent()
     }
+}
+
+/**
+ * Метод расширения для WindowInsets, который добавляет другие инсеты
+ * Правильно обрабатывает конвертацию между пикселями и DP
+ */
+@Composable
+fun WindowInsets.add(insets: WindowInsets): WindowInsets {
+    return WindowInsets.add(this, insets)
+}
+
+/**
+ * Статический метод для WindowInsets.Companion, который добавляет инсеты
+ */
+@Composable
+fun WindowInsets.Companion.add(first: WindowInsets, second: WindowInsets): WindowInsets {
+    // Использует встроенные методы и конвертеры, чтобы правильно складывать инсеты
+    return WindowInsets(
+        left = first.getLeft(LocalDensity.current, LocalLayoutDirection.current).dp +
+                second.getLeft(LocalDensity.current, LocalLayoutDirection.current).dp,
+        top = first.getTop(LocalDensity.current).dp +
+                second.getTop(LocalDensity.current).dp,
+        right = first.getRight(LocalDensity.current, LocalLayoutDirection.current).dp +
+                second.getRight(LocalDensity.current, LocalLayoutDirection.current).dp,
+        bottom = first.getBottom(LocalDensity.current).dp +
+                second.getBottom(LocalDensity.current).dp
+    )
 }
 
 /**
