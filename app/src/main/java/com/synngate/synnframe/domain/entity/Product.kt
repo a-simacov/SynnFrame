@@ -1,5 +1,6 @@
 package com.synngate.synnframe.domain.entity
 
+import com.synngate.synnframe.domain.entity.AccountingModel.BATCH
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -15,6 +16,8 @@ data class Product(
     fun getMainUnit(): ProductUnit? = units.find { it.id == mainUnitId }
 
     fun getAllBarcodes(): List<String> = units.flatMap { it.barcodes }
+
+    fun usesExpDate(): Boolean = (accountingModel == BATCH)
 }
 
 @Serializable

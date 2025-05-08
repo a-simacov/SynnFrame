@@ -56,7 +56,6 @@ class TaskProductSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Состояние UI
         var manualProductCode by remember { mutableStateOf("") }
         var errorMessage by remember(context.validationError) {
             mutableStateOf(context.validationError)
@@ -64,30 +63,25 @@ class TaskProductSelectionStepFactory(
         var showCameraScannerDialog by remember { mutableStateOf(false) }
         var showProductSelectionDialog by remember { mutableStateOf(false) }
 
-        // Состояние выбранного товара и его атрибутов
         var selectedProduct by remember { mutableStateOf<Product?>(null) }
         var selectedStatus by remember { mutableStateOf(ProductStatus.STANDARD) }
         var expirationDate by remember { mutableStateOf<LocalDateTime?>(null) }
 
-        // Явная проверка, нужен ли срок годности
-        val isExpirationDateRequired = selectedProduct?.accountingModel == AccountingModel.BATCH
+        val isExpirationDateRequired = selectedProduct?.usesExpDate() ?: false
 
-        // Проверка истечения срока годности
         val isDateExpired by remember(expirationDate) {
             derivedStateOf {
                 expirationDate != null && expirationDate!!.isBefore(LocalDateTime.now())
             }
         }
 
-        // Автоматически устанавливаем статус "Просрочен" если срок годности истек
         LaunchedEffect(isDateExpired) {
             if (isDateExpired && selectedStatus != ProductStatus.EXPIRED) {
                 selectedStatus = ProductStatus.EXPIRED
             }
         }
 
-        // Состояние валидации
-        var isProductFormValid by remember(selectedProduct, selectedStatus, expirationDate, isExpirationDateRequired) {
+        val isProductFormValid by remember(selectedProduct, selectedStatus, expirationDate, isExpirationDateRequired) {
             mutableStateOf(
                 selectedProduct != null &&
                         (isExpirationDateRequired.not() || expirationDate != null)
@@ -97,19 +91,15 @@ class TaskProductSelectionStepFactory(
         val snackbarHostState = remember { SnackbarHostState() }
         val coroutineScope = rememberCoroutineScope()
 
-        // Данные о продуктах из плана
         val plannedProduct = action.storageProduct?.product
         val planProducts = remember(action) {
             listOfNotNull(action.storageProduct)
         }
         val planProductIds = remember(planProducts) {
-            planProducts.mapNotNull { it.product.id }.toSet()
+            planProducts.map { it.product.id }.toSet()
         }
 
-        // Вспомогательные функции
         fun createResultFromProduct(product: Product): TaskProduct {
-            // Создаем TaskProduct с выбранными статусом и сроком годности
-            // Проверяем срок годности и устанавливаем статус "Просрочен" если нужно
             val finalStatus = if (expirationDate != null && expirationDate!!.isBefore(LocalDateTime.now())) {
                 ProductStatus.EXPIRED
             } else {
@@ -118,7 +108,7 @@ class TaskProductSelectionStepFactory(
 
             return TaskProduct(
                 product = product,
-                quantity = 0f, // Количество будет задано на следующем шаге
+                quantity = 0f,
                 status = finalStatus,
                 expirationDate = expirationDate ?: LocalDateTime.of(1970, 1, 1, 0, 0)
             )
@@ -126,12 +116,11 @@ class TaskProductSelectionStepFactory(
 
         fun validateAndComplete(product: Product) {
             // Проверка на необходимость указания срока годности
-            if (product.accountingModel == AccountingModel.BATCH && expirationDate == null) {
+            if (product.usesExpDate() && expirationDate == null) {
                 errorMessage = "Необходимо указать срок годности для данного товара"
                 return
             }
 
-            // Создаем TaskProduct и передаем в контекст
             val taskProduct = createResultFromProduct(product)
             context.onComplete(taskProduct)
         }
@@ -159,8 +148,6 @@ class TaskProductSelectionStepFactory(
                                 if (planProductIds.isEmpty() || planProductIds.contains(product.id)) {
                                     selectedProduct = product
 
-                                    // Устанавливаем значения по умолчанию для найденного продукта
-                                    // Если продукт из плана, берем его статус и срок годности
                                     val plannedTaskProduct = planProducts.find { it.product.id == product.id }
                                     if (plannedTaskProduct != null) {
                                         selectedStatus = plannedTaskProduct.status
@@ -168,7 +155,6 @@ class TaskProductSelectionStepFactory(
                                             plannedTaskProduct.expirationDate
                                         } else null
                                     } else {
-                                        // По умолчанию срок годности не заполнен
                                         expirationDate = null
                                         selectedStatus = ProductStatus.STANDARD
                                     }
@@ -230,7 +216,6 @@ class TaskProductSelectionStepFactory(
             }
         )
 
-        // Обработка штрихкодов из контекста
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
             if (!barcode.isNullOrEmpty()) {
@@ -238,17 +223,15 @@ class TaskProductSelectionStepFactory(
             }
         }
 
-        // Инициализируем значения из контекста, если они есть
         LaunchedEffect(context.results[step.id]) {
             val result = context.results[step.id]
-            if (result is TaskProduct && result.product != null) {
+            if (result is TaskProduct) {
                 selectedProduct = result.product
                 selectedStatus = result.status
                 expirationDate = if (result.hasExpirationDate()) result.expirationDate else null
             }
         }
 
-        // Диалоги сканирования и выбора
         if (showCameraScannerDialog) {
             UniversalScannerDialog(
                 onBarcodeScanned = { barcode ->
@@ -270,7 +253,6 @@ class TaskProductSelectionStepFactory(
                 onProductSelected = { product ->
                     selectedProduct = product
 
-                    // Устанавливаем значения по умолчанию для выбранного продукта
                     val plannedTaskProduct = planProducts.find { it.product.id == product.id }
                     if (plannedTaskProduct != null) {
                         selectedStatus = plannedTaskProduct.status
@@ -278,7 +260,6 @@ class TaskProductSelectionStepFactory(
                             plannedTaskProduct.expirationDate
                         } else null
                     } else {
-                        // По умолчанию срок годности не заполнен
                         expirationDate = null
                         selectedStatus = ProductStatus.STANDARD
                     }
@@ -294,7 +275,6 @@ class TaskProductSelectionStepFactory(
             )
         }
 
-        // Основное содержимое UI
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -306,7 +286,6 @@ class TaskProductSelectionStepFactory(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Сообщение об ошибке валидации
             if (errorMessage != null) {
                 ValidationErrorMessage(
                     message = errorMessage!!,
@@ -314,7 +293,6 @@ class TaskProductSelectionStepFactory(
                 )
             }
 
-            // Поле поиска продукта
             ProductSearchBar(
                 value = manualProductCode,
                 onValueChange = {
@@ -329,7 +307,6 @@ class TaskProductSelectionStepFactory(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Отображение выбранного продукта и дополнительных полей
             if (selectedProduct != null) {
                 Text(
                     text = "Выбранный товар:",
@@ -346,30 +323,25 @@ class TaskProductSelectionStepFactory(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Выбор статуса товара
                 ProductStatusSelector(
                     selectedStatus = selectedStatus,
                     onStatusSelected = {
                         selectedStatus = it
-                        // Если пользователь вручную изменил статус с EXPIRED на другой,
-                        // но срок годности все еще истек, вернуть статус EXPIRED
                         if (it != ProductStatus.EXPIRED && isDateExpired) {
                             selectedStatus = ProductStatus.EXPIRED
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    isEnabled = !isDateExpired // Блокируем изменение статуса, если срок годности истек
+                    isEnabled = !isDateExpired
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Выбор срока годности (если требуется)
                 if (selectedProduct != null && selectedProduct?.accountingModel == AccountingModel.BATCH) {
                     ExpirationDatePicker(
                         expirationDate = expirationDate,
                         onDateSelected = {
                             expirationDate = it
-                            // Если дата истекла, автоматически установить статус "Просрочен"
                             if (it != null && it.isBefore(LocalDateTime.now())) {
                                 selectedStatus = ProductStatus.EXPIRED
                             }

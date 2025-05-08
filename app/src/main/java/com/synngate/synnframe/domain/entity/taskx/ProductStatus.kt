@@ -1,11 +1,12 @@
 package com.synngate.synnframe.domain.entity.taskx
 
 enum class ProductStatus {
-    STANDARD,    // Кондиция (стандарт)
-    DEFECTIVE,   // Брак
-    EXPIRED;     // Просрочен
+    STANDARD,
+    DEFECTIVE,
+    EXPIRED;
 
     companion object {
+
         fun fromString(value: String): ProductStatus {
             return when (value.uppercase()) {
                 "STANDARD", "КОНДИЦИЯ", "СТАНДАРТ" -> STANDARD

@@ -346,7 +346,6 @@ fun ActionSummaryScreen(
 ) {
     val action = state.action
 
-    // Находим последний результат с товаром и количеством
     val productEntry = findMostRelevantProductEntry(state.results)
 
     Column(
@@ -392,7 +391,6 @@ fun ActionSummaryScreen(
                 }
             }
         } else {
-            // Если действие не определено, показываем сообщение
             Text(
                 text = "Информация о действии недоступна",
                 style = MaterialTheme.typography.bodyLarge,
@@ -510,25 +508,25 @@ private fun TaskProductInfo(
                 if (it.product.id == taskProduct.product.id) it.quantity else 0f
             } ?: 0f
 
-            QuantityRow(textName = "Запланировано:", textQuantity = plannedQuantity.toString())
+            QuantityRow(label = "Запланировано:", value = plannedQuantity.toString())
 
             if (previousCompletedQuantity > 0f) {
                 DefaultSpacer()
                 QuantityRow(
-                    textName = "Выполнено",
-                    textQuantity = previousCompletedQuantity.toString()
+                    label = "Выполнено:",
+                    value = previousCompletedQuantity.toString()
                 )
             }
 
             DefaultSpacer()
-            QuantityRow(textName = "Текущее", textQuantity = currentQuantity.toString())
+            QuantityRow(label = "Текущее:", value = currentQuantity.toString())
 
             if (previousCompletedQuantity > 0f) {
                 DefaultSpacer()
                 HorizontalDivider()
                 DefaultSpacer()
 
-                QuantityRow(textName = "Текущий итог", textQuantity = totalQuantity.toString())
+                QuantityRow(label = "Текущий итог:", value = totalQuantity.toString())
 
                 if (plannedQuantity > 0f && totalQuantity > plannedQuantity) {
                     DefaultSpacer()
@@ -540,31 +538,6 @@ private fun TaskProductInfo(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun QuantityRow(
-    textName: String,
-    textQuantity: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = textName,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            fontWeight = FontWeight.Bold
-        )
-
-        Text(
-            text = textQuantity,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            fontWeight = FontWeight.Bold
-        )
     }
 }
 
