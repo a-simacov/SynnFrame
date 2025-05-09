@@ -108,10 +108,10 @@ import com.synngate.synnframe.presentation.ui.taskx.TaskXListViewModel
 import com.synngate.synnframe.presentation.ui.wizard.ActionWizardViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
 import com.synngate.synnframe.presentation.ui.wizard.action.ProductQuantityStepFactory
-import com.synngate.synnframe.presentation.ui.wizard.action.TaskProductSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.bin.BinSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.pallet.PalletSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.product.ProductSelectionStepFactory
+import com.synngate.synnframe.presentation.ui.wizard.action.taskproduct.TaskProductSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.service.BinLookupService
 import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
@@ -723,7 +723,10 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
 
         registry.registerFactory(
             ActionObjectType.TASK_PRODUCT,
-            TaskProductSelectionStepFactory(appContainer.productRepository)
+            TaskProductSelectionStepFactory(
+                productLookupService = appContainer.productLookupService,
+                validationService = appContainer.validationService
+            )
         )
 
         registry.registerFactory(
