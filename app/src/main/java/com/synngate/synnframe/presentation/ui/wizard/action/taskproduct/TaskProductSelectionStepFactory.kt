@@ -135,7 +135,7 @@ class TaskProductSelectionStepFactory(
                 initialFilter = "",
                 title = "Выберите товар",
                 planProductIds = if (taskProductViewModel.hasPlanProducts()) {
-                    taskProductViewModel.getPlanProducts().map { it.product.id }.toSet()
+                    taskProductViewModel.planProducts.map { it.product.id }.toSet()
                 } else null
             )
         }
@@ -172,7 +172,7 @@ class TaskProductSelectionStepFactory(
             // Отображаем товары из плана, подсвечивая выбранный
             if (viewModel.hasPlanProducts()) {
                 PlanProductsList(
-                    planProducts = viewModel.getPlanProducts(),
+                    planProducts = viewModel.planProducts,
                     onProductSelect = { selectedTaskProduct ->
                         viewModel.selectTaskProductFromPlan(selectedTaskProduct)
                     },
