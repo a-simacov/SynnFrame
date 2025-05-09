@@ -133,6 +133,7 @@ class PalletSelectionViewModel(
      */
     fun updatePalletCodeInput(input: String) {
         palletCodeInput = input
+        updateAdditionalData("palletCodeInput", input)
     }
 
     /**

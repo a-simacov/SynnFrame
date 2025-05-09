@@ -258,6 +258,7 @@ class TaskProductSelectionViewModel(
      */
     fun updateProductCodeInput(input: String) {
         productCodeInput = input
+        updateAdditionalData("productCodeInput", input)
     }
 
     /**

@@ -27,7 +27,7 @@ class BinSelectionViewModel(
     private val planBins = listOfNotNull(plannedBin)
     private val zoneFilter = plannedBin?.zone
 
-    // Состояние поля ввода кода ячейки
+    // Состояние поля ввода кода ячейки - публичное свойство с private setter
     var binCodeInput = ""
         private set
 
@@ -125,10 +125,20 @@ class BinSelectionViewModel(
     }
 
     /**
-     * Обновление ввода кода ячейки
+     * Обновление ввода кода ячейки - публичный метод, доступный из UI
      */
     fun updateBinCodeInput(input: String) {
+        // Добавляем логирование для отладки
+        Timber.d("BinSelectionViewModel: updateBinCodeInput called with '$input'")
         binCodeInput = input
+
+        // Обновляем состояние в Flow для уведомления UI об изменениях
+//        _state.update { currentState ->
+//            currentState.copy(
+//                additionalData = currentState.additionalData + ("binCodeInput" to input)
+//            )
+//        }
+        updateAdditionalData("binCodeInput", input)
     }
 
     /**

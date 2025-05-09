@@ -128,7 +128,17 @@ class ProductSelectionViewModel(
      * Обновление ввода штрих-кода
      */
     fun updateBarcodeInput(input: String) {
+        // Добавляем логирование для отладки
+        Timber.d("ProductSelectionViewModel: updateBarcodeInput called with '$input'")
         barcodeInput = input
+
+//        // Обновляем состояние в Flow для уведомления UI об изменениях
+//        _state.update { currentState ->
+//            currentState.copy(
+//                additionalData = currentState.additionalData + ("barcodeInput" to input)
+//            )
+//        }
+        updateAdditionalData("barcodeInput", input)
     }
 
     /**

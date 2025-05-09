@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
+import timber.log.Timber
 
 /**
  * Отображает заголовок шага с описанием действия
@@ -116,7 +117,11 @@ fun BarcodeEntryField(
     Column(modifier = modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = value,
-            onValueChange = onValueChange,
+            onValueChange = { newValue ->
+                // Добавляем логирование для отладки
+                Timber.d("BarcodeEntryField: value changed from '$value' to '$newValue'")
+                onValueChange(newValue)
+            },
             label = { Text(label) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
