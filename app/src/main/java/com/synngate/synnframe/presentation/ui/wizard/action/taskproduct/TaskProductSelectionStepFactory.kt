@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.wizard.action
+package com.synngate.synnframe.presentation.ui.wizard.action.taskproduct
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -33,7 +33,6 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.PlanProdu
 import com.synngate.synnframe.presentation.ui.wizard.action.components.ProductCard
 import com.synngate.synnframe.presentation.ui.wizard.action.components.ProductStatusSelector
 import com.synngate.synnframe.presentation.ui.wizard.action.components.StepContainer
-import com.synngate.synnframe.presentation.ui.wizard.action.taskproduct.TaskProductSelectionViewModel
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 
 /**
