@@ -92,14 +92,6 @@ fun ProductCard(
     }
 }
 
-/**
- * Компонент карточки продукта задания
- *
- * @param taskProduct Продукт задания для отображения
- * @param onClick Обработчик нажатия на карточку
- * @param isSelected Выбран ли продукт
- * @param modifier Модификатор
- */
 @Composable
 fun TaskProductCard(
     taskProduct: TaskProduct,
@@ -170,19 +162,10 @@ fun TaskProductCard(
     }
 }
 
-/**
- * Компонент для отображения списка продуктов из плана
- *
- * @param planProducts Список продуктов из плана
- * @param onProductSelect Обработчик выбора продукта
- * @param title Заголовок списка
- * @param modifier Модификатор
- */
 @Composable
 fun PlanProductsList(
     planProducts: List<TaskProduct>,
     onProductSelect: (TaskProduct) -> Unit,
-    title: String = "По плану:",
     modifier: Modifier = Modifier
 ) {
     if (planProducts.isEmpty()) {
@@ -190,13 +173,6 @@ fun PlanProductsList(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
-
         planProducts.forEach { taskProduct ->
             TaskProductCard(
                 taskProduct = taskProduct,

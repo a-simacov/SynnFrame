@@ -161,16 +161,24 @@ class TaskProductSelectionStepFactory(
         )
     }
 
-    /**
-     * Безопасное содержимое шага выбора продукта задания
-     */
     @Composable
     private fun SafeTaskProductSelectionContent(
         state: StepViewState<TaskProduct>,
         viewModel: TaskProductSelectionViewModel
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Поле ввода штрих-кода
+            if (viewModel.hasPlanProducts()) {
+                PlanProductsList(
+                    planProducts = viewModel.getPlanProducts(),
+                    onProductSelect = { selectedTaskProduct ->
+                        viewModel.selectTaskProductFromPlan(selectedTaskProduct)
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+
             BarcodeEntryField(
                 value = viewModel.productCodeInput,
                 onValueChange = { viewModel.updateProductCodeInput(it) },
@@ -181,9 +189,20 @@ class TaskProductSelectionStepFactory(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = { viewModel.toggleProductSelectionDialog(true) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            ) {
+                Text("Выбрать из списка товаров")
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Отображение выбранного продукта
             val selectedProduct = viewModel.getSelectedProduct()
             if (selectedProduct != null) {
                 Text(
@@ -201,7 +220,6 @@ class TaskProductSelectionStepFactory(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Селектор статуса продукта
                 ProductStatusSelector(
                     selectedStatus = viewModel.selectedStatus,
                     onStatusSelected = { viewModel.setSelectedStatus(it) },
@@ -211,8 +229,6 @@ class TaskProductSelectionStepFactory(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Датапикер для срока годности (только для продуктов с учетом по партиям)
-                // ИЗМЕНЕНО: Проверка непосредственно по selectedProduct
                 if (selectedProduct.accountingModel == AccountingModel.BATCH) {
                     ExpirationDatePicker(
                         expirationDate = viewModel.expirationDate,
@@ -221,49 +237,13 @@ class TaskProductSelectionStepFactory(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            // Отображение продуктов из плана
-            if (viewModel.hasPlanProducts()) {
-                PlanProductsList(
-                    planProducts = viewModel.getPlanProducts(),
-                    onProductSelect = { selectedTaskProduct ->
-                        viewModel.selectTaskProductFromPlan(selectedTaskProduct)
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            // Кнопка выбора из списка
-            Button(
-                onClick = { viewModel.toggleProductSelectionDialog(true) },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            ) {
-                Text("Выбрать из списка товаров")
             }
         }
     }
 
-    /**
-     * Валидация результата шага
-     */
     override fun validateStepResult(step: ActionStep, value: Any?): Boolean {
-        // Проверка типа
         if (value !is TaskProduct) return false
 
-        // Проверяем наличие продукта
-        if (value.product == null) return false
-
-        // Проверяем наличие срока годности для товаров с учетом по партиям
         if (value.product.accountingModel == AccountingModel.BATCH && !value.hasExpirationDate()) {
             return false
         }
