@@ -177,14 +177,14 @@ class ProductQuantityViewModel(
             it.storageProduct?.quantity?.toDouble() ?: 0.0
         }.toFloat()
 
-        // Рассчитываем оставшееся количество
-        remainingQuantity = (plannedQuantity - completedQuantity).coerceAtLeast(0f)
 
         // Рассчитываем текущее введенное количество
         currentInputQuantity = quantityInput.toFloatOrNull() ?: 0f
 
         // Рассчитываем прогнозируемый итог
         projectedTotalQuantity = completedQuantity + currentInputQuantity
+
+        remainingQuantity = (plannedQuantity - projectedTotalQuantity).coerceAtLeast(0f)
 
         // Проверяем, будет ли превышение плана
         willExceedPlan = plannedQuantity > 0f && projectedTotalQuantity > plannedQuantity

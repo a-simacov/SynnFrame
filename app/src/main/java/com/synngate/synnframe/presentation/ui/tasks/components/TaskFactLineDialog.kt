@@ -276,11 +276,10 @@ private fun CurrentQuantity(
             QuantityTextField(
                 value = additionalQuantity,
                 onValueChange = onQuantityChange,
+                modifier = Modifier.width(160.dp),
                 label = stringResource(R.string.add_quantity),
                 isError = isError,
-                errorText = if (isError) errorText else null,
-                allowNegative = true,
-                modifier = Modifier.width(160.dp)
+                errorText = if (isError) errorText else null
             )
 
             Spacer(modifier = Modifier.width(16.dp))

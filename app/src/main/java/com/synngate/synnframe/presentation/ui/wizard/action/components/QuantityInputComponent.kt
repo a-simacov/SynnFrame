@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
@@ -14,20 +13,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 
 /**
@@ -42,6 +41,8 @@ import androidx.compose.ui.unit.dp
  * @param onIncrement Обработчик увеличения значения
  * @param onDecrement Обработчик уменьшения значения
  * @param enabled Флаг доступности компонента
+ * @param textAlign Выравнивание текста в поле ввода
+ * @param fontSize Размер шрифта в поле ввода
  */
 @Composable
 fun QuantityTextField(
@@ -53,7 +54,9 @@ fun QuantityTextField(
     errorText: String? = null,
     onIncrement: (() -> Unit)? = null,
     onDecrement: (() -> Unit)? = null,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    textAlign: TextAlign = TextAlign.Start,
+    fontSize: TextUnit = TextUnit.Unspecified
 ) {
     Column(modifier = modifier) {
         Row(
@@ -67,7 +70,8 @@ fun QuantityTextField(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Remove,
-                        contentDescription = "Уменьшить"
+                        contentDescription = "Уменьшить",
+                        modifier = Modifier.padding(8.dp)
                     )
                 }
             }
@@ -81,7 +85,11 @@ fun QuantityTextField(
                     }
                     onValueChange(filteredValue)
                 },
-                label = { Text(label) },
+                label = if (label.isNotEmpty()) {
+                    { Text(label) }
+                } else {
+                    null
+                },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Decimal,
                     imeAction = ImeAction.Done
@@ -90,7 +98,16 @@ fun QuantityTextField(
                 modifier = Modifier.weight(1f),
                 isError = isError,
                 enabled = enabled,
-                singleLine = true
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    textAlign = textAlign,
+                    fontSize = if (fontSize != TextUnit.Unspecified) fontSize else MaterialTheme.typography.bodyLarge.fontSize
+                ),
+                colors = TextFieldDefaults.colors(
+                    // Устанавливаем цвета для поля ввода
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                ),
             )
 
             if (onIncrement != null) {
@@ -100,7 +117,8 @@ fun QuantityTextField(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Увеличить"
+                        contentDescription = "Увеличить",
+                        modifier = Modifier.padding(8.dp)
                     )
                 }
             }
@@ -127,84 +145,6 @@ fun QuantityTextField(
     }
 }
 
-/**
- * Информационная карточка о количестве
- *
- * @param plannedQuantity Запланированное количество
- * @param completedQuantity Выполненное количество
- * @param remainingQuantity Оставшееся количество
- * @param currentQuantity Текущее вводимое количество
- * @param projectedTotal Прогнозируемый итог
- * @param willExceedPlan Признак превышения плана
- * @param modifier Модификатор
- */
-@Composable
-fun QuantityInfoCard(
-    plannedQuantity: Float,
-    completedQuantity: Float,
-    remainingQuantity: Float,
-    currentQuantity: Float,
-    projectedTotal: Float,
-    willExceedPlan: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            QuantityRow(
-                label = "Запланировано:",
-                value = plannedQuantity.toString()
-            )
-
-            QuantityRow(
-                label = "Выполнено:",
-                value = completedQuantity.toString()
-            )
-
-            QuantityRow(
-                label = "Осталось:",
-                value = remainingQuantity.toString(),
-                highlight = true
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(8.dp))
-
-            QuantityRow(
-                label = "Текущее:",
-                value = currentQuantity.toString(),
-                highlight = true
-            )
-
-            QuantityRow(
-                label = "Общий итог:",
-                value = projectedTotal.toString(),
-                highlight = true,
-                warning = willExceedPlan
-            )
-
-            if (willExceedPlan) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Внимание: превышение планового количества!",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        }
-    }
-}
-
-/**
- * Строка с информацией о количестве
- */
 @Composable
 fun QuantityRow(
     label: String,
