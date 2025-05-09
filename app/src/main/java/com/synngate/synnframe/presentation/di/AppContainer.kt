@@ -108,8 +108,9 @@ import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryReg
 import com.synngate.synnframe.presentation.ui.wizard.action.BinSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.PalletSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.ProductQuantityStepFactory
-import com.synngate.synnframe.presentation.ui.wizard.action.ProductSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.TaskProductSelectionStepFactory
+import com.synngate.synnframe.presentation.ui.wizard.action.product.ProductSelectionStepFactory
+import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 import com.synngate.synnframe.util.network.NetworkMonitor
 import com.synngate.synnframe.util.resources.ResourceProvider
 import com.synngate.synnframe.util.resources.ResourceProviderImpl
@@ -378,6 +379,11 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
             validationService = validationService,
             taskContextManager = taskContextManager // Добавляем параметр taskContextManager
         )
+    }
+
+    val productLookupService by lazy {
+        Timber.d("Creating ProductLookupService")
+        ProductLookupService(productRepository)
     }
 
     val actionWizardController by lazy {
