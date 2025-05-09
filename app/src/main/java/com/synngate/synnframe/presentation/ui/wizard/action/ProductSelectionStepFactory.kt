@@ -20,6 +20,7 @@ import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.common.dialog.OptimizedProductSelectionDialog
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseActionStepFactory
@@ -35,7 +36,8 @@ import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupServic
  * Фабрика для шага выбора продукта
  */
 class ProductSelectionStepFactory(
-    private val productLookupService: ProductLookupService
+    private val productLookupService: ProductLookupService,
+    private val validationService: ValidationService // Добавлен ValidationService
 ) : BaseActionStepFactory<Product>() {
 
     /**
@@ -46,12 +48,13 @@ class ProductSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ): BaseStepViewModel<Product> {
-        // Создаем и возвращаем ViewModel, используя внедренный productLookupService
+        // Создаем и возвращаем ViewModel, передавая validationService
         return ProductSelectionViewModel(
             step = step,
             action = action,
             context = context,
-            productLookupService = productLookupService
+            productLookupService = productLookupService,
+            validationService = validationService // Передаем ValidationService
         )
     }
 

@@ -23,6 +23,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
@@ -37,7 +38,8 @@ import com.synngate.synnframe.presentation.ui.wizard.service.BinLookupService
  * Фабрика для шага выбора ячейки
  */
 class BinSelectionStepFactory(
-    private val binLookupService: BinLookupService
+    private val binLookupService: BinLookupService,
+    private val validationService: ValidationService // Добавлен ValidationService
 ) : BaseActionStepFactory<BinX>() {
 
     /**
@@ -48,12 +50,13 @@ class BinSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ): BaseStepViewModel<BinX> {
-        // Создаем и возвращаем ViewModel
+        // Создаем и возвращаем ViewModel, передавая validationService
         return BinSelectionViewModel(
             step = step,
             action = action,
             context = context,
-            binLookupService = binLookupService
+            binLookupService = binLookupService,
+            validationService = validationService // Передаем ValidationService
         )
     }
 

@@ -25,6 +25,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
@@ -39,7 +40,8 @@ import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
  * Фабрика для шага выбора паллеты
  */
 class PalletSelectionStepFactory(
-    private val palletLookupService: PalletLookupService
+    private val palletLookupService: PalletLookupService,
+    private val validationService: ValidationService // Добавлен ValidationService
 ) : BaseActionStepFactory<Pallet>() {
 
     /**
@@ -50,12 +52,13 @@ class PalletSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ): BaseStepViewModel<Pallet> {
-        // Создаем и возвращаем ViewModel
+        // Создаем и возвращаем ViewModel, передавая validationService
         return PalletSelectionViewModel(
             step = step,
             action = action,
             context = context,
-            palletLookupService = palletLookupService
+            palletLookupService = palletLookupService,
+            validationService = validationService // Передаем ValidationService
         )
     }
 

@@ -104,8 +104,11 @@ class PalletSelectionViewModel(
         val baseContext = super.createValidationContext().toMutableMap()
 
         // Добавляем планируемую паллету и список паллет плана для валидации
-        baseContext["plannedPallet"] = plannedPallet
-        baseContext["planPallets"] = planPallets
+        // Используем safe call, чтобы избежать добавления null-значений
+        plannedPallet?.let { baseContext["plannedPallet"] = it }
+        if (planPallets.isNotEmpty()) {
+            baseContext["planPallets"] = planPallets
+        }
 
         return baseContext
     }
@@ -117,7 +120,7 @@ class PalletSelectionViewModel(
         if (data == null) return false
 
         // Если есть ограничение по плану, проверяем соответствие
-        if (plannedPallet != null && plannedPallet.code !=data.code) {
+        if (plannedPallet != null && plannedPallet.code != data.code) {
             setError("Паллета не соответствует плану")
             return false
         }

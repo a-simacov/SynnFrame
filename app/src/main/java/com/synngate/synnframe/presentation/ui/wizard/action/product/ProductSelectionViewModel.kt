@@ -6,6 +6,7 @@ import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 import kotlinx.coroutines.launch
@@ -18,8 +19,9 @@ class ProductSelectionViewModel(
     step: ActionStep,
     action: PlannedAction,
     context: ActionContext,
-    private val productLookupService: ProductLookupService
-) : BaseStepViewModel<Product>(step, action, context) {
+    private val productLookupService: ProductLookupService,
+    validationService: ValidationService
+) : BaseStepViewModel<Product>(step, action, context, validationService) {
 
     // Данные о продуктах из плана
     private val plannedProduct = action.storageProduct?.product
@@ -92,12 +94,28 @@ class ProductSelectionViewModel(
     }
 
     /**
+     * Создаем расширенный контекст для валидации API
+     */
+    override fun createValidationContext(): Map<String, Any> {
+        val baseContext = super.createValidationContext().toMutableMap()
+
+        // Добавляем планируемый продукт и список продуктов плана для валидации
+        // Используем safe call и проверку списка, чтобы избежать добавления null-значений
+        plannedProduct?.let { baseContext["plannedProduct"] = it }
+        if (planProducts.isNotEmpty()) {
+            baseContext["planProducts"] = planProducts
+        }
+
+        return baseContext
+    }
+
+    /**
      * Валидация данных
      */
-    override fun validateData(data: Product?): Boolean {
+    override fun validateBasicRules(data: Product?): Boolean {
         if (data == null) return false
 
-        // Если есть ограничения по плану, проверяем соответствие
+        // Если есть ограничение по плану, проверяем соответствие
         if (planProductIds.isNotEmpty() && !planProductIds.contains(data.id)) {
             setError("Продукт не соответствует плану")
             return false

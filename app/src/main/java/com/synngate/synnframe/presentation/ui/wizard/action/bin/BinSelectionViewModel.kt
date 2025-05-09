@@ -22,7 +22,6 @@ class BinSelectionViewModel(
     validationService: ValidationService
 ) : BaseStepViewModel<BinX>(step, action, context, validationService) {
 
-    // Остальной код класса без изменений...
     // Данные о ячейках из плана
     private val plannedBin = action.placementBin
     private val planBins = listOfNotNull(plannedBin)
@@ -101,8 +100,11 @@ class BinSelectionViewModel(
         val baseContext = super.createValidationContext().toMutableMap()
 
         // Добавляем планируемую ячейку и список ячеек плана для валидации
-        baseContext["plannedBin"] = plannedBin
-        baseContext["planBins"] = planBins
+        // Используем safe call, чтобы избежать добавления null-значений
+        plannedBin?.let { baseContext["plannedBin"] = it }
+        if (planBins.isNotEmpty()) {
+            baseContext["planBins"] = planBins
+        }
 
         return baseContext
     }
