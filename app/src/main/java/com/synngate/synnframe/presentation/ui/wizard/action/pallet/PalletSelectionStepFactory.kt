@@ -144,6 +144,8 @@ class PalletSelectionStepFactory(
             },
             onCancel = { context.onCancel() },
             forwardEnabled = palletViewModel.hasSelectedPallet(),
+            isProcessingGlobal = context.isProcessingStep,
+            isFirstStep = context.isFirstStep,  // Передаем флаг первого шага
             content = {
                 SafePalletSelectionContent(
                     state = state,

@@ -151,6 +151,8 @@ class TaskProductSelectionStepFactory(
             },
             onCancel = { context.onCancel() },
             forwardEnabled = taskProductViewModel.isFormValid(),
+            isProcessingGlobal = context.isProcessingStep,
+            isFirstStep = context.isFirstStep,  // Передаем флаг первого шага
             content = {
                 SafeTaskProductSelectionContent(
                     state = state,

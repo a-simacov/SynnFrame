@@ -1,6 +1,13 @@
 package com.synngate.synnframe.presentation.ui.wizard.action
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -43,6 +50,7 @@ import com.synngate.synnframe.presentation.util.formatDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @Composable
 fun ActionWizardContent(
@@ -85,6 +93,39 @@ fun ActionWizardContent(
         })
     }
 
+    // Параметры анимации для перехода между шагами
+    fun getContentTransformation(forward: Boolean): ContentTransform {
+        return if (forward) {
+            // Анимация перехода вперед (слайд вправо)
+            slideInHorizontally(
+                initialOffsetX = { fullWidth -> fullWidth }, // Появляется справа
+                animationSpec = tween(durationMillis = 300)
+            ) + fadeIn(animationSpec = tween(durationMillis = 150)) togetherWith
+                    slideOutHorizontally(
+                        targetOffsetX = { fullWidth -> -fullWidth }, // Исчезает влево
+                        animationSpec = tween(durationMillis = 300)
+                    ) + fadeOut(animationSpec = tween(durationMillis = 150))
+        } else {
+            // Анимация перехода назад (слайд влево)
+            slideInHorizontally(
+                initialOffsetX = { fullWidth -> -fullWidth }, // Появляется слева
+                animationSpec = tween(durationMillis = 300)
+            ) + fadeIn(animationSpec = tween(durationMillis = 150)) togetherWith
+                    slideOutHorizontally(
+                        targetOffsetX = { fullWidth -> fullWidth }, // Исчезает вправо
+                        animationSpec = tween(durationMillis = 300)
+                    ) + fadeOut(animationSpec = tween(durationMillis = 150))
+        }
+    }
+
+    // Запоминаем последний индекс шага для определения направления анимации
+    var previousStepIndex by remember { mutableStateOf(wizardState.currentStepIndex) }
+    val isForwardTransition = wizardState.currentStepIndex >= previousStepIndex
+
+    LaunchedEffect(wizardState.currentStepIndex) {
+        previousStepIndex = wizardState.currentStepIndex
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -97,85 +138,106 @@ fun ActionWizardContent(
                 .padding(vertical = 4.dp)
         )
 
-        Box(
+        // Используем AnimatedContent для плавного перехода между шагами
+        AnimatedContent(
+            targetState = wizardState.currentStepIndex,
+            transitionSpec = { getContentTransformation(isForwardTransition) },
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(4.dp)
-        ) {
-            val currentStep = wizardState.currentStep
-            val action = wizardState.action
-
-            if (currentStep == null || wizardState.isCompleted) {
-                // Отображаем экран с итогами с использованием SummaryContainer
-                SummaryContainer(
-                    title = "Проверьте информацию перед завершением",
-                    onBack = {
-                        coroutineScope.launch {
-                            actionWizardController.processStepResult(null)
-                        }
-                    },
-                    onComplete = onComplete,
-                    onRetry = onRetryComplete,
-                    isSending = wizardState.isSending,
-                    hasError = wizardState.sendError != null,
-                    modifier = Modifier.fillMaxSize()
+                .weight(1f), label = ""
+        ) { _ ->
+            // Контейнер для содержимого текущего шага
+            Card(
+                modifier = Modifier
+                    .fillMaxSize(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(4.dp)
                 ) {
-                    ActionSummaryScreen(
-                        state = wizardState,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            } else if (action != null) {
-                // Отображаем текущий шаг визарда
-                val actionStep = findActionStepForWizardStep(action, currentStep.id)
+                    val currentStep = wizardState.currentStep
+                    val action = wizardState.action
 
-                if (actionStep != null) {
-                    val factory = actionStepFactoryRegistry.getFactory(actionStep.objectType)
-
-                    if (factory != null) {
-                        val context = actionWizardContextFactory.createContext(
-                            state = wizardState,
-                            onStepComplete = { result ->
-                                coroutineScope.launch {
-                                    actionWizardController.processStepResult(result)
-                                }
-                            },
+                    if (currentStep == null || wizardState.isCompleted) {
+                        // Отображаем экран с итогами с использованием SummaryContainer
+                        SummaryContainer(
+                            title = "Проверьте информацию перед завершением",
                             onBack = {
                                 coroutineScope.launch {
                                     actionWizardController.processStepResult(null)
                                 }
                             },
-                            onForward = {
-                                coroutineScope.launch {
-                                    actionWizardController.processForwardStep()
-                                }
-                            },
-                            onSkip = { /* Пустая реализация */ },
-                            onCancel = onCancel,
-                            lastScannedBarcode = wizardState.lastScannedBarcode
-                        )
+                            onComplete = onComplete,
+                            onRetry = onRetryComplete,
+                            isSending = wizardState.isSending,
+                            hasError = wizardState.sendError != null,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            ActionSummaryScreen(
+                                state = wizardState,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    } else if (action != null) {
+                        // Отображаем текущий шаг визарда
+                        val actionStep = findActionStepForWizardStep(action, currentStep.id)
 
-                        factory.createComponent(
-                            step = actionStep,
-                            action = action,
-                            context = context
-                        )
+                        if (actionStep != null) {
+                            val factory = actionStepFactoryRegistry.getFactory(actionStep.objectType)
+
+                            if (factory != null) {
+                                val context = actionWizardContextFactory.createContext(
+                                    state = wizardState,
+                                    onStepComplete = { result ->
+                                        coroutineScope.launch {
+                                            actionWizardController.processStepResult(result)
+                                        }
+                                    },
+                                    onBack = {
+                                        coroutineScope.launch {
+                                            actionWizardController.processStepResult(null)
+                                        }
+                                    },
+                                    onForward = {
+                                        coroutineScope.launch {
+                                            actionWizardController.processForwardStep()
+                                        }
+                                    },
+                                    onSkip = { /* Пустая реализация */ },
+                                    onCancel = onCancel,
+                                    lastScannedBarcode = wizardState.lastScannedBarcode
+                                )
+
+                                // Проверяем, первый ли это шаг
+                                val isFirstStep = wizardState.currentStepIndex == 0
+
+                                Timber.d("Шаг ${wizardState.currentStepIndex + 1}/${wizardState.steps.size}, первый: $isFirstStep")
+
+                                factory.createComponent(
+                                    step = actionStep,
+                                    action = action,
+                                    context = context.copy(isFirstStep = isFirstStep)  // Передаем флаг первого шага
+                                )
+                            } else {
+                                EmptyScreenContent(
+                                    message = "Нет компонента для типа объекта: ${actionStep.objectType}",
+                                )
+                            }
+                        } else {
+                            EmptyScreenContent(
+                                message = "Шаг не найден: ${currentStep.id}",
+                            )
+                        }
                     } else {
                         EmptyScreenContent(
-                            message = "Нет компонента для типа объекта: ${actionStep.objectType}",
+                            message = "Действие не найдено",
                         )
                     }
-                } else {
-                    EmptyScreenContent(
-                        message = "Шаг не найден: ${currentStep.id}",
-                    )
                 }
-            } else {
-                EmptyScreenContent(
-                    message = "Действие не найдено",
-                )
             }
         }
     }

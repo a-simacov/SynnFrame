@@ -39,7 +39,9 @@ class ActionWizardContextFactory {
             onSkip = { result -> onSkip(result) },
             onCancel = { onCancel() },
             lastScannedBarcode = lastScannedBarcode,
-            validationError = validationError
+            validationError = validationError,
+            // Передаем флаг глобального состояния для обработки в UI
+            isProcessingStep = state.isProcessingStep
         )
     }
 }

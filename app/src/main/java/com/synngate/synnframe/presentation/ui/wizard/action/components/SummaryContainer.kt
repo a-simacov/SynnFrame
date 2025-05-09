@@ -24,9 +24,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 /**
  * Контейнер для отображения итогового экрана визарда с результатами
@@ -50,6 +56,23 @@ fun SummaryContainer(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
+    // Используем отложенное отображение индикатора загрузки
+    var showLoading by remember { mutableStateOf(false) }
+    var previousLoadingState by remember { mutableStateOf(false) }
+
+    // Используем эффект для отложенного отображения индикатора загрузки
+    LaunchedEffect(isSending) {
+        if (isSending && !previousLoadingState) {
+            // Если началась отправка, ждем 300мс перед показом индикатора
+            delay(300)
+            showLoading = isSending
+        } else if (!isSending && previousLoadingState) {
+            // Если отправка завершилась, сразу убираем индикатор
+            showLoading = false
+        }
+        previousLoadingState = isSending
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -79,7 +102,7 @@ fun SummaryContainer(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Кнопка "Назад"
+            // Кнопка "Назад" - сохраняем на итоговом экране
             OutlinedButton(
                 onClick = onBack,
                 modifier = Modifier.weight(1f),
@@ -119,7 +142,7 @@ fun SummaryContainer(
                     modifier = Modifier.weight(1f),
                     enabled = !isSending
                 ) {
-                    if (isSending) {
+                    if (showLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp,

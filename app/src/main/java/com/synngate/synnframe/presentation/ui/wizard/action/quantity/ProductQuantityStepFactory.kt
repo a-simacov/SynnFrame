@@ -114,6 +114,8 @@ class ProductQuantityStepFactory(
             },
             onCancel = { context.onCancel() },
             forwardEnabled = state.data != null && quantityViewModel.currentInputQuantity > 0,
+            isProcessingGlobal = context.isProcessingStep,
+            isFirstStep = context.isFirstStep,  // Передаем флаг первого шага
             content = {
                 // Используем безопасную версию содержимого
                 SafeProductQuantityContent(

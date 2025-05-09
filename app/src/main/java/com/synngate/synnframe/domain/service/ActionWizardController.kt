@@ -128,6 +128,7 @@ class ActionWizardController(
 
         try {
             if (state.isProcessingStep) {
+                Timber.d("Already processing step, skipping request")
                 return
             }
 
@@ -179,7 +180,9 @@ class ActionWizardController(
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error processing step result")
+            Timber.e(e, "Error processing step result: ${e.message}")
+        } finally {
+            // Важно! Гарантируем сброс флага isProcessingStep в любом случае
             _wizardState.value = _wizardState.value?.copy(isProcessingStep = false)
         }
     }
@@ -203,6 +206,7 @@ class ActionWizardController(
         val state = _wizardState.value ?: return
 
         if (state.isProcessingStep) {
+            Timber.d("Already processing step, skipping forward request")
             return
         }
 
@@ -211,7 +215,7 @@ class ActionWizardController(
         try {
             handleForwardStep(state)
         } catch (e: Exception) {
-            Timber.e(e, "Error processing forward step")
+            Timber.e(e, "Error processing forward step: ${e.message}")
         } finally {
             _wizardState.value = _wizardState.value?.copy(isProcessingStep = false)
         }
@@ -226,7 +230,9 @@ class ActionWizardController(
                 isProcessingStep = false
             )
         } else {
+            // Если нельзя перейти вперед, просто сбрасываем флаг isProcessingStep
             _wizardState.value = state.copy(isProcessingStep = false)
+            Timber.d("Cannot go forward: step completed or no current step or no result for current step")
         }
     }
 
@@ -261,6 +267,8 @@ class ActionWizardController(
                 isProcessingStep = false
             )
         } else {
+            // Если нельзя перейти назад, просто сбрасываем флаг isProcessingStep
+            _wizardState.value = state.copy(isProcessingStep = false)
             Timber.d("Cannot go back from first step or step doesn't allow back navigation")
         }
     }
@@ -270,7 +278,7 @@ class ActionWizardController(
 
         try {
             if (barcode == currentState.lastScannedBarcode || currentState.isProcessingStep) {
-                Timber.d("Игнорирование повторного штрихкода или визард в процессе обработки")
+                Timber.d("Ignoring repeated barcode or wizard is processing: $barcode")
                 return
             }
 
@@ -322,7 +330,7 @@ class ActionWizardController(
 
             return result
         } catch (e: Exception) {
-            Timber.e(e, "Error completing action")
+            Timber.e(e, "Error completing action: ${e.message}")
             // Ошибка - сохраняем её в состоянии
             _wizardState.value = state.copy(isSending = false, sendError = e.message ?: "Неизвестная ошибка")
             return Result.failure(e)

@@ -26,8 +26,6 @@ abstract class BaseActionStepFactory<T> : ActionStepFactory {
         // Получаем состояние из ViewModel
         val state by viewModel.state.collectAsState()
 
-        // Обработчик штрих-кода из контекста для LaunchedEffect реализуется внутри ViewModel
-
         // Вызываем абстрактный метод для отображения содержимого шага
         StepContent(
             state = state,

@@ -151,6 +151,8 @@ class ProductSelectionStepFactory(
             },
             onCancel = { context.onCancel() },
             forwardEnabled = productViewModel.hasSelectedProduct(),
+            isProcessingGlobal = context.isProcessingStep,
+            isFirstStep = context.isFirstStep,  // Передаем флаг первого шага
             content = {
                 SafeProductSelectionContent(
                     state = state,

@@ -141,6 +141,8 @@ class BinSelectionStepFactory(
             },
             onCancel = { context.onCancel() },
             forwardEnabled = binViewModel.hasSelectedBin(),
+            isProcessingGlobal = context.isProcessingStep,
+            isFirstStep = context.isFirstStep,  // Передаем флаг первого шага
             content = {
                 SafeBinSelectionContent(
                     state = state,
