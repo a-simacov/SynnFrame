@@ -682,7 +682,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         // Регистрируем фабрики для различных типов объектов с доступом к репозиторию
         registry.registerFactory(
             ActionObjectType.CLASSIFIER_PRODUCT,
-            ProductSelectionStepFactory(appContainer.productRepository)
+            ProductSelectionStepFactory(appContainer.productLookupService)
         )
 
         registry.registerFactory(
@@ -697,12 +697,12 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
 
         registry.registerFactory(
             ActionObjectType.PALLET,
-            PalletSelectionStepFactory()  // Удаляем передачу ActionDataViewModel
+            PalletSelectionStepFactory()
         )
 
         registry.registerFactory(
             ActionObjectType.BIN,
-            BinSelectionStepFactory()  // Удаляем передачу ActionDataViewModel
+            BinSelectionStepFactory()
         )
 
         return registry
