@@ -1,0 +1,166 @@
+package com.synngate.synnframe.presentation.ui.wizard.action.quantity
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.domain.entity.taskx.TaskProduct
+import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
+import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
+import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.ValidationService
+import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseActionStepFactory
+import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
+import com.synngate.synnframe.presentation.ui.wizard.action.base.StepViewState
+import com.synngate.synnframe.presentation.ui.wizard.action.components.ProductCard
+import com.synngate.synnframe.presentation.ui.wizard.action.components.QuantityInfoCard
+import com.synngate.synnframe.presentation.ui.wizard.action.components.QuantityTextField
+import com.synngate.synnframe.presentation.ui.wizard.action.components.StepContainer
+
+/**
+ * Фабрика для шага ввода количества продукта
+ */
+class ProductQuantityStepFactory(
+    private val validationService: ValidationService
+) : BaseActionStepFactory<TaskProduct>() {
+
+    /**
+     * Создание ViewModel для шага
+     */
+    override fun getStepViewModel(
+        step: ActionStep,
+        action: PlannedAction,
+        context: ActionContext
+    ): BaseStepViewModel<TaskProduct> {
+        return ProductQuantityViewModel(
+            step = step,
+            action = action,
+            context = context,
+            validationService = validationService
+        )
+    }
+
+    /**
+     * Отображение UI для шага
+     */
+    @Composable
+    override fun StepContent(
+        state: StepViewState<TaskProduct>,
+        viewModel: BaseStepViewModel<TaskProduct>,
+        step: ActionStep,
+        action: PlannedAction,
+        context: ActionContext
+    ) {
+        // Приводим базовый ViewModel к конкретному типу
+        val quantityViewModel = viewModel as ProductQuantityViewModel
+
+        // Проверяем, есть ли выбранный продукт
+        if (!quantityViewModel.hasSelectedProduct()) {
+            ErrorScreen(message = "Сначала необходимо выбрать товар")
+            return
+        }
+
+        // Основной контейнер шага
+        StepContainer(
+            state = state,
+            step = step,
+            action = action,
+            onBack = { quantityViewModel.goBack() },
+            onForward = {
+                quantityViewModel.saveResult()
+            },
+            onCancel = { context.onCancel() },
+            forwardEnabled = state.data != null,
+            content = {
+                ProductQuantityContent(
+                    state = state,
+                    viewModel = quantityViewModel
+                )
+            }
+        )
+    }
+
+    /**
+     * Содержимое шага ввода количества
+     */
+    @Composable
+    private fun ProductQuantityContent(
+        state: StepViewState<TaskProduct>,
+        viewModel: ProductQuantityViewModel
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(4.dp)
+        ) {
+            if (state.data != null) {
+                // Отображаем информацию о выбранном продукте
+                ProductCard(
+                    product = state.data.product,
+                    isSelected = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Поле ввода количества
+                QuantityTextField(
+                    value = viewModel.quantityInput,
+                    onValueChange = { viewModel.updateQuantityInput(it) },
+                    onIncrement = { viewModel.incrementQuantity() },
+                    onDecrement = { viewModel.decrementQuantity() },
+                    label = "Введите количество",
+                    isError = state.error != null,
+                    errorText = state.error,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Информация о количестве
+                QuantityInfoCard(
+                    plannedQuantity = viewModel.plannedQuantity,
+                    completedQuantity = viewModel.completedQuantity,
+                    remainingQuantity = viewModel.remainingQuantity,
+                    currentQuantity = viewModel.currentInputQuantity,
+                    projectedTotal = viewModel.projectedTotalQuantity,
+                    willExceedPlan = viewModel.willExceedPlan,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun ErrorScreen(message: String) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+
+    /**
+     * Валидация результата шага
+     */
+    override fun validateStepResult(step: ActionStep, value: Any?): Boolean {
+        val taskProduct = value as? TaskProduct
+        return taskProduct != null && taskProduct.quantity > 0
+    }
+}
