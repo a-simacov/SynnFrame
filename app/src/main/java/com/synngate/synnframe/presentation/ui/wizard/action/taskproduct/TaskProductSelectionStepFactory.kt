@@ -157,7 +157,8 @@ class TaskProductSelectionStepFactory(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Отображение выбранного продукта
-            if (state.data != null) {
+            val taskProduct = state.data
+            if (taskProduct != null && taskProduct is TaskProduct) {
                 Text(
                     text = "Выбранный товар:",
                     style = MaterialTheme.typography.labelMedium,
@@ -166,7 +167,7 @@ class TaskProductSelectionStepFactory(
                 )
 
                 ProductCard(
-                    product = state.data.product,
+                    product = taskProduct.product,
                     isSelected = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -201,8 +202,8 @@ class TaskProductSelectionStepFactory(
             if (viewModel.hasPlanProducts()) {
                 PlanProductsList(
                     planProducts = viewModel.getPlanProducts(),
-                    onProductSelect = { taskProduct ->
-                        viewModel.selectTaskProductFromPlan(taskProduct)
+                    onProductSelect = { selectedTaskProduct ->
+                        viewModel.selectTaskProductFromPlan(selectedTaskProduct)
                     }
                 )
 

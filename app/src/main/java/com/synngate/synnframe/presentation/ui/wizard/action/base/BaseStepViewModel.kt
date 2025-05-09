@@ -49,22 +49,36 @@ abstract class BaseStepViewModel<T>(
      * Подклассы могут переопределить этот метод для своей логики инициализации.
      */
     protected open fun initStateFromContext() {
-        // Проверяем, есть ли уже результат в контексте для текущего шага
-        if (context.hasStepResult) {
-            val result = context.getCurrentStepResult()
-            @Suppress("UNCHECKED_CAST")
-            if (result != null && isValidType(result)) {
-                _state.update {
-                    it.copy(data = result as T)
+        try {
+            // Проверяем, есть ли уже результат в контексте для текущего шага
+            if (context.hasStepResult) {
+                val result = context.getCurrentStepResult()
+                if (result != null) {
+                    try {
+                        if (isValidType(result)) {
+                            @Suppress("UNCHECKED_CAST")
+                            _state.update {
+                                it.copy(data = result as T)
+                            }
+                        } else {
+                            Timber.w("Incompatible type for step ${context.stepId}: found ${result::class.simpleName}")
+                        }
+                    } catch (e: ClassCastException) {
+                        Timber.e(e, "Error casting result to expected type")
+                        setError("Ошибка при загрузке данных: несовместимый тип данных")
+                    }
                 }
             }
-        }
 
-        // Проверяем, есть ли ошибка в контексте для текущего шага
-        if (context.validationError != null) {
-            _state.update {
-                it.copy(error = context.validationError)
+            // Проверяем, есть ли ошибка в контексте для текущего шага
+            if (context.validationError != null) {
+                _state.update {
+                    it.copy(error = context.validationError)
+                }
             }
+        } catch (e: Exception) {
+            Timber.e(e, "Error initializing state from context")
+            setError("Ошибка инициализации состояния: ${e.message}")
         }
     }
 

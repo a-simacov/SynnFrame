@@ -26,6 +26,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.ProductCa
 import com.synngate.synnframe.presentation.ui.wizard.action.components.QuantityInfoCard
 import com.synngate.synnframe.presentation.ui.wizard.action.components.QuantityTextField
 import com.synngate.synnframe.presentation.ui.wizard.action.components.StepContainer
+import timber.log.Timber
 
 /**
  * Фабрика для шага ввода количества продукта
@@ -61,10 +62,32 @@ class ProductQuantityStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Приводим базовый ViewModel к конкретному типу
-        val quantityViewModel = viewModel as ProductQuantityViewModel
+        // Безопасное приведение ViewModel к конкретному типу
+        val quantityViewModel = try {
+            viewModel as ProductQuantityViewModel
+        } catch (e: ClassCastException) {
+            Timber.e(e, "Ошибка приведения ViewModel к ProductQuantityViewModel")
+            null
+        }
 
-        // Проверяем, есть ли выбранный продукт
+        // Если приведение не удалось, показываем сообщение об ошибке
+        if (quantityViewModel == null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Ошибка инициализации шага. Пожалуйста, вернитесь назад и попробуйте снова.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            return
+        }
+
+        // Проверяем, выбран ли продукт
         if (!quantityViewModel.hasSelectedProduct()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -92,7 +115,8 @@ class ProductQuantityStepFactory(
             onCancel = { context.onCancel() },
             forwardEnabled = state.data != null && quantityViewModel.currentInputQuantity > 0,
             content = {
-                ProductQuantityContent(
+                // Используем безопасную версию содержимого
+                SafeProductQuantityContent(
                     state = state,
                     viewModel = quantityViewModel
                 )
@@ -101,10 +125,10 @@ class ProductQuantityStepFactory(
     }
 
     /**
-     * Содержимое шага ввода количества
+     * Безопасная версия содержимого шага ввода количества
      */
     @Composable
-    private fun ProductQuantityContent(
+    private fun SafeProductQuantityContent(
         state: StepViewState<TaskProduct>,
         viewModel: ProductQuantityViewModel
     ) {
@@ -113,10 +137,13 @@ class ProductQuantityStepFactory(
                 .fillMaxWidth()
                 .padding(4.dp)
         ) {
-            if (state.data != null) {
+            // Используем product из ViewModel, а не из state.data
+            val product = viewModel.getSelectedProduct()
+
+            if (product != null) {
                 // Отображаем информацию о выбранном продукте
                 ProductCard(
-                    product = state.data.product,
+                    product = product,
                     isSelected = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -146,6 +173,14 @@ class ProductQuantityStepFactory(
                     projectedTotal = viewModel.projectedTotalQuantity,
                     willExceedPlan = viewModel.willExceedPlan,
                     modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                // Показываем сообщение, если продукт не найден
+                Text(
+                    text = "Продукт не выбран или данные некорректны",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(16.dp)
                 )
             }
         }

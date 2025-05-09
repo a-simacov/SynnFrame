@@ -23,7 +23,8 @@ class ProductQuantityViewModel(
 ) : BaseStepViewModel<TaskProduct>(step, action, context, validationService) {
 
     // Данные выбранного продукта
-    private var selectedProduct: TaskProduct? = null
+    private var selectedProduct: Product? = null
+    private var selectedTaskProduct: TaskProduct? = null
 
     // Состояние поля ввода количества
     var quantityInput = "1"
@@ -66,22 +67,42 @@ class ProductQuantityViewModel(
     /**
      * Находит предыдущий результат шага с продуктом
      */
-    private fun findPreviousStepResult(): TaskProduct? {
-        // Ищем TaskProduct в результатах предыдущих шагов
-        for ((stepId, value) in context.results) {
-            if (stepId != context.stepId && value is TaskProduct) {
-                return value
-            }
-        }
+    private fun findPreviousStepResult(): Pair<Product?, TaskProduct?> {
+        try {
+            var foundProduct: Product? = null
+            var foundTaskProduct: TaskProduct? = null
 
-        // Если не нашли TaskProduct, ищем просто Product и создаем из него TaskProduct
-        for ((stepId, value) in context.results) {
-            if (stepId != context.stepId && value is Product) {
-                return TaskProduct(product = value, quantity = 0f)
-            }
-        }
+            // Более безопасный поиск результатов предыдущих шагов
 
-        return null
+            // Сначала пытаемся найти TaskProduct в результатах
+            for ((stepId, value) in context.results) {
+                if (stepId != context.stepId) {
+                    when (value) {
+                        is TaskProduct -> {
+                            Timber.d("Found TaskProduct from previous step: $stepId")
+                            foundTaskProduct = value
+                            foundProduct = value.product
+                            break
+                        }
+                        is Product -> {
+                            Timber.d("Found Product from previous step: $stepId")
+                            foundProduct = value
+                            // Не прерываем поиск, потому что может найтись TaskProduct
+                        }
+                    }
+                }
+            }
+
+            // Если нашли только Product, создаем из него TaskProduct
+            if (foundProduct != null && foundTaskProduct == null) {
+                foundTaskProduct = TaskProduct(product = foundProduct, quantity = 0f)
+            }
+
+            return Pair(foundProduct, foundTaskProduct)
+        } catch (e: Exception) {
+            Timber.e(e, "Error finding previous step result")
+            return Pair(null, null)
+        }
     }
 
     /**
@@ -93,13 +114,15 @@ class ProductQuantityViewModel(
                 setLoading(true)
 
                 // Находим продукт из предыдущего шага
-                selectedProduct = findPreviousStepResult()
+                val (product, taskProduct) = findPreviousStepResult()
+                selectedProduct = product
+                selectedTaskProduct = taskProduct
 
-                if (selectedProduct != null) {
+                if (product != null) {
                     // Если у нас уже есть результат в контексте, используем его количество
                     if (context.hasStepResult) {
-                        val currentResult = context.getCurrentStepResult() as? TaskProduct
-                        if (currentResult != null && currentResult.quantity > 0) {
+                        val currentResult = context.getCurrentStepResult()
+                        if (currentResult is TaskProduct && currentResult.quantity > 0) {
                             quantityInput = currentResult.quantity.toString()
                         }
                     }
@@ -113,7 +136,7 @@ class ProductQuantityViewModel(
 
                 setLoading(false)
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при инициализации данных из предыдущего шага")
+                Timber.e(e, "Ошибка при инициализации данных из предыдущего шага: ${e.message}")
                 setError("Ошибка загрузки данных: ${e.message}")
                 setLoading(false)
             }
@@ -123,11 +146,15 @@ class ProductQuantityViewModel(
     /**
      * Получает связанные фактические действия из контекста
      */
+    @Suppress("UNCHECKED_CAST")
     private fun getRelatedFactActions(): List<FactAction> {
-        val factActionsInfo = context.results["factActions"] as? Map<*, *> ?: emptyMap<String, Any>()
-
-        @Suppress("UNCHECKED_CAST")
-        return (factActionsInfo[action.id] as? List<FactAction>) ?: emptyList()
+        try {
+            val factActionsInfo = context.results["factActions"] as? Map<*, *> ?: emptyMap<String, Any>()
+            return (factActionsInfo[action.id] as? List<FactAction>) ?: emptyList()
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при получении связанных фактических действий: ${e.message}")
+            return emptyList()
+        }
     }
 
     /**
@@ -138,7 +165,7 @@ class ProductQuantityViewModel(
 
         // Получаем запланированное количество
         val plannedProduct = action.storageProduct
-        plannedQuantity = if (plannedProduct?.product?.id == selectedProduct?.product?.id) {
+        plannedQuantity = if (plannedProduct?.product?.id == selectedProduct?.id) {
             plannedProduct?.quantity ?: 0f
         } else {
             0f
@@ -176,8 +203,11 @@ class ProductQuantityViewModel(
         }
 
         // Создаем обновленный продукт с текущим количеством
-        val updatedProduct = selectedProduct!!.copy(quantity = quantityValue)
-        setData(updatedProduct)
+        val updatedTaskProduct = selectedTaskProduct?.copy(quantity = quantityValue)
+            ?: TaskProduct(product = selectedProduct!!, quantity = quantityValue)
+
+        selectedTaskProduct = updatedTaskProduct
+        setData(updatedTaskProduct)
 
         // Обновляем расчетные данные
         updateCalculatedValues()
@@ -250,8 +280,10 @@ class ProductQuantityViewModel(
             return
         }
 
-        val updatedProduct = selectedProduct!!.copy(quantity = quantityValue)
-        completeStep(updatedProduct)
+        val updatedTaskProduct = selectedTaskProduct?.copy(quantity = quantityValue)
+            ?: TaskProduct(product = selectedProduct!!, quantity = quantityValue)
+
+        completeStep(updatedTaskProduct)
     }
 
     /**
@@ -259,5 +291,19 @@ class ProductQuantityViewModel(
      */
     fun hasSelectedProduct(): Boolean {
         return selectedProduct != null
+    }
+
+    /**
+     * Возвращает выбранный продукт
+     */
+    fun getSelectedProduct(): Product? {
+        return selectedProduct
+    }
+
+    /**
+     * Возвращает выбранный TaskProduct
+     */
+    fun getSelectedTaskProduct(): TaskProduct? {
+        return selectedTaskProduct
     }
 }

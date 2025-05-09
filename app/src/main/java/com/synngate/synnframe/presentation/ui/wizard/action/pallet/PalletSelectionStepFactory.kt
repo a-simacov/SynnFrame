@@ -150,8 +150,8 @@ class PalletSelectionStepFactory(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Отображение выбранной паллеты
-            if (state.data != null) {
+            val pallet = state.data
+            if (pallet != null && pallet is Pallet) {
                 Text(
                     text = "Выбранная паллета:",
                     style = MaterialTheme.typography.labelMedium,
@@ -160,7 +160,7 @@ class PalletSelectionStepFactory(
                 )
 
                 PalletCard(
-                    pallet = state.data,
+                    pallet = pallet,
                     isSelected = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -173,8 +173,8 @@ class PalletSelectionStepFactory(
             if (viewModel.hasPlanPallets()) {
                 PlanPalletsList(
                     planPallets = viewModel.getPlanPallets(),
-                    onPalletSelect = { pallet ->
-                        viewModel.selectPallet(pallet)
+                    onPalletSelect = { selectedPallet ->
+                        viewModel.selectPallet(selectedPallet)
                     }
                 )
 

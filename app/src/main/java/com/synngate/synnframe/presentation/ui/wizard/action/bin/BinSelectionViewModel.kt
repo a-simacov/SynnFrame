@@ -27,6 +27,9 @@ class BinSelectionViewModel(
     private val planBins = listOfNotNull(plannedBin)
     private val zoneFilter = plannedBin?.zone
 
+    // Сохраняем выбранный бин для безопасного доступа
+    private var selectedBin: BinX? = null
+
     // Состояние поля ввода кода ячейки - публичное свойство с private setter
     var binCodeInput = ""
         private set
@@ -47,6 +50,29 @@ class BinSelectionViewModel(
         // Если есть запланированная ячейка, добавляем её в filteredBins
         if (plannedBin != null) {
             filteredBins = listOf(plannedBin)
+            // Также устанавливаем её как выбранную по умолчанию
+            selectedBin = plannedBin
+            setData(plannedBin)
+        }
+
+        // Инициализация из предыдущего контекста
+        initFromContext()
+    }
+
+    /**
+     * Инициализация из данных контекста
+     */
+    private fun initFromContext() {
+        if (context.hasStepResult) {
+            try {
+                val result = context.getCurrentStepResult()
+                if (result is BinX) {
+                    selectedBin = result
+                    setData(result)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка инициализации из контекста: ${e.message}")
+            }
         }
     }
 
@@ -72,6 +98,7 @@ class BinSelectionViewModel(
                     expectedBarcode = plannedBin?.code,
                     onResult = { found, data ->
                         if (found && data is BinX) {
+                            selectedBin = data
                             setData(data)
                             // Очищаем поле ввода
                             updateBinCodeInput("")
@@ -94,22 +121,6 @@ class BinSelectionViewModel(
     }
 
     /**
-     * Создаем расширенный контекст для валидации API
-     */
-    override fun createValidationContext(): Map<String, Any> {
-        val baseContext = super.createValidationContext().toMutableMap()
-
-        // Добавляем планируемую ячейку и список ячеек плана для валидации
-        // Используем safe call, чтобы избежать добавления null-значений
-        plannedBin?.let { baseContext["plannedBin"] = it }
-        if (planBins.isNotEmpty()) {
-            baseContext["planBins"] = planBins
-        }
-
-        return baseContext
-    }
-
-    /**
      * Валидация данных перед завершением шага
      */
     override fun validateBasicRules(data: BinX?): Boolean {
@@ -128,16 +139,7 @@ class BinSelectionViewModel(
      * Обновление ввода кода ячейки - публичный метод, доступный из UI
      */
     fun updateBinCodeInput(input: String) {
-        // Добавляем логирование для отладки
-        Timber.d("BinSelectionViewModel: updateBinCodeInput called with '$input'")
         binCodeInput = input
-
-        // Обновляем состояние в Flow для уведомления UI об изменениях
-//        _state.update { currentState ->
-//            currentState.copy(
-//                additionalData = currentState.additionalData + ("binCodeInput" to input)
-//            )
-//        }
         updateAdditionalData("binCodeInput", input)
     }
 
@@ -147,7 +149,6 @@ class BinSelectionViewModel(
     fun searchByBinCode() {
         if (binCodeInput.isNotEmpty()) {
             processBarcode(binCodeInput)
-            // Не очищаем поле ввода здесь, это сделает processBarcode при успешном поиске
         }
     }
 
@@ -187,6 +188,7 @@ class BinSelectionViewModel(
      * Выбор ячейки из списка
      */
     fun selectBin(bin: BinX) {
+        selectedBin = bin
         setData(bin)
     }
 
@@ -230,5 +232,19 @@ class BinSelectionViewModel(
      */
     fun hasPlanBins(): Boolean {
         return planBins.isNotEmpty()
+    }
+
+    /**
+     * Получение выбранной ячейки
+     */
+    fun getSelectedBin(): BinX? {
+        return selectedBin
+    }
+
+    /**
+     * Проверка, выбрана ли ячейка
+     */
+    fun hasSelectedBin(): Boolean {
+        return selectedBin != null
     }
 }

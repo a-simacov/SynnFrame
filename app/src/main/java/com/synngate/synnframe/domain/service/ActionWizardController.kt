@@ -240,8 +240,23 @@ class ActionWizardController(
                 )
             }
         } else if (state.canGoBack && state.currentStepIndex > 0) {
+            // Очищаем результаты шагов после предыдущего шага
+            val previousStepIndex = state.currentStepIndex - 1
+            val updatedResults = state.results.toMutableMap().apply {
+                // Удаляем результаты всех шагов после того, на который переходим
+                if (previousStepIndex < state.steps.size) {
+                    for (i in previousStepIndex + 1 until state.steps.size) {
+                        if (i < state.steps.size) {
+                            val stepIdToRemove = state.steps[i].id
+                            remove(stepIdToRemove)
+                        }
+                    }
+                }
+            }
+
             _wizardState.value = state.copy(
-                currentStepIndex = state.currentStepIndex - 1,
+                currentStepIndex = previousStepIndex,
+                results = updatedResults,  // Используем обновленные результаты
                 lastScannedBarcode = null,
                 isProcessingStep = false
             )

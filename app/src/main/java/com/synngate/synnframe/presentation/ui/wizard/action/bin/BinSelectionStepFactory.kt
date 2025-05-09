@@ -1,7 +1,9 @@
 package com.synngate.synnframe.presentation.ui.wizard.action.bin
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -14,8 +16,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.taskx.BinX
@@ -33,6 +37,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.BinCard
 import com.synngate.synnframe.presentation.ui.wizard.action.components.PlanBinsList
 import com.synngate.synnframe.presentation.ui.wizard.action.components.StepContainer
 import com.synngate.synnframe.presentation.ui.wizard.service.BinLookupService
+import timber.log.Timber
 
 /**
  * Фабрика для шага выбора ячейки
@@ -70,8 +75,30 @@ class BinSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Приводим базовый ViewModel к конкретному типу
-        val binViewModel = viewModel as BinSelectionViewModel
+        // Безопасное приведение ViewModel к конкретному типу
+        val binViewModel = try {
+            viewModel as BinSelectionViewModel
+        } catch (e: ClassCastException) {
+            Timber.e(e, "Ошибка приведения ViewModel к BinSelectionViewModel")
+            null
+        }
+
+        // Если приведение не удалось, показываем сообщение об ошибке
+        if (binViewModel == null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Ошибка инициализации шага. Пожалуйста, вернитесь назад и попробуйте снова.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            return
+        }
 
         // Обработка штрих-кода из контекста, если он есть
         LaunchedEffect(context.lastScannedBarcode) {
@@ -107,13 +134,15 @@ class BinSelectionStepFactory(
             action = action,
             onBack = { context.onBack() },
             onForward = {
-                // Переход вперед возможен только при наличии выбранной ячейки
-                state.data?.let { binViewModel.completeStep(it) }
+                // Безопасно выполняем действие завершения
+                binViewModel.getSelectedBin()?.let { bin ->
+                    binViewModel.completeStep(bin)
+                }
             },
             onCancel = { context.onCancel() },
-            forwardEnabled = state.data != null,
+            forwardEnabled = binViewModel.hasSelectedBin(),
             content = {
-                BinSelectionContent(
+                SafeBinSelectionContent(
                     state = state,
                     viewModel = binViewModel,
                     step = step
@@ -123,10 +152,10 @@ class BinSelectionStepFactory(
     }
 
     /**
-     * Содержимое шага выбора ячейки
+     * Безопасное содержимое шага выбора ячейки
      */
     @Composable
-    private fun BinSelectionContent(
+    private fun SafeBinSelectionContent(
         state: StepViewState<BinX>,
         viewModel: BinSelectionViewModel,
         step: ActionStep
@@ -147,7 +176,8 @@ class BinSelectionStepFactory(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Отображение выбранной ячейки
-            if (state.data != null) {
+            val selectedBin = viewModel.getSelectedBin()
+            if (selectedBin != null) {
                 Text(
                     text = "Выбранная ячейка:",
                     style = MaterialTheme.typography.labelMedium,
@@ -156,7 +186,7 @@ class BinSelectionStepFactory(
                 )
 
                 BinCard(
-                    bin = state.data,
+                    bin = selectedBin,
                     isSelected = true,
                     modifier = Modifier.fillMaxWidth()
                 )
