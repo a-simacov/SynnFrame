@@ -23,15 +23,15 @@ import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.common.dialog.OptimizedProductSelectionDialog
+import com.synngate.synnframe.presentation.common.inputs.ExpirationDatePicker
+import com.synngate.synnframe.presentation.common.inputs.ProductStatusSelector
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.base.StepViewState
 import com.synngate.synnframe.presentation.ui.wizard.action.components.BarcodeEntryField
-import com.synngate.synnframe.presentation.ui.wizard.action.components.ExpirationDatePicker
 import com.synngate.synnframe.presentation.ui.wizard.action.components.PlanProductsList
 import com.synngate.synnframe.presentation.ui.wizard.action.components.ProductCard
-import com.synngate.synnframe.presentation.ui.wizard.action.components.ProductStatusSelector
 import com.synngate.synnframe.presentation.ui.wizard.action.components.StepContainer
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 
