@@ -212,8 +212,8 @@ class TaskProductSelectionStepFactory(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Датапикер для срока годности (только для продуктов с учетом по партиям)
-                val taskProduct = viewModel.getSelectedTaskProduct()
-                if (taskProduct != null && taskProduct.product.accountingModel == AccountingModel.BATCH) {
+                // ИЗМЕНЕНО: Проверка непосредственно по selectedProduct
+                if (selectedProduct.accountingModel == AccountingModel.BATCH) {
                     ExpirationDatePicker(
                         expirationDate = viewModel.expirationDate,
                         onDateSelected = { viewModel.setExpirationDate(it) },
