@@ -39,7 +39,7 @@ import com.synngate.synnframe.presentation.ui.wizard.service.BinLookupService
  */
 class BinSelectionStepFactory(
     private val binLookupService: BinLookupService,
-    private val validationService: ValidationService // Добавлен ValidationService
+    private val validationService: ValidationService
 ) : BaseActionStepFactory<BinX>() {
 
     /**
@@ -50,13 +50,12 @@ class BinSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ): BaseStepViewModel<BinX> {
-        // Создаем и возвращаем ViewModel, передавая validationService
         return BinSelectionViewModel(
             step = step,
             action = action,
             context = context,
             binLookupService = binLookupService,
-            validationService = validationService // Передаем ValidationService
+            validationService = validationService
         )
     }
 
@@ -101,12 +100,12 @@ class BinSelectionStepFactory(
             )
         }
 
-        // Основной контейнер шага
+        // Используем StepContainer для унифицированного отображения шага
         StepContainer(
             state = state,
             step = step,
             action = action,
-            onBack = { binViewModel.goBack() },
+            onBack = { context.onBack() },
             onForward = {
                 // Переход вперед возможен только при наличии выбранной ячейки
                 state.data?.let { binViewModel.completeStep(it) }

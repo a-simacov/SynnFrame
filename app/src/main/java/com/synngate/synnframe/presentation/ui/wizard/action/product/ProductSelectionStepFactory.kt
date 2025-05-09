@@ -37,7 +37,7 @@ import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupServic
  */
 class ProductSelectionStepFactory(
     private val productLookupService: ProductLookupService,
-    private val validationService: ValidationService // Добавлен ValidationService
+    private val validationService: ValidationService
 ) : BaseActionStepFactory<Product>() {
 
     /**
@@ -48,13 +48,12 @@ class ProductSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ): BaseStepViewModel<Product> {
-        // Создаем и возвращаем ViewModel, передавая validationService
         return ProductSelectionViewModel(
             step = step,
             action = action,
             context = context,
             productLookupService = productLookupService,
-            validationService = validationService // Передаем ValidationService
+            validationService = validationService
         )
     }
 
@@ -111,12 +110,12 @@ class ProductSelectionStepFactory(
             )
         }
 
-        // Основной контейнер шага
+        // Используем StepContainer для унифицированного отображения шага
         StepContainer(
             state = state,
             step = step,
             action = action,
-            onBack = { productViewModel.goBack() },
+            onBack = { context.onBack() },
             onForward = {
                 // Переход вперед возможен только при наличии выбранного продукта
                 state.data?.let { productViewModel.completeStep(it) }

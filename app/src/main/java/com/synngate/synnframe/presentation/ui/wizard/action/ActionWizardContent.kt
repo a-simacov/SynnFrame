@@ -1,42 +1,26 @@
 package com.synngate.synnframe.presentation.ui.wizard.action
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -55,8 +39,11 @@ import com.synngate.synnframe.domain.service.ActionWizardController
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.scanner.ScannerListener
+import com.synngate.synnframe.presentation.ui.wizard.action.components.QuantityRow
+import com.synngate.synnframe.presentation.ui.wizard.action.components.SummaryContainer
 import com.synngate.synnframe.presentation.util.formatDate
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Composable
@@ -71,7 +58,7 @@ fun ActionWizardContent(
     onBarcodeScanned: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = CoroutineScope(Dispatchers.Main)
 
     if (wizardState == null) {
         EmptyScreenContent(
@@ -123,11 +110,27 @@ fun ActionWizardContent(
             val action = wizardState.action
 
             if (currentStep == null || wizardState.isCompleted) {
-                ActionSummaryScreen(
-                    state = wizardState,
+                // Отображаем экран с итогами с использованием SummaryContainer
+                SummaryContainer(
+                    title = "Проверьте информацию перед завершением",
+                    onBack = {
+                        coroutineScope.launch {
+                            actionWizardController.processStepResult(null)
+                        }
+                    },
+                    onComplete = onComplete,
+                    onRetry = onRetryComplete,
+                    isSending = wizardState.isSending,
+                    hasError = wizardState.sendError != null,
                     modifier = Modifier.fillMaxSize()
-                )
+                ) {
+                    ActionSummaryScreen(
+                        state = wizardState,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             } else if (action != null) {
+                // Отображаем текущий шаг визарда
                 val actionStep = findActionStepForWizardStep(action, currentStep.id)
 
                 if (actionStep != null) {
@@ -177,165 +180,49 @@ fun ActionWizardContent(
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        WizardActions(
-            wizardState = wizardState,
-            coroutineScope = coroutineScope,
-            actionWizardController = actionWizardController,
-            onComplete = onComplete,
-            onRetryComplete = onRetryComplete,
-        )
     }
 }
 
-@Composable
-private fun WizardActions(
-    wizardState: ActionWizardState,
-    coroutineScope: CoroutineScope,
-    actionWizardController: ActionWizardController,
-    onComplete: () -> Unit,
-    onRetryComplete: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        if ((wizardState.canGoBack && wizardState.currentStepIndex > 0) || wizardState.isCompleted) {
-            PreviousButton(
-                coroutineScope = coroutineScope,
-                actionWizardController = actionWizardController,
-                enabled = !wizardState.isSending,
-                modifier = Modifier.weight(1f)
-            )
-        } else {
-            Spacer(modifier = Modifier.weight(1f))
-        }
-
-        if (wizardState.isCompleted) {
-            if (wizardState.sendError != null) {
-                RetryButton(
-                    onRetryComplete = onRetryComplete,
-                    modifier = Modifier.weight(1f),
-                )
-            } else {
-                CompleteButton(
-                    onComplete = onComplete,
-                    enabled = !wizardState.isSending,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        } else if (!wizardState.isCompleted && wizardState.currentStep != null &&
-            wizardState.hasResultForStep(wizardState.currentStep!!.id)
-        ) {
-            NextButton(
-                coroutineScope = coroutineScope,
-                actionWizardController = actionWizardController,
-                modifier = Modifier.weight(1f)
-            )
-        } else {
-            Spacer(modifier = Modifier.weight(1f))
-        }
+// Вспомогательная функция для поиска ActionStep по ID шага
+private fun findActionStepForWizardStep(
+    action: PlannedAction,
+    stepId: String
+): ActionStep? {
+    action.actionTemplate.storageSteps.find { it.id == stepId }?.let {
+        return it
     }
+
+    action.actionTemplate.placementSteps.find { it.id == stepId }?.let {
+        return it
+    }
+
+    return null
 }
 
-@Composable
-private fun RetryButton(
-    onRetryComplete: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Button(
-        onClick = onRetryComplete,
-        modifier = modifier,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary
-        )
-    ) {
-        Icon(
-            imageVector = Icons.Default.Refresh,
-            contentDescription = "Повторить",
-            modifier = Modifier.padding(end = 4.dp)
-        )
-        Text("Повторить")
+/**
+ * Находит наиболее релевантную запись с товаром и количеством.
+ * Приоритет отдается результату шага с типом PRODUCT_QUANTITY (ввод количества),
+ * если он есть, иначе возвращает первый найденный TaskProduct.
+ */
+private fun findMostRelevantProductEntry(results: Map<String, Any>): Pair<String, TaskProduct>? {
+    // Сначала ищем результаты шага ввода количества (они будут иметь ненулевое количество)
+    val quantityProductEntry = results.entries.find { (_, value) ->
+        value is TaskProduct && value.quantity > 0
     }
-}
 
-@Composable
-private fun NextButton(
-    coroutineScope: CoroutineScope,
-    actionWizardController: ActionWizardController,
-    modifier: Modifier = Modifier
-) {
-    OutlinedButton(
-        onClick = {
-            coroutineScope.launch {
-                actionWizardController.processForwardStep()
-            }
-        },
-        modifier = modifier
-    ) {
-        Text("Вперед")
-        Spacer(modifier = Modifier.width(4.dp))
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-            contentDescription = "Вперед"
-        )
+    if (quantityProductEntry != null) {
+        return Pair(quantityProductEntry.key, quantityProductEntry.value as TaskProduct)
     }
-}
 
-@Composable
-private fun PreviousButton(
-    coroutineScope: CoroutineScope,
-    actionWizardController: ActionWizardController,
-    enabled: Boolean,
-    modifier: Modifier = Modifier
-) {
-    OutlinedButton(
-        onClick = {
-            coroutineScope.launch {
-                actionWizardController.processStepResult(null)
-            }
-        },
-        modifier = modifier,
-        enabled = enabled
-    ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Назад"
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text("Назад")
+    // Если не нашли, возвращаем первый найденный TaskProduct
+    val productEntry = results.entries.find { (_, value) ->
+        value is TaskProduct
     }
-}
 
-@Composable
-private fun CompleteButton(
-    onComplete: () -> Unit,
-    enabled: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Button(
-        onClick = onComplete,
-        modifier = modifier,
-        enabled = enabled
-    ) {
-        if (!enabled) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                strokeWidth = 2.dp,
-                color = LocalContentColor.current
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Отправка...")
-        } else {
-            Text("Завершить")
-            Spacer(modifier = Modifier.width(4.dp))
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = "Завершить"
-            )
-        }
+    return if (productEntry != null) {
+        Pair(productEntry.key, productEntry.value as TaskProduct)
+    } else {
+        null
     }
 }
 
@@ -544,46 +431,4 @@ private fun TaskProductInfo(
 @Composable
 fun DefaultSpacer(height: Dp = 4.dp) {
     Spacer(modifier = Modifier.height(height))
-}
-
-/**
- * Находит наиболее релевантную запись с товаром и количеством.
- * Приоритет отдается результату шага с типом PRODUCT_QUANTITY (ввод количества),
- * если он есть, иначе возвращает первый найденный TaskProduct.
- */
-private fun findMostRelevantProductEntry(results: Map<String, Any>): Pair<String, TaskProduct>? {
-    // Сначала ищем результаты шага ввода количества (они будут иметь ненулевое количество)
-    val quantityProductEntry = results.entries.find { (_, value) ->
-        value is TaskProduct && value.quantity > 0
-    }
-
-    if (quantityProductEntry != null) {
-        return Pair(quantityProductEntry.key, quantityProductEntry.value as TaskProduct)
-    }
-
-    // Если не нашли, возвращаем первый найденный TaskProduct
-    val productEntry = results.entries.find { (_, value) ->
-        value is TaskProduct
-    }
-
-    return if (productEntry != null) {
-        Pair(productEntry.key, productEntry.value as TaskProduct)
-    } else {
-        null
-    }
-}
-
-private fun findActionStepForWizardStep(
-    action: PlannedAction,
-    stepId: String
-): ActionStep? {
-    action.actionTemplate.storageSteps.find { it.id == stepId }?.let {
-        return it
-    }
-
-    action.actionTemplate.placementSteps.find { it.id == stepId }?.let {
-        return it
-    }
-
-    return null
 }

@@ -66,21 +66,31 @@ class ProductQuantityStepFactory(
 
         // Проверяем, есть ли выбранный продукт
         if (!quantityViewModel.hasSelectedProduct()) {
-            ErrorScreen(message = "Сначала необходимо выбрать товар")
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Сначала необходимо выбрать товар",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center
+                )
+            }
             return
         }
 
-        // Основной контейнер шага
+        // Используем StepContainer для унифицированного отображения шага
         StepContainer(
             state = state,
             step = step,
             action = action,
-            onBack = { quantityViewModel.goBack() },
+            onBack = { context.onBack() },
             onForward = {
                 quantityViewModel.saveResult()
             },
             onCancel = { context.onCancel() },
-            forwardEnabled = state.data != null,
+            forwardEnabled = state.data != null && quantityViewModel.currentInputQuantity > 0,
             content = {
                 ProductQuantityContent(
                     state = state,
@@ -138,21 +148,6 @@ class ProductQuantityStepFactory(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-        }
-    }
-
-    @Composable
-    private fun ErrorScreen(message: String) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.error,
-                textAlign = TextAlign.Center
-            )
         }
     }
 

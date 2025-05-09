@@ -36,9 +36,6 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.StepConta
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 
 /**
- * Фабрика для шага выбора TaskProduct (товара с количеством и другими характеристиками)
- */
-/**
  * Фабрика для шага выбора TaskProduct (товара с учетными характеристиками)
  */
 class TaskProductSelectionStepFactory(
@@ -117,12 +114,12 @@ class TaskProductSelectionStepFactory(
             )
         }
 
-        // Основной контейнер шага
+        // Используем StepContainer для унифицированного отображения шага
         StepContainer(
             state = state,
             step = step,
             action = action,
-            onBack = { taskProductViewModel.goBack() },
+            onBack = { context.onBack() },
             onForward = {
                 taskProductViewModel.saveResult()
             },

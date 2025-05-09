@@ -41,7 +41,7 @@ import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
  */
 class PalletSelectionStepFactory(
     private val palletLookupService: PalletLookupService,
-    private val validationService: ValidationService // Добавлен ValidationService
+    private val validationService: ValidationService
 ) : BaseActionStepFactory<Pallet>() {
 
     /**
@@ -52,13 +52,12 @@ class PalletSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ): BaseStepViewModel<Pallet> {
-        // Создаем и возвращаем ViewModel, передавая validationService
         return PalletSelectionViewModel(
             step = step,
             action = action,
             context = context,
             palletLookupService = palletLookupService,
-            validationService = validationService // Передаем ValidationService
+            validationService = validationService
         )
     }
 
@@ -105,12 +104,12 @@ class PalletSelectionStepFactory(
             )
         }
 
-        // Основной контейнер шага
+        // Используем StepContainer для унифицированного отображения шага
         StepContainer(
             state = state,
             step = step,
             action = action,
-            onBack = { palletViewModel.goBack() },
+            onBack = { context.onBack() },
             onForward = {
                 // Переход вперед возможен только при наличии выбранной паллеты
                 state.data?.let { palletViewModel.completeStep(it) }
