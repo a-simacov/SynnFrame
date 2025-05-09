@@ -4,7 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
+import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.ValidationResult
+import com.synngate.synnframe.domain.service.ValidationService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,11 +22,13 @@ import timber.log.Timber
  * @property step текущий шаг действия
  * @property action запланированное действие
  * @property context контекст выполнения действия
+ * @property validationService сервис для валидации данных
  */
 abstract class BaseStepViewModel<T>(
     protected val step: ActionStep,
     protected val action: PlannedAction,
-    protected val context: ActionContext
+    protected val context: ActionContext,
+    protected val validationService: ValidationService
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(StepViewState<T>())
@@ -77,9 +82,72 @@ abstract class BaseStepViewModel<T>(
 
     /**
      * Валидирует данные перед завершением шага.
+     * Использует ValidationService для проверки данных по правилам шага.
+     *
+     * @param data данные для валидации
      * @return true, если данные валидны, иначе false
      */
-    abstract fun validateData(data: T?): Boolean
+    open fun validateData(data: T?): Boolean {
+        if (data == null) return false
+
+        // Получаем правила валидации из шага
+        val validationRules = step.validationRules
+
+        // Если правила отсутствуют, считаем данные валидными
+        if (validationRules.rules.isEmpty()) return true
+
+        // Проверяем, есть ли API-правила валидации
+        val hasApiValidation = validationRules.rules.any {
+            it.type == ValidationType.API_REQUEST && it.apiEndpoint != null
+        }
+
+        // Если есть API-правила, запускаем асинхронную валидацию
+        if (hasApiValidation) {
+            viewModelScope.launch {
+                setLoading(true)
+
+                // Создаем контекст для валидации
+                val validationContext = createValidationContext()
+
+                // Вызываем валидацию
+                when (val result = validationService.validate(validationRules, data, validationContext)) {
+                    is ValidationResult.Success -> {
+                        // Продолжаем действие после успешной валидации
+                        context.onComplete(data)
+                    }
+                    is ValidationResult.Error -> {
+                        // Отображаем ошибку
+                        setError(result.message)
+                    }
+                }
+
+                setLoading(false)
+            }
+            // Возвращаем true, чтобы показать, что валидация запущена
+            // Реальный результат будет обработан асинхронно
+            return true
+        }
+
+        // Выполняем синхронную базовую валидацию
+        return validateBasicRules(data)
+    }
+
+    /**
+     * Создает контекст для валидации
+     */
+    protected open fun createValidationContext(): Map<String, Any> {
+        // Базовая реализация возвращает основной контекст из ActionContext
+        return context.results
+    }
+
+    /**
+     * Проверяет базовые правила валидации
+     */
+    protected open fun validateBasicRules(data: T?): Boolean {
+        // Базовая логика валидации, которая не требует API-запросов
+        // Подклассы могут расширить эту логику
+        return true
+    }
 
     /**
      * Завершает шаг с указанным результатом, если данные валидны.
@@ -90,7 +158,19 @@ abstract class BaseStepViewModel<T>(
                 _state.update { it.copy(isLoading = true, error = null) }
 
                 if (validateData(result)) {
-                    context.onComplete(result)
+                    // Обратите внимание, что ValidationService может асинхронно
+                    // вызвать context.onComplete, поэтому здесь мы не вызываем его повторно,
+                    // если метод validateData вернул true из-за API-валидации
+
+                    // Для не-API валидации, вызываем onComplete напрямую
+                    val hasApiValidation = step.validationRules.rules.any {
+                        it.type == ValidationType.API_REQUEST && it.apiEndpoint != null
+                    }
+
+                    if (!hasApiValidation) {
+                        context.onComplete(result)
+                    }
+                    // Иначе context.onComplete будет вызван асинхронно после API-валидации
                 } else {
                     _state.update {
                         it.copy(

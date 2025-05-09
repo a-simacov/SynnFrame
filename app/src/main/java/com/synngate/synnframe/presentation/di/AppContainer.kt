@@ -35,6 +35,8 @@ import com.synngate.synnframe.data.repository.TaskRepositoryImpl
 import com.synngate.synnframe.data.repository.TaskTypeRepositoryImpl
 import com.synngate.synnframe.data.repository.TaskXRepositoryImpl
 import com.synngate.synnframe.data.repository.UserRepositoryImpl
+import com.synngate.synnframe.data.repository.WizardBinRepositoryImpl
+import com.synngate.synnframe.data.repository.WizardPalletRepositoryImpl
 import com.synngate.synnframe.data.service.ClipboardServiceImpl
 import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
 import com.synngate.synnframe.data.service.FileServiceImpl
@@ -105,11 +107,13 @@ import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXListViewModel
 import com.synngate.synnframe.presentation.ui.wizard.ActionWizardViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
-import com.synngate.synnframe.presentation.ui.wizard.action.BinSelectionStepFactory
-import com.synngate.synnframe.presentation.ui.wizard.action.PalletSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.ProductQuantityStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.TaskProductSelectionStepFactory
+import com.synngate.synnframe.presentation.ui.wizard.action.bin.BinSelectionStepFactory
+import com.synngate.synnframe.presentation.ui.wizard.action.pallet.PalletSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.product.ProductSelectionStepFactory
+import com.synngate.synnframe.presentation.ui.wizard.service.BinLookupService
+import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 import com.synngate.synnframe.util.network.NetworkMonitor
 import com.synngate.synnframe.util.resources.ResourceProvider
@@ -384,6 +388,35 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     val productLookupService by lazy {
         Timber.d("Creating ProductLookupService")
         ProductLookupService(productRepository)
+    }
+
+    val wizardBinRepository by lazy {
+        Timber.d("Creating WizardBinRepository")
+        // Здесь используем WizardBinRepository, как показано в импортированных файлах
+        WizardBinRepositoryImpl(httpClient, serverProvider)
+    }
+
+    val wizardPalletRepository by lazy {
+        Timber.d("Creating WizardPalletRepository")
+        // Здесь используем WizardPalletRepository, как показано в импортированных файлах
+        WizardPalletRepositoryImpl(httpClient, serverProvider)
+    }
+
+    // Сервисы для поиска объектов (lookup services)
+    val binLookupService by lazy {
+        Timber.d("Creating BinLookupService")
+        BinLookupService(
+            taskContextManager = taskContextManager,
+            wizardBinRepository = wizardBinRepository
+        )
+    }
+
+    val palletLookupService by lazy {
+        Timber.d("Creating PalletLookupService")
+        PalletLookupService(
+            taskContextManager = taskContextManager,
+            wizardPalletRepository = wizardPalletRepository
+        )
     }
 
     val actionWizardController by lazy {
@@ -697,12 +730,12 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
 
         registry.registerFactory(
             ActionObjectType.PALLET,
-            PalletSelectionStepFactory()
+            PalletSelectionStepFactory(appContainer.palletLookupService)
         )
 
         registry.registerFactory(
             ActionObjectType.BIN,
-            BinSelectionStepFactory()
+            BinSelectionStepFactory(appContainer.binLookupService)
         )
 
         return registry
