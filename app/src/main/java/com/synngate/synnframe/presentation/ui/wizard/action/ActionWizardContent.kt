@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -238,13 +236,9 @@ fun ActionSummaryScreen(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
+        // Удаляем .verticalScroll(rememberScrollState()) чтобы избежать вложенных скроллов
     ) {
-        Text(
-            text = "Проверьте информацию перед завершением",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        // Заголовок убран, т.к. он уже отображается в SummaryContainer
 
         if (action != null) {
             Text(
