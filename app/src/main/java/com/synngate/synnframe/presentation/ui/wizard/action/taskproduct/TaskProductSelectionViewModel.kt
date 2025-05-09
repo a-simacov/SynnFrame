@@ -1,3 +1,4 @@
+// app/src/main/java/com/synngate/synnframe/presentation/ui/wizard/action/taskproduct/TaskProductSelectionViewModel.kt
 package com.synngate.synnframe.presentation.ui.wizard.action.taskproduct
 
 import androidx.lifecycle.viewModelScope
@@ -327,5 +328,10 @@ class TaskProductSelectionViewModel(
 
     fun hasSelectedProduct(): Boolean {
         return selectedProduct != null
+    }
+
+    fun isSelectedProductMatchingPlan(): Boolean {
+        val product = selectedProduct ?: return false
+        return planProductIds.contains(product.id)
     }
 }

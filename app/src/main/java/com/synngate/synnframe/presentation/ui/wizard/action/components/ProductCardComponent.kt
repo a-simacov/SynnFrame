@@ -133,6 +133,16 @@ fun TaskProductCard(
                     style = MaterialTheme.typography.bodySmall
                 )
 
+                // Добавлено отображение штрихкода из основной единицы измерения
+                taskProduct.product.getMainUnit()?.let { unit ->
+                    if (unit.mainBarcode.isNotEmpty()) {
+                        Text(
+                            text = "Штрихкод: ${unit.mainBarcode}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+
                 if (taskProduct.quantity > 0) {
                     Text(
                         text = "Количество: ${taskProduct.quantity}",
@@ -166,6 +176,7 @@ fun TaskProductCard(
 fun PlanProductsList(
     planProducts: List<TaskProduct>,
     onProductSelect: (TaskProduct) -> Unit,
+    selectedProductId: String? = null,
     modifier: Modifier = Modifier
 ) {
     if (planProducts.isEmpty()) {
@@ -174,9 +185,12 @@ fun PlanProductsList(
 
     Column(modifier = modifier.fillMaxWidth()) {
         planProducts.forEach { taskProduct ->
+            val isSelected = selectedProductId == taskProduct.product.id
+
             TaskProductCard(
                 taskProduct = taskProduct,
                 onClick = { onProductSelect(taskProduct) },
+                isSelected = isSelected,
                 modifier = Modifier.fillMaxWidth()
             )
 

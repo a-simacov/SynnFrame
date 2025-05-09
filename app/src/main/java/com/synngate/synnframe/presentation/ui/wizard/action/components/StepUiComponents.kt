@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -29,9 +30,6 @@ import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import timber.log.Timber
 
-/**
- * Отображает заголовок шага с описанием действия
- */
 @Composable
 fun StepTitle(
     step: ActionStep,
@@ -45,9 +43,6 @@ fun StepTitle(
     )
 }
 
-/**
- * Отображает сообщение об ошибке
- */
 @Composable
 fun ErrorMessage(
     message: String,
@@ -78,9 +73,6 @@ fun ErrorMessage(
     }
 }
 
-/**
- * Отображает индикатор загрузки
- */
 @Composable
 fun LoadingIndicator(
     modifier: Modifier = Modifier
@@ -100,9 +92,6 @@ fun LoadingIndicator(
     }
 }
 
-/**
- * Поле для ввода штрих-кода с кнопкой сканирования
- */
 @Composable
 fun BarcodeEntryField(
     value: String,
@@ -112,21 +101,37 @@ fun BarcodeEntryField(
     modifier: Modifier = Modifier,
     label: String = "Введите штрихкод",
     isError: Boolean = false,
-    errorText: String? = null
+    errorText: String? = null,
+    onSelectFromList: (() -> Unit)? = null
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = value,
             onValueChange = { newValue ->
-                // Добавляем логирование для отладки
                 Timber.d("BarcodeEntryField: value changed from '$value' to '$newValue'")
-                onValueChange(newValue)
+                // Если ввели "0" и есть обработчик выбора из списка
+                if (newValue == "0" && onSelectFromList != null) {
+                    onSelectFromList()
+                    onValueChange("") // Очищаем поле
+                } else {
+                    onValueChange(newValue)
+                }
             },
             label = { Text(label) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+            leadingIcon = if (onSelectFromList != null) {
+                {
+                    IconButton(onClick = onSelectFromList) {
+                        Icon(
+                            imageVector = Icons.Default.List,
+                            contentDescription = "Выбрать из списка"
+                        )
+                    }
+                }
+            } else null,
             trailingIcon = {
                 IconButton(onClick = onScannerClick) {
                     Icon(

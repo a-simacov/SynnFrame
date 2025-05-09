@@ -1,3 +1,4 @@
+// app/src/main/java/com/synngate/synnframe/presentation/ui/wizard/action/taskproduct/TaskProductSelectionStepFactory.kt
 package com.synngate.synnframe.presentation.ui.wizard.action.taskproduct
 
 import androidx.compose.foundation.layout.Box
@@ -7,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -167,58 +166,61 @@ class TaskProductSelectionStepFactory(
         viewModel: TaskProductSelectionViewModel
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
+            // Получаем ID выбранного продукта для подсветки в списке
+            val selectedProductId = viewModel.getSelectedProduct()?.id
+
+            // Отображаем товары из плана, подсвечивая выбранный
             if (viewModel.hasPlanProducts()) {
                 PlanProductsList(
                     planProducts = viewModel.getPlanProducts(),
                     onProductSelect = { selectedTaskProduct ->
                         viewModel.selectTaskProductFromPlan(selectedTaskProduct)
-                    }
+                    },
+                    selectedProductId = selectedProductId, // Передаем ID для подсветки
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
+            // Поле ввода штрихкода с дополнительной кнопкой выбора из списка
             BarcodeEntryField(
                 value = viewModel.productCodeInput,
                 onValueChange = { viewModel.updateProductCodeInput(it) },
                 onSearch = { viewModel.searchByProductCode() },
                 onScannerClick = { viewModel.toggleCameraScannerDialog(true) },
+                onSelectFromList = { viewModel.toggleProductSelectionDialog(true) }, // Добавлен обработчик
                 isError = state.error != null,
                 errorText = state.error,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = { viewModel.toggleProductSelectionDialog(true) },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            ) {
-                Text("Выбрать из списка товаров")
-            }
-
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Отображаем выбранный товар, только если он не из плана
             val selectedProduct = viewModel.getSelectedProduct()
+
             if (selectedProduct != null) {
-                Text(
-                    text = "Выбранный товар:",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
+                // Показываем выбор статуса и даты независимо от источника товара,
+                // но не показываем карточку товара, если он совпадает с плановым
 
-                ProductCard(
-                    product = selectedProduct,
-                    isSelected = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (!viewModel.isSelectedProductMatchingPlan()) {
+                    Text(
+                        text = "Выбранный товар:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    ProductCard(
+                        product = selectedProduct,
+                        isSelected = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
 
                 ProductStatusSelector(
                     selectedStatus = viewModel.selectedStatus,
