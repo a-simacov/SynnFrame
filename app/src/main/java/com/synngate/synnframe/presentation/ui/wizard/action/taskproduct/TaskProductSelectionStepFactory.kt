@@ -1,7 +1,9 @@
 package com.synngate.synnframe.presentation.ui.wizard.action.taskproduct
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -12,8 +14,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.AccountingModel
@@ -34,6 +38,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.PlanProdu
 import com.synngate.synnframe.presentation.ui.wizard.action.components.ProductCard
 import com.synngate.synnframe.presentation.ui.wizard.action.components.StepContainer
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
+import timber.log.Timber
 
 /**
  * Фабрика для шага выбора TaskProduct (товара с учетными характеристиками)
@@ -71,8 +76,30 @@ class TaskProductSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Приводим базовый ViewModel к конкретному типу
-        val taskProductViewModel = viewModel as TaskProductSelectionViewModel
+        // Безопасное приведение ViewModel к конкретному типу
+        val taskProductViewModel = try {
+            viewModel as TaskProductSelectionViewModel
+        } catch (e: ClassCastException) {
+            Timber.e(e, "Ошибка приведения ViewModel к TaskProductSelectionViewModel")
+            null
+        }
+
+        // Если приведение не удалось, показываем сообщение об ошибке
+        if (taskProductViewModel == null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Ошибка инициализации шага. Пожалуйста, вернитесь назад и попробуйте снова.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            return
+        }
 
         // Обработка штрих-кода из контекста, если он есть
         LaunchedEffect(context.lastScannedBarcode) {
@@ -126,7 +153,7 @@ class TaskProductSelectionStepFactory(
             onCancel = { context.onCancel() },
             forwardEnabled = taskProductViewModel.isFormValid(),
             content = {
-                TaskProductSelectionContent(
+                SafeTaskProductSelectionContent(
                     state = state,
                     viewModel = taskProductViewModel
                 )
@@ -135,10 +162,10 @@ class TaskProductSelectionStepFactory(
     }
 
     /**
-     * Содержимое шага выбора продукта задания
+     * Безопасное содержимое шага выбора продукта задания
      */
     @Composable
-    private fun TaskProductSelectionContent(
+    private fun SafeTaskProductSelectionContent(
         state: StepViewState<TaskProduct>,
         viewModel: TaskProductSelectionViewModel
     ) {
@@ -157,8 +184,8 @@ class TaskProductSelectionStepFactory(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Отображение выбранного продукта
-            val taskProduct = state.data
-            if (taskProduct != null && taskProduct is TaskProduct) {
+            val selectedProduct = viewModel.getSelectedProduct()
+            if (selectedProduct != null) {
                 Text(
                     text = "Выбранный товар:",
                     style = MaterialTheme.typography.labelMedium,
@@ -167,7 +194,7 @@ class TaskProductSelectionStepFactory(
                 )
 
                 ProductCard(
-                    product = taskProduct.product,
+                    product = selectedProduct,
                     isSelected = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -185,7 +212,8 @@ class TaskProductSelectionStepFactory(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Датапикер для срока годности (только для продуктов с учетом по партиям)
-                if (state.data.product.accountingModel == AccountingModel.BATCH) {
+                val taskProduct = viewModel.getSelectedTaskProduct()
+                if (taskProduct != null && taskProduct.product.accountingModel == AccountingModel.BATCH) {
                     ExpirationDatePicker(
                         expirationDate = viewModel.expirationDate,
                         onDateSelected = { viewModel.setExpirationDate(it) },

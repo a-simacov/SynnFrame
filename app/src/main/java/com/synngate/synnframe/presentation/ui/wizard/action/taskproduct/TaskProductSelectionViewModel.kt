@@ -33,6 +33,7 @@ class TaskProductSelectionViewModel(
 
     // Состояние выбора продукта
     private var selectedProduct: Product? = null
+    private var selectedTaskProduct: TaskProduct? = null
     var selectedStatus = ProductStatus.STANDARD
         private set
     var expirationDate: LocalDateTime? = null
@@ -52,14 +53,40 @@ class TaskProductSelectionViewModel(
         // Если есть запланированный продукт, устанавливаем его в состояние
         if (plannedTaskProduct != null) {
             selectedProduct = plannedTaskProduct.product
+            selectedTaskProduct = plannedTaskProduct
             selectedStatus = plannedTaskProduct.status
             if (plannedTaskProduct.hasExpirationDate()) {
                 expirationDate = plannedTaskProduct.expirationDate
             }
+
+            // Обновляем состояние с данными продукта из плана
+            setData(plannedTaskProduct)
         }
 
-        // Обновляем состояние с данными продукта из плана
-        updateStateFromSelectedProduct()
+        // Инициализация из контекста
+        initFromContext()
+    }
+
+    /**
+     * Инициализация из контекста
+     */
+    private fun initFromContext() {
+        if (context.hasStepResult) {
+            try {
+                val result = context.getCurrentStepResult()
+                if (result is TaskProduct) {
+                    selectedProduct = result.product
+                    selectedTaskProduct = result
+                    selectedStatus = result.status
+                    expirationDate = if (result.hasExpirationDate()) result.expirationDate else null
+
+                    // Обновляем состояние
+                    setData(result)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка инициализации из контекста: ${e.message}")
+            }
+        }
     }
 
     /**
@@ -184,12 +211,14 @@ class TaskProductSelectionViewModel(
         // Если это продукт из плана, устанавливаем данные из планового TaskProduct
         val plannedTaskProduct = planProducts.find { it.product.id == product.id }
         if (plannedTaskProduct != null) {
+            selectedTaskProduct = plannedTaskProduct
             selectedStatus = plannedTaskProduct.status
             expirationDate = if (plannedTaskProduct.hasExpirationDate()) {
                 plannedTaskProduct.expirationDate
             } else null
         } else {
             // По умолчанию статус "Стандарт" и нет срока годности
+            selectedTaskProduct = TaskProduct(product = product)
             selectedStatus = ProductStatus.STANDARD
             expirationDate = null
         }
@@ -234,6 +263,7 @@ class TaskProductSelectionViewModel(
      */
     fun selectTaskProductFromPlan(taskProduct: TaskProduct) {
         selectedProduct = taskProduct.product
+        selectedTaskProduct = taskProduct
         selectedStatus = taskProduct.status
         expirationDate = if (taskProduct.hasExpirationDate()) {
             taskProduct.expirationDate
@@ -330,5 +360,26 @@ class TaskProductSelectionViewModel(
      */
     fun hasPlanProducts(): Boolean {
         return planProducts.isNotEmpty()
+    }
+
+    /**
+     * Получение выбранного продукта
+     */
+    fun getSelectedProduct(): Product? {
+        return selectedProduct
+    }
+
+    /**
+     * Получение выбранного TaskProduct
+     */
+    fun getSelectedTaskProduct(): TaskProduct? {
+        return selectedTaskProduct
+    }
+
+    /**
+     * Проверка, выбран ли продукт
+     */
+    fun hasSelectedProduct(): Boolean {
+        return selectedProduct != null
     }
 }

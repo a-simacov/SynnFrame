@@ -28,6 +28,9 @@ class ProductSelectionViewModel(
     private val planProducts = listOfNotNull(action.storageProduct)
     private val planProductIds = planProducts.mapNotNull { it.product.id }.toSet()
 
+    // Явное хранение выбранного продукта для безопасного доступа
+    private var selectedProduct: Product? = null
+
     // Состояние поля ввода штрих-кода
     var barcodeInput = ""
         private set
@@ -42,9 +45,31 @@ class ProductSelectionViewModel(
         private set
 
     init {
+        // Инициализация, если есть запланированный продукт
         if (plannedProduct != null) {
-            // Если есть запланированный продукт, добавляем его в filteredProducts
+            selectedProduct = plannedProduct
+            setData(plannedProduct)
             filteredProducts = listOf(plannedProduct)
+        }
+
+        // Инициализация из контекста
+        initFromContext()
+    }
+
+    /**
+     * Инициализация из контекста
+     */
+    private fun initFromContext() {
+        if (context.hasStepResult) {
+            try {
+                val result = context.getCurrentStepResult()
+                if (result is Product) {
+                    selectedProduct = result
+                    setData(result)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка инициализации из контекста: ${e.message}")
+            }
         }
     }
 
@@ -69,6 +94,7 @@ class ProductSelectionViewModel(
                     onResult = { found, data ->
                         if (found && data is Product) {
                             if (planProductIds.isEmpty() || planProductIds.contains(data.id)) {
+                                selectedProduct = data
                                 setData(data)
                                 // Очищаем поле ввода
                                 updateBarcodeInput("")
@@ -128,16 +154,7 @@ class ProductSelectionViewModel(
      * Обновление ввода штрих-кода
      */
     fun updateBarcodeInput(input: String) {
-        // Добавляем логирование для отладки
-        Timber.d("ProductSelectionViewModel: updateBarcodeInput called with '$input'")
         barcodeInput = input
-
-//        // Обновляем состояние в Flow для уведомления UI об изменениях
-//        _state.update { currentState ->
-//            currentState.copy(
-//                additionalData = currentState.additionalData + ("barcodeInput" to input)
-//            )
-//        }
         updateAdditionalData("barcodeInput", input)
     }
 
@@ -182,6 +199,7 @@ class ProductSelectionViewModel(
      * Выбор продукта из списка
      */
     fun selectProduct(product: Product) {
+        selectedProduct = product
         setData(product)
         hideProductSelectionDialog()
     }
@@ -190,6 +208,7 @@ class ProductSelectionViewModel(
      * Выбор продукта из плана
      */
     fun selectProductFromPlan(taskProduct: TaskProduct) {
+        selectedProduct = taskProduct.product
         setData(taskProduct.product)
     }
 
@@ -242,5 +261,19 @@ class ProductSelectionViewModel(
      */
     fun hasPlanProducts(): Boolean {
         return planProducts.isNotEmpty()
+    }
+
+    /**
+     * Получение выбранного продукта
+     */
+    fun getSelectedProduct(): Product? {
+        return selectedProduct
+    }
+
+    /**
+     * Проверка, выбран ли продукт
+     */
+    fun hasSelectedProduct(): Boolean {
+        return selectedProduct != null
     }
 }

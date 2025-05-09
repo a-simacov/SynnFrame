@@ -1,7 +1,9 @@
 package com.synngate.synnframe.presentation.ui.wizard.action.pallet
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.taskx.Pallet
@@ -35,6 +38,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.PalletCar
 import com.synngate.synnframe.presentation.ui.wizard.action.components.PlanPalletsList
 import com.synngate.synnframe.presentation.ui.wizard.action.components.StepContainer
 import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
+import timber.log.Timber
 
 /**
  * Фабрика для шага выбора паллеты
@@ -72,8 +76,30 @@ class PalletSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Приводим базовый ViewModel к конкретному типу
-        val palletViewModel = viewModel as PalletSelectionViewModel
+        // Безопасное приведение ViewModel к конкретному типу
+        val palletViewModel = try {
+            viewModel as PalletSelectionViewModel
+        } catch (e: ClassCastException) {
+            Timber.e(e, "Ошибка приведения ViewModel к PalletSelectionViewModel")
+            null
+        }
+
+        // Если приведение не удалось, показываем сообщение об ошибке
+        if (palletViewModel == null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Ошибка инициализации шага. Пожалуйста, вернитесь назад и попробуйте снова.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            return
+        }
 
         // Обработка штрих-кода из контекста, если он есть
         LaunchedEffect(context.lastScannedBarcode) {
@@ -111,13 +137,15 @@ class PalletSelectionStepFactory(
             action = action,
             onBack = { context.onBack() },
             onForward = {
-                // Переход вперед возможен только при наличии выбранной паллеты
-                state.data?.let { palletViewModel.completeStep(it) }
+                // Безопасно используем выбранную паллету
+                palletViewModel.getSelectedPallet()?.let { pallet ->
+                    palletViewModel.completeStep(pallet)
+                }
             },
             onCancel = { context.onCancel() },
-            forwardEnabled = state.data != null,
+            forwardEnabled = palletViewModel.hasSelectedPallet(),
             content = {
-                PalletSelectionContent(
+                SafePalletSelectionContent(
                     state = state,
                     viewModel = palletViewModel,
                     step = step
@@ -127,10 +155,10 @@ class PalletSelectionStepFactory(
     }
 
     /**
-     * Содержимое шага выбора паллеты
+     * Безопасное содержимое шага выбора паллеты
      */
     @Composable
-    private fun PalletSelectionContent(
+    private fun SafePalletSelectionContent(
         state: StepViewState<Pallet>,
         viewModel: PalletSelectionViewModel,
         step: ActionStep
@@ -150,8 +178,9 @@ class PalletSelectionStepFactory(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val pallet = state.data
-            if (pallet != null && pallet is Pallet) {
+            // Отображение выбранной паллеты
+            val selectedPallet = viewModel.getSelectedPallet()
+            if (selectedPallet != null) {
                 Text(
                     text = "Выбранная паллета:",
                     style = MaterialTheme.typography.labelMedium,
@@ -160,7 +189,7 @@ class PalletSelectionStepFactory(
                 )
 
                 PalletCard(
-                    pallet = pallet,
+                    pallet = selectedPallet,
                     isSelected = true,
                     modifier = Modifier.fillMaxWidth()
                 )

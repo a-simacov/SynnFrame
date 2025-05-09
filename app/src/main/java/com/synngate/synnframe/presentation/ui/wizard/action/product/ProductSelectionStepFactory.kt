@@ -1,7 +1,9 @@
 package com.synngate.synnframe.presentation.ui.wizard.action.product
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -12,8 +14,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.Product
@@ -31,6 +35,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.PlanProdu
 import com.synngate.synnframe.presentation.ui.wizard.action.components.ProductCard
 import com.synngate.synnframe.presentation.ui.wizard.action.components.StepContainer
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
+import timber.log.Timber
 
 /**
  * Фабрика для шага выбора продукта
@@ -68,8 +73,30 @@ class ProductSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Приводим базовый ViewModel к конкретному типу
-        val productViewModel = viewModel as ProductSelectionViewModel
+        // Безопасное приведение ViewModel к конкретному типу
+        val productViewModel = try {
+            viewModel as ProductSelectionViewModel
+        } catch (e: ClassCastException) {
+            Timber.e(e, "Ошибка приведения ViewModel к ProductSelectionViewModel")
+            null
+        }
+
+        // Если приведение не удалось, показываем сообщение об ошибке
+        if (productViewModel == null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Ошибка инициализации шага. Пожалуйста, вернитесь назад и попробуйте снова.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            return
+        }
 
         // Обработка штрих-кода из контекста, если он есть
         LaunchedEffect(context.lastScannedBarcode) {
@@ -104,7 +131,7 @@ class ProductSelectionStepFactory(
                 },
                 initialFilter = "",
                 title = "Выберите товар",
-                planProductIds = if (productViewModel.getPlanProducts().isNotEmpty()) {
+                planProductIds = if (productViewModel.hasPlanProducts()) {
                     productViewModel.getPlanProducts().map { it.product.id }.toSet()
                 } else null
             )
@@ -117,13 +144,15 @@ class ProductSelectionStepFactory(
             action = action,
             onBack = { context.onBack() },
             onForward = {
-                // Переход вперед возможен только при наличии выбранного продукта
-                state.data?.let { productViewModel.completeStep(it) }
+                // Безопасное использование выбранного продукта
+                productViewModel.getSelectedProduct()?.let { product ->
+                    productViewModel.completeStep(product)
+                }
             },
             onCancel = { context.onCancel() },
-            forwardEnabled = state.data != null,
+            forwardEnabled = productViewModel.hasSelectedProduct(),
             content = {
-                ProductSelectionContent(
+                SafeProductSelectionContent(
                     state = state,
                     viewModel = productViewModel
                 )
@@ -132,10 +161,10 @@ class ProductSelectionStepFactory(
     }
 
     /**
-     * Содержимое шага выбора продукта
+     * Безопасное содержимое шага выбора продукта
      */
     @Composable
-    private fun ProductSelectionContent(
+    private fun SafeProductSelectionContent(
         state: StepViewState<Product>,
         viewModel: ProductSelectionViewModel
     ) {
@@ -154,7 +183,8 @@ class ProductSelectionStepFactory(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Отображение выбранного продукта
-            if (state.data != null) {
+            val selectedProduct = viewModel.getSelectedProduct()
+            if (selectedProduct != null) {
                 Text(
                     text = "Выбранный продукт:",
                     style = MaterialTheme.typography.labelMedium,
@@ -163,7 +193,7 @@ class ProductSelectionStepFactory(
                 )
 
                 ProductCard(
-                    product = state.data,
+                    product = selectedProduct,
                     isSelected = true,
                     modifier = Modifier.fillMaxWidth()
                 )

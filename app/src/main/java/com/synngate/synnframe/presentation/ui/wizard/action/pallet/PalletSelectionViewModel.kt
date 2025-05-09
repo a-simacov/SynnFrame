@@ -29,6 +29,9 @@ class PalletSelectionViewModel(
     private val plannedPallet = if (isStorageStep) action.storagePallet else action.placementPallet
     private val planPallets = listOfNotNull(plannedPallet)
 
+    // Сохраняем выбранную паллету для безопасного доступа
+    private var selectedPallet: Pallet? = null
+
     // Состояние поля ввода кода паллеты
     var palletCodeInput = ""
         private set
@@ -51,6 +54,29 @@ class PalletSelectionViewModel(
         // Если есть запланированная паллета, добавляем её в список
         if (plannedPallet != null) {
             filteredPallets = listOf(plannedPallet)
+            // Также устанавливаем её как выбранную по умолчанию
+            selectedPallet = plannedPallet
+            setData(plannedPallet)
+        }
+
+        // Инициализация из предыдущего контекста
+        initFromContext()
+    }
+
+    /**
+     * Инициализация из данных контекста
+     */
+    private fun initFromContext() {
+        if (context.hasStepResult) {
+            try {
+                val result = context.getCurrentStepResult()
+                if (result is Pallet) {
+                    selectedPallet = result
+                    setData(result)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка инициализации из контекста: ${e.message}")
+            }
         }
     }
 
@@ -76,6 +102,7 @@ class PalletSelectionViewModel(
                     expectedBarcode = plannedPallet?.code,
                     onResult = { found, data ->
                         if (found && data is Pallet) {
+                            selectedPallet = data
                             setData(data)
                             // Очищаем поле ввода
                             updatePalletCodeInput("")
@@ -193,6 +220,7 @@ class PalletSelectionViewModel(
                 if (result.isSuccess) {
                     val newPallet = result.getOrNull()
                     if (newPallet != null) {
+                        selectedPallet = newPallet
                         setData(newPallet)
                         Timber.d("Создана новая паллета: ${newPallet.code}")
                     } else {
@@ -216,6 +244,7 @@ class PalletSelectionViewModel(
      * Выбор паллеты из списка
      */
     fun selectPallet(pallet: Pallet) {
+        selectedPallet = pallet
         setData(pallet)
     }
 
@@ -266,5 +295,19 @@ class PalletSelectionViewModel(
      */
     fun isStoragePalletStep(): Boolean {
         return isStorageStep
+    }
+
+    /**
+     * Получение выбранной паллеты
+     */
+    fun getSelectedPallet(): Pallet? {
+        return selectedPallet
+    }
+
+    /**
+     * Проверка, выбрана ли паллета
+     */
+    fun hasSelectedPallet(): Boolean {
+        return selectedPallet != null
     }
 }
