@@ -51,12 +51,10 @@ class PalletSelectionViewModel(
         private set
 
     init {
-        // Если есть запланированная паллета, добавляем её в список
+        // ВАЖНО: Не устанавливаем паллету из плана как выбранную
+        // Просто добавляем запланированную паллету в список
         if (plannedPallet != null) {
             filteredPallets = listOf(plannedPallet)
-            // Также устанавливаем её как выбранную по умолчанию
-            selectedPallet = plannedPallet
-            setData(plannedPallet)
         }
 
         // Инициализация из предыдущего контекста
@@ -169,7 +167,6 @@ class PalletSelectionViewModel(
     fun searchByPalletCode() {
         if (palletCodeInput.isNotEmpty()) {
             processBarcode(palletCodeInput)
-            // Не очищаем поле ввода здесь, это сделает processBarcode при успешном поиске
         }
     }
 
@@ -309,5 +306,13 @@ class PalletSelectionViewModel(
      */
     fun hasSelectedPallet(): Boolean {
         return selectedPallet != null
+    }
+
+    /**
+     * Проверяет, соответствует ли выбранная паллета плану
+     */
+    fun isSelectedPalletMatchingPlan(): Boolean {
+        val selected = selectedPallet ?: return false
+        return plannedPallet != null && selected.code == plannedPallet.code
     }
 }

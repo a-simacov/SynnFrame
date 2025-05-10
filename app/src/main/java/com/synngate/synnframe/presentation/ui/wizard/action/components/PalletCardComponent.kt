@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Card
@@ -24,14 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 
-/**
- * Компонент карточки паллеты
- *
- * @param pallet Паллета для отображения
- * @param onClick Обработчик нажатия на карточку (null, если карточка не кликабельна)
- * @param isSelected Выбрана ли паллета
- * @param modifier Модификатор
- */
 @Composable
 fun PalletCard(
     pallet: Pallet,
@@ -46,9 +36,7 @@ fun PalletCard(
     }
 
     Card(
-        modifier = cardModifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = cardModifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
                 MaterialTheme.colorScheme.secondaryContainer
@@ -59,25 +47,14 @@ fun PalletCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
+            Text(
+                text = "Паллета: ${pallet.code}",
+                style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = "Код: ${pallet.code}",
-                    style = MaterialTheme.typography.titleSmall
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                val statusText = if (pallet.isClosed) "Закрыта" else "Открыта"
-                Text(
-                    text = "Статус: $statusText",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
+            )
 
             onClick?.let {
                 IconButton(onClick = it) {
@@ -93,46 +70,29 @@ fun PalletCard(
     }
 }
 
-/**
- * Компонент для отображения списка паллет из плана
- *
- * @param planPallets Список паллет из плана
- * @param onPalletSelect Обработчик выбора паллеты
- * @param title Заголовок списка
- * @param modifier Модификатор
- */
 @Composable
 fun PlanPalletsList(
     planPallets: List<Pallet>,
     onPalletSelect: (Pallet) -> Unit,
-    title: String = "По плану:",
-    modifier: Modifier = Modifier,
-    maxHeight: Int = 200
+    selectedPalletCode: String? = null,
+    modifier: Modifier = Modifier
 ) {
     if (planPallets.isEmpty()) {
         return
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
+        planPallets.forEach { pallet ->
+            val isSelected = selectedPalletCode == pallet.code
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(maxHeight.dp)
-        ) {
-            items(planPallets) { pallet ->
-                PalletCard(
-                    pallet = pallet,
-                    onClick = { onPalletSelect(pallet) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            PalletCard(
+                pallet = pallet,
+                onClick = { onPalletSelect(pallet) },
+                isSelected = isSelected,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
         }
     }
 }

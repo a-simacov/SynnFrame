@@ -7,12 +7,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,17 +37,11 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.StepConta
 import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
 import timber.log.Timber
 
-/**
- * Фабрика для шага выбора паллеты
- */
 class PalletSelectionStepFactory(
     private val palletLookupService: PalletLookupService,
     private val validationService: ValidationService
 ) : BaseActionStepFactory<Pallet>() {
 
-    /**
-     * Создание ViewModel для шага
-     */
     override fun getStepViewModel(
         step: ActionStep,
         action: PlannedAction,
@@ -65,9 +56,6 @@ class PalletSelectionStepFactory(
         )
     }
 
-    /**
-     * Отображение UI для шага
-     */
     @Composable
     override fun StepContent(
         state: StepViewState<Pallet>,
@@ -76,7 +64,6 @@ class PalletSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Безопасное приведение ViewModel к конкретному типу
         val palletViewModel = try {
             viewModel as PalletSelectionViewModel
         } catch (e: ClassCastException) {
@@ -84,7 +71,6 @@ class PalletSelectionStepFactory(
             null
         }
 
-        // Если приведение не удалось, показываем сообщение об ошибке
         if (palletViewModel == null) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -101,7 +87,6 @@ class PalletSelectionStepFactory(
             return
         }
 
-        // Обработка штрих-кода из контекста, если он есть
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
             if (!barcode.isNullOrEmpty()) {
@@ -109,7 +94,6 @@ class PalletSelectionStepFactory(
             }
         }
 
-        // Диалог сканирования
         if (palletViewModel.showCameraScannerDialog) {
             val isStorageStep = palletViewModel.isStoragePalletStep()
             val plannedPallet = if (isStorageStep) action.storagePallet else action.placementPallet
@@ -130,14 +114,12 @@ class PalletSelectionStepFactory(
             )
         }
 
-        // Используем StepContainer для унифицированного отображения шага
         StepContainer(
             state = state,
             step = step,
             action = action,
             onBack = { context.onBack() },
             onForward = {
-                // Безопасно используем выбранную паллету
                 palletViewModel.getSelectedPallet()?.let { pallet ->
                     palletViewModel.completeStep(pallet)
                 }
@@ -145,7 +127,7 @@ class PalletSelectionStepFactory(
             onCancel = { context.onCancel() },
             forwardEnabled = palletViewModel.hasSelectedPallet(),
             isProcessingGlobal = context.isProcessingStep,
-            isFirstStep = context.isFirstStep,  // Передаем флаг первого шага
+            isFirstStep = context.isFirstStep,
             content = {
                 SafePalletSelectionContent(
                     state = state,
@@ -156,9 +138,6 @@ class PalletSelectionStepFactory(
         )
     }
 
-    /**
-     * Безопасное содержимое шага выбора паллеты
-     */
     @Composable
     private fun SafePalletSelectionContent(
         state: StepViewState<Pallet>,
@@ -166,7 +145,31 @@ class PalletSelectionStepFactory(
         step: ActionStep
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Поле ввода кода паллеты
+            val selectedPallet = viewModel.getSelectedPallet()
+            val selectedPalletCode = selectedPallet?.code
+
+            if (viewModel.hasPlanPallets()) {
+                PlanPalletsList(
+                    planPallets = viewModel.getPlanPallets(),
+                    onPalletSelect = { pallet ->
+                        viewModel.selectPallet(pallet)
+                    },
+                    selectedPalletCode = selectedPalletCode, // Передаем код для подсветки
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            } else {
+                if (selectedPallet != null && !viewModel.isSelectedPalletMatchingPlan()) {
+                    PalletCard(
+                        pallet = selectedPallet,
+                        isSelected = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
             BarcodeEntryField(
                 value = viewModel.palletCodeInput,
                 onValueChange = { viewModel.updatePalletCodeInput(it) },
@@ -178,43 +181,11 @@ class PalletSelectionStepFactory(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Отображение выбранной паллеты
-            val selectedPallet = viewModel.getSelectedPallet()
-            if (selectedPallet != null) {
-                Text(
-                    text = "Выбранная паллета:",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-
-                PalletCard(
-                    pallet = selectedPallet,
-                    isSelected = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            // Отображение паллет из плана
-            if (viewModel.hasPlanPallets()) {
-                PlanPalletsList(
-                    planPallets = viewModel.getPlanPallets(),
-                    onPalletSelect = { selectedPallet ->
-                        viewModel.selectPallet(selectedPallet)
-                    }
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            // Кнопка создания новой паллеты
-            // Показываем, если нет жесткого требования использовать паллету из плана
-            if (!step.validationRules.rules.any { it.type == ValidationType.FROM_PLAN }) {
+            // Кнопка создания новой паллеты - показываем только если:
+            // - нет строгого требования использовать паллету из плана
+            // - либо план пуст
+            if (!step.validationRules.rules.any { it.type == ValidationType.FROM_PLAN } || !viewModel.hasPlanPallets()) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = { viewModel.createNewPallet() },
                     modifier = Modifier.fillMaxWidth(),
@@ -236,60 +207,9 @@ class PalletSelectionStepFactory(
 
                 Spacer(modifier = Modifier.height(8.dp))
             }
-
-            // Кнопка выбора из списка паллет
-            // Показываем только если нет ограничения по плану или нет запланированной паллеты
-            val plannedPallet = viewModel.getPlanPallets().firstOrNull()
-            if (plannedPallet == null || !step.validationRules.rules.any { it.type == ValidationType.FROM_PLAN }) {
-                Button(
-                    onClick = { viewModel.togglePalletsList(!viewModel.showPalletsList) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                ) {
-                    Text(if (viewModel.showPalletsList) "Скрыть список" else "Выбрать из списка")
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            // Список паллет для выбора
-            if (viewModel.showPalletsList) {
-                // Поле поиска
-                BarcodeEntryField(
-                    value = viewModel.searchQuery,
-                    onValueChange = { viewModel.updateSearchQuery(it) },
-                    onSearch = { viewModel.filterPallets() },
-                    onScannerClick = { viewModel.toggleCameraScannerDialog(true) },
-                    label = stringResource(R.string.search_pallets),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Список отфильтрованных паллет
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                ) {
-                    items(viewModel.filteredPallets) { pallet ->
-                        PalletCard(
-                            pallet = pallet,
-                            onClick = { viewModel.selectPallet(pallet) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-            }
         }
     }
 
-    /**
-     * Валидация результата шага
-     */
     override fun validateStepResult(step: ActionStep, value: Any?): Boolean {
         return value is Pallet
     }

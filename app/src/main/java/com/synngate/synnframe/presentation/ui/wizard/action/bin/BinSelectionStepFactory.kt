@@ -172,6 +172,7 @@ class BinSelectionStepFactory(
                         isSelected = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
