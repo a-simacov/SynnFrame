@@ -87,7 +87,7 @@ fun ExpirationDatePicker(
         val digitsOnly = input.filter { it.isDigit() }
         val formatted = StringBuilder()
 
-        digitsOnly.forEachIndexed { index, char ->
+        digitsOnly.forEachIndexed { _, char ->
             if (formatted.length == 2 || formatted.length == 5) formatted.append('.')
             formatted.append(char)
             if (formatted.length >= 10) return@forEachIndexed

@@ -16,10 +16,6 @@ import com.synngate.synnframe.data.remote.api.DynamicMenuApi
 import com.synngate.synnframe.data.remote.api.DynamicMenuApiImpl
 import com.synngate.synnframe.data.remote.api.ProductApi
 import com.synngate.synnframe.data.remote.api.ProductApiImpl
-import com.synngate.synnframe.data.remote.api.TaskApi
-import com.synngate.synnframe.data.remote.api.TaskApiImpl
-import com.synngate.synnframe.data.remote.api.TaskTypeApi
-import com.synngate.synnframe.data.remote.api.TaskTypeApiImpl
 import com.synngate.synnframe.data.remote.api.TaskXApi
 import com.synngate.synnframe.data.remote.api.TaskXApiImpl
 import com.synngate.synnframe.data.remote.api.ValidationApiServiceImpl
@@ -31,8 +27,6 @@ import com.synngate.synnframe.data.repository.LogRepositoryImpl
 import com.synngate.synnframe.data.repository.ProductRepositoryImpl
 import com.synngate.synnframe.data.repository.ServerRepositoryImpl
 import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
-import com.synngate.synnframe.data.repository.TaskRepositoryImpl
-import com.synngate.synnframe.data.repository.TaskTypeRepositoryImpl
 import com.synngate.synnframe.data.repository.TaskXRepositoryImpl
 import com.synngate.synnframe.data.repository.UserRepositoryImpl
 import com.synngate.synnframe.data.repository.WizardBinRepositoryImpl
@@ -54,8 +48,6 @@ import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
 import com.synngate.synnframe.domain.repository.SettingsRepository
-import com.synngate.synnframe.domain.repository.TaskRepository
-import com.synngate.synnframe.domain.repository.TaskTypeRepository
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.ActionExecutionService
@@ -80,8 +72,6 @@ import com.synngate.synnframe.domain.usecase.log.LogUseCases
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
-import com.synngate.synnframe.domain.usecase.task.TaskUseCases
-import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
@@ -101,8 +91,6 @@ import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerListViewModel
 import com.synngate.synnframe.presentation.ui.settings.SettingsViewModel
 import com.synngate.synnframe.presentation.ui.sync.SyncHistoryViewModel
-import com.synngate.synnframe.presentation.ui.tasks.TaskDetailViewModel
-import com.synngate.synnframe.presentation.ui.tasks.TaskListViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXListViewModel
 import com.synngate.synnframe.presentation.ui.wizard.ActionWizardViewModel
@@ -158,9 +146,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     val userDao by lazy { database.userDao() }
     val logDao by lazy { database.logDao() }
     val productDao by lazy { database.productDao() }
-    val taskDao by lazy { database.taskDao() }
-    val taskTypeDao by lazy { database.taskTypeDao() }
-    val factLineActionDao by lazy { database.factLineActionDao() }
 
     // HTTP Client
     @OptIn(ExperimentalSerializationApi::class)
@@ -239,21 +224,12 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         ProductRepositoryImpl(productDao, productApi, database)
     }
 
-    val taskRepository: TaskRepository by lazy {
-        Timber.d("Creating TaskRepository")
-        TaskRepositoryImpl(taskDao, taskApi)
-    }
-
     val settingsRepository: SettingsRepository by lazy {
         Timber.d("Creating SettingsRepository")
         SettingsRepositoryImpl(
             appSettingsDataStore,
             appUpdateApi
         )
-    }
-
-    val taskTypeRepository: TaskTypeRepository by lazy {
-        TaskTypeRepositoryImpl(taskTypeDao, factLineActionDao, taskTypeApi)
     }
 
     val dynamicMenuRepository: DynamicMenuRepository by lazy {
@@ -277,18 +253,9 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         ProductApiImpl(httpClient, serverProvider)
     }
 
-    val taskApi: TaskApi by lazy {
-        Timber.d("Creating TaskApi")
-        TaskApiImpl(httpClient, serverProvider, apiService)
-    }
-
     val appUpdateApi: AppUpdateApi by lazy {
         Timber.d("Creating AppUpdateApi")
         AppUpdateApiImpl(httpClient, serverProvider)
-    }
-
-    val taskTypeApi: TaskTypeApi by lazy {
-        TaskTypeApiImpl(httpClient, serverProvider)
     }
 
     val dynamicMenuApi: DynamicMenuApi by lazy {
@@ -355,9 +322,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     val synchronizationController: SynchronizationController by lazy {
         SynchronizationControllerImpl(
             applicationContext,
-            taskUseCases,
             productUseCases,
-            taskTypeUseCases,
             appSettingsDataStore,
             database
         )
@@ -453,10 +418,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         UserUseCases(userRepository)
     }
 
-    val taskUseCases by lazy {
-        TaskUseCases(taskRepository)
-    }
-
     val productUseCases by lazy {
         ProductUseCases(productRepository)
     }
@@ -469,16 +430,11 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         SettingsUseCases(settingsRepository, fileService, applicationContext)
     }
 
-    val taskTypeUseCases by lazy {
-        TaskTypeUseCases(taskTypeRepository)
-    }
-
     val dynamicMenuUseCases: DynamicMenuUseCases by lazy {
         Timber.d("Creating OperationMenuUseCases")
         DynamicMenuUseCases(dynamicMenuRepository)
     }
 
-    // UseCase для заданий X
     val taskXUseCases: TaskXUseCases by lazy {
         Timber.d("Creating TaskXUseCases")
         TaskXUseCases(taskXRepository, taskContextManager)
@@ -593,33 +549,8 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         return getOrCreateViewModel("MainMenuViewModel") {
             MainMenuViewModel(
                 userUseCases = appContainer.userUseCases,
-                taskUseCases = appContainer.taskUseCases,
                 productUseCases = appContainer.productUseCases,
                 synchronizationController = appContainer.synchronizationController,
-            )
-        }
-    }
-
-    fun createTaskListViewModel(): TaskListViewModel {
-        return getOrCreateViewModel("TaskListViewModel") {
-            TaskListViewModel(
-                taskUseCases = appContainer.taskUseCases,
-                userUseCases = appContainer.userUseCases,
-                taskTypeUseCases = appContainer.taskTypeUseCases,
-            )
-        }
-    }
-
-    fun createTaskDetailViewModel(taskId: String): TaskDetailViewModel {
-        return getOrCreateViewModel("TaskDetailViewModel_$taskId") {
-            TaskDetailViewModel(
-                taskId = taskId,
-                taskUseCases = appContainer.taskUseCases,
-                productUseCases = appContainer.productUseCases,
-                userUseCases = appContainer.userUseCases,
-                settingsUseCases = appContainer.settingsUseCases,
-                taskTypeUseCases = appContainer.taskTypeUseCases,
-                soundService = appContainer.soundService,
             )
         }
     }

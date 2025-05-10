@@ -5,26 +5,18 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import com.synngate.synnframe.data.local.dao.FactLineActionDao
 import com.synngate.synnframe.data.local.dao.LogDao
 import com.synngate.synnframe.data.local.dao.ProductDao
 import com.synngate.synnframe.data.local.dao.ServerDao
 import com.synngate.synnframe.data.local.dao.SyncHistoryDao
 import com.synngate.synnframe.data.local.dao.SyncOperationDao
-import com.synngate.synnframe.data.local.dao.TaskDao
-import com.synngate.synnframe.data.local.dao.TaskTypeDao
 import com.synngate.synnframe.data.local.dao.UserDao
 import com.synngate.synnframe.data.local.entity.BarcodeEntity
-import com.synngate.synnframe.data.local.entity.FactLineActionEntity
 import com.synngate.synnframe.data.local.entity.LogEntity
 import com.synngate.synnframe.data.local.entity.ProductEntity
 import com.synngate.synnframe.data.local.entity.ProductUnitEntity
 import com.synngate.synnframe.data.local.entity.ServerEntity
 import com.synngate.synnframe.data.local.entity.SyncOperation
-import com.synngate.synnframe.data.local.entity.TaskEntity
-import com.synngate.synnframe.data.local.entity.TaskFactLineEntity
-import com.synngate.synnframe.data.local.entity.TaskPlanLineEntity
-import com.synngate.synnframe.data.local.entity.TaskTypeEntity
 import com.synngate.synnframe.data.local.entity.UserEntity
 import com.synngate.synnframe.data.sync.SyncHistoryRecord
 
@@ -36,15 +28,10 @@ import com.synngate.synnframe.data.sync.SyncHistoryRecord
         ProductEntity::class,
         ProductUnitEntity::class,
         BarcodeEntity::class,
-        TaskEntity::class,
-        TaskPlanLineEntity::class,
-        TaskFactLineEntity::class,
         SyncOperation::class,
-        SyncHistoryRecord::class,
-        TaskTypeEntity::class,
-        FactLineActionEntity::class
+        SyncHistoryRecord::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -58,15 +45,9 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun productDao(): ProductDao
 
-    abstract fun taskDao(): TaskDao
-
     abstract fun syncOperationDao(): SyncOperationDao
 
     abstract fun syncHistoryDao(): SyncHistoryDao
-
-    abstract fun taskTypeDao(): TaskTypeDao
-
-    abstract fun factLineActionDao(): FactLineActionDao
 
     companion object {
         private const val DATABASE_NAME = "synnframe_database"

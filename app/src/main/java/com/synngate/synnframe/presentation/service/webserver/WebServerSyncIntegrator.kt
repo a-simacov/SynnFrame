@@ -1,14 +1,10 @@
 package com.synngate.synnframe.presentation.service.webserver
 
-import com.synngate.synnframe.data.sync.SyncProgress
-import com.synngate.synnframe.data.sync.SyncStatus
 import com.synngate.synnframe.domain.service.SynchronizationController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.time.LocalDateTime
-import java.util.UUID
 
 /**
  * Класс для интеграции локального веб-сервера с SynchronizationController
@@ -25,25 +21,10 @@ class WebServerSyncIntegrator(
     fun updateSyncProgress(
         tasksDownloaded: Int = 0,
         productsDownloaded: Int = 0,
-        taskTypesDownloaded: Int = 0,
-        operation: String = WebServerConstants.OPERATION_DATA_RECEIVED
+        taskTypesDownloaded: Int = 0
     ) {
         scope.launch {
             try {
-                // Создаем объект прогресса
-                val progress = SyncProgress(
-                    id = "${WebServerConstants.SYNC_PREFIX}${UUID.randomUUID()}",
-                    startTime = LocalDateTime.now().minusSeconds(1),
-                    endTime = LocalDateTime.now(),
-                    status = SyncStatus.COMPLETED,
-                    tasksDownloaded = tasksDownloaded,
-                    productsDownloaded = productsDownloaded,
-                    taskTypesDownloaded = taskTypesDownloaded,
-                    currentOperation = operation,
-                    progressPercent = 100
-                )
-
-                // Обновляем SynchronizationController
                 updateLastSyncInfo(tasksDownloaded, productsDownloaded, taskTypesDownloaded)
             } catch (e: Exception) {
                 Timber.e(e, "Error updating sync progress")

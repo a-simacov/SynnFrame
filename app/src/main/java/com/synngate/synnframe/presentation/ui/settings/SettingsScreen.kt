@@ -239,7 +239,6 @@ fun SettingsScreen(
                 onToggleSyncService = viewModel::toggleSyncService,
                 onStartManualSync = viewModel::startManualSync,
                 onUpdatePeriodicSync = viewModel::updatePeriodicSync,
-                onSyncTaskTypes = viewModel::syncTaskTypes,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -416,7 +415,6 @@ fun SynchronizationSection(
     state: SettingsState,
     onToggleSyncService: () -> Unit,
     onStartManualSync: () -> Unit,
-    onSyncTaskTypes: () -> Unit,
     onUpdatePeriodicSync: (Boolean, Int?) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -490,8 +488,6 @@ fun SynchronizationSection(
             Text(
                 text = stringResource(
                     id = R.string.sync_results,
-                    lastSync.tasksUploadedCount,
-                    lastSync.tasksDownloadedCount,
                     lastSync.productsDownloadedCount
                 ),
                 style = MaterialTheme.typography.bodyMedium
@@ -509,28 +505,6 @@ fun SynchronizationSection(
             modifier = Modifier.fillMaxWidth(),
             labelText = stringResource(id = R.string.periodic_sync_enabled)
         )
-
-        // В SynchronizationSection добавляем еще одну кнопку
-        Spacer(modifier = Modifier.height(16.dp))
-
-        ActionButton(
-            text = stringResource(id = R.string.sync_task_types),
-            onClick = onSyncTaskTypes,
-            isLoading = state.isSyncingTaskTypes,
-            enabled = !state.isSyncingTaskTypes && state.syncStatus != SynchronizationController.SyncStatus.SYNCING,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-// В случае отдельного информационного раздела
-        if ((state.lastSyncInfo?.taskTypesDownloadedCount ?: 0) > 0) {
-            Text(
-                text = stringResource(
-                    id = R.string.task_types_downloaded,
-                    state.lastSyncInfo?.taskTypesDownloadedCount ?: 0
-                ),
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
 
         // Настройка интервала синхронизации
         AnimatedVisibility(visible = state.periodicSyncEnabled) {

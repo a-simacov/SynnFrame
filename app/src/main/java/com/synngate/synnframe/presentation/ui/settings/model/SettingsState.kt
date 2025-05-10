@@ -62,8 +62,6 @@ data class SettingsState(
 
     // Настройки повторных попыток
     val retrySettings: Map<OperationType, RetrySettings> = mapOf(
-        OperationType.UPLOAD_TASK to RetrySettings(5, 60, 3600, 2.0),
-        OperationType.DOWNLOAD_TASKS to RetrySettings(5, 60, 3600, 2.0),
         OperationType.DOWNLOAD_PRODUCTS to RetrySettings(5, 60, 3600, 2.0),
         OperationType.FULL_SYNC to RetrySettings(5, 60, 3600, 2.0)
     ),

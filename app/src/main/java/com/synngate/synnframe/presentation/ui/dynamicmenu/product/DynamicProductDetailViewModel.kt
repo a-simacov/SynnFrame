@@ -60,7 +60,6 @@ class DynamicProductDetailViewModel(
         selectedUnitUiModels = productUiModel?.units?.filter { it.id == unitId } ?: emptyList()
 
         // Получаем штрихкоды для выбранной единицы измерения
-        val selectedDynamicUnit = product.units.find { it.id == unitId }
         val selectedUnit = mappedProduct.units.find { it.id == unitId }
 
         selectedUnitBarcodes = selectedUnit?.let { unit ->

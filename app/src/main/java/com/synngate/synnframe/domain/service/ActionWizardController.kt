@@ -147,7 +147,6 @@ class ActionWizardController(
                 if (actionStep != null) {
                     // Вызываем executeStep из ActionStepExecutionService
                     val validationResult = actionStepExecutionService.executeStep(
-                        taskId = state.taskId,
                         action = action,
                         step = actionStep,
                         value = result,

@@ -227,8 +227,7 @@ class TaskProductSelectionStepFactory(
                 ProductStatusSelector(
                     selectedStatus = viewModel.selectedStatus,
                     onStatusSelected = { viewModel.setSelectedStatus(it) },
-                    modifier = Modifier.fillMaxWidth(),
-                    isEnabled = !viewModel.isExpirationDateExpired()
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))

@@ -24,7 +24,6 @@ import com.synngate.synnframe.presentation.navigation.graphs.productsNavGraph
 import com.synngate.synnframe.presentation.navigation.graphs.serverNavGraph
 import com.synngate.synnframe.presentation.navigation.graphs.settingsNavGraph
 import com.synngate.synnframe.presentation.navigation.graphs.taskXNavGraph
-import com.synngate.synnframe.presentation.navigation.graphs.tasksNavGraph
 import com.synngate.synnframe.presentation.navigation.routes.MainRoutes
 import com.synngate.synnframe.presentation.navigation.routes.ServerRoutes
 import com.synngate.synnframe.presentation.ui.main.MainMenuScreen
@@ -107,9 +106,6 @@ fun AppNavHost(
 
                 MainMenuScreen(
                     viewModel = viewModel,
-                    navigateToTasks = {
-                        navController.navigateToTaskList()
-                    },
                     navigateToProducts = {
                         navController.navigateToProductList()
                     },
@@ -133,7 +129,6 @@ fun AppNavHost(
             }
 
             // Подключаем остальные графы навигации
-            tasksNavGraph(navController, navigationScopeManager)
             productsNavGraph(navController, navigationScopeManager)
             logsNavGraph(navController, navigationScopeManager)
             taskXNavGraph(navController, navigationScopeManager)

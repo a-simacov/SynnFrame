@@ -17,8 +17,6 @@ import com.synngate.synnframe.data.sync.SyncProgress
 import com.synngate.synnframe.data.sync.SyncStatus
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
-import com.synngate.synnframe.domain.usecase.task.TaskUseCases
-import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.presentation.service.base.BaseForegroundService
 import com.synngate.synnframe.presentation.service.sync.SynchronizationService
 import com.synngate.synnframe.presentation.service.sync.SynchronizationService.Companion.ACTION_RESET_STATE
@@ -43,9 +41,7 @@ import kotlin.coroutines.cancellation.CancellationException
 
 class SynchronizationControllerImpl(
     private val context: Context,
-    private val taskUseCases: TaskUseCases,
     private val productUseCases: ProductUseCases,
-    private val taskTypeUseCases: TaskTypeUseCases,
     private val appSettingsDataStore: AppSettingsDataStore,
     private val appDatabase: AppDatabase
 ) : SynchronizationController {
@@ -307,8 +303,6 @@ class SynchronizationControllerImpl(
         val now = LocalDateTime.now()
         val syncInfo = SynchronizationController.SyncInfo(
             timestamp = now,
-            tasksUploadedCount = 0,
-            tasksDownloadedCount = 0,
             productsDownloadedCount = productsCount,
             durationMillis = 0,
             successful = true
@@ -322,10 +316,7 @@ class SynchronizationControllerImpl(
             startTime = now.minusSeconds(1), // Предполагаем, что синхронизация длилась 1 секунду
             endTime = now,
             duration = 1000, // 1 секунда в миллисекундах
-            tasksUploaded = 0,
-            tasksDownloaded = 0,
             productsDownloaded = productsCount,
-            taskTypesDownloaded = 0,
             successful = true
         )
     }
@@ -333,8 +324,6 @@ class SynchronizationControllerImpl(
     private fun saveSyncInfo(syncResult: SynchronizationController.SyncResult) {
         val syncInfo = SynchronizationController.SyncInfo(
             timestamp = LocalDateTime.now(),
-            tasksUploadedCount = syncResult.tasksUploadedCount,
-            tasksDownloadedCount = syncResult.tasksDownloadedCount,
             productsDownloadedCount = syncResult.productsDownloadedCount,
             durationMillis = syncResult.durationMillis,
             successful = syncResult.successful,
@@ -409,30 +398,6 @@ class SynchronizationControllerImpl(
 
                 try {
                     when (operation.operationType) {
-                        OperationType.UPLOAD_TASK -> {
-                            // Выгрузка задания
-                            val result = taskUseCases.uploadTask(operation.targetId)
-                            if (result.isSuccess) {
-                                syncQueueManager.markOperationCompleted(operation.id)
-                            } else {
-                                val error =
-                                    result.exceptionOrNull()?.message ?: "Unknown error"
-                                syncQueueManager.handleFailedAttempt(operation.id, error)
-                            }
-                        }
-
-                        OperationType.DOWNLOAD_TASKS -> {
-                            // Загрузка заданий
-                            val result = taskUseCases.syncTasks()
-                            if (result.isSuccess) {
-                                syncQueueManager.markOperationCompleted(operation.id)
-                            } else {
-                                val error =
-                                    result.exceptionOrNull()?.message ?: "Unknown error"
-                                syncQueueManager.handleFailedAttempt(operation.id, error)
-                            }
-                        }
-
                         OperationType.DOWNLOAD_PRODUCTS -> {
                             // Загрузка товаров
                             val result = productUseCases.syncProductsWithServer()
@@ -455,17 +420,6 @@ class SynchronizationControllerImpl(
                                     operation.id,
                                     syncResult.errorMessage ?: "Sync error"
                                 )
-                            }
-                        }
-
-                        OperationType.DOWNLOAD_TASK_TYPES -> {
-                            // Загрузка типов заданий
-                            val result = taskTypeUseCases.syncTaskTypes()
-                            if (result.isSuccess) {
-                                syncQueueManager.markOperationCompleted(operation.id)
-                            } else {
-                                val error = result.exceptionOrNull()?.message ?: "Unknown error"
-                                syncQueueManager.handleFailedAttempt(operation.id, error)
                             }
                         }
                     }
@@ -500,8 +454,6 @@ class SynchronizationControllerImpl(
                 action = SynchronizationService.ACTION_UPDATE_PROGRESS
                 putExtra(SynchronizationService.EXTRA_PROGRESS_ID, progress.id)
                 putExtra(SynchronizationService.EXTRA_PROGRESS_STATUS, progress.status.name)
-                putExtra(SynchronizationService.EXTRA_TASKS_UPLOADED, progress.tasksUploaded)
-                putExtra(SynchronizationService.EXTRA_TASKS_DOWNLOADED, progress.tasksDownloaded)
                 putExtra(
                     SynchronizationService.EXTRA_PRODUCTS_DOWNLOADED,
                     progress.productsDownloaded
@@ -532,75 +484,9 @@ class SynchronizationControllerImpl(
         }
 
         try {
-            // Получаем список невыгруженных заданий
-            val completedTasks = taskUseCases.getCompletedNotUploadedTasks().getOrThrow()
-
-            // Обновляем прогресс с информацией о количестве заданий
-            updateProgress { progress ->
-                progress.copy(
-                    tasksToUpload = completedTasks.size,
-                    status = SyncStatus.IN_PROGRESS,
-                    currentOperation = "Выгрузка заданий"
-                )
-            }
-
-            // Выгрузка заданий с отслеживанием прогресса
-            var uploadedCount = 0
-            val taskUploadResults = mutableListOf<Result<Boolean>>()
-
-            for (task in completedTasks) {
-                updateProgress { progress ->
-                    progress.copy(
-                        currentOperation = "Выгрузка задания ${task.id}",
-                        tasksUploaded = uploadedCount
-                    )
-                }
-
-                val result = taskUseCases.uploadTask(task.id)
-                taskUploadResults.add(result)
-
-                if (result.isSuccess && result.getOrNull() == true) {
-                    uploadedCount++
-                    updateProgress { progress ->
-                        progress.copy(tasksUploaded = uploadedCount)
-                    }
-                }
-            }
-
-            // Переходим к загрузке заданий
-            updateProgress { progress ->
-                progress.copy(
-                    currentOperation = "Загрузка заданий с сервера"
-                )
-            }
-
-            // Загрузка заданий
-            val tasksDownloadedCount = retryStrategy.executeWithRetry(
-                operation = {
-                    val result = taskUseCases.syncTasks()
-                    result.getOrThrow()
-                },
-                shouldRetry = { e -> NetworkErrorClassifier.isRetryable(e) },
-                onError = { e, attempt, delay ->
-                    updateProgress { progress ->
-                        progress.copy(
-                            errorCount = progress.errorCount + 1,
-                            lastErrorMessage = "Ошибка загрузки заданий: ${e.message}"
-                        )
-                    }
-
-                    Timber.w(
-                        "Attempt $attempt downloading tasks failed. " +
-                                "Repeat after ${delay}ms. Error: ${e.message}"
-                    )
-                },
-                tag = "TasksDownload"
-            )
-
             // Обновляем прогресс
             updateProgress { progress ->
                 progress.copy(
-                    tasksDownloaded = tasksDownloadedCount,
                     currentOperation = "Загрузка товаров с сервера"
                 )
             }
@@ -628,35 +514,6 @@ class SynchronizationControllerImpl(
                 tag = "ProductsSync"
             )
 
-            updateProgress { progress ->
-                progress.copy(
-                    currentOperation = "Загрузка типов заданий"
-                )
-            }
-
-            // Синхронизация типов заданий
-            val taskTypesDownloadedCount = retryStrategy.executeWithRetry(
-                operation = {
-                    val result = taskTypeUseCases.syncTaskTypes()
-                    result.getOrThrow()
-                },
-                shouldRetry = { e -> NetworkErrorClassifier.isRetryable(e) },
-                onError = { e, attempt, delay ->
-                    updateProgress { progress ->
-                        progress.copy(
-                            errorCount = progress.errorCount + 1,
-                            lastErrorMessage = "Ошибка загрузки типов заданий: ${e.message}"
-                        )
-                    }
-
-                    Timber.w(
-                        "Attempt $attempt task types sync failed. " +
-                                "Repeat after ${delay}ms. Error: ${e.message}"
-                    )
-                },
-                tag = "TaskTypesSync"
-            )
-
             // Вычисляем время выполнения
             val durationMillis = System.currentTimeMillis() - startTime
 
@@ -665,10 +522,7 @@ class SynchronizationControllerImpl(
                 progress.copy(
                     status = SyncStatus.COMPLETED,
                     endTime = LocalDateTime.now(),
-                    tasksUploaded = uploadedCount,
-                    tasksDownloaded = tasksDownloadedCount,
                     productsDownloaded = productsDownloadedCount,
-                    taskTypesDownloaded = taskTypesDownloadedCount,
                     progressPercent = 100,
                     currentOperation = "Синхронизация завершена"
                 )
@@ -680,18 +534,13 @@ class SynchronizationControllerImpl(
                 startTime = _syncProgressFlow.value.startTime,
                 endTime = LocalDateTime.now(),
                 duration = durationMillis,
-                tasksUploaded = uploadedCount,
-                tasksDownloaded = tasksDownloadedCount,
                 productsDownloaded = productsDownloadedCount,
-                taskTypesDownloaded = taskTypesDownloadedCount,
                 successful = true
             )
 
             // Подготавливаем результат
             val syncResult = SynchronizationController.SyncResult(
                 successful = true,
-                tasksUploadedCount = uploadedCount,
-                tasksDownloadedCount = tasksDownloadedCount,
                 productsDownloadedCount = productsDownloadedCount,
                 durationMillis = durationMillis,
                 errorMessage = null
@@ -702,8 +551,6 @@ class SynchronizationControllerImpl(
 
             Timber.i(
                 "Full sync finished successfully. " +
-                        "Uploaded tasks: $uploadedCount, " +
-                        "downloaded tasks: $tasksDownloadedCount, " +
                         "downloaded products: $productsDownloadedCount. " +
                         "Time: ${durationMillis}ms"
             )
@@ -730,10 +577,7 @@ class SynchronizationControllerImpl(
                 startTime = _syncProgressFlow.value.startTime,
                 endTime = LocalDateTime.now(),
                 duration = durationMillis,
-                tasksUploaded = _syncProgressFlow.value.tasksUploaded,
-                tasksDownloaded = _syncProgressFlow.value.tasksDownloaded,
                 productsDownloaded = _syncProgressFlow.value.productsDownloaded,
-                taskTypesDownloaded = _syncProgressFlow.value.taskTypesDownloaded,
                 successful = false,
                 errorMessage = e.message
             )
@@ -741,8 +585,6 @@ class SynchronizationControllerImpl(
             // Подготавливаем результат с ошибкой
             val syncResult = SynchronizationController.SyncResult(
                 successful = false,
-                tasksUploadedCount = _syncProgressFlow.value.tasksUploaded,
-                tasksDownloadedCount = _syncProgressFlow.value.tasksDownloaded,
                 productsDownloadedCount = _syncProgressFlow.value.productsDownloaded,
                 durationMillis = durationMillis,
                 errorMessage = e.message
@@ -762,10 +604,7 @@ class SynchronizationControllerImpl(
         startTime: LocalDateTime,
         endTime: LocalDateTime,
         duration: Long,
-        tasksUploaded: Int,
-        tasksDownloaded: Int,
         productsDownloaded: Int,
-        taskTypesDownloaded: Int,
         successful: Boolean,
         errorMessage: String? = null
     ) {
@@ -789,14 +628,11 @@ class SynchronizationControllerImpl(
                 duration = duration,
                 networkType = networkType,
                 meteredConnection = meteredConnection,
-                tasksUploaded = tasksUploaded,
-                tasksDownloaded = tasksDownloaded,
                 productsDownloaded = productsDownloaded,
-                taskTypesDownloaded = taskTypesDownloaded,
                 successful = successful,
                 errorMessage = errorMessage,
                 retryAttempts = _syncProgressFlow.value.errorCount,
-                totalOperations = tasksUploaded + tasksDownloaded + productsDownloaded
+                totalOperations = productsDownloaded
             )
 
             // Сохраняем в базу данных
@@ -809,107 +645,6 @@ class SynchronizationControllerImpl(
     // Добавляем метод для получения истории синхронизаций
     override fun getSyncHistory(): Flow<List<SyncHistoryRecord>> {
         return syncHistoryDao.getAllHistory()
-    }
-
-    // Добавление нового метода для синхронизации только типов заданий
-    override suspend fun syncTaskTypes(): Result<Int> {
-        // Если синхронизация уже идет, возвращаем ошибку
-        if (_syncStatus.value == SynchronizationController.SyncStatus.SYNCING) {
-            return Result.failure(IllegalStateException("Syncing is already in process"))
-        }
-
-        // Если нет сети, добавляем операцию в очередь
-        if (!networkMonitor.isNetworkAvailable()) {
-            Timber.d("No network, adding operation DOWNLOAD_TASK_TYPES to queue")
-            val operationId = syncQueueManager.enqueueOperation(
-                operationType = OperationType.DOWNLOAD_TASK_TYPES,
-                targetId = "task-types-sync-${System.currentTimeMillis()}",
-                executeImmediately = false
-            )
-
-            Timber.i("Task types sync is enqueued and will proceed when network appears")
-
-            return Result.failure(
-                NoNetworkException("No network connection. Sync will start when network appears.")
-            )
-        }
-
-        _syncStatus.value = SynchronizationController.SyncStatus.SYNCING
-
-        try {
-            // Обновляем прогресс
-            updateProgress { progress ->
-                progress.copy(
-                    currentOperation = "Загрузка типов заданий"
-                )
-            }
-
-            // Синхронизация типов заданий
-            val taskTypesCount = retryStrategy.executeWithRetry(
-                operation = {
-                    val result = taskTypeUseCases.syncTaskTypes()
-                    result.getOrThrow()
-                },
-                shouldRetry = { e -> NetworkErrorClassifier.isRetryable(e) },
-                onError = { e, attempt, delay ->
-                    updateProgress { progress ->
-                        progress.copy(
-                            errorCount = progress.errorCount + 1,
-                            lastErrorMessage = "Ошибка загрузки типов заданий: ${e.message}"
-                        )
-                    }
-
-                    Timber.w(
-                        "Attempt $attempt task types sync failed. " +
-                                "Repeat after ${delay}ms. Error: ${e.message}"
-                    )
-                },
-                tag = "TaskTypesSync"
-            )
-
-            // Обновляем финальный прогресс
-            updateProgress { progress ->
-                progress.copy(
-                    status = SyncStatus.COMPLETED,
-                    endTime = LocalDateTime.now(),
-                    currentOperation = "Синхронизация типов заданий завершена"
-                )
-            }
-
-            _syncStatus.value = SynchronizationController.SyncStatus.IDLE
-
-            // Подготавливаем результат
-            val syncResult = SynchronizationController.SyncResult(
-                successful = true,
-                taskTypesDownloadedCount = taskTypesCount,
-                tasksUploadedCount = 0,
-                tasksDownloadedCount = 0,
-                productsDownloadedCount = 0,
-                durationMillis = 0,
-                errorMessage = null
-            )
-
-            Timber.i("Task types sync finished successfully: $taskTypesCount")
-
-            return Result.success(taskTypesCount)
-        } catch (e: Exception) {
-            _syncStatus.value = SynchronizationController.SyncStatus.ERROR
-
-            // Обновляем прогресс с ошибкой
-            updateProgress { progress ->
-                progress.copy(
-                    status = SyncStatus.FAILED,
-                    endTime = LocalDateTime.now(),
-                    errorCount = progress.errorCount + 1,
-                    lastErrorMessage = e.message,
-                    currentOperation = "Синхронизация типов заданий не удалась"
-                )
-            }
-
-            Timber.e("Task types sync error: ${e.message}")
-
-            return Result.failure(e)
-        }
     }
 
     class NoNetworkException(message: String) : Exception(message)

@@ -9,10 +9,8 @@ import com.synngate.synnframe.SynnFrameApplication
 import com.synngate.synnframe.data.sync.SyncHistoryRecord
 import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
-import com.synngate.synnframe.domain.repository.TaskRepository
 import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.WebServerController
-import com.synngate.synnframe.domain.usecase.tasktype.TaskTypeUseCases
 import com.synngate.synnframe.presentation.service.base.BaseForegroundService
 import com.synngate.synnframe.presentation.service.base.launchSafely
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
@@ -58,11 +56,6 @@ class WebServerService : BaseForegroundService() {
         (application as SynnFrameApplication).appContainer.webServerController
     }
 
-    // Добавляем доступ к репозиториям и use cases
-    private val taskRepository: TaskRepository by lazy {
-        (application as SynnFrameApplication).appContainer.taskRepository
-    }
-
     private val productRepository: ProductRepository by lazy {
         (application as SynnFrameApplication).appContainer.productRepository
     }
@@ -73,10 +66,6 @@ class WebServerService : BaseForegroundService() {
 
     private val serverRepository: ServerRepository by lazy {
         (application as SynnFrameApplication).appContainer.serverRepository
-    }
-
-    private val taskTypeUseCases: TaskTypeUseCases by lazy {
-        (application as SynnFrameApplication).appContainer.taskTypeUseCases
     }
 
     private val networkMonitor: NetworkMonitor by lazy {
@@ -112,16 +101,12 @@ class WebServerService : BaseForegroundService() {
     private val controllerFactory by lazy {
         WebServerControllerFactory(
             userRepository,
-            taskRepository,
             productRepository,
-            taskTypeUseCases,
             syncIntegrator,
             // Передаем метод saveSyncHistoryRecord как лямбду
-            saveSyncHistoryRecord = { tasksDownloaded, productsDownloaded, taskTypesDownloaded, duration ->
+            saveSyncHistoryRecord = { productsDownloaded, duration ->
                 saveSyncHistoryRecord(
-                    tasksDownloaded = tasksDownloaded,
                     productsDownloaded = productsDownloaded,
-                    taskTypesDownloaded = taskTypesDownloaded,
                     duration = duration
                 )
             }
@@ -233,8 +218,6 @@ class WebServerService : BaseForegroundService() {
         // Инициализируем контроллеры
         val echoController = controllerFactory.createEchoController()
         val productsController = controllerFactory.createProductsController()
-        val tasksController = controllerFactory.createTasksController()
-        val taskTypesController = controllerFactory.createTaskTypesController()
 
         // Настройка плагинов
         install(ContentNegotiation) {
@@ -276,26 +259,10 @@ class WebServerService : BaseForegroundService() {
 
             // Защищенные маршруты
             authenticate(WebServerConstants.AUTH_SCHEME) {
-                route(WebServerConstants.ROUTE_TASKS) {
-                    post {
-                        val startTime = System.currentTimeMillis()
-                        tasksController.handleTasks(call)
-                        logRequest(call, System.currentTimeMillis() - startTime)
-                    }
-                }
-
                 route(WebServerConstants.ROUTE_PRODUCTS) {
                     post {
                         val startTime = System.currentTimeMillis()
                         productsController.handleProducts(call)
-                        logRequest(call, System.currentTimeMillis() - startTime)
-                    }
-                }
-
-                route(WebServerConstants.ROUTE_TASK_TYPES) {
-                    post {
-                        val startTime = System.currentTimeMillis()
-                        taskTypesController.handleTaskTypes(call)
                         logRequest(call, System.currentTimeMillis() - startTime)
                     }
                 }
@@ -304,9 +271,7 @@ class WebServerService : BaseForegroundService() {
     }
 
     private suspend fun saveSyncHistoryRecord(
-        tasksDownloaded: Int = 0,
         productsDownloaded: Int = 0,
-        taskTypesDownloaded: Int = 0,
         duration: Long = WebServerConstants.DEFAULT_SYNC_DURATION
     ) {
         try {
@@ -333,25 +298,19 @@ class WebServerService : BaseForegroundService() {
                 duration = duration,
                 networkType = networkType,
                 meteredConnection = isMetered,
-                tasksUploaded = 0, // Через веб-сервер не выгружаются задания
-                tasksDownloaded = tasksDownloaded,
                 productsDownloaded = productsDownloaded,
-                taskTypesDownloaded = taskTypesDownloaded,
                 successful = true,
                 retryAttempts = 0,
-                totalOperations = tasksDownloaded + productsDownloaded + taskTypesDownloaded
+                totalOperations = productsDownloaded
             )
 
             // Сохраняем запись в базу данных
             syncHistoryDao.insertHistory(record)
 
             // Обновляем счетчики в интерфейсе
-            if (tasksDownloaded > 0 || productsDownloaded > 0 || taskTypesDownloaded > 0) {
+            if (productsDownloaded > 0) {
                 syncIntegrator.updateSyncProgress(
-                    tasksDownloaded = tasksDownloaded,
-                    productsDownloaded = productsDownloaded,
-                    taskTypesDownloaded = taskTypesDownloaded,
-                    operation = WebServerConstants.OPERATION_DATA_RECEIVED
+                    productsDownloaded = productsDownloaded
                 )
             }
 

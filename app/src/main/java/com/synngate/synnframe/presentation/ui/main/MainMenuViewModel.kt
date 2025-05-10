@@ -2,7 +2,6 @@ package com.synngate.synnframe.presentation.ui.main
 
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
-import com.synngate.synnframe.domain.usecase.task.TaskUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.main.model.MainMenuEvent
 import com.synngate.synnframe.presentation.ui.main.model.MainMenuState
@@ -17,7 +16,6 @@ import timber.log.Timber
  */
 class MainMenuViewModel(
     private val userUseCases: UserUseCases,
-    private val taskUseCases: TaskUseCases,
     private val productUseCases: ProductUseCases,
     private val synchronizationController: SynchronizationController,
 ) : BaseViewModel<MainMenuState, MainMenuEvent>(MainMenuState()) {
@@ -35,10 +33,9 @@ class MainMenuViewModel(
                 // Комбинируем потоки данных для эффективной загрузки
                 combine(
                     userUseCases.getCurrentUser(),
-                    taskUseCases.getTasksCountForCurrentUser(),
                     productUseCases.getProductsCount()
-                ) { user, tasksCount, productsCount ->
-                    Triple(user, tasksCount, productsCount)
+                ) { user, productsCount ->
+                    Pair(user, productsCount)
                 }.catch { e ->
                     Timber.e(e, "Error loading main menu data")
                     updateState {
@@ -47,11 +44,10 @@ class MainMenuViewModel(
                             error = e.message ?: "Ошибка загрузки данных"
                         )
                     }
-                }.collectLatest { (user, tasksCount, productsCount) ->
+                }.collectLatest { (user, productsCount) ->
                     updateState {
                         it.copy(
                             currentUser = user,
-                            assignedTasksCount = tasksCount,
                             totalProductsCount = productsCount,
                             isLoading = false,
                             error = null
@@ -70,10 +66,6 @@ class MainMenuViewModel(
         }
     }
 
-    fun onTasksClick() {
-        sendEvent(MainMenuEvent.NavigateToTasks)
-    }
-
     fun onProductsClick() {
         sendEvent(MainMenuEvent.NavigateToProducts)
     }
@@ -84,10 +76,6 @@ class MainMenuViewModel(
 
     fun onSettingsClick() {
         sendEvent(MainMenuEvent.NavigateToSettings)
-    }
-
-    fun onTasksXClick() {
-        sendEvent(MainMenuEvent.NavigateToTasksX)
     }
 
     fun onChangeUserClick() {
@@ -151,8 +139,8 @@ class MainMenuViewModel(
                         )
                     }
 
-                    val message = "Синхронизация выполнена. Обновлено заданий: ${result?.tasksDownloadedCount ?: 0}, " +
-                            "товаров: ${result?.productsDownloadedCount ?: 0}"
+                    val message =
+                        "Синхронизация выполнена. Обновлено товаров: ${result?.productsDownloadedCount ?: 0}"
                     sendEvent(MainMenuEvent.ShowSnackbar(message))
                 } else {
                     updateState { it.copy(isSyncing = false) }

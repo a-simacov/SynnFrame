@@ -44,8 +44,6 @@ class SynchronizationService : BaseForegroundService() {
                 // Создаем новый объект SyncProgress из параметров Intent
                 val progressId = intent.getStringExtra(EXTRA_PROGRESS_ID) ?: System.currentTimeMillis().toString()
                 val statusName = intent.getStringExtra(EXTRA_PROGRESS_STATUS) ?: SyncStatus.STARTED.name
-                val tasksUploaded = intent.getIntExtra(EXTRA_TASKS_UPLOADED, 0)
-                val tasksDownloaded = intent.getIntExtra(EXTRA_TASKS_DOWNLOADED, 0)
                 val productsDownloaded = intent.getIntExtra(EXTRA_PRODUCTS_DOWNLOADED, 0)
                 val currentOperation = intent.getStringExtra(EXTRA_CURRENT_OPERATION) ?: ""
                 val progressPercent = intent.getIntExtra(EXTRA_PROGRESS_PERCENT, 0)
@@ -55,8 +53,6 @@ class SynchronizationService : BaseForegroundService() {
                 val progress = SyncProgress(
                     id = progressId,
                     status = SyncStatus.valueOf(statusName),
-                    tasksUploaded = tasksUploaded,
-                    tasksDownloaded = tasksDownloaded,
                     productsDownloaded = productsDownloaded,
                     currentOperation = currentOperation,
                     progressPercent = progressPercent,
@@ -190,8 +186,6 @@ class SynchronizationService : BaseForegroundService() {
             SyncStatus.IN_PROGRESS -> progressMessage
             SyncStatus.COMPLETED -> getString(
                 R.string.sync_notification_completed,
-                progress.tasksUploaded,
-                progress.tasksDownloaded,
                 progress.productsDownloaded
             )
             SyncStatus.FAILED -> progressMessage

@@ -38,9 +38,6 @@ class RetryStrategy(
 
         fun forOperationType(operationType: OperationType): RetryStrategy {
             return when (operationType) {
-                OperationType.UPLOAD_TASK -> AGGRESSIVE
-                OperationType.DOWNLOAD_TASKS -> NORMAL
-                OperationType.DOWNLOAD_TASK_TYPES -> AGGRESSIVE
                 OperationType.DOWNLOAD_PRODUCTS -> NORMAL
                 OperationType.FULL_SYNC -> CONSERVATIVE
             }

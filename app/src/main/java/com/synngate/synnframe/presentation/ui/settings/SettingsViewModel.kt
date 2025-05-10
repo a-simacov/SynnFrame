@@ -691,8 +691,6 @@ class SettingsViewModel(
                         }
 
                         val message = "Синхронизация завершена успешно. " +
-                                "Выгружено заданий: ${syncResult.tasksUploadedCount}, " +
-                                "загружено заданий: ${syncResult.tasksDownloadedCount}, " +
                                 "загружено товаров: ${syncResult.productsDownloadedCount}"
                         sendEvent(SettingsEvent.ShowSnackbar(message))
                     } else {
@@ -786,47 +784,6 @@ class SettingsViewModel(
         updateState { it.copy(binCodePattern = pattern) }
         launchIO {
             settingsUseCases.setBinCodePattern(pattern)
-        }
-    }
-
-    fun syncTaskTypes() {
-        launchIO {
-            updateState { it.copy(isSyncingTaskTypes = true, error = null) }
-
-            try {
-                val result = synchronizationController.syncTaskTypes()
-
-                if (result.isSuccess) {
-                    val taskTypesCount = result.getOrNull() ?: 0
-                    updateState {
-                        it.copy(
-                            isSyncingTaskTypes = false,
-                            error = null
-                        )
-                    }
-
-                    val message = "Синхронизация типов заданий завершена: загружено $taskTypesCount типов"
-                    sendEvent(SettingsEvent.ShowSnackbar(message))
-                } else {
-                    val exception = result.exceptionOrNull()
-                    updateState {
-                        it.copy(
-                            isSyncingTaskTypes = false,
-                            error = "Ошибка синхронизации типов заданий: ${exception?.message}"
-                        )
-                    }
-                    sendEvent(SettingsEvent.ShowSnackbar("Ошибка синхронизации типов заданий"))
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error during task types synchronization")
-                updateState {
-                    it.copy(
-                        isSyncingTaskTypes = false,
-                        error = "Ошибка синхронизации типов заданий: ${e.message}"
-                    )
-                }
-                sendEvent(SettingsEvent.ShowSnackbar("Ошибка синхронизации типов заданий"))
-            }
         }
     }
 

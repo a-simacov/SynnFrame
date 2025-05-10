@@ -3,9 +3,7 @@ package com.synngate.synnframe.data.remote.service
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.dto.AuthRequestDto
 import com.synngate.synnframe.data.remote.dto.AuthResponseDto
-import com.synngate.synnframe.data.remote.dto.TaskAvailabilityResponseDto
 import com.synngate.synnframe.domain.entity.Server
-import com.synngate.synnframe.domain.entity.Task
 import com.synngate.synnframe.util.network.ApiUtils
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -24,10 +22,6 @@ interface ApiService {
     suspend fun testConnection(server: Server): ApiResult<Unit>
 
     suspend fun authenticate(password: String, deviceInfo: Map<String, String>): ApiResult<AuthResponseDto>
-
-    suspend fun checkTaskAvailability(taskId: String): ApiResult<TaskAvailabilityResponseDto>
-
-    suspend fun uploadTask(taskId: String, task: Task): ApiResult<Unit>
 }
 
 class ApiServiceImpl(
@@ -93,66 +87,6 @@ class ApiServiceImpl(
             ApiResult.Error(
                 HttpStatusCode.InternalServerError.value,
                 e.message ?: "Authentication error"
-            )
-        }
-    }
-
-    override suspend fun checkTaskAvailability(taskId: String): ApiResult<TaskAvailabilityResponseDto> {
-        val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
-            HttpStatusCode.InternalServerError.value,
-            "No active server configured"
-        )
-
-        return try {
-            val url = "${server.apiUrl}/tasks/$taskId/availability"
-            val response = client.get(url) {
-                header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
-                header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
-            }
-
-            if (response.status.isSuccess()) {
-                val availability = response.body<TaskAvailabilityResponseDto>()
-                ApiResult.Success(availability)
-            } else {
-                ApiResult.Error(response.status.value, "Failed to check task availability")
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error checking task availability: $taskId")
-            ApiResult.Error(
-                HttpStatusCode.InternalServerError.value,
-                e.message ?: "Task availability check failed"
-            )
-        }
-    }
-
-    override suspend fun uploadTask(taskId: String, task: Task): ApiResult<Unit> {
-        val server = serverProvider.getActiveServer() ?: return ApiResult.Error(
-            HttpStatusCode.InternalServerError.value,
-            "No active server configured"
-        )
-
-        return try {
-            val url = "${server.apiUrl}/tasks/$taskId"
-            val response = client.post(url) {
-                // Basic аутентификация
-                header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
-                // Заголовок с ID текущего пользователя
-                header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
-                // Тело запроса
-                contentType(ContentType.Application.Json)
-                setBody(task)
-            }
-
-            if (response.status.isSuccess()) {
-                ApiResult.Success(Unit)
-            } else {
-                ApiResult.Error(response.status.value, "Failed to upload task")
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error uploading task: $taskId")
-            ApiResult.Error(
-                HttpStatusCode.InternalServerError.value,
-                e.message ?: "Task upload failed"
             )
         }
     }

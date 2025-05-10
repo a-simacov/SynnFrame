@@ -330,8 +330,6 @@
     <string name="sync_tasks">Синхронизировать задания</string>
     <string name="create_task">Создать задание</string>
 
-    <!-- Статусы заданий -->
-
     <!-- Типы заданий -->
     <string name="all_types">Все типы</string>
 
@@ -414,7 +412,7 @@
     <string name="failed_syncs">Неудачные</string>
     <string name="items_processed">Обработано</string>
     <string name="average_duration">Ср. время</string>
-    <string name="sync_item_summary">Выгружено: %1$d, загружено заданий: %2$d, товаров: %3$d</string>
+    <string name="sync_item_summary">Загружено товаров: %1$d</string>
     <string name="sync_details_title">Детали синхронизации</string>
     <string name="sync_start_time">Время начала</string>
     <string name="sync_end_time">Время окончания</string>
@@ -435,7 +433,7 @@
     <string name="sync_notification_title_in_progress">Синхронизация выполняется</string>
     <string name="sync_notification_title_completed">Синхронизация завершена</string>
     <string name="sync_notification_title_failed">Синхронизация не удалась</string>
-    <string name="sync_notification_completed">Выгружено заданий: %1$d, загружено заданий: %2$d, товаров: %3$d</string>
+    <string name="sync_notification_completed">Загружено товаров: %1$d</string>
     <string name="sync_notification_started_at">Начата: %1$s</string>
     <string name="sync_notification_finished_at">Завершена: %1$s</string>
     <string name="action_sync_now">Синхронизировать</string>
@@ -477,7 +475,7 @@
     <string name="start_manual_sync">Запустить синхронизацию вручную</string>
     <string name="last_sync_info">Информация о последней синхронизации</string>
     <string name="last_sync_time">Время: %1$s</string>
-    <string name="sync_results">Выгружено заданий: %1$d\nЗагружено заданий: %2$d\nЗагружено товаров: %3$d</string>
+    <string name="sync_results">Загружено товаров: %1$d</string>
     <string name="periodic_sync_enabled">Периодическая синхронизация</string>
     <string name="sync_interval_seconds">Интервал синхронизации (в секундах)</string>
     <string name="sync_history">История синхронизаций</string>

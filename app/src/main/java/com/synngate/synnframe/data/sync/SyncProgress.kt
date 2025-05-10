@@ -8,14 +8,7 @@ data class SyncProgress(
     val endTime: LocalDateTime? = null,
     val status: SyncStatus = SyncStatus.STARTED,
 
-    val tasksToUpload: Int = 0,
-    val tasksUploaded: Int = 0,
-
-    val tasksDownloaded: Int = 0,
-
     val productsDownloaded: Int = 0,
-
-    val taskTypesDownloaded: Int = 0,
 
     val currentOperation: String = "",
 
@@ -30,30 +23,19 @@ data class SyncProgress(
         if (status == SyncStatus.COMPLETED) return 100
         if (status == SyncStatus.FAILED) return 0
 
-        // Если нет операций, возвращаем начальный прогресс
-        if (tasksToUpload == 0) return if (currentOperation.isEmpty()) 0 else 10
-
-        // Вычисляем прогресс выгрузки заданий (50% от общего)
-        val uploadProgress = if (tasksToUpload > 0) {
-            (tasksUploaded.toFloat() / tasksToUpload) * 50
-        } else 0f
-
         // Примерно оцениваем прогресс загрузки (по 25% на загрузку заданий и товаров)
         val downloadProgress = when {
-            tasksDownloaded > 0 && productsDownloaded > 0 -> 50f  // Обе операции выполнены
-            tasksDownloaded > 0 -> 25f  // Только задания загружены
-            productsDownloaded > 0 -> 25f  // Только товары загружены
+            productsDownloaded > 0 -> 100f  // Только товары загружены
             else -> 0f  // Ничего не загружено
         }
 
-        return (uploadProgress + downloadProgress).toInt()
+        return downloadProgress.toInt()
     }
 
     fun getProgressMessage(): String {
         return when (status) {
             SyncStatus.STARTED -> "Синхронизация начата"
-            SyncStatus.IN_PROGRESS -> "Синхронизация: $currentOperation" +
-                    if (tasksToUpload > 0) " (${tasksUploaded}/${tasksToUpload})" else ""
+            SyncStatus.IN_PROGRESS -> "Синхронизация: "
             SyncStatus.COMPLETED -> "Синхронизация завершена успешно"
             SyncStatus.FAILED -> "Синхронизация не удалась: ${lastErrorMessage ?: "неизвестная ошибка"}"
         }

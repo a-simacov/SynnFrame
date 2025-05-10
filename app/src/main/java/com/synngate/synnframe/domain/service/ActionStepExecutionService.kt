@@ -18,8 +18,7 @@ class ActionStepExecutionService(
     private val taskContextManager: TaskContextManager
 ) {
 
-    suspend fun executeStep(
-        taskId: String,
+    fun executeStep(
         action: PlannedAction,
         step: ActionStep,
         value: Any?,
@@ -113,7 +112,6 @@ class ActionStepExecutionService(
                         }
                     }
                     .distinct()
-                    .filterNotNull()
                     .toList()
 
                 context["planItems"] = planPallets
@@ -130,7 +128,6 @@ class ActionStepExecutionService(
                         }
                     }
                     .distinct()
-                    .filterNotNull()
                     .toList()
 
                 context["planItems"] = planBins

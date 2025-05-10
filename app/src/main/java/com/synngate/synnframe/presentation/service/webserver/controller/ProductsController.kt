@@ -18,7 +18,7 @@ import java.util.Locale
 class ProductsController(
     private val productRepository: ProductRepository,
     private val syncIntegrator: WebServerSyncIntegrator,
-    private val saveSyncHistoryRecord: suspend (Int, Int, Int, Long) -> Unit
+    private val saveSyncHistoryRecord: suspend (Int, Long) -> Unit
 ) : WebServerController {
 
     @Serializable
@@ -89,9 +89,7 @@ class ProductsController(
             // Сохраняем запись в историю синхронизаций
             try {
                 saveSyncHistoryRecord(
-                    0,
                     products.size,
-                    0,
                     duration
                 )
             } catch (e: Exception) {
@@ -100,8 +98,7 @@ class ProductsController(
 
             // Обновляем UI через интегратор
             syncIntegrator.updateSyncProgress(
-                productsDownloaded = products.size,
-                operation = WebServerConstants.OPERATION_PRODUCTS_RECEIVED
+                productsDownloaded = products.size
             )
 
             // Отправляем ответ

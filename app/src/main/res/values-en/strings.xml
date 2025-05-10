@@ -412,7 +412,7 @@
     <string name="failed_syncs">Failed</string>
     <string name="items_processed">Processed</string>
     <string name="average_duration">Avg. time</string>
-    <string name="sync_item_summary">Uploaded: %1$d, downloaded tasks: %2$d, products: %3$d</string>
+    <string name="sync_item_summary">Downloaded products: %1$d</string>
     <string name="sync_details_title">Synchronization details</string>
     <string name="sync_start_time">Start time</string>
     <string name="sync_end_time">End time</string>
@@ -433,7 +433,7 @@
     <string name="sync_notification_title_in_progress">Synchronization in progress</string>
     <string name="sync_notification_title_completed">Synchronization completed</string>
     <string name="sync_notification_title_failed">Synchronization failed</string>
-    <string name="sync_notification_completed">Tasks uploaded: %1$d, tasks downloaded: %2$d, products: %3$d</string>
+    <string name="sync_notification_completed">Products downloaded: %1$d</string>
     <string name="sync_notification_started_at">Started: %1$s</string>
     <string name="sync_notification_finished_at">Finished: %1$s</string>
     <string name="action_sync_now">Sync now</string>
@@ -475,7 +475,7 @@
     <string name="start_manual_sync">Start manual synchronization</string>
     <string name="last_sync_info">Last synchronization information</string>
     <string name="last_sync_time">Time: %1$s</string>
-    <string name="sync_results">Tasks uploaded: %1$d\nTasks downloaded: %2$d\nProducts downloaded: %3$d</string>
+    <string name="sync_results">Products downloaded: %1$d</string>
     <string name="periodic_sync_enabled">Periodic synchronization</string>
     <string name="sync_interval_seconds">Synchronization interval (in seconds)</string>
     <string name="sync_history">Synchronization history</string>

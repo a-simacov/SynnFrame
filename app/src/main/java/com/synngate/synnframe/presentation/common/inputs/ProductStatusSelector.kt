@@ -21,8 +21,7 @@ import com.synngate.synnframe.domain.entity.taskx.ProductStatus
 fun ProductStatusSelector(
     selectedStatus: ProductStatus,
     onStatusSelected: (ProductStatus) -> Unit,
-    modifier: Modifier = Modifier,
-    isEnabled: Boolean = true
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
 

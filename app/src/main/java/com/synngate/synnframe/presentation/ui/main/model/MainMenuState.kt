@@ -22,8 +22,6 @@ data class MainMenuState(
 
 sealed class MainMenuEvent {
 
-    data object NavigateToTasks : MainMenuEvent()
-
     data object NavigateToProducts : MainMenuEvent()
 
     data object NavigateToLogs : MainMenuEvent()

@@ -65,9 +65,6 @@ class SyncQueueManager(
 
     private fun getPriorityForType(operationType: OperationType): Int {
         return when (operationType) {
-            OperationType.UPLOAD_TASK -> 1     // Наивысший приоритет
-            OperationType.DOWNLOAD_TASKS -> 2
-            OperationType.DOWNLOAD_TASK_TYPES -> 1
             OperationType.DOWNLOAD_PRODUCTS -> 3
             OperationType.FULL_SYNC -> 4       // Наименьший приоритет
         }

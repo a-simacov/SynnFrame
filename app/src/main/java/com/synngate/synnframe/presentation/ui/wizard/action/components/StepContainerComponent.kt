@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.NavigateBefore
-import androidx.compose.material.icons.filled.NavigateNext
+import androidx.compose.material.icons.automirrored.filled.NavigateBefore
+import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
@@ -132,7 +132,7 @@ fun <T> StepContainer(
                     enabled = !isReallyLoading // Блокируем, если идет загрузка
                 ) {
                     Icon(
-                        imageVector = Icons.Default.NavigateBefore,
+                        imageVector = Icons.AutoMirrored.Filled.NavigateBefore,
                         contentDescription = "Назад",
                         modifier = Modifier.padding(end = 4.dp)
                     )
@@ -150,7 +150,7 @@ fun <T> StepContainer(
             ) {
                 Text("Вперед")
                 Icon(
-                    imageVector = Icons.Default.NavigateNext,
+                    imageVector = Icons.AutoMirrored.Filled.NavigateNext,
                     contentDescription = "Вперед",
                     modifier = Modifier.padding(start = 4.dp)
                 )

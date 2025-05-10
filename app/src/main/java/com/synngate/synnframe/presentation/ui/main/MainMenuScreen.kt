@@ -43,7 +43,6 @@ import com.synngate.synnframe.presentation.ui.main.model.MainMenuEvent
 @Composable
 fun MainMenuScreen(
     viewModel: MainMenuViewModel,
-    navigateToTasks: () -> Unit,
     navigateToProducts: () -> Unit,
     navigateToLogs: () -> Unit,
     navigateToSettings: () -> Unit,
@@ -60,7 +59,6 @@ fun MainMenuScreen(
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is MainMenuEvent.NavigateToTasks -> navigateToTasks()
                 is MainMenuEvent.NavigateToProducts -> navigateToProducts()
                 is MainMenuEvent.NavigateToLogs -> navigateToLogs()
                 is MainMenuEvent.NavigateToSettings -> navigateToSettings()

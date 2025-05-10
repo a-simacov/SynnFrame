@@ -3,9 +3,7 @@ package com.synngate.synnframe.presentation.service.webserver
 object WebServerConstants {
     // Маршруты API
     const val ROUTE_ECHO = "/echo"
-    const val ROUTE_TASKS = "/tasks"
     const val ROUTE_PRODUCTS = "/products"
-    const val ROUTE_TASK_TYPES = "/task-types"
 
     // Параметры
     const val PORT_DEFAULT = 8080
