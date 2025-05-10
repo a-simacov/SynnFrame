@@ -11,6 +11,7 @@ import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.Locale
 import kotlin.math.round
 
 /**
@@ -28,7 +29,7 @@ class ProductQuantityViewModel(
     private var selectedTaskProduct: TaskProduct? = null
 
     // Состояние поля ввода количества
-    var quantityInput = "1"
+    var quantityInput = "1.0"
         private set
 
     // Расчетные данные для отображения
@@ -62,7 +63,6 @@ class ProductQuantityViewModel(
      */
     override fun processBarcode(barcode: String) {
         // Для этого типа шага обработка штрих-кода не требуется
-        // Тем не менее реализуем заглушку, чтобы соответствовать интерфейсу
     }
 
     /**
@@ -72,8 +72,6 @@ class ProductQuantityViewModel(
         try {
             var foundProduct: Product? = null
             var foundTaskProduct: TaskProduct? = null
-
-            // Более безопасный поиск результатов предыдущих шагов
 
             // Сначала пытаемся найти TaskProduct в результатах
             for ((stepId, value) in context.results) {
@@ -88,7 +86,6 @@ class ProductQuantityViewModel(
                         is Product -> {
                             Timber.d("Found Product from previous step: $stepId")
                             foundProduct = value
-                            // Не прерываем поиск, потому что может найтись TaskProduct
                         }
                     }
                 }
@@ -124,7 +121,7 @@ class ProductQuantityViewModel(
                     if (context.hasStepResult) {
                         val currentResult = context.getCurrentStepResult()
                         if (currentResult is TaskProduct && currentResult.quantity > 0) {
-                            quantityInput = currentResult.quantity.toString()
+                            quantityInput = formatQuantityForDisplay(currentResult.quantity)
                         }
                     }
 
@@ -181,7 +178,7 @@ class ProductQuantityViewModel(
         )
 
         // Рассчитываем текущее введенное количество
-        currentInputQuantity = roundToThreeDecimals(quantityInput.toFloatOrNull() ?: 0f)
+        currentInputQuantity = roundToThreeDecimals(parseQuantityInput(quantityInput))
 
         // Рассчитываем прогнозируемый итог
         projectedTotalQuantity = roundToThreeDecimals(completedQuantity + currentInputQuantity)
@@ -198,7 +195,7 @@ class ProductQuantityViewModel(
     private fun updateStateFromQuantity() {
         if (selectedProduct == null) return
 
-        val quantityValue = quantityInput.toFloatOrNull() ?: 0f
+        val quantityValue = parseQuantityInput(quantityInput)
 
         // Создаем обновленный продукт с текущим количеством
         val updatedTaskProduct = selectedTaskProduct?.copy(quantity = roundToThreeDecimals(quantityValue))
@@ -230,12 +227,18 @@ class ProductQuantityViewModel(
      * Обновление ввода количества
      */
     fun updateQuantityInput(input: String) {
-        // Фильтруем ввод, чтобы были только цифры и точка/запятая
-        val filteredValue = input.replace(",", ".").filter {
-            it.isDigit() || it == '.'
+        val processedValue = when {
+            // Если поле пустое, устанавливаем "0.0"
+            input.isEmpty() -> "0.0"
+            // Если только точка, преобразуем в "0."
+            input == "." -> "0."
+            // Если начинается с точки, добавляем ведущий ноль
+            input.startsWith(".") -> "0$input"
+            // Остальные значения оставляем как есть
+            else -> input
         }
 
-        quantityInput = filteredValue
+        quantityInput = processedValue
 
         // Обновляем состояние и расчетные данные
         updateCalculatedValues()
@@ -249,25 +252,25 @@ class ProductQuantityViewModel(
      * Увеличение количества
      */
     fun incrementQuantity() {
-        val currentValue = quantityInput.toFloatOrNull() ?: 0f
+        val currentValue = parseQuantityInput(quantityInput)
         val newValue = currentValue + 1f
-        updateQuantityInput(formatQuantity(newValue))
+        updateQuantityInput(formatQuantityForDisplay(newValue))
     }
 
     /**
      * Уменьшение количества
      */
     fun decrementQuantity() {
-        val currentValue = quantityInput.toFloatOrNull() ?: 0f
+        val currentValue = parseQuantityInput(quantityInput)
         val newValue = (currentValue - 1f).coerceAtLeast(0f)
-        updateQuantityInput(formatQuantity(newValue))
+        updateQuantityInput(formatQuantityForDisplay(newValue))
     }
 
     /**
-     * Очистка поля (установка нулевого количества)
+     * Очистка поля (установка значения "0.0")
      */
     fun clearQuantity() {
-        updateQuantityInput("0")
+        updateQuantityInput("0.0")
     }
 
     /**
@@ -279,7 +282,7 @@ class ProductQuantityViewModel(
             return
         }
 
-        val quantityValue = quantityInput.toFloatOrNull() ?: 0f
+        val quantityValue = parseQuantityInput(quantityInput)
         if (quantityValue <= 0f) {
             setError("Количество должно быть больше нуля")
             return
@@ -320,9 +323,28 @@ class ProductQuantityViewModel(
     }
 
     /**
-     * Форматирует количество для отображения (удаляет лишние нули)
+     * Форматирует количество для отображения - всегда с точкой
      */
-    private fun formatQuantity(value: Float): String {
-        return value.toString().trimEnd('0').trimEnd('.')
+    private fun formatQuantityForDisplay(value: Float): String {
+        return if (value % 1f == 0f) {
+            // Целое число - показываем с .0
+            String.format(Locale.US, "%.1f", value)
+        } else {
+            // Дробное число - удаляем лишние нули
+            String.format(Locale.US, "%.3f", value).trimEnd('0').trimEnd('.')
+        }
+    }
+
+    /**
+     * Парсит строку ввода в Float
+     */
+    private fun parseQuantityInput(input: String): Float {
+        return try {
+            // Заменяем запятую на точку перед парсингом
+            input.replace(",", ".").toFloatOrNull() ?: 0f
+        } catch (e: Exception) {
+            Timber.w("Error parsing quantity input: $input")
+            0f
+        }
     }
 }

@@ -155,31 +155,41 @@ fun QuantityTextField(
             OutlinedTextField(
                 value = value,
                 onValueChange = { newValue ->
-                    // Заменяем запятую на точку и сохраняем все цифры и точки
-                    val filteredValue = newValue.replace(",", ".")
-                    // Разрешаем ввод только цифр и максимум одной точки
-                    val finalValue = filteredValue.filter {
-                        it.isDigit() || it == '.'
-                    }.let { filtered ->
-                        // Убеждаемся, что есть максимум одна точка
-                        val dotCount = filtered.count { it == '.' }
-                        if (dotCount > 1) {
-                            // Оставляем только первую точку
+                    // Заменяем запятую на точку
+                    val withDot = newValue.replace(",", ".")
+
+                    // Фильтруем, оставляя только цифры и точку
+                    val filtered = withDot.filter { char ->
+                        char.isDigit() || char == '.'
+                    }
+
+                    // Обрабатываем особые случаи
+                    val processed = when {
+                        // Если пустая строка - передаем как есть (обработается в ViewModel)
+                        filtered.isEmpty() -> ""
+                        // Если только точка - разрешаем
+                        filtered == "." -> "."
+                        // Если более одной точки - оставляем только первую
+                        filtered.count { it == '.' } > 1 -> {
                             val firstDotIndex = filtered.indexOf('.')
                             filtered.substring(0, firstDotIndex + 1) +
                                     filtered.substring(firstDotIndex + 1).replace(".", "")
-                        } else {
-                            filtered
                         }
-                    }.let { filtered ->
-                        // Ограничиваем количество знаков после запятой до 3
-                        val dotIndex = filtered.indexOf('.')
-                        if (dotIndex != -1 && filtered.length > dotIndex + 4) {
-                            filtered.substring(0, dotIndex + 4)
-                        } else {
-                            filtered
-                        }
+                        else -> filtered
                     }
+
+                    // Ограничиваем количество знаков после запятой до 3
+                    val finalValue = if (processed.contains('.')) {
+                        val parts = processed.split('.')
+                        if (parts.size > 1 && parts[1].length > 3) {
+                            "${parts[0]}.${parts[1].substring(0, 3)}"
+                        } else {
+                            processed
+                        }
+                    } else {
+                        processed
+                    }
+
                     onValueChange(finalValue)
                 },
                 label = if (label.isNotEmpty()) {
@@ -188,7 +198,7 @@ fun QuantityTextField(
                     null
                 },
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
+                    keyboardType = KeyboardType.Decimal, // Изменено с Number на Decimal
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions.Default,

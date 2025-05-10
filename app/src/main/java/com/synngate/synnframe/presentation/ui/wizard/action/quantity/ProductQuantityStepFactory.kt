@@ -119,7 +119,10 @@ class ProductQuantityStepFactory(
                 quantityViewModel.saveResult()
             },
             onCancel = { context.onCancel() },
-            forwardEnabled = quantityViewModel.currentInputQuantity > 0,
+            forwardEnabled = quantityViewModel.quantityInput.let { input ->
+                val floatValue = input.toFloatOrNull() ?: 0f
+                floatValue > 0f
+            },
             isProcessingGlobal = context.isProcessingStep,
             isFirstStep = context.isFirstStep,
             content = {
