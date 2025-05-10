@@ -12,9 +12,6 @@ import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupServic
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * ViewModel для шага выбора продукта
- */
 class ProductSelectionViewModel(
     step: ActionStep,
     action: PlannedAction,
@@ -23,42 +20,30 @@ class ProductSelectionViewModel(
     validationService: ValidationService
 ) : BaseStepViewModel<Product>(step, action, context, validationService) {
 
-    // Данные о продуктах из плана
     private val plannedProduct = action.storageProduct?.product
     private val planProducts = listOfNotNull(action.storageProduct)
     private val planProductIds = planProducts.mapNotNull { it.product.id }.toSet()
 
-    // Явное хранение выбранного продукта для безопасного доступа
     private var selectedProduct: Product? = null
 
-    // Состояние поля ввода штрих-кода
     var barcodeInput = ""
         private set
 
-    // Состояние списка продуктов для выбора
     private var filteredProducts = emptyList<Product>()
 
-    // Состояние диалогов
     var showCameraScannerDialog = false
         private set
     var showProductSelectionDialog = false
         private set
 
     init {
-        // Инициализация, если есть запланированный продукт
         if (plannedProduct != null) {
-            selectedProduct = plannedProduct
-            setData(plannedProduct)
             filteredProducts = listOf(plannedProduct)
         }
 
-        // Инициализация из контекста
         initFromContext()
     }
 
-    /**
-     * Инициализация из контекста
-     */
     private fun initFromContext() {
         if (context.hasStepResult) {
             try {
@@ -73,16 +58,10 @@ class ProductSelectionViewModel(
         }
     }
 
-    /**
-     * Проверка типа результата
-     */
     override fun isValidType(result: Any): Boolean {
         return result is Product
     }
 
-    /**
-     * Обработка штрих-кода
-     */
     override fun processBarcode(barcode: String) {
         viewModelScope.launch {
             try {
@@ -96,7 +75,6 @@ class ProductSelectionViewModel(
                             if (planProductIds.isEmpty() || planProductIds.contains(data.id)) {
                                 selectedProduct = data
                                 setData(data)
-                                // Очищаем поле ввода
                                 updateBarcodeInput("")
                             } else {
                                 setError("Продукт не соответствует плану")
@@ -119,14 +97,9 @@ class ProductSelectionViewModel(
         }
     }
 
-    /**
-     * Создаем расширенный контекст для валидации API
-     */
     override fun createValidationContext(): Map<String, Any> {
         val baseContext = super.createValidationContext().toMutableMap()
 
-        // Добавляем планируемый продукт и список продуктов плана для валидации
-        // Используем safe call и проверку списка, чтобы избежать добавления null-значений
         plannedProduct?.let { baseContext["plannedProduct"] = it }
         if (planProducts.isNotEmpty()) {
             baseContext["planProducts"] = planProducts
@@ -135,13 +108,9 @@ class ProductSelectionViewModel(
         return baseContext
     }
 
-    /**
-     * Валидация данных
-     */
     override fun validateBasicRules(data: Product?): Boolean {
         if (data == null) return false
 
-        // Если есть ограничение по плану, проверяем соответствие
         if (planProductIds.isNotEmpty() && !planProductIds.contains(data.id)) {
             setError("Продукт не соответствует плану")
             return false
@@ -150,17 +119,11 @@ class ProductSelectionViewModel(
         return true
     }
 
-    /**
-     * Обновление ввода штрих-кода
-     */
     fun updateBarcodeInput(input: String) {
         barcodeInput = input
         updateAdditionalData("barcodeInput", input)
     }
 
-    /**
-     * Выполнение поиска по штрих-коду
-     */
     fun searchByBarcode() {
         if (barcodeInput.isNotEmpty()) {
             processBarcode(barcodeInput)
@@ -168,9 +131,6 @@ class ProductSelectionViewModel(
         }
     }
 
-    /**
-     * Поиск продуктов по тексту
-     */
     fun searchProducts(query: String) {
         viewModelScope.launch {
             try {
@@ -195,85 +155,57 @@ class ProductSelectionViewModel(
         }
     }
 
-    /**
-     * Выбор продукта из списка
-     */
     fun selectProduct(product: Product) {
         selectedProduct = product
         setData(product)
         hideProductSelectionDialog()
     }
 
-    /**
-     * Выбор продукта из плана
-     */
     fun selectProductFromPlan(taskProduct: TaskProduct) {
         selectedProduct = taskProduct.product
         setData(taskProduct.product)
     }
 
-    /**
-     * Управление видимостью диалога сканера
-     */
     fun toggleCameraScannerDialog(show: Boolean) {
         showCameraScannerDialog = show
         updateAdditionalData("showCameraScannerDialog", show)
     }
 
-    /**
-     * Управление видимостью диалога выбора продукта
-     */
     fun toggleProductSelectionDialog(show: Boolean) {
         showProductSelectionDialog = show
         updateAdditionalData("showProductSelectionDialog", show)
     }
 
-    /**
-     * Скрытие диалога сканера
-     */
     fun hideCameraScannerDialog() {
         toggleCameraScannerDialog(false)
     }
 
-    /**
-     * Скрытие диалога выбора продукта
-     */
     fun hideProductSelectionDialog() {
         toggleProductSelectionDialog(false)
     }
 
-    /**
-     * Получение отфильтрованных продуктов
-     */
     fun getFilteredProducts(): List<Product> {
         return filteredProducts
     }
 
-    /**
-     * Получение запланированных продуктов
-     */
     fun getPlanProducts(): List<TaskProduct> {
         return planProducts
     }
 
-    /**
-     * Проверка наличия запланированных продуктов
-     */
     fun hasPlanProducts(): Boolean {
         return planProducts.isNotEmpty()
     }
 
-    /**
-     * Получение выбранного продукта
-     */
     fun getSelectedProduct(): Product? {
         return selectedProduct
     }
 
-    /**
-     * Проверка, выбран ли продукт
-     */
     fun hasSelectedProduct(): Boolean {
         return selectedProduct != null
+    }
+
+    fun isSelectedProductMatchingPlan(): Boolean {
+        val selected = selectedProduct ?: return false
+        return plannedProduct != null && selected.id == plannedProduct.id
     }
 }

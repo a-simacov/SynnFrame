@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,17 +36,11 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.StepConta
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 import timber.log.Timber
 
-/**
- * Фабрика для шага выбора продукта
- */
 class ProductSelectionStepFactory(
     private val productLookupService: ProductLookupService,
     private val validationService: ValidationService
 ) : BaseActionStepFactory<Product>() {
 
-    /**
-     * Создание ViewModel для шага
-     */
     override fun getStepViewModel(
         step: ActionStep,
         action: PlannedAction,
@@ -62,9 +55,6 @@ class ProductSelectionStepFactory(
         )
     }
 
-    /**
-     * Отображение UI для шага
-     */
     @Composable
     override fun StepContent(
         state: StepViewState<Product>,
@@ -73,7 +63,6 @@ class ProductSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Безопасное приведение ViewModel к конкретному типу
         val productViewModel = try {
             viewModel as ProductSelectionViewModel
         } catch (e: ClassCastException) {
@@ -81,7 +70,6 @@ class ProductSelectionStepFactory(
             null
         }
 
-        // Если приведение не удалось, показываем сообщение об ошибке
         if (productViewModel == null) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -98,7 +86,6 @@ class ProductSelectionStepFactory(
             return
         }
 
-        // Обработка штрих-кода из контекста, если он есть
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
             if (!barcode.isNullOrEmpty()) {
@@ -106,7 +93,6 @@ class ProductSelectionStepFactory(
             }
         }
 
-        // Диалог сканирования
         if (productViewModel.showCameraScannerDialog) {
             UniversalScannerDialog(
                 onBarcodeScanned = { barcode ->
@@ -120,7 +106,6 @@ class ProductSelectionStepFactory(
             )
         }
 
-        // Диалог выбора продукта
         if (productViewModel.showProductSelectionDialog) {
             OptimizedProductSelectionDialog(
                 onProductSelected = { product ->
@@ -137,14 +122,12 @@ class ProductSelectionStepFactory(
             )
         }
 
-        // Используем StepContainer для унифицированного отображения шага
         StepContainer(
             state = state,
             step = step,
             action = action,
             onBack = { context.onBack() },
             onForward = {
-                // Безопасное использование выбранного продукта
                 productViewModel.getSelectedProduct()?.let { product ->
                     productViewModel.completeStep(product)
                 }
@@ -152,7 +135,7 @@ class ProductSelectionStepFactory(
             onCancel = { context.onCancel() },
             forwardEnabled = productViewModel.hasSelectedProduct(),
             isProcessingGlobal = context.isProcessingStep,
-            isFirstStep = context.isFirstStep,  // Передаем флаг первого шага
+            isFirstStep = context.isFirstStep,
             content = {
                 SafeProductSelectionContent(
                     state = state,
@@ -162,16 +145,38 @@ class ProductSelectionStepFactory(
         )
     }
 
-    /**
-     * Безопасное содержимое шага выбора продукта
-     */
     @Composable
     private fun SafeProductSelectionContent(
         state: StepViewState<Product>,
         viewModel: ProductSelectionViewModel
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Поле ввода штрих-кода
+            val selectedProduct = viewModel.getSelectedProduct()
+            val selectedProductId = selectedProduct?.id
+
+            if (viewModel.hasPlanProducts()) {
+                PlanProductsList(
+                    planProducts = viewModel.getPlanProducts(),
+                    onProductSelect = { taskProduct ->
+                        viewModel.selectProductFromPlan(taskProduct)
+                    },
+                    selectedProductId = selectedProductId,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            } else {
+                if (selectedProduct != null && !viewModel.isSelectedProductMatchingPlan()) {
+                    ProductCard(
+                        product = selectedProduct,
+                        isSelected = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
             BarcodeEntryField(
                 value = viewModel.barcodeInput,
                 onValueChange = { viewModel.updateBarcodeInput(it) },
@@ -182,55 +187,23 @@ class ProductSelectionStepFactory(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Отображение выбранного продукта
-            val selectedProduct = viewModel.getSelectedProduct()
-            if (selectedProduct != null) {
-                Text(
-                    text = "Выбранный продукт:",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-
-                ProductCard(
-                    product = selectedProduct,
-                    isSelected = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            // Отображение продуктов из плана
-            if (viewModel.hasPlanProducts()) {
-                PlanProductsList(
-                    planProducts = viewModel.getPlanProducts(),
-                    onProductSelect = { taskProduct ->
-                        viewModel.selectProductFromPlan(taskProduct)
-                    }
-                )
-            }
-
-            // Кнопка выбора из списка
-            Button(
-                onClick = { viewModel.toggleProductSelectionDialog(true) },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            ) {
-                Text("Выбрать из списка товаров")
+            if (!viewModel.hasPlanProducts()) {
+                Button(
+                    onClick = { viewModel.toggleProductSelectionDialog(true) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                ) {
+                    Text("Выбрать из списка товаров")
+                }
             }
         }
     }
 
-    /**
-     * Валидация результата шага
-     */
     override fun validateStepResult(step: ActionStep, value: Any?): Boolean {
         return value is Product
     }
