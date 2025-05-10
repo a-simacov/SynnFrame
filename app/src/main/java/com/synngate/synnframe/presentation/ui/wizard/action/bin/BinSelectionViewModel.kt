@@ -11,9 +11,6 @@ import com.synngate.synnframe.presentation.ui.wizard.service.BinLookupService
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * ViewModel для шага выбора ячейки
- */
 class BinSelectionViewModel(
     step: ActionStep,
     action: PlannedAction,
@@ -22,19 +19,15 @@ class BinSelectionViewModel(
     validationService: ValidationService
 ) : BaseStepViewModel<BinX>(step, action, context, validationService) {
 
-    // Данные о ячейках из плана
     private val plannedBin = action.placementBin
     private val planBins = listOfNotNull(plannedBin)
     private val zoneFilter = plannedBin?.zone
 
-    // Сохраняем выбранный бин для безопасного доступа
     private var selectedBin: BinX? = null
 
-    // Состояние поля ввода кода ячейки - публичное свойство с private setter
     var binCodeInput = ""
         private set
 
-    // Состояние поиска и списка ячеек
     var searchQuery = ""
         private set
     var filteredBins = emptyList<BinX>()
@@ -42,26 +35,17 @@ class BinSelectionViewModel(
     var showBinsList = false
         private set
 
-    // Состояние диалогов
     var showCameraScannerDialog = false
         private set
 
     init {
-        // Если есть запланированная ячейка, добавляем её в filteredBins
         if (plannedBin != null) {
             filteredBins = listOf(plannedBin)
-            // Также устанавливаем её как выбранную по умолчанию
-            selectedBin = plannedBin
-            setData(plannedBin)
         }
 
-        // Инициализация из предыдущего контекста
         initFromContext()
     }
 
-    /**
-     * Инициализация из данных контекста
-     */
     private fun initFromContext() {
         if (context.hasStepResult) {
             try {
@@ -76,16 +60,10 @@ class BinSelectionViewModel(
         }
     }
 
-    /**
-     * Проверка типа результата
-     */
     override fun isValidType(result: Any): Boolean {
         return result is BinX
     }
 
-    /**
-     * Обработка штрих-кода
-     */
     override fun processBarcode(barcode: String) {
         viewModelScope.launch {
             try {
@@ -120,13 +98,9 @@ class BinSelectionViewModel(
         }
     }
 
-    /**
-     * Валидация данных перед завершением шага
-     */
     override fun validateBasicRules(data: BinX?): Boolean {
         if (data == null) return false
 
-        // Если есть ограничение по плану, проверяем соответствие
         if (plannedBin != null && plannedBin.code != data.code) {
             setError("Ячейка не соответствует плану")
             return false
@@ -135,39 +109,26 @@ class BinSelectionViewModel(
         return true
     }
 
-    /**
-     * Обновление ввода кода ячейки - публичный метод, доступный из UI
-     */
     fun updateBinCodeInput(input: String) {
         binCodeInput = input
         updateAdditionalData("binCodeInput", input)
     }
 
-    /**
-     * Выполнение поиска по коду ячейки
-     */
     fun searchByBinCode() {
         if (binCodeInput.isNotEmpty()) {
             processBarcode(binCodeInput)
         }
     }
 
-    /**
-     * Обновление поискового запроса и фильтрация списка
-     */
     fun updateSearchQuery(query: String) {
         searchQuery = query
         filterBins()
     }
 
-    /**
-     * Фильтрация списка ячеек
-     */
     fun filterBins() {
         viewModelScope.launch {
             try {
                 setLoading(true)
-                // Поиск в репозитории, если он доступен, или локальная фильтрация
                 val bins = if (searchQuery.isEmpty() && plannedBin != null) {
                     listOf(plannedBin)
                 } else {
@@ -184,67 +145,38 @@ class BinSelectionViewModel(
         }
     }
 
-    /**
-     * Выбор ячейки из списка
-     */
     fun selectBin(bin: BinX) {
         selectedBin = bin
         setData(bin)
     }
 
-    /**
-     * Отображение/скрытие списка ячеек
-     */
-    fun toggleBinsList(show: Boolean) {
-        showBinsList = show
-        updateAdditionalData("showBinsList", show)
-
-        // При отображении списка обновляем данные
-        if (show) {
-            filterBins()
-        }
-    }
-
-    /**
-     * Управление видимостью диалога сканера
-     */
     fun toggleCameraScannerDialog(show: Boolean) {
         showCameraScannerDialog = show
         updateAdditionalData("showCameraScannerDialog", show)
     }
 
-    /**
-     * Скрытие диалога сканера
-     */
     fun hideCameraScannerDialog() {
         toggleCameraScannerDialog(false)
     }
 
-    /**
-     * Получение запланированных ячеек
-     */
     fun getPlanBins(): List<BinX> {
         return planBins
     }
 
-    /**
-     * Проверка наличия запланированных ячеек
-     */
     fun hasPlanBins(): Boolean {
         return planBins.isNotEmpty()
     }
 
-    /**
-     * Получение выбранной ячейки
-     */
     fun getSelectedBin(): BinX? {
         return selectedBin
     }
 
-    /**
-     * Проверка, выбрана ли ячейка
-     */
     fun hasSelectedBin(): Boolean {
         return selectedBin != null
+    }
+
+    fun isSelectedBinMatchingPlan(): Boolean {
+        val selected = selectedBin ?: return false
+        return plannedBin != null && selected.code == plannedBin.code
     }
 }

@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Card
@@ -24,14 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.BinX
 
-/**
- * Компонент карточки ячейки
- *
- * @param bin Ячейка для отображения
- * @param onClick Обработчик нажатия на карточку (null, если карточка не кликабельна)
- * @param isSelected Выбрана ли ячейка
- * @param modifier Модификатор
- */
 @Composable
 fun BinCard(
     bin: BinX,
@@ -46,9 +36,7 @@ fun BinCard(
     }
 
     Card(
-        modifier = cardModifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = cardModifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
                 MaterialTheme.colorScheme.secondaryContainer
@@ -59,44 +47,14 @@ fun BinCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
+            Text(
+                text = "Ячейка: ${bin.code}",
+                style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = "Код: ${bin.code}",
-                    style = MaterialTheme.typography.titleSmall
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "Зона: ${bin.zone}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-
-                if (bin.line.isNotEmpty() || bin.rack.isNotEmpty() ||
-                    bin.tier.isNotEmpty() || bin.position.isNotEmpty()) {
-
-                    val locationParts = listOfNotNull(
-                        bin.line.takeIf { it.isNotEmpty() },
-                        bin.rack.takeIf { it.isNotEmpty() },
-                        bin.tier.takeIf { it.isNotEmpty() },
-                        bin.position.takeIf { it.isNotEmpty() }
-                    )
-
-                    val location = locationParts.joinToString("-")
-
-                    if (location.isNotEmpty()) {
-                        Text(
-                            text = "Расположение: $location",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
+            )
 
             onClick?.let {
                 IconButton(onClick = it) {
@@ -112,46 +70,29 @@ fun BinCard(
     }
 }
 
-/**
- * Компонент для отображения списка ячеек из плана
- *
- * @param planBins Список ячеек из плана
- * @param onBinSelect Обработчик выбора ячейки
- * @param title Заголовок списка
- * @param modifier Модификатор
- */
 @Composable
 fun PlanBinsList(
     planBins: List<BinX>,
     onBinSelect: (BinX) -> Unit,
-    title: String = "По плану:",
-    modifier: Modifier = Modifier,
-    maxHeight: Int = 200
+    selectedBinCode: String? = null,
+    modifier: Modifier = Modifier
 ) {
     if (planBins.isEmpty()) {
         return
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
+        planBins.forEach { bin ->
+            val isSelected = selectedBinCode == bin.code
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(maxHeight.dp)
-        ) {
-            items(planBins) { bin ->
-                BinCard(
-                    bin = bin,
-                    onClick = { onBinSelect(bin) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            BinCard(
+                bin = bin,
+                onClick = { onBinSelect(bin) },
+                isSelected = isSelected,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
         }
     }
 }

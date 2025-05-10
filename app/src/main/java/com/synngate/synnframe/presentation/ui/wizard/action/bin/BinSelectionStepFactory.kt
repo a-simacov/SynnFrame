@@ -7,11 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,7 +20,6 @@ import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
-import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
@@ -127,7 +121,6 @@ class BinSelectionStepFactory(
             )
         }
 
-        // Используем StepContainer для унифицированного отображения шага
         StepContainer(
             state = state,
             step = step,
@@ -146,24 +139,42 @@ class BinSelectionStepFactory(
             content = {
                 SafeBinSelectionContent(
                     state = state,
-                    viewModel = binViewModel,
-                    step = step
+                    viewModel = binViewModel
                 )
             }
         )
     }
 
-    /**
-     * Безопасное содержимое шага выбора ячейки
-     */
     @Composable
     private fun SafeBinSelectionContent(
         state: StepViewState<BinX>,
-        viewModel: BinSelectionViewModel,
-        step: ActionStep
+        viewModel: BinSelectionViewModel
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Поле ввода кода ячейки
+            val selectedBin = viewModel.getSelectedBin()
+            val selectedBinCode = selectedBin?.code
+
+            if (viewModel.hasPlanBins()) {
+                PlanBinsList(
+                    planBins = viewModel.getPlanBins(),
+                    onBinSelect = { bin ->
+                        viewModel.selectBin(bin)
+                    },
+                    selectedBinCode = selectedBinCode,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            } else {
+                if (selectedBin != null && !viewModel.isSelectedBinMatchingPlan()) {
+                    BinCard(
+                        bin = selectedBin,
+                        isSelected = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
             BarcodeEntryField(
                 value = viewModel.binCodeInput,
                 onValueChange = { viewModel.updateBinCodeInput(it) },
@@ -174,94 +185,9 @@ class BinSelectionStepFactory(
                 label = stringResource(R.string.enter_bin_code),
                 modifier = Modifier.fillMaxWidth()
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Отображение выбранной ячейки
-            val selectedBin = viewModel.getSelectedBin()
-            if (selectedBin != null) {
-                Text(
-                    text = "Выбранная ячейка:",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-
-                BinCard(
-                    bin = selectedBin,
-                    isSelected = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            // Отображение ячеек из плана
-            if (viewModel.hasPlanBins()) {
-                PlanBinsList(
-                    planBins = viewModel.getPlanBins(),
-                    onBinSelect = { bin ->
-                        viewModel.selectBin(bin)
-                    }
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            // Кнопка выбора из списка ячеек
-            // Показываем только если нет ограничения по плану или нет запланированной ячейки
-            val plannedBin = viewModel.getPlanBins().firstOrNull()
-            if (plannedBin == null || !step.validationRules.rules.any { it.type == ValidationType.FROM_PLAN }) {
-                Button(
-                    onClick = { viewModel.toggleBinsList(!viewModel.showBinsList) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                ) {
-                    Text(if (viewModel.showBinsList) "Скрыть список" else "Выбрать из списка")
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            // Список ячеек для выбора
-            if (viewModel.showBinsList) {
-                // Поле поиска
-                BarcodeEntryField(
-                    value = viewModel.searchQuery,
-                    onValueChange = { viewModel.updateSearchQuery(it) },
-                    onSearch = { viewModel.filterBins() },
-                    onScannerClick = { viewModel.toggleCameraScannerDialog(true) },
-                    label = stringResource(R.string.search_bins),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Список отфильтрованных ячеек
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                ) {
-                    items(viewModel.filteredBins) { bin ->
-                        BinCard(
-                            bin = bin,
-                            onClick = { viewModel.selectBin(bin) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-            }
         }
     }
 
-    /**
-     * Валидация результата шага
-     */
     override fun validateStepResult(step: ActionStep, value: Any?): Boolean {
         return value is BinX
     }
