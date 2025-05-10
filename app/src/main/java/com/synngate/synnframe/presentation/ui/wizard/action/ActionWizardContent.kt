@@ -82,6 +82,17 @@ fun ActionWizardContent(
         isProcessingGlobalBarcode = false
     }
 
+    if (scannerService?.hasRealScanner() == true) {
+        ScannerListener(onBarcodeScanned = { barcode ->
+            if (!isProcessingGlobalBarcode) {
+                isProcessingGlobalBarcode = true
+                Timber.d("Глобальный сканер визарда: обнаружен штрих-код $barcode")
+                onBarcodeScanned(barcode)
+                isProcessingGlobalBarcode = false
+            }
+        })
+    }
+
     // Глобальный слушатель сканера для итогового экрана
     if (wizardState.isCompleted && scannerService?.hasRealScanner() == true) {
         ScannerListener(onBarcodeScanned = { barcode ->
