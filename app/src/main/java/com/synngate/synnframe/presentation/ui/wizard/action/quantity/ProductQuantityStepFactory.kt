@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
@@ -25,10 +28,11 @@ import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.base.StepViewState
-import com.synngate.synnframe.presentation.ui.wizard.action.components.ProductCard
 import com.synngate.synnframe.presentation.ui.wizard.action.components.QuantityTextField
 import com.synngate.synnframe.presentation.ui.wizard.action.components.StepContainer
+import com.synngate.synnframe.presentation.util.formatDate
 import timber.log.Timber
+import kotlin.math.roundToInt
 
 /**
  * Фабрика для шага ввода количества продукта
@@ -115,9 +119,9 @@ class ProductQuantityStepFactory(
                 quantityViewModel.saveResult()
             },
             onCancel = { context.onCancel() },
-            forwardEnabled = state.data != null && quantityViewModel.currentInputQuantity > 0,
+            forwardEnabled = quantityViewModel.currentInputQuantity > 0,
             isProcessingGlobal = context.isProcessingStep,
-            isFirstStep = context.isFirstStep,  // Передаем флаг первого шага
+            isFirstStep = context.isFirstStep,
             content = {
                 // Используем безопасную версию содержимого
                 SafeProductQuantityContent(
@@ -145,10 +149,10 @@ class ProductQuantityStepFactory(
             val product = viewModel.getSelectedProduct()
 
             if (product != null) {
-                // Отображаем информацию о выбранном продукте
-                ProductCard(
+                // Отображаем упрощенную информацию о выбранном продукте
+                SimpleProductInfo(
                     product = product,
-                    isSelected = true,
+                    taskProduct = viewModel.getSelectedTaskProduct(),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -160,7 +164,7 @@ class ProductQuantityStepFactory(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "${viewModel.plannedQuantity}",
+                        text = formatQuantityDisplay(viewModel.plannedQuantity),
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
@@ -182,6 +186,7 @@ class ProductQuantityStepFactory(
                     onValueChange = { viewModel.updateQuantityInput(it) },
                     onIncrement = { viewModel.incrementQuantity() },
                     onDecrement = { viewModel.decrementQuantity() },
+                    onClear = { viewModel.clearQuantity() },
                     isError = state.error != null,
                     errorText = state.error,
                     modifier = Modifier.fillMaxWidth()
@@ -200,7 +205,7 @@ class ProductQuantityStepFactory(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = "${viewModel.completedQuantity}",
+                            text = formatQuantityDisplay(viewModel.completedQuantity),
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center
@@ -219,7 +224,7 @@ class ProductQuantityStepFactory(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = "${viewModel.projectedTotalQuantity}",
+                            text = formatQuantityDisplay(viewModel.projectedTotalQuantity),
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center
@@ -253,7 +258,7 @@ class ProductQuantityStepFactory(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "${viewModel.remainingQuantity}",
+                        text = formatQuantityDisplay(viewModel.remainingQuantity),
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = remainingColor,
@@ -298,6 +303,7 @@ class ProductQuantityStepFactory(
         onValueChange: (String) -> Unit,
         onIncrement: () -> Unit,
         onDecrement: () -> Unit,
+        onClear: () -> Unit,
         modifier: Modifier = Modifier,
         isError: Boolean = false,
         errorText: String? = null
@@ -323,5 +329,75 @@ class ProductQuantityStepFactory(
     override fun validateStepResult(step: ActionStep, value: Any?): Boolean {
         val taskProduct = value as? TaskProduct
         return taskProduct != null && taskProduct.quantity > 0
+    }
+
+    /**
+     * Форматирует количество для отображения с округлением до 3 знаков после запятой
+     */
+    private fun formatQuantityDisplay(value: Float): String {
+        return if (value % 1f == 0f) {
+            value.roundToInt().toString()
+        } else {
+            "%.3f".format(value).trimEnd('0').trimEnd('.')
+        }
+    }
+}
+
+/**
+ * Компонент для отображения упрощенной информации о товаре
+ */
+@Composable
+private fun SimpleProductInfo(
+    product: Product,
+    taskProduct: TaskProduct?,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            // Наименование товара
+            Text(
+                text = product.name,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Артикул
+            Text(
+                text = "Артикул: ${product.articleNumber}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+
+            // Статус
+            if (taskProduct != null) {
+                Text(
+                    text = "Статус: ${taskProduct.status.format()}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    fontWeight = FontWeight.Bold
+                )
+
+                // Срок годности (если есть)
+                if (taskProduct.hasExpirationDate()) {
+                    Text(
+                        text = "Срок годности: ${formatDate(taskProduct.expirationDate)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
     }
 }

@@ -1,16 +1,20 @@
 package com.synngate.synnframe.presentation.ui.wizard.action.components
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
@@ -20,14 +24,88 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+/**
+ * Кнопка управления количеством с поддержкой долгого нажатия
+ */
+@Composable
+private fun QuantityControlButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    var job: Job? = null
+
+    DisposableEffect(Unit) {
+        onDispose {
+            job?.cancel()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        if (enabled) {
+                            // Сразу выполняем первое нажатие
+                            onClick()
+
+                            isPressed = true
+
+                            // Запускаем корутину для повторяющихся нажатий
+                            job = coroutineScope.launch {
+                                // Ждем перед началом повторений
+                                delay(300)
+
+                                while (isPressed) {
+                                    onClick()
+                                    // Задержка между повторениями
+                                    delay(100)
+                                }
+                            }
+
+                            // Ждем, пока пользователь отпустит палец
+                            val released = tryAwaitRelease()
+                            isPressed = false
+                            job?.cancel()
+                        }
+                    }
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
 
 /**
  * Компонент для ввода количества с кнопками + и -
@@ -40,6 +118,7 @@ import androidx.compose.ui.unit.dp
  * @param errorText Текст ошибки
  * @param onIncrement Обработчик увеличения значения
  * @param onDecrement Обработчик уменьшения значения
+ * @param onClear Обработчик очистки поля
  * @param enabled Флаг доступности компонента
  * @param textAlign Выравнивание текста в поле ввода
  * @param fontSize Размер шрифта в поле ввода
@@ -54,6 +133,7 @@ fun QuantityTextField(
     errorText: String? = null,
     onIncrement: (() -> Unit)? = null,
     onDecrement: (() -> Unit)? = null,
+    onClear: (() -> Unit)? = null,
     enabled: Boolean = true,
     textAlign: TextAlign = TextAlign.Start,
     fontSize: TextUnit = TextUnit.Unspecified
@@ -64,26 +144,43 @@ fun QuantityTextField(
             modifier = Modifier.fillMaxWidth()
         ) {
             if (onDecrement != null) {
-                IconButton(
+                QuantityControlButton(
+                    icon = Icons.Default.Remove,
+                    contentDescription = "Уменьшить",
                     onClick = onDecrement,
                     enabled = enabled
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Remove,
-                        contentDescription = "Уменьшить",
-                        modifier = Modifier.padding(8.dp)
-                    )
-                }
+                )
             }
 
             OutlinedTextField(
                 value = value,
                 onValueChange = { newValue ->
-                    // Фильтруем ввод, чтобы были только цифры и точка/запятая
-                    val filteredValue = newValue.replace(",", ".").filter {
+                    // Заменяем запятую на точку и сохраняем все цифры и точки
+                    val filteredValue = newValue.replace(",", ".")
+                    // Разрешаем ввод только цифр и максимум одной точки
+                    val finalValue = filteredValue.filter {
                         it.isDigit() || it == '.'
+                    }.let { filtered ->
+                        // Убеждаемся, что есть максимум одна точка
+                        val dotCount = filtered.count { it == '.' }
+                        if (dotCount > 1) {
+                            // Оставляем только первую точку
+                            val firstDotIndex = filtered.indexOf('.')
+                            filtered.substring(0, firstDotIndex + 1) +
+                                    filtered.substring(firstDotIndex + 1).replace(".", "")
+                        } else {
+                            filtered
+                        }
+                    }.let { filtered ->
+                        // Ограничиваем количество знаков после запятой до 3
+                        val dotIndex = filtered.indexOf('.')
+                        if (dotIndex != -1 && filtered.length > dotIndex + 4) {
+                            filtered.substring(0, dotIndex + 4)
+                        } else {
+                            filtered
+                        }
                     }
-                    onValueChange(filteredValue)
+                    onValueChange(finalValue)
                 },
                 label = if (label.isNotEmpty()) {
                     { Text(label) }
@@ -91,7 +188,7 @@ fun QuantityTextField(
                     null
                 },
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
+                    keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions.Default,
@@ -108,19 +205,29 @@ fun QuantityTextField(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface
                 ),
+                trailingIcon = if (onClear != null && value.isNotEmpty()) {
+                    {
+                        IconButton(
+                            onClick = onClear,
+                            enabled = enabled
+                        ) {
+                            Icon(
+                                Icons.Default.Clear,
+                                contentDescription = "Очистить",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else null
             )
 
             if (onIncrement != null) {
-                IconButton(
+                QuantityControlButton(
+                    icon = Icons.Default.Add,
+                    contentDescription = "Увеличить",
                     onClick = onIncrement,
                     enabled = enabled
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Увеличить",
-                        modifier = Modifier.padding(8.dp)
-                    )
-                }
+                )
             }
         }
 

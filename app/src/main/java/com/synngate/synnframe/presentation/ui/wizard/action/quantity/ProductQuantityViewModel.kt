@@ -11,6 +11,7 @@ import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import kotlin.math.round
 
 /**
  * ViewModel для шага ввода количества продукта
@@ -166,25 +167,26 @@ class ProductQuantityViewModel(
         // Получаем запланированное количество
         val plannedProduct = action.storageProduct
         plannedQuantity = if (plannedProduct?.product?.id == selectedProduct?.id) {
-            plannedProduct?.quantity ?: 0f
+            roundToThreeDecimals(plannedProduct?.quantity ?: 0f)
         } else {
             0f
         }
 
         // Получаем выполненное количество
         val relatedFactActions = getRelatedFactActions()
-        completedQuantity = relatedFactActions.sumOf {
-            it.storageProduct?.quantity?.toDouble() ?: 0.0
-        }.toFloat()
-
+        completedQuantity = roundToThreeDecimals(
+            relatedFactActions.sumOf {
+                it.storageProduct?.quantity?.toDouble() ?: 0.0
+            }.toFloat()
+        )
 
         // Рассчитываем текущее введенное количество
-        currentInputQuantity = quantityInput.toFloatOrNull() ?: 0f
+        currentInputQuantity = roundToThreeDecimals(quantityInput.toFloatOrNull() ?: 0f)
 
         // Рассчитываем прогнозируемый итог
-        projectedTotalQuantity = completedQuantity + currentInputQuantity
+        projectedTotalQuantity = roundToThreeDecimals(completedQuantity + currentInputQuantity)
 
-        remainingQuantity = (plannedQuantity - projectedTotalQuantity).coerceAtLeast(0f)
+        remainingQuantity = roundToThreeDecimals((plannedQuantity - projectedTotalQuantity).coerceAtLeast(0f))
 
         // Проверяем, будет ли превышение плана
         willExceedPlan = plannedQuantity > 0f && projectedTotalQuantity > plannedQuantity
@@ -197,14 +199,10 @@ class ProductQuantityViewModel(
         if (selectedProduct == null) return
 
         val quantityValue = quantityInput.toFloatOrNull() ?: 0f
-        if (quantityValue <= 0f) {
-            setError("Количество должно быть больше нуля")
-            return
-        }
 
         // Создаем обновленный продукт с текущим количеством
-        val updatedTaskProduct = selectedTaskProduct?.copy(quantity = quantityValue)
-            ?: TaskProduct(product = selectedProduct!!, quantity = quantityValue)
+        val updatedTaskProduct = selectedTaskProduct?.copy(quantity = roundToThreeDecimals(quantityValue))
+            ?: TaskProduct(product = selectedProduct!!, quantity = roundToThreeDecimals(quantityValue))
 
         selectedTaskProduct = updatedTaskProduct
         setData(updatedTaskProduct)
@@ -253,7 +251,7 @@ class ProductQuantityViewModel(
     fun incrementQuantity() {
         val currentValue = quantityInput.toFloatOrNull() ?: 0f
         val newValue = currentValue + 1f
-        updateQuantityInput(newValue.toString())
+        updateQuantityInput(formatQuantity(newValue))
     }
 
     /**
@@ -261,8 +259,15 @@ class ProductQuantityViewModel(
      */
     fun decrementQuantity() {
         val currentValue = quantityInput.toFloatOrNull() ?: 0f
-        val newValue = (currentValue - 1f).coerceAtLeast(0.1f)
-        updateQuantityInput(newValue.toString())
+        val newValue = (currentValue - 1f).coerceAtLeast(0f)
+        updateQuantityInput(formatQuantity(newValue))
+    }
+
+    /**
+     * Очистка поля (установка нулевого количества)
+     */
+    fun clearQuantity() {
+        updateQuantityInput("0")
     }
 
     /**
@@ -280,8 +285,8 @@ class ProductQuantityViewModel(
             return
         }
 
-        val updatedTaskProduct = selectedTaskProduct?.copy(quantity = quantityValue)
-            ?: TaskProduct(product = selectedProduct!!, quantity = quantityValue)
+        val updatedTaskProduct = selectedTaskProduct?.copy(quantity = roundToThreeDecimals(quantityValue))
+            ?: TaskProduct(product = selectedProduct!!, quantity = roundToThreeDecimals(quantityValue))
 
         completeStep(updatedTaskProduct)
     }
@@ -305,5 +310,19 @@ class ProductQuantityViewModel(
      */
     fun getSelectedTaskProduct(): TaskProduct? {
         return selectedTaskProduct
+    }
+
+    /**
+     * Округляет число до 3 знаков после запятой
+     */
+    private fun roundToThreeDecimals(value: Float): Float {
+        return (round(value * 1000) / 1000).toFloat()
+    }
+
+    /**
+     * Форматирует количество для отображения (удаляет лишние нули)
+     */
+    private fun formatQuantity(value: Float): String {
+        return value.toString().trimEnd('0').trimEnd('.')
     }
 }
