@@ -139,15 +139,6 @@ class TaskListComponent<S>(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-
-                // Отображаем информацию об исполнителе, если она есть
-                task.executorId?.let { executorId ->
-                    Text(
-                        text = stringResource(id = R.string.task_executor_fmt, executorId),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
             }
         }
     }

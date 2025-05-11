@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.taskx.components
 
+import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
@@ -49,6 +51,7 @@ import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
+import com.synngate.synnframe.presentation.theme.SynnFrameTheme
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import java.time.LocalDateTime
 
@@ -227,7 +230,7 @@ fun PlannedActionItem(
                         // Название действия
                         Text(
                             text = action.actionTemplate.name,
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             overflow = TextOverflow.Ellipsis,
                             maxLines = 1
                         )
@@ -294,7 +297,7 @@ fun PlannedActionItem(
             action.storageProduct?.let { product ->
                 Text(
                     text = "Товар: ${product.product.name}",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(top = 4.dp)
                 )
 
@@ -302,7 +305,7 @@ fun PlannedActionItem(
                 if (hasMultipleFactActions && plannedQuantity > 0) {
                     Text(
                         text = "Количество: $completedQuantity / $plannedQuantity",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
@@ -312,33 +315,33 @@ fun PlannedActionItem(
             action.storagePallet?.let { pallet ->
                 Text(
                     text = "Паллета хранения: ${pallet.code}",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
 
-            // Информация о типе действия
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 4.dp)
-            ) {
-                WmsActionIconWithTooltip(
-                    wmsAction = action.wmsAction,
-                    iconSize = 18
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = getWmsActionDescription(action.wmsAction),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+//            // Информация о типе действия
+//            Row(
+//                verticalAlignment = Alignment.CenterVertically,
+//                modifier = Modifier.padding(top = 4.dp)
+//            ) {
+//                WmsActionIconWithTooltip(
+//                    wmsAction = action.wmsAction,
+//                    iconSize = 18
+//                )
+//                Spacer(modifier = Modifier.width(4.dp))
+//                Text(
+//                    text = getWmsActionDescription(action.wmsAction),
+//                    style = MaterialTheme.typography.bodySmall,
+//                    color = MaterialTheme.colorScheme.onSurfaceVariant
+//                )
+//            }
 
             // Отображение ячейки размещения, если есть
             action.placementBin?.let { bin ->
                 Text(
                     text = "Ячейка размещения: ${bin.code}",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
@@ -347,7 +350,7 @@ fun PlannedActionItem(
             action.placementPallet?.let { pallet ->
                 Text(
                     text = "Паллета размещения: ${pallet.code}",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
@@ -356,24 +359,28 @@ fun PlannedActionItem(
             if (hasMultipleFactActions && !action.isSkipped) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Прогресс-бар
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = progressColor
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Количество фактических действий
-                val relatedFacts = factActions.filter { it.plannedActionId == action.id }
-                if (relatedFacts.isNotEmpty()) {
-                    Text(
-                        text = "Выполнено действий: ${relatedFacts.size}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.alpha(0.8f)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Прогресс-бар
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.weight(1f),
+                        color = progressColor
                     )
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    // Количество фактических действий
+                    val relatedFacts = factActions.filter { it.plannedActionId == action.id }
+                    if (relatedFacts.isNotEmpty()) {
+                        Text(
+                            text = "Действий: ${relatedFacts.size}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.alpha(0.8f)
+                        )
+                    }
                 }
             }
         }
@@ -499,4 +506,37 @@ private fun ShowBin(bin: BinX) {
         text = "Зона: ${bin.zone}",
         style = MaterialTheme.typography.bodySmall
     )
+}
+
+@Preview(apiLevel = 34,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL,
+    showBackground = true, showSystemUi = true
+)
+@Composable
+private fun Demo() {
+    SynnFrameTheme {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Прогресс-бар
+            LinearProgressIndicator(
+                progress = { 0.25f },
+                modifier = Modifier.weight(1f),
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            // Количество фактических действий
+            val relatedFacts = 8
+            if (relatedFacts != 0) {
+                Text(
+                    text = "Действий: ${relatedFacts}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.alpha(0.8f)
+                )
+            }
+        }
+    }
 }
