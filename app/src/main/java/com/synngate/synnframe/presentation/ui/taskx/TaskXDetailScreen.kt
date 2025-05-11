@@ -32,12 +32,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
+import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
+import com.synngate.synnframe.presentation.common.scanner.ScannerListener
+import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.common.status.TaskXStatusIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.ActionDisplayModeSwitcher
+import com.synngate.synnframe.presentation.ui.taskx.components.ActionSearchBar
 import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableTaskInfoCard
 import com.synngate.synnframe.presentation.ui.taskx.components.FactActionsView
 import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionsView
@@ -59,6 +63,13 @@ fun TaskXDetailScreen(
     val task = state.task
 
     val nextActionId = state.nextActionId
+
+    val scannerService = LocalScannerService.current
+    if (state.showSearchField && scannerService?.hasRealScanner() == true) {
+        ScannerListener(onBarcodeScanned = { barcode ->
+            viewModel.searchByScanner(barcode)
+        })
+    }
 
     // Перехватываем нажатие кнопки Назад
     BackHandler {
@@ -116,6 +127,19 @@ fun TaskXDetailScreen(
                     Text("ОК")
                 }
             }
+        )
+    }
+
+    if (state.showCameraScannerForSearch) {
+        UniversalScannerDialog(
+            onBarcodeScanned = { barcode ->
+                viewModel.searchByScanner(barcode)
+                viewModel.hideCameraScannerForSearch()
+            },
+            onClose = {
+                viewModel.hideCameraScannerForSearch()
+            },
+            instructionText = "Отсканируйте штрихкод для поиска действия"
         )
     }
 
@@ -232,6 +256,20 @@ fun TaskXDetailScreen(
 
             when (state.activeView) {
                 TaskXDetailView.PLANNED_ACTIONS -> {
+                    ActionSearchBar(
+                        query = state.searchQuery,
+                        onQueryChange = viewModel::updateSearchQuery,
+                        onSearch = viewModel::searchActions,
+                        onClear = viewModel::clearSearch,
+                        onScannerClick = viewModel::toggleCameraScannerForSearch,
+                        isSearching = state.isSearching,
+                        error = state.searchError,
+                        visible = state.showSearchField,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp)
+                    )
+
                     ActionDisplayModeSwitcher(
                         currentMode = state.actionsDisplayMode,
                         onModeChange = { mode -> viewModel.setActionsDisplayMode(mode) },

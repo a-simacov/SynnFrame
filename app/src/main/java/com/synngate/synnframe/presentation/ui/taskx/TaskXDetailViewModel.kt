@@ -8,6 +8,7 @@ import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.entity.taskx.action.ProgressType
 import com.synngate.synnframe.domain.service.ActionExecutionService
+import com.synngate.synnframe.domain.service.ActionSearchService
 import com.synngate.synnframe.domain.service.FinalActionsValidator
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
@@ -18,6 +19,7 @@ import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -32,6 +34,7 @@ class TaskXDetailViewModel(
     private val userUseCases: UserUseCases,
     private val finalActionsValidator: FinalActionsValidator,
     private val actionExecutionService: ActionExecutionService,
+    private val actionSearchService: ActionSearchService? = null,
     private val preloadedTask: TaskX? = null,
     private val preloadedTaskType: TaskTypeX? = null
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
@@ -458,17 +461,26 @@ class TaskXDetailViewModel(
         val hasAdditionalActions = checkHasAdditionalActions(task)
         val statusActions = createStatusActions(task)
 
+        // Определяем видимость поиска на основе настроек типа задания
+        val shouldShowSearch = taskType?.enableActionSearch == true
+
         updateState { currentState ->
             currentState.copy(
                 nextActionId = nextActionId,
                 hasAdditionalActions = hasAdditionalActions,
-                statusActions = statusActions
+                statusActions = statusActions,
+                // Автоматически показываем поле поиска если включено в настройках
+                showSearchField = if (shouldShowSearch && currentState.showSearchField == false) {
+                    false // Можно сделать true для автоматического показа
+                } else {
+                    currentState.showSearchField
+                }
             )
         }
 
         updateFilteredActions()
     }
-
+    
     private fun checkHasAdditionalActions(task: TaskX): Boolean {
         return !task.isVerified && isActionAvailable(AvailableTaskAction.VERIFY_TASK) ||
                 isActionAvailable(AvailableTaskAction.PRINT_TASK_LABEL)
@@ -550,8 +562,14 @@ class TaskXDetailViewModel(
     private fun updateFilteredActions() {
         val task = uiState.value.task ?: return
         val mode = uiState.value.actionsDisplayMode
+        val foundActionIds = uiState.value.filteredActionIds
 
-        val filteredActions = filterActionsByMode(task, mode)
+        var filteredActions = filterActionsByMode(task, mode)
+
+        // Если есть результаты поиска, дополнительно фильтруем по ним
+        if (foundActionIds.isNotEmpty()) {
+            filteredActions = filteredActions.filter { it.id in foundActionIds }
+        }
 
         updateState { it.copy(filteredActions = filteredActions) }
     }
@@ -705,11 +723,170 @@ class TaskXDetailViewModel(
             try {
                 updateSingleAction(actionId)
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
+
+                if (uiState.value.filteredActionIds.contains(actionId)) {
+                    clearSearch()
+                }
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при обработке завершения действия: ${e.message}")
                 loadTask()
             }
         }
+    }
+
+    fun toggleSearchField() {
+        val taskType = uiState.value.taskType
+        if (taskType?.enableActionSearch == true) {
+            updateState { it.copy(showSearchField = !it.showSearchField) }
+        }
+    }
+
+    fun updateSearchQuery(query: String) {
+        updateState { it.copy(searchQuery = query) }
+
+        // Автопоиск при вводе
+        if (query.isEmpty()) {
+            clearSearch()
+        } else {
+            searchActionsDebounced(query)
+        }
+    }
+
+    private var searchJob: Job? = null
+
+    private fun searchActionsDebounced(query: String) {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(300) // debounce delay
+            searchActions()
+        }
+    }
+
+    fun searchActions() {
+        val state = uiState.value
+        val query = state.searchQuery.trim()
+        val task = state.task
+        val taskType = state.taskType
+
+        if (query.isEmpty() || task == null || taskType == null || actionSearchService == null) {
+            return
+        }
+
+        launchIO {
+            updateState { it.copy(isSearching = true, searchError = null) }
+
+            try {
+                val result = actionSearchService.searchActions(
+                    searchValue = query,
+                    searchableObjects = taskType.searchableActionObjects,
+                    plannedActions = task.plannedActions
+                )
+
+                if (result.isSuccess) {
+                    val foundActionIds = result.getOrNull() ?: emptyList()
+                    processSearchResults(foundActionIds)
+                } else {
+                    updateState {
+                        it.copy(
+                            isSearching = false,
+                            searchError = result.exceptionOrNull()?.message
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error searching actions")
+                updateState {
+                    it.copy(
+                        isSearching = false,
+                        searchError = "Ошибка поиска: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearSearch() {
+        updateState {
+            it.copy(
+                searchQuery = "",
+                filteredActionIds = emptyList(),
+                searchError = null
+            )
+        }
+        // Восстанавливаем исходную фильтрацию
+        updateFilteredActions()
+    }
+
+    fun searchByScanner(barcode: String) {
+        updateState { it.copy(searchQuery = barcode) }
+        searchActions()
+    }
+
+    private fun processSearchResults(foundActionIds: List<String>) {
+        val state = uiState.value
+        val task = state.task ?: return
+        val taskType = state.taskType ?: return
+
+        updateState { it.copy(isSearching = false, filteredActionIds = foundActionIds) }
+
+        if (foundActionIds.isEmpty()) {
+            updateState { it.copy(searchError = "Действия не найдены") }
+            return
+        }
+
+        // Для строгого порядка - ищем следующее доступное действие
+        if (taskType.strictActionOrder) {
+            val nextAvailableAction = task.plannedActions
+                .filter { it.id in foundActionIds }
+                .sortedBy { it.order }
+                .firstOrNull { !it.isCompleted && !it.isSkipped }
+
+            if (nextAvailableAction != null) {
+                // Открываем визард для найденного действия
+                startActionExecution(nextAvailableAction.id)
+                clearSearch()
+            } else {
+                updateState { it.copy(searchError = "Найденные действия уже выполнены или недоступны") }
+            }
+        } else {
+            // Для произвольного порядка - фильтруем список
+            updateFilteredActionsBySearch()
+
+            // Если найдено ровно одно действие - автоматически открываем визард
+            if (foundActionIds.size == 1) {
+                val actionId = foundActionIds.first()
+                val action = task.plannedActions.find { it.id == actionId }
+                if (action != null && !action.isCompleted && !action.isSkipped) {
+                    startActionExecution(actionId)
+                    clearSearch()
+                }
+            }
+        }
+    }
+
+    private fun updateFilteredActionsBySearch() {
+        val state = uiState.value
+        val task = state.task ?: return
+        val foundActionIds = state.filteredActionIds
+
+        if (foundActionIds.isEmpty()) {
+            updateFilteredActions()
+            return
+        }
+
+        val filteredActions = task.plannedActions
+            .filter { it.id in foundActionIds }
+            .sortedBy { it.order }
+
+        updateState { it.copy(filteredActions = filteredActions) }
+    }
+
+    fun toggleCameraScannerForSearch() {
+        updateState { it.copy(showCameraScannerForSearch = !it.showCameraScannerForSearch) }
+    }
+
+    fun hideCameraScannerForSearch() {
+        updateState { it.copy(showCameraScannerForSearch = false) }
     }
 
     override fun dispose() {

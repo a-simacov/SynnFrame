@@ -25,7 +25,14 @@ data class TaskXDetailState(
     val statusActions: List<StatusActionData> = emptyList(),
     val actionsDisplayMode: ActionDisplayMode = ActionDisplayMode.CURRENT,
     val filteredActions: List<PlannedAction> = emptyList(),
-    val showActionsDialog: Boolean = false
+    val showActionsDialog: Boolean = false,
+    val searchQuery: String = "",
+    val isSearching: Boolean = false,
+    val searchError: String? = null,
+    val showSearchField: Boolean = false,
+    val showCameraScannerForSearch: Boolean = false,
+    val filteredActionIds: List<String> = emptyList()
+
 )
 
 sealed class TaskXDetailEvent {

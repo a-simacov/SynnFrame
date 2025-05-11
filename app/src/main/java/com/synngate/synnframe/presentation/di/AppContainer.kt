@@ -8,6 +8,7 @@ import com.synngate.synnframe.data.barcodescanner.BarcodeScannerFactory
 import com.synngate.synnframe.data.barcodescanner.ScannerService
 import com.synngate.synnframe.data.datastore.AppSettingsDataStore
 import com.synngate.synnframe.data.local.database.AppDatabase
+import com.synngate.synnframe.data.remote.api.ActionSearchApiImpl
 import com.synngate.synnframe.data.remote.api.AppUpdateApi
 import com.synngate.synnframe.data.remote.api.AppUpdateApiImpl
 import com.synngate.synnframe.data.remote.api.AuthApi
@@ -51,6 +52,7 @@ import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.ActionExecutionService
+import com.synngate.synnframe.domain.service.ActionSearchServiceImpl
 import com.synngate.synnframe.domain.service.ActionStepExecutionService
 import com.synngate.synnframe.domain.service.ActionWizardContextFactory
 import com.synngate.synnframe.domain.service.ActionWizardController
@@ -269,6 +271,10 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         ValidationApiServiceImpl(httpClient, serverProvider)
     }
 
+    val actionSearchApi by lazy {
+        ActionSearchApiImpl(httpClient, serverProvider)
+    }
+
     // Сервисы
     val loggingService: LoggingService by lazy {
         Timber.d("Creating LoggingService")
@@ -339,6 +345,14 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         ActionExecutionService(
             taskContextManager = taskContextManager,
             taskXRepository = taskXRepository // Добавляем TaskXRepository
+        )
+    }
+
+    val actionSearchService by lazy {
+        Timber.d("Creating ActionExecutionService")
+        ActionSearchServiceImpl(
+            actionSearchApi = actionSearchApi,
+            productRepository = productRepository
         )
     }
 
@@ -623,6 +637,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                     userUseCases = appContainer.userUseCases,
                     finalActionsValidator = appContainer.finalActionsValidator,
                     actionExecutionService = appContainer.actionExecutionService, // Добавлено
+                    actionSearchService = appContainer.actionSearchService,
                     preloadedTask = contextTask,
                     preloadedTaskType = contextTaskType
                 )
