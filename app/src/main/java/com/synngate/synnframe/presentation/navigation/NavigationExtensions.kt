@@ -8,7 +8,6 @@ import com.synngate.synnframe.presentation.navigation.routes.LogRoutes
 import com.synngate.synnframe.presentation.navigation.routes.MainRoutes
 import com.synngate.synnframe.presentation.navigation.routes.ProductRoutes
 import com.synngate.synnframe.presentation.navigation.routes.SettingsRoutes
-import com.synngate.synnframe.presentation.navigation.routes.TaskRoutes
 import com.synngate.synnframe.presentation.navigation.routes.TaskXRoutes
 
 /**
@@ -28,20 +27,6 @@ fun NavController.navigateToLogin(builder: NavOptionsBuilder.() -> Unit = {}) {
 fun NavController.navigateToMainMenu(builder: NavOptionsBuilder.() -> Unit = {}) {
     navigate(MainRoutes.MainMenu.route) {
         popUpTo(AuthRoutes.Login.route) { inclusive = true }
-        builder()
-    }
-}
-
-// Навигация для задач
-fun NavController.navigateToTaskList(builder: NavOptionsBuilder.() -> Unit = {}) {
-    navigate(TaskRoutes.TaskList.route) {
-        popUpTo(MainRoutes.MainMenu.route) { inclusive = false }
-        builder()
-    }
-}
-
-fun NavController.navigateToTaskDetail(taskId: String, builder: NavOptionsBuilder.() -> Unit = {}) {
-    navigate(TaskRoutes.TaskDetail.createRoute(taskId)) {
         builder()
     }
 }

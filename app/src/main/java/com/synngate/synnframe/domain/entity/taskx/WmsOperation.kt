@@ -1,15 +1,15 @@
 package com.synngate.synnframe.domain.entity.taskx
 
 enum class WmsOperation {
-    RECEIPT,      // Приемка
-    PUTAWAY,    // Размещение
-    REPLENISHMENT,// Пополнение
-    PICKING,      // Отбор
-    MOVEMENT,     // Перемещение
+    RECEIPT,
+    PUTAWAY,
+    REPLENISHMENT,
+    PICKING,
+    MOVEMENT,
     PACKING,
     VERIFICATION,
     SHIPMENT,
-    RECALCULATION;    // Инвентаризация
+    RECALCULATION;
 
     companion object {
         fun fromString(value: String): WmsOperation {

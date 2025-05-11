@@ -2,7 +2,6 @@ package com.synngate.synnframe.util.format
 
 import java.util.Locale
 
-// com.synngate.synnframe.util.format.QuantityFormatter.kt
 object QuantityFormatter {
     fun format(quantity: Float): String {
         return if (quantity == quantity.toInt().toFloat()) {

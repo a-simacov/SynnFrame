@@ -7,9 +7,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
-/**
- * Поставщик текущего уровня логирования из настроек
- */
 class LogLevelProvider(
     private val appSettingsDataStore: AppSettingsDataStore
 ) : AppTree.LogLevelProvider {

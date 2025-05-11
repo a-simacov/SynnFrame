@@ -2,9 +2,6 @@ package com.synngate.synnframe.domain.service
 
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 
-/**
- * Сервис для проверки доступности финальных действий
- */
 class FinalActionsValidator {
 
     /**
@@ -19,31 +16,6 @@ class FinalActionsValidator {
         return task.plannedActions
             .filter { !it.isFinalAction }
             .all { it.isCompleted || it.isSkipped }
-    }
-
-    /**
-     * Получает список доступных действий с учетом финальных действий
-     *
-     * @param task Задание
-     * @param includeCompleted Включать ли завершенные действия
-     * @param includeSkipped Включать ли пропущенные действия
-     * @return Список доступных действий
-     */
-    fun getAvailableActions(
-        task: TaskX,
-        includeCompleted: Boolean = false,
-        includeSkipped: Boolean = false
-    ): List<String> {
-        val canExecuteFinals = canExecuteFinalActions(task)
-
-        return task.plannedActions
-            .filter { action ->
-                // Фильтруем по состоянию
-                (action.isCompleted && includeCompleted) ||
-                        (action.isSkipped && includeSkipped) ||
-                        (!action.isCompleted && !action.isSkipped && (!action.isFinalAction || canExecuteFinals))
-            }
-            .map { it.id }
     }
 
     /**

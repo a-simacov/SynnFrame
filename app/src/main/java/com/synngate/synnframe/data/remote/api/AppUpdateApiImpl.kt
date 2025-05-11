@@ -11,14 +11,9 @@ import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentLength
-import io.ktor.util.toByteArray
-import io.ktor.utils.io.ByteChannel
-import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.core.readBytes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.nio.ByteBuffer
 
 interface DownloadProgressListener {
 
@@ -39,7 +34,6 @@ class AppUpdateApiImpl(
         return try {
             val url = "${server.apiUrl}/app/lastversion"
             val response = client.get(url) {
-                // Basic аутентификация
                 header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
             }
 

@@ -119,11 +119,7 @@ class BinLookupService(
     private fun createLocalBin(code: String): BinX {
         return BinX(
             code = code,
-            zone = "Неизвестная зона",
-            line = "",
-            rack = "",
-            tier = "",
-            position = ""
+            zone = "Неизвестная зона"
         )
     }
 }

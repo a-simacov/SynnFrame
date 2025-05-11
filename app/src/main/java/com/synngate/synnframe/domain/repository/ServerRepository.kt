@@ -13,6 +13,5 @@ interface ServerRepository {
     suspend fun deleteServer(id: Int)
     suspend fun setActiveServer(id: Int)
     suspend fun clearActiveStatus()
-    // Возвращает непосредственный результат API, без преобразования в Result
     suspend fun testConnection(server: Server): ApiResult<Unit>
 }

@@ -13,11 +13,7 @@ class WebServerManagerImpl(
 
     override suspend fun startServer(): Result<Unit> {
         return try {
-            val result = webServerController.startService()
-            if (result.isSuccess) {
-                Timber.i("Local web server was started")
-            }
-            result
+            webServerController.startService()
         } catch (e: Exception) {
             Timber.e("Error starting web server: ${e.message}")
             Result.failure(e)
@@ -26,11 +22,7 @@ class WebServerManagerImpl(
 
     override suspend fun stopServer(): Result<Unit> {
         return try {
-            val result = webServerController.stopService()
-            if (result.isSuccess) {
-                Timber.i("Local web server was stopped")
-            }
-            result
+            webServerController.stopService()
         } catch (e: Exception) {
             Timber.e("Error stopping web server: ${e.message}")
             Result.failure(e)

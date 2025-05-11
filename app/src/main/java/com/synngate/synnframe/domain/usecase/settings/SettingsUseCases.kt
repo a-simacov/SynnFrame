@@ -34,7 +34,6 @@ class SettingsUseCases(
     suspend fun setShowServersOnStartup(show: Boolean): Result<Unit> {
         return try {
             settingsRepository.setShowServersOnStartup(show)
-            Timber.i("Setting 'Show on startup' was set: $show")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting ShowServersOnStartup")
@@ -45,7 +44,6 @@ class SettingsUseCases(
     suspend fun setPeriodicUpload(enabled: Boolean, intervalSeconds: Int? = null): Result<Unit> {
         return try {
             settingsRepository.setPeriodicUpload(enabled, intervalSeconds)
-            Timber.i("Setting 'Periodic upload' was set: $enabled, interval: $intervalSeconds")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting PeriodicUpload")
@@ -56,7 +54,6 @@ class SettingsUseCases(
     suspend fun setThemeMode(mode: ThemeMode): Result<Unit> {
         return try {
             settingsRepository.setThemeMode(mode)
-            Timber.i("Setting 'Theme' was set: $mode")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting ThemeMode")
@@ -67,7 +64,6 @@ class SettingsUseCases(
     suspend fun setLanguageCode(code: String): Result<Unit> {
         return try {
             settingsRepository.setLanguageCode(code)
-            Timber.i("Setting 'Language' was set: $code")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting LanguageCode")
@@ -78,7 +74,6 @@ class SettingsUseCases(
     suspend fun setNavigationButtonHeight(height: Float): Result<Unit> {
         return try {
             settingsRepository.setNavigationButtonHeight(height)
-            Timber.i("Setting 'Nav button height' was set: $height")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting NavigationButtonHeight")
@@ -100,15 +95,12 @@ class SettingsUseCases(
                     val isNewVersionAvailable = isNewVersionAvailable(currentVersion, serverVersion)
 
                     if (isNewVersionAvailable) {
-                        Timber.i("Checking updates: version available ${updateInfo.lastVersion}")
                         Result.success(Pair(updateInfo.lastVersion, updateInfo.releaseDate))
                     } else {
-                        Timber.i("Checking updates: not found")
                         Result.success(Pair(null, null))
                     }
                 }
                 is ApiResult.Error -> {
-                    Timber.w("Error checking updates: ${response.message}")
                     Result.failure(IOException("Failed to check for updates: ${response.code}"))
                 }
             }
@@ -122,13 +114,11 @@ class SettingsUseCases(
         return try {
             // Проверяем наличие свободного места (примерно 50 МБ для APK)
             if (!fileService.hasEnoughStorage(50 * 1024 * 1024L)) {
-                Timber.w("Insufficient storage space for uploading updates")
                 return Result.failure(IOException("Insufficient storage space"))
             }
 
             // Создаем директорию для обновлений, если она не существует
             if (!fileService.ensureDirectoryExists("updates")) {
-                Timber.w("Failed to create updates directory")
                 return Result.failure(IOException("Failed to create updates directory"))
             }
 
@@ -144,15 +134,12 @@ class SettingsUseCases(
                     val filePath = fileService.saveFile(fileName, responseBody)
 
                     if (filePath != null) {
-                        Timber.i("Update was downloaede: $version, path: $filePath")
                         Result.success(filePath)
                     } else {
-                        Timber.w("Failed to save update file")
                         Result.failure(IOException("Failed to save update file"))
                     }
                 }
                 is ApiResult.Error -> {
-                    Timber.w("Error downloading updates: ${response.message}")
                     Result.failure(IOException("Failed to download update: ${response.code}"))
                 }
             }
@@ -181,13 +168,11 @@ class SettingsUseCases(
 
     suspend fun setBinCodePattern(pattern: String) {
         settingsRepository.setBinCodePattern(pattern)
-        Timber.i("Bin code pattern was set: $pattern")
     }
 
     suspend fun setLogLevel(level: LogLevel): Result<Unit> {
         return try {
             settingsRepository.setLogLevel(level)
-            Timber.i("Log level was set: $level")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Error updating log level")
@@ -197,6 +182,5 @@ class SettingsUseCases(
 
     suspend fun setDeviceType(type: DeviceType) {
         settingsRepository.setDeviceType(type)
-        Timber.i("Device type set to: $type")
     }
 }

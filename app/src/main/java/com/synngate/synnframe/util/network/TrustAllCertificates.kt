@@ -1,14 +1,12 @@
-// Создаем новый файл: com.synngate.synnframe.util.network.TrustAllCertificates.kt
-
 package com.synngate.synnframe.util.network
 
+import timber.log.Timber
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
-import timber.log.Timber
 
 /**
  * Утилитный класс для настройки доверия всем SSL сертификатам

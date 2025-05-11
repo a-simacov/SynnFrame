@@ -87,6 +87,6 @@ class DeviceInfoServiceImpl(
         } catch (e: Exception) {
             Timber.e(e, "Error getting IP from network interfaces")
         }
-        return "127.0.0.1" // Возвращаем локальный адрес, если ничего не найдено
+        return "127.0.0.1"
     }
 }

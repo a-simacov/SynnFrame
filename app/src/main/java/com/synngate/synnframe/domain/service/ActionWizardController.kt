@@ -123,7 +123,7 @@ class ActionWizardController(
         )
     }
 
-    suspend fun processStepResult(result: Any?) {
+    fun processStepResult(result: Any?) {
         val state = _wizardState.value ?: return
 
         try {
@@ -201,7 +201,7 @@ class ActionWizardController(
         )
     }
 
-    suspend fun processForwardStep() {
+    fun processForwardStep() {
         val state = _wizardState.value ?: return
 
         if (state.isProcessingStep) {

@@ -1,11 +1,11 @@
 package com.synngate.synnframe.domain.entity.taskx
 
 enum class TaskXStatus {
-    TO_DO,         // К выполнению
-    IN_PROGRESS,   // Выполняется
-    PAUSED,        // Приостановлено
-    COMPLETED,     // Завершено
-    CANCELLED;     // Отменено
+    TO_DO,
+    IN_PROGRESS,
+    PAUSED,
+    COMPLETED,
+    CANCELLED;
 
     companion object {
         fun fromString(value: String): TaskXStatus {

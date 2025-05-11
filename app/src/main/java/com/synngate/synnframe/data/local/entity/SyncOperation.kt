@@ -15,9 +15,9 @@ data class SyncOperation(
 
     val operationType: OperationType,
 
-    val targetId: String, // Связанные данные (например, ID задания)
+    val targetId: String,
 
-    val priority: Int, // меньшее значение - выше приоритет
+    val priority: Int,
 
     val attempts: Int = 0,
 

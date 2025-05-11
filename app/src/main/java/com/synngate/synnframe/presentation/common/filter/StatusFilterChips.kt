@@ -37,26 +37,22 @@ fun <T> StatusFilterChips(
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Если есть специальный элемент "Все", отображаем его отдельно
         if (allItem != null) {
             StatusFilterChip(
                 text = allItemText,
                 selected = selectedItems.isEmpty(),
                 onClick = {
-                    // При выборе "Все" очищаем все выбранные фильтры
                     onSelectionChanged(emptySet())
                 }
             )
         }
 
-        // Отображаем остальные элементы
         items.forEach { item ->
             if (item != allItem) {
                 StatusFilterChip(
                     text = itemToString(item),
                     selected = selectedItems.contains(item),
                     onClick = {
-                        // Обновляем выбранные фильтры
                         val newSelection = selectedItems.toMutableSet()
                         if (selectedItems.contains(item)) {
                             newSelection.remove(item)

@@ -5,16 +5,11 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.callbackFlow
 import timber.log.Timber
 
-/**
- * Сервис для мониторинга состояния сети
- */
+// Сервис для мониторинга состояния сети
 class NetworkMonitor(private val context: Context) {
 
     private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -23,9 +18,6 @@ class NetworkMonitor(private val context: Context) {
     private val _networkState = MutableStateFlow<NetworkState>(NetworkState.Unavailable)
     val networkState = _networkState.asStateFlow()
 
-    /**
-     * Инициализация мониторинга сети
-     */
     fun initialize() {
         val networkCallback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
@@ -57,18 +49,12 @@ class NetworkMonitor(private val context: Context) {
         _networkState.value = getCurrentNetworkState()
     }
 
-    /**
-     * Получение текущего состояния сети
-     */
     fun getCurrentNetworkState(): NetworkState {
         val activeNetwork = connectivityManager.activeNetwork ?: return NetworkState.Unavailable
         val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return NetworkState.Unavailable
         return getNetworkState(capabilities)
     }
 
-    /**
-     * Определение состояния сети на основе возможностей
-     */
     private fun getNetworkState(capabilities: NetworkCapabilities?): NetworkState {
         capabilities ?: return NetworkState.Unavailable
 
@@ -100,41 +86,26 @@ class NetworkMonitor(private val context: Context) {
         }
     }
 
-    /**
-     * Проверка активности сети
-     */
     fun isNetworkAvailable(): Boolean {
         return _networkState.value is NetworkState.Available
     }
 
-    /**
-     * Проверка подключения к Wi-Fi
-     */
     fun isWifiAvailable(): Boolean {
         val state = _networkState.value
         return state is NetworkState.Available && state.type == ConnectionType.WIFI
     }
 
-    /**
-     * Проверка подключения к мобильной сети
-     */
     fun isCellularAvailable(): Boolean {
         val state = _networkState.value
         return state is NetworkState.Available && state.type == ConnectionType.CELLULAR
     }
 
-    /**
-     * Проверка, является ли соединение лимитированным
-     */
     fun isMeteredConnection(): Boolean {
         val state = _networkState.value
         return state is NetworkState.Available && state.isMetered
     }
 }
 
-/**
- * Типы сетевых подключений
- */
 enum class ConnectionType {
     WIFI,
     CELLULAR,
@@ -143,27 +114,12 @@ enum class ConnectionType {
     OTHER
 }
 
-/**
- * Состояния сети
- */
 sealed class NetworkState {
-    /**
-     * Сеть недоступна
-     */
+
     object Unavailable : NetworkState()
 
-    /**
-     * Сеть доступна
-     */
     data class Available(
-        /**
-         * Тип подключения
-         */
         val type: ConnectionType,
-
-        /**
-         * Признак лимитированного соединения
-         */
         val isMetered: Boolean
     ) : NetworkState()
 }

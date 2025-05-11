@@ -108,11 +108,8 @@ class SynchronizationControllerImpl(
         // Настраиваем наблюдение за состоянием сети
         coroutineScope.launch {
             networkMonitor.networkState.collect { state ->
-                Timber.d("Network state changed: $state")
-
                 // Если сеть стала доступна, запускаем обработку ожидающих операций
                 if (state is NetworkState.Available) {
-                    Timber.d("Network is available, processing queued operations")
                     processQueuedOperations()
                 }
             }
@@ -125,7 +122,6 @@ class SynchronizationControllerImpl(
                     // Проверяем, не находится ли контроллер в состоянии ошибки
                     if (_syncStatus.value == SynchronizationController.SyncStatus.ERROR) {
                         resetSyncState()
-                        Timber.i("Reset error state for a new sync attempt")
                     }
 
                     // Обрабатываем отложенные операции только если контроллер не в процессе синхронизации
@@ -151,7 +147,6 @@ class SynchronizationControllerImpl(
 
                     // Если в состоянии ошибки более 30 секунд - принудительно сбрасываем
                     if (currentStatus == SynchronizationController.SyncStatus.ERROR) {
-                        Timber.d("Resetting ERROR state to IDLE")
                         resetSyncState()
 
                         // Также добавляем операцию в очередь
@@ -179,7 +174,6 @@ class SynchronizationControllerImpl(
             }
             context.startForegroundService(intent)
             _isRunning.value = true
-            Timber.i("Sync service started")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e("Error starting synchronization service: ${e.message}")
@@ -194,7 +188,6 @@ class SynchronizationControllerImpl(
             }
             context.startService(intent)
             _isRunning.value = false
-            Timber.i("Sync service stopped")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e("Error stopping synchronization service: ${e.message}")
@@ -232,14 +225,11 @@ class SynchronizationControllerImpl(
 
         // Если нет сети, добавляем операцию в очередь
         if (!networkMonitor.isNetworkAvailable()) {
-            Timber.d("No network, adding operation FULL_SYNC to queue")
             val operationId = syncQueueManager.enqueueOperation(
                 operationType = OperationType.FULL_SYNC,
                 targetId = "manual-sync-${System.currentTimeMillis()}",
                 executeImmediately = false
             )
-
-            Timber.i("Sync is enqueued and will be proceeded when network appears")
 
             return Result.failure(
                 NoNetworkException("No network connection. Sync will start when network appears.")
@@ -263,8 +253,6 @@ class SynchronizationControllerImpl(
                     targetId = "retry-sync-${System.currentTimeMillis()}",
                     executeImmediately = false
                 )
-
-                Timber.w("Sync failed: ${e.message}. Retry attempt planned.")
             }
 
             return Result.failure(e)
@@ -286,10 +274,8 @@ class SynchronizationControllerImpl(
             // Планируем или отменяем периодическую синхронизацию
             if (enabled) {
                 schedulePeriodicSync(interval)
-                Timber.i("Periodical sync is on with interval $interval seconds")
             } else {
                 cancelPeriodicSync()
-                Timber.i("Periodical sync is off")
             }
 
             Result.success(Unit)
@@ -348,13 +334,10 @@ class SynchronizationControllerImpl(
             ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
             periodicWorkRequest
         )
-
-        Timber.d("Scheduled periodic sync with interval $intervalSeconds seconds")
     }
 
     private fun cancelPeriodicSync() {
         WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME_PERIODIC_SYNC)
-        Timber.d("Canceled periodic sync")
     }
 
     private fun calculateNextSyncTime(enabled: Boolean, intervalSeconds: Int): LocalDateTime? {
@@ -372,29 +355,23 @@ class SynchronizationControllerImpl(
 
         // Если сеть недоступна, пропускаем
         if (!networkMonitor.isNetworkAvailable()) {
-            Timber.d("Network is unavailable, skipping operations processing")
             return
         }
 
         // Получаем операции, готовые для выполнения
         val operations = syncQueueManager.getReadyOperations()
         if (operations.isEmpty()) {
-            Timber.d("No operations, ready to execute")
             return
         }
 
-        Timber.d("Starting processing ${operations.size} operations")
         _syncStatus.value = SynchronizationController.SyncStatus.SYNCING
 
         try {
             for (operation in operations) {
                 // Проверяем, не потеряли ли мы сеть во время обработки
                 if (!networkMonitor.isNetworkAvailable()) {
-                    Timber.d("Network became unavailable while processing operations")
                     break
                 }
-
-                Timber.d("Operation processing ${operation.id}: ${operation.operationType}")
 
                 try {
                     when (operation.operationType) {
@@ -505,11 +482,6 @@ class SynchronizationControllerImpl(
                             lastErrorMessage = "Ошибка загрузки товаров: ${e.message}"
                         )
                     }
-
-                    Timber.w(
-                        "Attempt $attempt products sync failed. " +
-                                "Repeat after ${delay}ms. Error: ${e.message}"
-                    )
                 },
                 tag = "ProductsSync"
             )
@@ -548,12 +520,6 @@ class SynchronizationControllerImpl(
 
             // Сохраняем информацию о синхронизации
             saveSyncInfo(syncResult)
-
-            Timber.i(
-                "Full sync finished successfully. " +
-                        "downloaded products: $productsDownloadedCount. " +
-                        "Time: ${durationMillis}ms"
-            )
 
             return syncResult
         } catch (e: Exception) {

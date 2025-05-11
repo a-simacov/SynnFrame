@@ -499,9 +499,4 @@ private fun ShowBin(bin: BinX) {
         text = "Зона: ${bin.zone}",
         style = MaterialTheme.typography.bodySmall
     )
-
-    Text(
-        text = "Расположение: ${bin.line}-${bin.rack}-${bin.tier}-${bin.position}",
-        style = MaterialTheme.typography.bodySmall
-    )
 }

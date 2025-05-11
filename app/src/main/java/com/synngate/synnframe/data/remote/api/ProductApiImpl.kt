@@ -27,15 +27,12 @@ class ProductApiImpl(
         return try {
             val url = "${server.apiUrl}/products"
             val response = client.get(url) {
-                // Basic аутентификация
                 header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
-                // Заголовок с ID текущего пользователя
                 header("User-Auth-Id", serverProvider.getCurrentUserId() ?: "")
             }
 
             if (response.status.isSuccess()) {
                 try {
-                    // Используем ProductDto для десериализации
                     val productDtos = response.body<List<ProductDto>>()
                     val products = productDtos.map { it.toDomainModel() }
                     ApiResult.Success(products)

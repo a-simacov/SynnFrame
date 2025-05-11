@@ -1,13 +1,13 @@
 package com.synngate.synnframe.domain.entity.taskx
 
 enum class WmsAction {
-    PUT_INTO,     // Положить
-    TAKE_FROM,    // Взять
-    RECEIPT,      // Оприходовать
-    EXPENSE,      // Списать
-    RECOUNT,      // Пересчитать
-    USE,          // Использовать
-    ASSERT;       // Подтверждение
+    PUT_INTO,
+    TAKE_FROM,
+    RECEIPT,
+    EXPENSE,
+    RECOUNT,
+    USE,
+    ASSERT;
 
     companion object {
         fun fromString(value: String): WmsAction {

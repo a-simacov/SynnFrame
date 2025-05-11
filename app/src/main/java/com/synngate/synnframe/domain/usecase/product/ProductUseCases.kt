@@ -65,14 +65,4 @@ class ProductUseCases(
             Result.failure(e)
         }
     }
-
-    private fun validateProduct(product: Product) {
-        if (product.name.isBlank()) {
-            throw IllegalArgumentException("Product name cannot be empty")
-        }
-
-        if (product.mainUnitId.isBlank() && product.units.isNotEmpty()) {
-            throw IllegalArgumentException("Main unit ID cannot be empty when units are specified")
-        }
-    }
 }

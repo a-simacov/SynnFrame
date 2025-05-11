@@ -41,7 +41,6 @@ class WebServerControllerImpl(
             }
             context.startForegroundService(intent)
             _isRunning.value = true
-            Timber.i("Local web server was started at port ${_serverPort.value}")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e("Error starting web server: ${e.message}")
@@ -56,7 +55,6 @@ class WebServerControllerImpl(
             }
             context.startService(intent)
             _isRunning.value = false
-            Timber.i("Local web server was stopped")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e("Error stopping web server: ${e.message}")

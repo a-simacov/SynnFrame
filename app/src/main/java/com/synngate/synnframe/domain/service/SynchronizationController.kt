@@ -24,9 +24,9 @@ interface SynchronizationController : ServiceController {
     suspend fun updateLastProductsSync(productsCount: Int)
 
     enum class SyncStatus {
-        IDLE,         // Синхронизация не выполняется
-        SYNCING,      // Синхронизация в процессе
-        ERROR         // Произошла ошибка синхронизации
+        IDLE,
+        SYNCING,
+        ERROR
     }
 
     data class SyncInfo(

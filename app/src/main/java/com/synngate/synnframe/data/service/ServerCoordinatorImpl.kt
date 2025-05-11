@@ -17,7 +17,6 @@ class ServerCoordinatorImpl(
         return try {
             val server = serverRepository.getServerById(id)
             if (server == null) {
-                Timber.w("Attempt to activate unexistent server: $id")
                 return Result.failure(IllegalArgumentException("Server not found: $id"))
             }
 
@@ -25,7 +24,6 @@ class ServerCoordinatorImpl(
 
             appSettingsDataStore.setActiveServer(id, server.name)
 
-            Timber.i("Active server was set: ${server.name} (${server.host}:${server.port})")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e("Error on setting active server: ${e.message}")
@@ -39,7 +37,6 @@ class ServerCoordinatorImpl(
 
             appSettingsDataStore.clearActiveServer()
 
-            Timber.i("Active server was reset")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e("Error on reset the active server: ${e.message}")
@@ -53,11 +50,9 @@ class ServerCoordinatorImpl(
 
             when (response) {
                 is ApiResult.Success -> {
-                    Timber.i("Success connection to the server: ${server.name} (${server.host}:${server.port})")
                     Result.success(true)
                 }
                 is ApiResult.Error -> {
-                    Timber.w("Error conection to the server: ${server.name} (${server.host}:${server.port}), причина: ${response.message}")
                     Result.failure(IOException("Connection test failed with code: ${response.code}"))
                 }
             }

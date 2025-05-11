@@ -1,8 +1,5 @@
 package com.synngate.synnframe.domain.entity.taskx.action
 
-/**
- * Типы расчета прогресса выполнения действия
- */
 enum class ProgressType {
     /**
      * Простой тип прогресса: действие или выполнено полностью, или не выполнено.

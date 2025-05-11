@@ -9,44 +9,20 @@ import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 
-/**
- * Класс для категоризации сетевых ошибок
- */
 object NetworkErrorClassifier {
 
-    /**
-     * Типы сетевых ошибок
-     */
     enum class ErrorType {
-        /**
-         * Временная ошибка, можно повторить запрос
-         */
         TRANSIENT,
 
-        /**
-         * Ошибка на стороне сервера, можно повторить запрос
-         */
         SERVER_ERROR,
 
-        /**
-         * Ошибка аутентификации, требуется повторная аутентификация
-         */
         AUTHENTICATION_ERROR,
 
-        /**
-         * Ошибка запроса, нужно исправить запрос
-         */
         CLIENT_ERROR,
 
-        /**
-         * Неизвестная ошибка
-         */
         UNKNOWN
     }
 
-    /**
-     * Классификация исключения по типу ошибки
-     */
     fun classify(e: Throwable): ErrorType {
         return when (e) {
             // Ошибки, связанные с сетью (можно повторить)
@@ -75,9 +51,6 @@ object NetworkErrorClassifier {
         }
     }
 
-    /**
-     * Определяет, можно ли повторить запрос при данной ошибке
-     */
     fun isRetryable(e: Throwable): Boolean {
         // Добавим специальную проверку на таймаут
         if (e.message?.contains("timeout", ignoreCase = true) == true ||
@@ -91,9 +64,6 @@ object NetworkErrorClassifier {
         }
     }
 
-    /**
-     * Получение сообщения об ошибке для пользователя
-     */
     fun getErrorMessage(e: Throwable): String {
         return when (classify(e)) {
             ErrorType.TRANSIENT -> "Проблема с сетью. Пожалуйста, проверьте подключение к Интернету."

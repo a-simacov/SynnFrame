@@ -35,7 +35,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.LogType
-import com.synngate.synnframe.domain.entity.TaskStatus
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 
 enum class StatusType {
@@ -151,29 +150,6 @@ fun SyncStatusIndicator(
             )
         }
     }
-}
-
-@Composable
-fun TaskStatusIndicator(
-    status: TaskStatus
-) {
-    val icon = when (status) {
-        TaskStatus.TO_DO -> Icons.Default.Schedule
-        TaskStatus.IN_PROGRESS -> Icons.Default.SyncAlt
-        TaskStatus.COMPLETED -> Icons.Default.CheckCircle
-    }
-
-    val iconTint = when (status) {
-        TaskStatus.TO_DO -> Color.DarkGray
-        TaskStatus.IN_PROGRESS -> Color.Magenta
-        TaskStatus.COMPLETED -> Color.DarkGray
-    }
-
-    Icon(
-        imageVector = icon,
-        tint = iconTint,
-        contentDescription = status.name
-    )
 }
 
 @Composable

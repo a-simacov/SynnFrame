@@ -30,20 +30,4 @@ data class ActionWizardState(
 
     val canGoBack: Boolean
         get() = currentStepIndex > 0 && currentStep?.canNavigateBack ?: true
-
-    fun getCurrentStepResult(): Any? {
-        return currentStep?.let { results[it.id] }
-    }
-
-    fun hasResultForStep(stepId: String): Boolean {
-        return results.containsKey(stepId)
-    }
-
-    fun hasErrorForStep(stepId: String): Boolean {
-        return errors.containsKey(stepId)
-    }
-
-    fun getErrorForStep(stepId: String): String? {
-        return errors[stepId]
-    }
 }

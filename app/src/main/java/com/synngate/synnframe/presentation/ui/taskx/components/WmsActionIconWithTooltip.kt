@@ -18,9 +18,6 @@ import com.synngate.synnframe.domain.entity.taskx.WmsAction
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionIcon
 
-/**
- * Компонент для отображения иконки действия WMS со всплывающей подсказкой
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WmsActionIconWithTooltip(

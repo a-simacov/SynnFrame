@@ -27,7 +27,6 @@ class UserUseCases(
     private suspend fun addUser(user: User): Result<User> {
         return try {
             userRepository.addUser(user)
-            Timber.i("User was added: ${user.name}")
             Result.success(user)
         } catch (e: Exception) {
             Timber.e(e, "Error adding user")
@@ -43,7 +42,6 @@ class UserUseCases(
             }
 
             userRepository.setCurrentUser(userId)
-            Timber.i("Current user was set: ${user.name}")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Error setting current user")
@@ -54,7 +52,6 @@ class UserUseCases(
     private suspend fun clearCurrentUser(): Result<Unit> {
         return try {
             userRepository.clearCurrentUser()
-            Timber.i("Current user was cleared")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Error clearing current user")
@@ -64,20 +61,16 @@ class UserUseCases(
 
     suspend fun loginUser(password: String, deviceInfo: Map<String, String>): Result<User> {
         return try {
-            // Проверяем наличие пользователя в локальной БД
             val localUser = userRepository.getUserByPassword(password)
             if (localUser != null) {
-                // Пользователь найден, устанавливаем как текущего
                 val setCurrentUserResult = setCurrentUser(localUser.id)
                 if (setCurrentUserResult.isFailure) {
                     return setCurrentUserResult.map { localUser }
                 }
 
-                Timber.i("Logged in user: ${localUser.name}")
                 return Result.success(localUser)
             }
 
-            // Пользователь не найден, пробуем аутентификацию на сервере
             val response = userRepository.authenticateWithServer(password, deviceInfo)
 
             return when (response) {
@@ -86,27 +79,23 @@ class UserUseCases(
                     val user = User(
                         id = userDto.id,
                         name = userDto.name,
-                        password = password, // Сохраняем введенный пароль
+                        password = password,
                         userGroupId = userDto.userGroupId
                     )
 
-                    // Сохраняем пользователя в базе данных
                     val addUserResult = addUser(user)
                     if (addUserResult.isFailure) {
                         return addUserResult
                     }
 
-                    // Устанавливаем его как текущего
                     val setCurrentUserResult = setCurrentUser(user.id)
                     if (setCurrentUserResult.isFailure) {
                         return setCurrentUserResult.map { user }
                     }
 
-                    Timber.i("User auth was successfull: ${user.name}")
                     Result.success(user)
                 }
                 is ApiResult.Error -> {
-                    Timber.w("Error in auth: ${response.message}")
                     Result.failure(IOException("Ошибка аутентификации: ${response.code} - ${response.message}"))
                 }
             }

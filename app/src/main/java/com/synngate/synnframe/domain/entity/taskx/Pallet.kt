@@ -4,6 +4,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class Pallet(
-    val code: String,          // Код паллеты
-    val isClosed: Boolean = false // Закрыта или открыта
+    val code: String,
+    val isClosed: Boolean = false
 )

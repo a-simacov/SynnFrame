@@ -72,14 +72,6 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
         preferences[NAVIGATION_BUTTON_HEIGHT] ?: 72f
     }
 
-    val allowMobileUpload: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[ALLOW_MOBILE_UPLOAD] ?: false
-    }
-
-    val mobileSizeLimit: Flow<Int> = dataStore.data.map { preferences ->
-        preferences[MOBILE_SIZE_LIMIT] ?: 500_000
-    }
-
     // Шаблон кода ячейки
     val binCodePattern: Flow<String> = dataStore.data.map { preferences ->
         preferences[BIN_CODE_PATTERN] ?: DEFAULT_BIN_PATTERN

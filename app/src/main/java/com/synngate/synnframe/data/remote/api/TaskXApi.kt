@@ -18,14 +18,6 @@ interface TaskXApi {
         endpoint: String
     ): ApiResult<CommonResponseDto>
 
-    /**
-     * Устанавливает статус ручного выполнения для запланированного действия
-     *
-     * @param taskId ID задания
-     * @param requestDto DTO с информацией о статусе выполнения действия
-     * @param endpoint Эндпоинт API
-     * @return Результат операции
-     */
     suspend fun setPlannedActionStatus(
         taskId: String,
         requestDto: PlannedActionStatusRequestDto,

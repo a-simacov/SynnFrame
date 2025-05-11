@@ -27,8 +27,6 @@ class ValidationService(
         value: Any?,
         context: Map<String, Any> = emptyMap()
     ): ValidationResult {
-        Timber.d("Validating value: $value with rule: ${rule.name}")
-
         // Для каждого элемента правил проверяем условие
         for (ruleItem in rule.rules) {
             when (ruleItem.type) {
@@ -37,7 +35,6 @@ class ValidationService(
                     val planItems = context["planItems"] as? List<*>
                     if (planItems != null && value != null) {
                         if (!isPlanItem(value, planItems)) {
-                            Timber.w("Validation failed: ${ruleItem.errorMessage}")
                             return ValidationResult.Error(ruleItem.errorMessage)
                         }
                     }
@@ -46,7 +43,6 @@ class ValidationService(
                 ValidationType.NOT_EMPTY -> {
                     // Проверка, что значение не пустое
                     if (value == null || (value is String && value.isBlank())) {
-                        Timber.w("Validation failed: ${ruleItem.errorMessage}")
                         return ValidationResult.Error(ruleItem.errorMessage)
                     }
                 }
@@ -57,7 +53,6 @@ class ValidationService(
                         try {
                             val regex = ruleItem.parameter.toRegex()
                             if (!value.matches(regex)) {
-                                Timber.w("Validation failed: ${ruleItem.errorMessage}")
                                 return ValidationResult.Error(ruleItem.errorMessage)
                             }
                         } catch (e: Exception) {
@@ -70,8 +65,6 @@ class ValidationService(
                 ValidationType.API_REQUEST -> {
                     // Проверка через API запрос
                     if (validationApiService != null && ruleItem.apiEndpoint != null) {
-                        Timber.d("Performing API validation with endpoint: ${ruleItem.apiEndpoint}")
-
                         // Преобразуем значение в строку, которую можно отправить в API
                         val valueAsString = valueToString(value)
 
@@ -96,12 +89,9 @@ class ValidationService(
             }
         }
 
-        // Если все проверки пройдены, возвращаем успех
-        Timber.d("Validation succeeded")
         return ValidationResult.Success
     }
 
-    // Вспомогательный метод для преобразования различных типов значений в строку
     private fun valueToString(value: Any?): String {
         return when (value) {
             is String -> value

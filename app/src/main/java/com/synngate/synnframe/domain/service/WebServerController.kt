@@ -19,7 +19,7 @@ interface WebServerController : ServiceController {
         val method: String,
         val path: String,
         val statusCode: Int,
-        val responseTime: Long, // в миллисекундах
+        val responseTime: Long,
         val clientIp: String
     )
 }

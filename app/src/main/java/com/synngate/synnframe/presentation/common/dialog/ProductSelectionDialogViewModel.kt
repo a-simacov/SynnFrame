@@ -18,9 +18,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * Состояние UI для диалога выбора продукта
- */
 data class ProductSelectionUiState(
     val searchQuery: String = "",
     val products: List<Product> = emptyList(),
@@ -29,20 +26,14 @@ data class ProductSelectionUiState(
     val showScanner: Boolean = false
 )
 
-/**
- * ViewModel для диалога выбора продукта
- * Инкапсулирует бизнес-логику и управляет состоянием
- */
 class ProductSelectionDialogViewModel(
     private val productRepository: ProductRepository,
     private val planProductIds: Set<String>? = null
 ) : ViewModel() {
 
-    // Внутреннее состояние
     private val _uiState = MutableStateFlow(ProductSelectionUiState())
     val uiState: StateFlow<ProductSelectionUiState> = _uiState.asStateFlow()
 
-    // Поток для поискового запроса
     private val _searchQuery = MutableStateFlow("")
 
     // Текущий поисковый Job для возможности отмены
@@ -94,9 +85,6 @@ class ProductSelectionDialogViewModel(
         }
     }
 
-    /**
-     * Загружает продукты из плана
-     */
     private fun loadPlanProducts(productIds: Set<String>) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
@@ -117,17 +105,11 @@ class ProductSelectionDialogViewModel(
         }
     }
 
-    /**
-     * Обновляет поисковый запрос
-     */
     fun updateSearchQuery(query: String) {
         _uiState.value = _uiState.value.copy(searchQuery = query)
         _searchQuery.value = query
     }
 
-    /**
-     * Поиск продукта по штрихкоду
-     */
     fun findProductByBarcode(barcode: String, onFound: (Product?) -> Unit) {
         viewModelScope.launch {
             try {
@@ -153,23 +135,10 @@ class ProductSelectionDialogViewModel(
         }
     }
 
-    /**
-     * Показывает/скрывает сканер штрихкодов
-     */
     fun setShowScanner(show: Boolean) {
         _uiState.value = _uiState.value.copy(showScanner = show)
     }
 
-    /**
-     * Очищает ошибку
-     */
-    fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
-    }
-
-    /**
-     * Factory для создания ViewModel с внедрением зависимостей
-     */
     class Factory(
         private val productRepository: ProductRepository,
         private val planProductIds: Set<String>? = null

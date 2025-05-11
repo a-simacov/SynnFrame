@@ -50,7 +50,6 @@ class SyncQueueManager(
         )
 
         val id = syncOperationDao.insertOperation(operation)
-        Timber.d("Добавлена операция в очередь: $operationType, $targetId, ID=$id")
 
         // Если нужно выполнить немедленно и есть сеть, запускаем процесс синхронизации
         if (executeImmediately && networkMonitor.isNetworkAvailable()) {
@@ -72,7 +71,6 @@ class SyncQueueManager(
 
     suspend fun markOperationCompleted(id: Long) {
         syncOperationDao.markOperationAsCompleted(id)
-        Timber.i("Sync operation $id finished successfully")
     }
 
     suspend fun handleFailedAttempt(id: Long, error: String): Boolean {

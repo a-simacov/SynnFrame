@@ -14,9 +14,7 @@ data class ActionContext(
     val onCancel: () -> Unit,
     val lastScannedBarcode: String? = null,
     val validationError: String? = null,
-    // Добавляем флаг для отслеживания глобального состояния обработки шага
     val isProcessingStep: Boolean = false,
-    // Добавляем флаг для определения, является ли шаг первым
     val isFirstStep: Boolean = false
 ) {
 

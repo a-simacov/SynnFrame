@@ -32,9 +32,7 @@ interface SettingsRepository {
     suspend fun setBinCodePattern(pattern: String)
     suspend fun setLogLevel(level: LogLevel)
 
-    // Получить тип устройства
     fun getDeviceType(): Flow<DeviceType>
 
-    // Установить тип устройства
     suspend fun setDeviceType(type: DeviceType)
 }
