@@ -4,20 +4,24 @@ import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.entity.taskx.action.SearchableActionObject
 
 /**
- * Сервис для поиска действий
+ * Сервис для поиска действий в задании
  */
 interface ActionSearchService {
 
     /**
      * Поиск действий по значению
-     * @param searchValue Значение для поиска (штрихкод, код товара/паллеты/ячейки)
-     * @param searchableObjects Список объектов для поиска из конфигурации типа задания
-     * @param plannedActions Запланированные действия задания
-     * @return Список ID найденных действий
+     * @param searchValue значение для поиска (штрихкод, код, ID и т.д.)
+     * @param searchableObjects настройки поиска из типа задания
+     * @param plannedActions список запланированных действий в задании
+     * @param taskId ID текущего задания
+     * @param currentActionId ID текущего действия (опционально)
+     * @return список найденных ID действий
      */
     suspend fun searchActions(
         searchValue: String,
         searchableObjects: List<SearchableActionObject>,
-        plannedActions: List<PlannedAction>
+        plannedActions: List<PlannedAction>,
+        taskId: String,
+        currentActionId: String? = null
     ): Result<List<String>>
 }

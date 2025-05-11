@@ -7,198 +7,130 @@ import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.entity.taskx.action.SearchableActionObject
 import com.synngate.synnframe.domain.repository.ProductRepository
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import timber.log.Timber
 
-/**
- * Реализация сервиса поиска действий
- */
 class ActionSearchServiceImpl(
-    private val actionSearchApi: ActionSearchApi? = null,
-    private val productRepository: ProductRepository? = null
+    private val actionSearchApi: ActionSearchApi,
+    private val productRepository: ProductRepository
 ) : ActionSearchService {
 
     override suspend fun searchActions(
         searchValue: String,
         searchableObjects: List<SearchableActionObject>,
-        plannedActions: List<PlannedAction>
-    ): Result<List<String>> {
-        return try {
-            if (searchValue.isBlank()) {
-                return Result.success(emptyList())
-            }
-
+        plannedActions: List<PlannedAction>,
+        taskId: String,
+        currentActionId: String?
+    ): Result<List<String>> = coroutineScope {
+        try {
             val foundActionIds = mutableSetOf<String>()
 
-            coroutineScope {
-                // Параллельно выполняем поиск по всем настроенным объектам
-                val results = searchableObjects.map { searchConfig ->
-                    async {
-                        if (searchConfig.isRemoteSearch) {
-                            searchRemote(searchValue, searchConfig)
-                        } else {
-                            searchLocal(searchValue, searchConfig, plannedActions)
-                        }
+            // Используем параллельное выполнение для всех поисков
+            searchableObjects.map { searchObject ->
+                async {
+                    if (searchObject.isRemoteSearch) {
+                        remoteSearch(searchObject, searchValue, taskId, currentActionId)
+                    } else {
+                        localSearch(searchObject, searchValue, plannedActions)
                     }
-                }.awaitAll()
-
-                // Объединяем результаты
-                results.forEach { result ->
-                    result.getOrNull()?.let { foundActionIds.addAll(it) }
                 }
+            }.forEach { deferred ->
+                val result = deferred.await()
+                foundActionIds.addAll(result)
             }
 
             Result.success(foundActionIds.toList())
         } catch (e: Exception) {
-            Timber.e(e, "Error searching actions for value: $searchValue")
+            Timber.e(e, "Error searching actions: $searchValue")
             Result.failure(e)
         }
     }
 
-    /**
-     * Локальный поиск в загруженных данных
-     */
-    private suspend fun searchLocal(
+    private suspend fun localSearch(
+        searchObject: SearchableActionObject,
         searchValue: String,
-        searchConfig: SearchableActionObject,
         plannedActions: List<PlannedAction>
-    ): Result<List<String>> {
-        return try {
-            val foundActions = when (searchConfig.objectType) {
-                ActionObjectType.BIN -> searchByBin(searchValue, plannedActions)
-                ActionObjectType.PALLET -> searchByPallet(searchValue, plannedActions)
-                ActionObjectType.CLASSIFIER_PRODUCT -> searchByProduct(searchValue, plannedActions)
-                ActionObjectType.TASK_PRODUCT -> searchByTaskProduct(searchValue, plannedActions)
-                ActionObjectType.PRODUCT_QUANTITY -> emptyList() // Количество не ищется
-            }
+    ): List<String> {
+        val foundActionIds = mutableListOf<String>()
+        val searchLower = searchValue.lowercase()
 
-            Result.success(foundActions)
-        } catch (e: Exception) {
-            Timber.e(e, "Error in local search for ${searchConfig.objectType}")
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Удаленный поиск через API
-     */
-    private suspend fun searchRemote(
-        searchValue: String,
-        searchConfig: SearchableActionObject
-    ): Result<List<String>> {
-        val endpoint = searchConfig.endpoint ?: return Result.success(emptyList())
-        val api = actionSearchApi ?: return Result.success(emptyList())
-
-        return try {
-            when (val result = api.searchAction(endpoint, searchValue)) {
-                is ApiResult.Success -> {
-                    val actionId = result.data.result
-                    if (actionId != null) {
-                        Result.success(listOf(actionId))
+        for (action in plannedActions) {
+            val found = when (searchObject.objectType) {
+                ActionObjectType.BIN -> {
+                    action.placementBin?.code?.lowercase() == searchLower
+                }
+                ActionObjectType.PALLET -> {
+                    action.storagePallet?.code?.lowercase() == searchLower ||
+                            action.placementPallet?.code?.lowercase() == searchLower
+                }
+                ActionObjectType.CLASSIFIER_PRODUCT -> {
+                    // Сначала пробуем искать по ID
+                    if (action.storageProduct?.product?.id == searchValue) {
+                        true
                     } else {
-                        Result.success(emptyList())
+                        // Если не найдено по ID, пробуем найти по штрихкоду через ProductRepository
+                        val productFromBarcode = productRepository.findProductByBarcode(searchValue)
+                        if (productFromBarcode != null) {
+                            action.storageProduct?.product?.id == productFromBarcode.id
+                        } else {
+                            // Проверяем штрихкоды в локальных данных продукта
+                            action.storageProduct?.product?.getAllBarcodes()?.any {
+                                it.lowercase() == searchLower
+                            } == true
+                        }
                     }
                 }
-                is ApiResult.Error -> {
-                    Timber.w("Remote search error: ${result.message}")
-                    Result.success(emptyList())
+                ActionObjectType.TASK_PRODUCT -> {
+                    // Для TASK_PRODUCT ищем только по ID продукта
+                    action.storageProduct?.product?.id == searchValue ||
+                            // Или по штрихкоду через репозиторий
+                            productRepository.findProductByBarcode(searchValue)?.let { foundProduct ->
+                                action.storageProduct?.product?.id == foundProduct.id
+                            } == true
+                }
+                ActionObjectType.PRODUCT_QUANTITY -> {
+                    // Для количества не ищем по штрихкоду, только через другие типы
+                    false
                 }
             }
-        } catch (e: Exception) {
-            Timber.e(e, "Error in remote search")
-            Result.failure(e)
-        }
-    }
 
-    /**
-     * Поиск по коду ячейки
-     */
-    private fun searchByBin(
-        searchValue: String,
-        plannedActions: List<PlannedAction>
-    ): List<String> {
-        return plannedActions
-            .filter { action ->
-                action.placementBin?.code.equals(searchValue, ignoreCase = true)
+            if (found) {
+                foundActionIds.add(action.id)
             }
-            .map { it.id }
-    }
-
-    /**
-     * Поиск по коду паллеты
-     */
-    private fun searchByPallet(
-        searchValue: String,
-        plannedActions: List<PlannedAction>
-    ): List<String> {
-        return plannedActions
-            .filter { action ->
-                action.storagePallet?.code.equals(searchValue, ignoreCase = true) ||
-                        action.placementPallet?.code.equals(searchValue, ignoreCase = true)
-            }
-            .map { it.id }
-    }
-
-    /**
-     * Поиск по продукту (ID или штрихкод)
-     */
-    private suspend fun searchByProduct(
-        searchValue: String,
-        plannedActions: List<PlannedAction>
-    ): List<String> {
-        // Сначала ищем по ID продукта
-        val actionsById = plannedActions
-            .filter { action ->
-                action.storageProduct?.product?.id.equals(searchValue, ignoreCase = true)
-            }
-            .map { it.id }
-
-        if (actionsById.isNotEmpty()) {
-            return actionsById
         }
 
-        // Если не нашли по ID, ищем по штрихкоду
-        val product = productRepository?.findProductByBarcode(searchValue)
-        if (product != null) {
-            return plannedActions
-                .filter { action ->
-                    action.storageProduct?.product?.id == product.id
+        return foundActionIds
+    }
+
+    private suspend fun remoteSearch(
+        searchObject: SearchableActionObject,
+        searchValue: String,
+        taskId: String,
+        currentActionId: String?
+    ): List<String> {
+        val endpoint = searchObject.endpoint ?: return emptyList()
+
+        // Заменяем параметры в endpoint
+        val processedEndpoint = endpoint
+            .replace("{taskId}", taskId)
+            .replace("{actionId}", currentActionId ?: "")
+
+        Timber.d("Remote search: $searchValue, endpoint: $processedEndpoint")
+
+        return when (val result = actionSearchApi.searchAction(processedEndpoint, searchValue)) {
+            is ApiResult.Success -> {
+                // Сначала проверяем поле results для множественных результатов
+                if (!result.data.results.isNullOrEmpty()) {
+                    result.data.results
+                } else {
+                    // Для обратной совместимости проверяем поле result
+                    result.data.result?.let { listOf(it) } ?: emptyList()
                 }
-                .map { it.id }
-        }
-
-        return emptyList()
-    }
-
-    /**
-     * Поиск по товару задания
-     */
-    private suspend fun searchByTaskProduct(
-        searchValue: String,
-        plannedActions: List<PlannedAction>
-    ): List<String> {
-        // Поиск по ID продукта в TaskProduct
-        val actionsById = plannedActions
-            .filter { action ->
-                action.storageProduct?.product?.id.equals(searchValue, ignoreCase = true)
             }
-            .map { it.id }
-
-        if (actionsById.isNotEmpty()) {
-            return actionsById
+            is ApiResult.Error -> {
+                Timber.e("Remote search error: ${result.message}")
+                emptyList()
+            }
         }
-
-        // Поиск по штрихкоду
-        val product = productRepository?.findProductByBarcode(searchValue)
-        if (product != null) {
-            return plannedActions
-                .filter { action ->
-                    action.storageProduct?.product?.id == product.id
-                }
-                .map { it.id }
-        }
-
-        return emptyList()
     }
 }

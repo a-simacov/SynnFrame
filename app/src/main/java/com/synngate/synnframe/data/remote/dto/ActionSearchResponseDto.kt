@@ -5,5 +5,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ActionSearchResponseDto(
     val result: String? = null,
+    val results: List<String>? = null,
     val message: String? = null
 )

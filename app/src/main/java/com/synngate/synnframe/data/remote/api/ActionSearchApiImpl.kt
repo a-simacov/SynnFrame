@@ -20,6 +20,7 @@ class ActionSearchApiImpl(
         return try {
             Timber.d("Searching action with value: $searchValue at endpoint: $endpoint")
 
+            // Используем executeApiRequest из BaseApiImpl, который корректно обработает endpoint
             executeApiRequest<ActionSearchResponseDto>(
                 endpoint = endpoint,
                 params = mapOf("searchValue" to searchValue)

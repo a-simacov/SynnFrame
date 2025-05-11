@@ -470,17 +470,17 @@ class TaskXDetailViewModel(
                 hasAdditionalActions = hasAdditionalActions,
                 statusActions = statusActions,
                 // Автоматически показываем поле поиска если включено в настройках
-                showSearchField = if (shouldShowSearch && currentState.showSearchField == false) {
-                    false // Можно сделать true для автоматического показа
+                showSearchField = if (shouldShowSearch) {
+                    true // Всегда показываем поле поиска, если enableActionSearch = true
                 } else {
-                    currentState.showSearchField
+                    false // Скрываем поле поиска, если enableActionSearch = false
                 }
             )
         }
 
         updateFilteredActions()
     }
-    
+
     private fun checkHasAdditionalActions(task: TaskX): Boolean {
         return !task.isVerified && isActionAvailable(AvailableTaskAction.VERIFY_TASK) ||
                 isActionAvailable(AvailableTaskAction.PRINT_TASK_LABEL)
@@ -776,10 +776,15 @@ class TaskXDetailViewModel(
             updateState { it.copy(isSearching = true, searchError = null) }
 
             try {
+                // Получаем ID текущего действия, если есть следующее действие
+                val currentActionId = state.nextActionId
+
                 val result = actionSearchService.searchActions(
                     searchValue = query,
                     searchableObjects = taskType.searchableActionObjects,
-                    plannedActions = task.plannedActions
+                    plannedActions = task.plannedActions,
+                    taskId = task.id,
+                    currentActionId = currentActionId
                 )
 
                 if (result.isSuccess) {
