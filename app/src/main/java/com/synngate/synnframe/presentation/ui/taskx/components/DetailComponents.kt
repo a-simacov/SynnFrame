@@ -1,6 +1,5 @@
 package com.synngate.synnframe.presentation.ui.taskx.components
 
-import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -43,7 +42,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
@@ -51,7 +49,6 @@ import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
-import com.synngate.synnframe.presentation.theme.SynnFrameTheme
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import java.time.LocalDateTime
 
@@ -375,7 +372,7 @@ fun PlannedActionItem(
                     val relatedFacts = factActions.filter { it.plannedActionId == action.id }
                     if (relatedFacts.isNotEmpty()) {
                         Text(
-                            text = "Действий: ${relatedFacts.size}",
+                            text = "(${relatedFacts.size})",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.alpha(0.8f)
@@ -506,37 +503,4 @@ private fun ShowBin(bin: BinX) {
         text = "Зона: ${bin.zone}",
         style = MaterialTheme.typography.bodySmall
     )
-}
-
-@Preview(apiLevel = 34,
-    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL,
-    showBackground = true, showSystemUi = true
-)
-@Composable
-private fun Demo() {
-    SynnFrameTheme {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Прогресс-бар
-            LinearProgressIndicator(
-                progress = { 0.25f },
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            // Количество фактических действий
-            val relatedFacts = 8
-            if (relatedFacts != 0) {
-                Text(
-                    text = "Действий: ${relatedFacts}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.alpha(0.8f)
-                )
-            }
-        }
-    }
 }
