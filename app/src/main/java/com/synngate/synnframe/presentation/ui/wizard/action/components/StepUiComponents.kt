@@ -38,7 +38,7 @@ fun StepTitle(
     Text(
         text = step.promptText,
         style = MaterialTheme.typography.titleMedium,
-        modifier = modifier.padding(bottom = 16.dp)
+        modifier = modifier.padding(bottom = 4.dp)
     )
 }
 

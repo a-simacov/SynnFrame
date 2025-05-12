@@ -140,7 +140,7 @@ class ProductQuantityStepFactory(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -184,7 +184,7 @@ class ProductQuantityStepFactory(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 QuantityTextFieldCentered(
                     value = viewModel.quantityInput,
@@ -197,7 +197,7 @@ class ProductQuantityStepFactory(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -255,7 +255,7 @@ class ProductQuantityStepFactory(
 
                 // Показываем предупреждение, если есть превышение плана
                 if (viewModel.willExceedPlan) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Внимание: превышение планового количества!",
                         style = MaterialTheme.typography.bodyMedium,

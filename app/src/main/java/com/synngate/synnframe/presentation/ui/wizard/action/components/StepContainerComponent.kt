@@ -89,7 +89,7 @@ fun <T> StepContainer(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(4.dp)
     ) {
         // Заголовок
         StepTitle(step, action)
