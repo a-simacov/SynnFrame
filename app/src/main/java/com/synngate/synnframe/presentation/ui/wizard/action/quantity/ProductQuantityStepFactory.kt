@@ -34,16 +34,10 @@ import com.synngate.synnframe.presentation.util.formatDate
 import timber.log.Timber
 import kotlin.math.roundToInt
 
-/**
- * Фабрика для шага ввода количества продукта
- */
 class ProductQuantityStepFactory(
     private val validationService: ValidationService
 ) : BaseActionStepFactory<TaskProduct>() {
 
-    /**
-     * Создание ViewModel для шага
-     */
     override fun getStepViewModel(
         step: ActionStep,
         action: PlannedAction,
@@ -57,9 +51,6 @@ class ProductQuantityStepFactory(
         )
     }
 
-    /**
-     * Отображение UI для шага
-     */
     @Composable
     override fun StepContent(
         state: StepViewState<TaskProduct>,
@@ -68,7 +59,6 @@ class ProductQuantityStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Безопасное приведение ViewModel к конкретному типу
         val quantityViewModel = try {
             viewModel as ProductQuantityViewModel
         } catch (e: ClassCastException) {
@@ -76,7 +66,6 @@ class ProductQuantityStepFactory(
             null
         }
 
-        // Если приведение не удалось, показываем сообщение об ошибке
         if (quantityViewModel == null) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -93,7 +82,6 @@ class ProductQuantityStepFactory(
             return
         }
 
-        // Проверяем, выбран ли продукт
         if (!quantityViewModel.hasSelectedProduct()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -109,7 +97,6 @@ class ProductQuantityStepFactory(
             return
         }
 
-        // Используем StepContainer для унифицированного отображения шага
         StepContainer(
             state = state,
             step = step,
@@ -126,7 +113,6 @@ class ProductQuantityStepFactory(
             isProcessingGlobal = context.isProcessingStep,
             isFirstStep = context.isFirstStep,
             content = {
-                // Используем безопасную версию содержимого
                 SafeProductQuantityContent(
                     state = state,
                     viewModel = quantityViewModel
@@ -135,9 +121,6 @@ class ProductQuantityStepFactory(
         )
     }
 
-    /**
-     * Безопасная версия содержимого шага ввода количества
-     */
     @Composable
     private fun SafeProductQuantityContent(
         state: StepViewState<TaskProduct>,
@@ -148,11 +131,9 @@ class ProductQuantityStepFactory(
                 .fillMaxWidth()
                 .padding(4.dp)
         ) {
-            // Используем product из ViewModel, а не из state.data
             val product = viewModel.getSelectedProduct()
 
             if (product != null) {
-                // Отображаем упрощенную информацию о выбранном продукте
                 SimpleProductInfo(
                     product = product,
                     taskProduct = viewModel.getSelectedTaskProduct(),
@@ -161,67 +142,29 @@ class ProductQuantityStepFactory(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Запланированное количество: значение крупным шрифтом, надпись - маленьким
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = formatQuantityDisplay(viewModel.plannedQuantity),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = "план",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Поле ввода количества с центрированным текстом и увеличенным шрифтом
-                QuantityTextFieldCentered(
-                    value = viewModel.quantityInput,
-                    onValueChange = { viewModel.updateQuantityInput(it) },
-                    onIncrement = { viewModel.incrementQuantity() },
-                    onDecrement = { viewModel.decrementQuantity() },
-                    onClear = { viewModel.clearQuantity() },
-                    isError = state.error != null,
-                    errorText = state.error,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Строка с двумя значениями: выполненное и прогнозируемое
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom
                 ) {
-                    // Выполненное количество
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = formatQuantityDisplay(viewModel.completedQuantity),
+                            text = formatQuantityDisplay(viewModel.plannedQuantity),
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
                         Text(
-                            text = "выполнено",
+                            text = "план",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
                     }
 
-                    // Прогнозируемый итог
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.weight(1f)
@@ -241,49 +184,85 @@ class ProductQuantityStepFactory(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Оставшееся количество с цветовой индикацией
-                val remainingColor = when {
-                    // Зеленый, если осталось 0 (план выполнен)
-                    viewModel.remainingQuantity <= 0 && !viewModel.willExceedPlan ->
-                        MaterialTheme.colorScheme.primary
-                    // Красный, если идет превышение плана
-                    viewModel.willExceedPlan ->
-                        MaterialTheme.colorScheme.error
-                    // Синий по умолчанию (план еще не выполнен)
-                    else ->
-                        MaterialTheme.colorScheme.tertiary
-                }
+                QuantityTextFieldCentered(
+                    value = viewModel.quantityInput,
+                    onValueChange = { viewModel.updateQuantityInput(it) },
+                    onIncrement = { viewModel.incrementQuantity() },
+                    onDecrement = { viewModel.decrementQuantity() },
+                    onClear = { viewModel.clearQuantity() },
+                    isError = state.error != null,
+                    errorText = state.error,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-                Column(
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    Text(
-                        text = formatQuantityDisplay(viewModel.remainingQuantity),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = remainingColor,
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = "осталось",
-                        fontSize = 12.sp,
-                        color = remainingColor,
-                        textAlign = TextAlign.Center
-                    )
-
-                    // Показываем предупреждение, если есть превышение плана
-                    if (viewModel.willExceedPlan) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text(
-                            text = "Внимание: превышение планового количества!",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
+                            text = formatQuantityDisplay(viewModel.completedQuantity),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "выполнено",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
                     }
+
+                    val remainingColor = when {
+                        // Зеленый, если осталось 0 (план выполнен)
+                        viewModel.remainingQuantity <= 0 && !viewModel.willExceedPlan ->
+                            MaterialTheme.colorScheme.primary
+                        // Красный, если идет превышение плана
+                        viewModel.willExceedPlan ->
+                            MaterialTheme.colorScheme.error
+                        // Синий по умолчанию (план еще не выполнен)
+                        else ->
+                            MaterialTheme.colorScheme.tertiary
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = formatQuantityDisplay(viewModel.remainingQuantity),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = remainingColor,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "осталось",
+                            fontSize = 12.sp,
+                            color = remainingColor,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                // Показываем предупреждение, если есть превышение плана
+                if (viewModel.willExceedPlan) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Внимание: превышение планового количества!",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             } else {
                 // Показываем сообщение, если продукт не найден
