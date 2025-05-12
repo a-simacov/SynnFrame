@@ -159,53 +159,59 @@ class PalletSelectionStepFactory(
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
-            } else {
-                if (selectedPallet != null && !viewModel.isSelectedPalletMatchingPlan()) {
-                    PalletCard(
-                        pallet = selectedPallet,
-                        isSelected = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+            }
+
+            // ИЗМЕНЕНИЕ: Скрываем поле ввода, когда выбрана запланированная паллета
+            if (!viewModel.hasPlanPallets() ||
+                !viewModel.isSelectedPalletMatchingPlan() ||
+                viewModel.getSelectedPallet() == null) {
+
+                BarcodeEntryField(
+                    value = viewModel.palletCodeInput,
+                    onValueChange = { viewModel.updatePalletCodeInput(it) },
+                    onSearch = { viewModel.searchByPalletCode() },
+                    onScannerClick = { viewModel.toggleCameraScannerDialog(true) },
+                    isError = state.error != null,
+                    errorText = state.error,
+                    label = stringResource(R.string.enter_pallet_code),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Кнопка создания новой паллеты - показываем только если:
+                // - нет строгого требования использовать паллету из плана
+                // - либо план пуст
+                if (!step.validationRules.rules.any { it.type == ValidationType.FROM_PLAN } || !viewModel.hasPlanPallets()) {
                     Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { viewModel.createNewPallet() },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ),
+                        enabled = !viewModel.isCreatingPallet && !state.isLoading
+                    ) {
+                        if (viewModel.isCreatingPallet) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .align(Alignment.CenterVertically)
+                                    .height(20.dp)
+                                    .padding(end = 8.dp)
+                            )
+                        }
+                        Text("Создать новую паллету")
+                    }
                 }
             }
 
-            BarcodeEntryField(
-                value = viewModel.palletCodeInput,
-                onValueChange = { viewModel.updatePalletCodeInput(it) },
-                onSearch = { viewModel.searchByPalletCode() },
-                onScannerClick = { viewModel.toggleCameraScannerDialog(true) },
-                isError = state.error != null,
-                errorText = state.error,
-                label = stringResource(R.string.enter_pallet_code),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            // Кнопка создания новой паллеты - показываем только если:
-            // - нет строгого требования использовать паллету из плана
-            // - либо план пуст
-            if (!step.validationRules.rules.any { it.type == ValidationType.FROM_PLAN } || !viewModel.hasPlanPallets()) {
+            // Если выбранная паллета не из плана, показываем ее
+            if (selectedPallet != null && !viewModel.isSelectedPalletMatchingPlan()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = { viewModel.createNewPallet() },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ),
-                    enabled = !viewModel.isCreatingPallet && !state.isLoading
-                ) {
-                    if (viewModel.isCreatingPallet) {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .align(Alignment.CenterVertically)
-                                .height(20.dp)
-                                .padding(end = 8.dp)
-                        )
-                    }
-                    Text("Создать новую паллету")
-                }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                PalletCard(
+                    pallet = selectedPallet,
+                    isSelected = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }

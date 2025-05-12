@@ -165,27 +165,35 @@ class BinSelectionStepFactory(
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
-            } else {
-                if (selectedBin != null && !viewModel.isSelectedBinMatchingPlan()) {
-                    BinCard(
-                        bin = selectedBin,
-                        isSelected = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
             }
 
-            BarcodeEntryField(
-                value = viewModel.binCodeInput,
-                onValueChange = { viewModel.updateBinCodeInput(it) },
-                onSearch = { viewModel.searchByBinCode() },
-                onScannerClick = { viewModel.toggleCameraScannerDialog(true) },
-                isError = state.error != null,
-                errorText = state.error,
-                label = stringResource(R.string.enter_bin_code),
-                modifier = Modifier.fillMaxWidth()
-            )
+            // ИЗМЕНЕНИЕ: Скрываем поле ввода, когда выбрана запланированная ячейка
+            if (!viewModel.hasPlanBins() ||
+                !viewModel.isSelectedBinMatchingPlan() ||
+                viewModel.getSelectedBin() == null) {
+
+                BarcodeEntryField(
+                    value = viewModel.binCodeInput,
+                    onValueChange = { viewModel.updateBinCodeInput(it) },
+                    onSearch = { viewModel.searchByBinCode() },
+                    onScannerClick = { viewModel.toggleCameraScannerDialog(true) },
+                    isError = state.error != null,
+                    errorText = state.error,
+                    label = stringResource(R.string.enter_bin_code),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // Если выбранная ячейка не из плана, показываем ее
+            if (selectedBin != null && !viewModel.isSelectedBinMatchingPlan()) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                BinCard(
+                    bin = selectedBin,
+                    isSelected = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 

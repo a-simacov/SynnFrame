@@ -186,19 +186,26 @@ class TaskProductSelectionStepFactory(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            // Поле ввода штрихкода с дополнительной кнопкой выбора из списка
-            BarcodeEntryField(
-                value = viewModel.productCodeInput,
-                onValueChange = { viewModel.updateProductCodeInput(it) },
-                onSearch = { viewModel.searchByProductCode() },
-                onScannerClick = { viewModel.toggleCameraScannerDialog(true) },
-                onSelectFromList = { viewModel.toggleProductSelectionDialog(true) }, // Добавлен обработчик
-                isError = state.error != null,
-                errorText = state.error,
-                modifier = Modifier.fillMaxWidth()
-            )
+            // ИЗМЕНЕНИЕ: Показываем поле поиска только если нет плана
+            // или выбранный товар не соответствует плану, или товар еще не выбран
+            if (!viewModel.hasPlanProducts() ||
+                !viewModel.isSelectedProductMatchingPlan() ||
+                viewModel.getSelectedProduct() == null) {
 
-            Spacer(modifier = Modifier.height(16.dp))
+                // Поле ввода штрихкода с дополнительной кнопкой выбора из списка
+                BarcodeEntryField(
+                    value = viewModel.productCodeInput,
+                    onValueChange = { viewModel.updateProductCodeInput(it) },
+                    onSearch = { viewModel.searchByProductCode() },
+                    onScannerClick = { viewModel.toggleCameraScannerDialog(true) },
+                    onSelectFromList = { viewModel.toggleProductSelectionDialog(true) }, // Добавлен обработчик
+                    isError = state.error != null,
+                    errorText = state.error,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             // Отображаем выбранный товар, только если он не из плана
             val selectedProduct = viewModel.getSelectedProduct()

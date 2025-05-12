@@ -73,7 +73,8 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppScaffold(
-    title: String,
+    showTopBar: Boolean = true,
+    title: String = "",
     subtitle: String? = null,
     onNavigateBack: (() -> Unit)? = null,
     bottomBar: @Composable () -> Unit = {},
@@ -113,8 +114,8 @@ fun AppScaffold(
 
     // Определяем, выполняется ли синхронизация и время последней синхронизации
     val finalIsSyncing = isSyncing
-    val finalLastSyncTime = lastSyncTime ?:
-    lastSyncInfo?.timestamp?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
+    val finalLastSyncTime = lastSyncTime
+        ?: lastSyncInfo?.timestamp?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
 
     // Обновляем видимость уведомления при изменении параметра notification
     LaunchedEffect(notification) {
@@ -132,7 +133,7 @@ fun AppScaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
-            topBar = {
+            topBar = { if (showTopBar)
                 Column {
                     TopAppBar(
                         title = {

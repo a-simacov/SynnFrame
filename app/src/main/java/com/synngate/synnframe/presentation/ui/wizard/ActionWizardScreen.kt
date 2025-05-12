@@ -70,6 +70,7 @@ fun ActionWizardScreen(
         modifier = modifier.fillMaxSize()
     ) {
         AppScaffold(
+            showTopBar = false,
             title = wizardState?.action?.wmsAction?.let {
                 getWmsActionDescription(it)
             } ?: "Выполнение действия",

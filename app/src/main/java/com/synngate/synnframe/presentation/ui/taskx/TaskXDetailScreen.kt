@@ -144,6 +144,7 @@ fun TaskXDetailScreen(
     }
 
     AppScaffold(
+        showTopBar = false,
         title = task?.taskTypeId?.let { viewModel.formatTaskType() } ?: "Unknown",
         // Перехватываем нажатие на кнопку "Назад" в заголовке
         onNavigateBack = { viewModel.handleBackNavigation() },

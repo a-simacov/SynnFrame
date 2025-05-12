@@ -110,6 +110,7 @@ class ProductSelectionStepFactory(
             OptimizedProductSelectionDialog(
                 onProductSelected = { product ->
                     productViewModel.selectProduct(product)
+                    productViewModel.hideProductSelectionDialog()
                 },
                 onDismiss = {
                     productViewModel.hideProductSelectionDialog()
@@ -165,41 +166,49 @@ class ProductSelectionStepFactory(
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
-            } else {
-                if (selectedProduct != null && !viewModel.isSelectedProductMatchingPlan()) {
-                    ProductCard(
-                        product = selectedProduct,
-                        isSelected = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+            }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+            // ИЗМЕНЕНИЕ: Показываем поле поиска только если нет плана
+            // или выбранный товар не соответствует плану, или товар еще не выбран
+            if (!viewModel.hasPlanProducts() ||
+                !viewModel.isSelectedProductMatchingPlan() ||
+                viewModel.getSelectedProduct() == null) {
+
+                BarcodeEntryField(
+                    value = viewModel.barcodeInput,
+                    onValueChange = { viewModel.updateBarcodeInput(it) },
+                    onSearch = { viewModel.searchByBarcode() },
+                    onScannerClick = { viewModel.toggleCameraScannerDialog(true) },
+                    isError = state.error != null,
+                    errorText = state.error,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (!viewModel.hasPlanProducts()) {
+                    Button(
+                        onClick = { viewModel.toggleProductSelectionDialog(true) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    ) {
+                        Text("Выбрать из списка товаров")
+                    }
                 }
             }
 
-            BarcodeEntryField(
-                value = viewModel.barcodeInput,
-                onValueChange = { viewModel.updateBarcodeInput(it) },
-                onSearch = { viewModel.searchByBarcode() },
-                onScannerClick = { viewModel.toggleCameraScannerDialog(true) },
-                isError = state.error != null,
-                errorText = state.error,
-                modifier = Modifier.fillMaxWidth()
-            )
+            // Если выбранный продукт не из плана, показываем его
+            if (selectedProduct != null && !viewModel.isSelectedProductMatchingPlan()) {
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            if (!viewModel.hasPlanProducts()) {
-                Button(
-                    onClick = { viewModel.toggleProductSelectionDialog(true) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                ) {
-                    Text("Выбрать из списка товаров")
-                }
+                ProductCard(
+                    product = selectedProduct,
+                    isSelected = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }

@@ -176,7 +176,7 @@ fun ActionWizardContent(
                     if (currentStep == null || wizardState.isCompleted) {
                         // Отображаем экран с итогами с использованием SummaryContainer
                         SummaryContainer(
-                            title = "Проверьте информацию перед завершением",
+                            title = "Подтвердите данные",
                             onBack = {
                                 coroutineScope.launch {
                                     actionWizardController.processStepResult(null)
