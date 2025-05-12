@@ -156,7 +156,10 @@ class DynamicTasksViewModel(
 
                         // Если настройка openImmediately = true и нашли ровно одно задание
                         if (uiState.value.screenSettings.openImmediately) {
-                            navigateToTaskDetail(task.id)
+                            if (task.getTaskStatus() == TaskXStatus.TO_DO)
+                                navigateToTaskDetail(task.id)
+                            else
+                                navigateToTaskXDetail(task.id)
                         }
                     } else {
                         updateState {
@@ -193,6 +196,10 @@ class DynamicTasksViewModel(
 
     private fun navigateToTaskDetail(taskId: String) {
         sendEvent(DynamicTasksEvent.NavigateToTaskDetail(taskId, endpoint))
+    }
+
+    private fun navigateToTaskXDetail(taskId: String) {
+        sendEvent(DynamicTasksEvent.NavigateToTaskXDetail(taskId))
     }
 
     fun onRefresh() {

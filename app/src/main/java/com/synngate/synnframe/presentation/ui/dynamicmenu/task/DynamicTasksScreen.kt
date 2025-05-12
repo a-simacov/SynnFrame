@@ -65,7 +65,6 @@ fun DynamicTasksScreen(
                     navigateToTaskDetail(event.taskId, viewModel.endpoint)
                 }
                 is DynamicTasksEvent.NavigateToTaskXDetail -> {
-                    // Обрабатываем новое событие навигации
                     navigateToTaskXDetail(event.taskId)
                 }
             }
