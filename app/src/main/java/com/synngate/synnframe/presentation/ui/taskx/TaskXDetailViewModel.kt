@@ -271,40 +271,27 @@ class TaskXDetailViewModel(
                 return@launchIO
             }
 
-            updateState { it.copy(isProcessing = true) }
+            // Закрываем диалог подтверждения завершения
+            updateState { it.copy(
+                showCompletionDialog = false,
+                isProcessingDialogAction = true
+            ) }
 
             try {
                 val result = taskXUseCases.completeTask(task.id)
 
                 if (result.isSuccess) {
-                    val updatedTask = result.getOrNull()
-                    updateState {
-                        it.copy(
-                            task = updatedTask,
-                            isProcessing = false,
-                            showCompletionDialog = false
-                        )
-                    }
-                    sendEvent(TaskXDetailEvent.ShowSnackbar("Задание завершено"))
+                    // Сразу отправляем один комбинированный ивент с сообщением и навигацией
+                    sendEvent(TaskXDetailEvent.TaskActionCompleted("Задание завершено"))
                 } else {
-                    updateState {
-                        it.copy(
-                            isProcessing = false,
-                            showCompletionDialog = false,
-                            error = result.exceptionOrNull()?.message ?: "Error on completing task"
-                        )
-                    }
+                    // В случае ошибки - показываем сообщение и оставляем диалог открытым
+                    updateState { it.copy(isProcessingDialogAction = false) }
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при завершении задания"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error on completing task")
-                updateState {
-                    it.copy(
-                        isProcessing = false,
-                        showCompletionDialog = false,
-                        error = "Error on completing task: ${e.message}"
-                    )
-                }
+                // Сбрасываем флаг загрузки в случае исключения
+                updateState { it.copy(isProcessingDialogAction = false) }
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при завершении задания"))
             }
         }
@@ -314,37 +301,24 @@ class TaskXDetailViewModel(
         launchIO {
             val task = uiState.value.task ?: return@launchIO
 
-            updateState { it.copy(isProcessing = true) }
+            // Устанавливаем флаг обработки действия в диалоге
+            updateState { it.copy(isProcessingDialogAction = true) }
 
             try {
                 val result = taskXUseCases.pauseTask(task.id)
 
                 if (result.isSuccess) {
-                    val updatedTask = result.getOrNull()
-                    updateState {
-                        it.copy(
-                            task = updatedTask,
-                            isProcessing = false
-                        )
-                    }
-                    sendEvent(TaskXDetailEvent.ShowSnackbar("Задание приостановлено"))
+                    // Сразу отправляем один комбинированный ивент с сообщением и навигацией
+                    sendEvent(TaskXDetailEvent.TaskActionCompleted("Задание приостановлено"))
                 } else {
-                    updateState {
-                        it.copy(
-                            isProcessing = false,
-                            error = result.exceptionOrNull()?.message ?: "Error on pausing task"
-                        )
-                    }
+                    // В случае ошибки - показываем сообщение и оставляем диалог открытым
+                    updateState { it.copy(isProcessingDialogAction = false) }
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при приостановке задания"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error on pausing task")
-                updateState {
-                    it.copy(
-                        isProcessing = false,
-                        error = "Error on pausing task: ${e.message}"
-                    )
-                }
+                // Сбрасываем флаг загрузки в случае исключения
+                updateState { it.copy(isProcessingDialogAction = false) }
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при приостановке задания"))
             }
         }

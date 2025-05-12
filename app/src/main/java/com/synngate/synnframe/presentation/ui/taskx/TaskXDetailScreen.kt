@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -50,6 +51,8 @@ import com.synngate.synnframe.presentation.ui.taskx.components.TaskXActionsDialo
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXVerificationDialog
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun TaskXDetailScreen(
@@ -63,6 +66,8 @@ fun TaskXDetailScreen(
     val task = state.task
 
     val nextActionId = state.nextActionId
+
+    val coroutineScope = rememberCoroutineScope()
 
     val scannerService = LocalScannerService.current
     if (state.showSearchField && scannerService?.hasRealScanner() == true) {
@@ -88,16 +93,34 @@ fun TaskXDetailScreen(
                 is TaskXDetailEvent.NavigateToActionWizard -> {
                     navigateToActionWizard(event.taskId, event.actionId)
                 }
+                is TaskXDetailEvent.NavigateBack -> {
+                    navigateBack()
+                }
+                is TaskXDetailEvent.TaskActionCompleted -> {
+                    // Для комбинированного события сразу выполняем навигацию
+                    navigateBack()
+
+                    // Показываем снекбар с небольшой задержкой,
+                    // чтобы он появился уже на экране списка
+                    coroutineScope.launch {
+                        delay(100) // Небольшая задержка
+                        snackbarHostState.showSnackbar(
+                            message = event.message,
+                            duration = SnackbarDuration.Short
+                        )
+                    }
+                }
             }
         }
     }
 
-    // Отображаем диалог действий
+// Отображаем диалог действий
     if (state.showActionsDialog) {
         TaskXActionsDialog(
             onDismiss = { viewModel.hideActionsDialog() },
             onNavigateBack = navigateBack,
-            statusActions = state.statusActions
+            statusActions = state.statusActions,
+            isProcessing = state.isProcessingDialogAction
         )
     }
 
@@ -146,7 +169,7 @@ fun TaskXDetailScreen(
     AppScaffold(
         showTopBar = false,
         title = task?.taskTypeId?.let { viewModel.formatTaskType() } ?: "Unknown",
-        // Перехватываем нажатие на кнопку "Назад" в заголовке
+// Перехватываем нажатие на кнопку "Назад" в заголовке
         onNavigateBack = { viewModel.handleBackNavigation() },
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {

@@ -14,6 +14,7 @@ data class TaskXDetailState(
     val taskType: TaskTypeX? = null,
     val isLoading: Boolean = false,
     val isProcessing: Boolean = false,
+    val isProcessingDialogAction: Boolean = false,
     val error: String? = null,
     val activeView: TaskXDetailView = TaskXDetailView.PLANNED_ACTIONS,
     val showVerificationDialog: Boolean = false,
@@ -32,12 +33,15 @@ data class TaskXDetailState(
     val showSearchField: Boolean = false,
     val showCameraScannerForSearch: Boolean = false,
     val filteredActionIds: List<String> = emptyList()
-
 )
 
 sealed class TaskXDetailEvent {
     data class ShowSnackbar(val message: String) : TaskXDetailEvent()
     data class NavigateToActionWizard(val taskId: String, val actionId: String) : TaskXDetailEvent()
+    object NavigateBack : TaskXDetailEvent()
+
+    // Новое событие, которое сразу включает и сообщение, и навигацию назад
+    data class TaskActionCompleted(val message: String) : TaskXDetailEvent()
 }
 
 data class StatusActionData(
