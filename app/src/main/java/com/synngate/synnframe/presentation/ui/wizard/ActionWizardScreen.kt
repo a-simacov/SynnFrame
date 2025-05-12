@@ -1,3 +1,5 @@
+// Файл: app/src/main/java/com/synngate/synnframe/presentation/ui/wizard/ActionWizardScreen.kt
+
 package com.synngate.synnframe.presentation.ui.wizard
 
 import androidx.activity.compose.BackHandler
@@ -17,7 +19,6 @@ import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionWizardContent
-import timber.log.Timber
 
 @Composable
 fun ActionWizardScreen(
@@ -30,17 +31,31 @@ fun ActionWizardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     BackHandler {
-        viewModel.cancelWizard()
+        val currentState = wizardState
+
+        if (currentState != null) {
+            when {
+                currentState.currentStepIndex == 0 -> {
+                    viewModel.cancelWizard()
+                }
+                currentState.isCompleted -> {
+                    viewModel.goBackFromSummary()
+                }
+                else -> {
+                    viewModel.goBackToPreviousStep()
+                }
+            }
+        } else {
+            viewModel.cancelWizard()
+        }
     }
 
     val scannerService = LocalScannerService.current
 
-    // Включаем сканер при открытии экрана
     LaunchedEffect(scannerService) {
         scannerService?.let {
             if (it.hasRealScanner()) {
                 if (!it.isEnabled()) {
-                    Timber.d("Включение сканера для экрана визарда")
                     it.enable()
                 }
             }

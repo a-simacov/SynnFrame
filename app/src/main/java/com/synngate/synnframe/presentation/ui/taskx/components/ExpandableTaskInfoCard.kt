@@ -41,7 +41,6 @@ fun ExpandableTaskInfoCard(
                 .fillMaxWidth()
                 .padding(4.dp)
         ) {
-            // Заголовок с кнопкой сворачивания/разворачивания
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -61,7 +60,6 @@ fun ExpandableTaskInfoCard(
                 )
             }
 
-            // Анимированное содержимое
             AnimatedVisibility(
                 visible = isExpanded,
                 enter = expandVertically(),

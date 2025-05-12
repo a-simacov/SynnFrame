@@ -26,9 +26,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 
-/**
- * Компонент поисковой строки для действий
- */
 @Composable
 fun ActionSearchBar(
     query: String,
@@ -63,7 +60,6 @@ fun ActionSearchBar(
                         CircularProgressIndicator(
                             modifier = Modifier
                                 .padding(12.dp)
-                                //.align(Alignment.CenterVertically)
                         )
                     } else {
                         Icon(
@@ -108,7 +104,6 @@ fun ActionSearchBar(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Отображение ошибки поиска
             if (error != null) {
                 Text(
                     text = error,

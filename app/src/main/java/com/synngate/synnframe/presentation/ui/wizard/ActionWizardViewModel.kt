@@ -6,9 +6,6 @@ import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryReg
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import timber.log.Timber
 
-/**
- * ViewModel для экрана визарда действий
- */
 class ActionWizardViewModel(
     private val taskId: String,
     private val actionId: String,
@@ -21,13 +18,9 @@ class ActionWizardViewModel(
         initializeWizard()
     }
 
-    /**
-     * Инициализация визарда
-     */
     private fun initializeWizard() {
         launchIO {
             try {
-                Timber.d("Инициализация визарда для задания $taskId, действия $actionId")
                 val result = actionWizardController.initialize(taskId, actionId)
 
                 if (!result.isSuccess) {
@@ -44,17 +37,12 @@ class ActionWizardViewModel(
         }
     }
 
-    /**
-     * Завершение визарда с отправкой результата
-     */
     fun completeWizard() {
         launchIO {
             try {
-                Timber.d("Завершение визарда для действия $actionId")
                 val result = actionWizardController.complete()
 
                 if (result.isSuccess) {
-                    Timber.d("Визард успешно завершен")
                     sendEvent(ActionWizardEvent.NavigateBackWithSuccess(actionId))
                 } else {
                     val errorMessage = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
@@ -68,17 +56,12 @@ class ActionWizardViewModel(
         }
     }
 
-    /**
-     * Повторная попытка завершения визарда
-     */
     fun retryCompleteWizard() {
         launchIO {
             try {
-                Timber.d("Повторная попытка завершения визарда для действия $actionId")
                 val result = actionWizardController.complete()
 
                 if (result.isSuccess) {
-                    Timber.d("Визард успешно завершен")
                     sendEvent(ActionWizardEvent.NavigateBackWithSuccess(actionId))
                 } else {
                     val errorMessage = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
@@ -92,31 +75,44 @@ class ActionWizardViewModel(
         }
     }
 
-    /**
-     * Отмена визарда
-     */
     fun cancelWizard() {
-        Timber.d("Отмена визарда")
         actionWizardController.cancel()
         sendEvent(ActionWizardEvent.NavigateBack)
     }
 
-    /**
-     * Обработка штрихкода от сканера
-     */
+    fun goBackToPreviousStep() {
+        launchIO {
+            try {
+                actionWizardController.processStepResult(null)
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при возврате к предыдущему шагу: ${e.message}")
+                sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка навигации: ${e.message}"))
+            }
+        }
+    }
+
+    fun goBackFromSummary() {
+        launchIO {
+            try {
+                val state = actionWizardController.wizardState.value
+                if (state != null && state.isCompleted) {
+                    actionWizardController.processStepResult(null)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при возврате с итогового экрана: ${e.message}")
+                sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка навигации: ${e.message}"))
+            }
+        }
+    }
+
     fun processBarcodeFromScanner(barcode: String) {
         launchIO {
-            Timber.d("Обработка штрихкода: $barcode")
             actionWizardController.processBarcodeFromScanner(barcode)
         }
     }
 
-    /**
-     * Освобождение ресурсов
-     */
     override fun dispose() {
         super.dispose()
-        Timber.d("Освобождение ресурсов ActionWizardViewModel")
         actionWizardController.cancel()
     }
 }
