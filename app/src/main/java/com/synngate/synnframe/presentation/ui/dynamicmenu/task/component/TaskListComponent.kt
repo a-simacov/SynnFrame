@@ -110,7 +110,6 @@ class TaskListComponent<S>(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                // Показываем название задания и его статус
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -123,7 +122,6 @@ class TaskListComponent<S>(
                         modifier = Modifier.weight(1f)
                     )
 
-                    // Отображаем индикатор статуса
                     TaskXStatusIndicator(status = taskStatus)
                 }
             }

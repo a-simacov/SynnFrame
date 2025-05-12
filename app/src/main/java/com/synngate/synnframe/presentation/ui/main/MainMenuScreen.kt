@@ -15,7 +15,6 @@ import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.outlined.Inventory
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -33,7 +32,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.R
-import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
@@ -172,16 +170,16 @@ fun MainMenuScreen(
             )
 
             // Кнопка синхронизации
-            if (!state.isSyncing) {
-                Spacer(modifier = Modifier.height(16.dp))
-
-                ActionButton(
-                    text = stringResource(id = R.string.sync_data),
-                    onClick = { viewModel.syncData() },
-                    icon = Icons.Default.Sync,
-                    contentDescription = stringResource(id = R.string.sync_data),
-                )
-            }
+//            if (!state.isSyncing) {
+//                Spacer(modifier = Modifier.height(16.dp))
+//
+//                ActionButton(
+//                    text = stringResource(id = R.string.sync_data),
+//                    onClick = { viewModel.syncData() },
+//                    icon = Icons.Default.Sync,
+//                    contentDescription = stringResource(id = R.string.sync_data),
+//                )
+//            }
 
             Spacer(modifier = Modifier.height(12.dp))
             HorizontalDivider(modifier = Modifier.height(4.dp))

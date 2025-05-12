@@ -194,7 +194,7 @@
     <string name="product_not_found">Товар не найден</string>
     <string name="searching_product">Поиск товара по штрихкоду %s...</string>
     <string name="scan_barcode">Отсканируйте штрихкод</string>
-    <string name="scan_barcode_instruction">Отсканируйте штрихкод товара для добавления в список</string>
+    <string name="scan_barcode_instruction">Отсканируйте штрихкод товара</string>
     <string name="clear_all">Очистить все</string>
     <string name="finish_scanning">Завершить</string>
     <string name="remove">Удалить</string>
@@ -724,7 +724,7 @@
     <string name="error_loading_tasks">Ошибка загрузки заданий</string>
     <string name="task_id_fmt">ID: %s</string>
 
-    <string name="search_value">Введите значение для поиска</string>
+    <string name="search_value">Поиск</string>
     <string name="task_name">Название задания</string>
     <string name="start_task_execution">Начать работу с заданием</string>
     <string name="search_task_hint">Введите штрихкод или другое значение</string>

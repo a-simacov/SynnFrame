@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.common.inputs
 
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -37,7 +38,8 @@ fun SearchTextField(
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = stringResource(id = R.string.search),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clickable { onSearch.invoke() }
             )
         },
         trailingIcon = trailingIcon,

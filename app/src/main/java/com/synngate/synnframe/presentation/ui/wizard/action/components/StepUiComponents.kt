@@ -27,7 +27,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
-import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import timber.log.Timber
 
 @Composable
@@ -37,7 +36,7 @@ fun StepTitle(
     modifier: Modifier = Modifier
 ) {
     Text(
-        text = "${step.promptText} (${getWmsActionDescription(action.wmsAction)})",
+        text = step.promptText,
         style = MaterialTheme.typography.titleMedium,
         modifier = modifier.padding(bottom = 16.dp)
     )

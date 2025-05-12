@@ -126,6 +126,7 @@ fun SyncStatusIndicator(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        //val showSyncMessage = false
         if (isSyncing) {
             CircularProgressIndicator(
                 modifier = Modifier
@@ -133,21 +134,24 @@ fun SyncStatusIndicator(
                     .padding(end = 4.dp),
                 strokeWidth = 2.dp
             )
-            Text(
-                text = "Синхронизация...",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
-            )
+//            if (showSyncMessage)
+//                Text(
+//                    text = "Синхронизация...",
+//                    style = MaterialTheme.typography.bodySmall,
+//                    color = MaterialTheme.colorScheme.primary
+//                )
         } else {
-            Text(
-                text = if (lastSyncTime != null) {
-                    "Синхр.: $lastSyncTime"
-                } else {
-                    "Нет синхронизации"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text("")
+//            if (showSyncMessage)
+//                Text(
+//                    text = if (lastSyncTime != null) {
+//                        "Синхр.: $lastSyncTime"
+//                    } else {
+//                        "Нет синхронизации"
+//                    },
+//                    style = MaterialTheme.typography.bodySmall,
+//                    color = MaterialTheme.colorScheme.onSurfaceVariant
+//                )
         }
     }
 }

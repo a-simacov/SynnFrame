@@ -194,7 +194,7 @@
     <string name="product_not_found">Product not found</string>
     <string name="searching_product">Searching product by barcode %s...</string>
     <string name="scan_barcode">Scan barcode</string>
-    <string name="scan_barcode_instruction">Scan product barcode to add to the list</string>
+    <string name="scan_barcode_instruction">Scan product barcode</string>
     <string name="clear_all">Clear all</string>
     <string name="finish_scanning">Finish</string>
     <string name="remove">Remove</string>
