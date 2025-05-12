@@ -1,34 +1,23 @@
 package com.synngate.synnframe.presentation.ui.taskx.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.Announcement
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.NoEncryption
-import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -41,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.BinX
@@ -61,25 +51,50 @@ fun PlannedActionsView(
     nextActionId: String? = null,
     modifier: Modifier = Modifier
 ) {
+    // Состояние для отображения диалога подтверждения
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+    var selectedAction by remember { mutableStateOf<PlannedAction?>(null) }
+    var isActionCompleted by remember { mutableStateOf(false) }
+
     Column(modifier = modifier) {
         if (plannedActions.isEmpty()) {
             EmptyScreenContent(message = "Нет запланированных действий")
         } else {
             LazyColumn {
                 items(plannedActions.sortedBy { it.order }) { action ->
-                    // Используем новый компонент с поддержкой свайпа
                     PlannedActionItem(
                         action = action,
                         factActions = factActions,
                         onClick = { onActionClick(action) },
-                        onToggleCompletion = onToggleCompletion?.let { toggle ->
-                            { completed -> toggle(action, completed) }
+                        onLongClick = { completed ->
+                            // Показываем диалог только если есть возможность изменить статус
+                            if (onToggleCompletion != null && action.canHaveMultipleFactActions() &&
+                                !action.isQuantityFulfilled(factActions)) {
+                                selectedAction = action
+                                isActionCompleted = completed
+                                showConfirmationDialog = true
+                            }
                         },
                         isNextAction = action.id == nextActionId
                     )
                 }
             }
         }
+    }
+
+    // Диалог подтверждения изменения статуса
+    if (showConfirmationDialog && selectedAction != null) {
+        ActionStatusConfirmationDialog(
+            action = selectedAction!!,
+            isCompleted = isActionCompleted,
+            onConfirm = {
+                onToggleCompletion?.invoke(selectedAction!!, !isActionCompleted)
+                showConfirmationDialog = false
+            },
+            onDismiss = {
+                showConfirmationDialog = false
+            }
+        )
     }
 }
 
@@ -110,7 +125,7 @@ fun PlannedActionItem(
     action: PlannedAction,
     factActions: List<FactAction>,
     onClick: () -> Unit,
-    onToggleCompletion: ((Boolean) -> Unit)? = null,
+    onLongClick: ((Boolean) -> Unit)? = null,
     isNextAction: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -139,10 +154,8 @@ fun PlannedActionItem(
     ) {
         action.calculateProgress(factActions)
     }
-    val hasMultipleFactActions = action.canHaveMultipleFactActions()
 
-    // Определяем, было ли действие завершено вручную
-    val isManuallyCompleted = action.manuallyCompleted
+    val hasMultipleFactActions = action.canHaveMultipleFactActions()
 
     // Рассчитываем плановое и фактическое количество для отображения
     val plannedQuantity = action.getPlannedQuantity()
@@ -157,18 +170,7 @@ fun PlannedActionItem(
         else -> MaterialTheme.colorScheme.surfaceContainerLow
     }
 
-    // Определяем иконку и описание статуса
-    val (statusIcon, statusDescription) = when {
-        isCompleted && isManuallyCompleted -> Pair(
-            Icons.Default.CheckCircle,
-            "Завершено вручную${action.manuallyCompleted}"
-        )
-        isCompleted -> Pair(Icons.Default.CheckCircle, "Выполнено")
-        action.isSkipped -> Pair(Icons.Default.NoEncryption, "Пропущено")
-        else -> Pair(Icons.Default.PendingActions, "Ожидает выполнения")
-    }
-
-    // Определяем цвет прогресса и иконок
+    // Определяем цвет прогресса
     val progressColor = when {
         isCompleted -> MaterialTheme.colorScheme.secondary
         else -> MaterialTheme.colorScheme.primary
@@ -185,7 +187,12 @@ fun PlannedActionItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable(enabled = action.isClickable(), onClick = onClick),
+            .pointerInput(action.id, isCompleted) {
+                detectTapGestures(
+                    onTap = { if (action.isClickable()) onClick() },
+                    onLongPress = { onLongClick?.invoke(isCompleted) }
+                )
+            },
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
         ),
@@ -194,15 +201,21 @@ fun PlannedActionItem(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(4.dp)
         ) {
-            // Верхняя часть карточки с названием и статусом
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Основная информация о действии
-                Column(modifier = Modifier.weight(1f)) {
+//            // Верхняя часть карточки с названием и статусом
+//            Row(
+//                verticalAlignment = Alignment.CenterVertically,
+//                modifier = Modifier.fillMaxWidth()
+//            ) {
+//                // Основная информация о действии
+//
+//
+//                // Статус действия теперь отображается только цветом фона,
+//                // поэтому здесь не показываем иконку статуса
+//            }
+            if (hasMultipleFactActions.not())
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -234,66 +247,10 @@ fun PlannedActionItem(
                     }
                 }
 
-                // Иконка статуса с подсказкой
-                IconWithTooltip(
-                    icon = statusIcon,
-                    description = statusDescription,
-                    tint = progressColor,
-                    iconSize = 24
-                )
-
-                // Добавляем выпадающее меню для управления статусом выполнения
-                if (onToggleCompletion != null && hasMultipleFactActions && !action.isQuantityFulfilled(factActions)) {
-                    var showMenu by remember { mutableStateOf(false) }
-
-                    Box {
-                        IconButton(
-                            onClick = { showMenu = true },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Действия",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = if (isCompleted)
-                                            "Снять отметку о выполнении"
-                                        else
-                                            "Отметить как выполненное"
-                                    )
-                                },
-                                onClick = {
-                                    onToggleCompletion(!isCompleted)
-                                    showMenu = false
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = if (isCompleted)
-                                            Icons.Default.Close
-                                        else
-                                            Icons.Default.CheckCircle,
-                                        contentDescription = null
-                                    )
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
             // Дополнительная информация о товаре, если есть
             action.storageProduct?.let { product ->
                 Text(
-                    text = "Товар: ${product.product.name}",
+                    text = product.product.name,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(top = 4.dp)
                 )
@@ -316,23 +273,6 @@ fun PlannedActionItem(
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
-
-//            // Информация о типе действия
-//            Row(
-//                verticalAlignment = Alignment.CenterVertically,
-//                modifier = Modifier.padding(top = 4.dp)
-//            ) {
-//                WmsActionIconWithTooltip(
-//                    wmsAction = action.wmsAction,
-//                    iconSize = 18
-//                )
-//                Spacer(modifier = Modifier.width(4.dp))
-//                Text(
-//                    text = getWmsActionDescription(action.wmsAction),
-//                    style = MaterialTheme.typography.bodySmall,
-//                    color = MaterialTheme.colorScheme.onSurfaceVariant
-//                )
-//            }
 
             // Отображение ячейки размещения, если есть
             action.placementBin?.let { bin ->

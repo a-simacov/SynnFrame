@@ -52,7 +52,7 @@ fun ActionSearchBar(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp)
+                .padding(vertical = 2.dp)
         ) {
             OutlinedTextField(
                 value = query,
@@ -69,7 +69,7 @@ fun ActionSearchBar(
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Поиск",
-                            modifier = Modifier.padding(start = 8.dp)
+                            modifier = Modifier.padding(start = 4.dp)
                         )
                     }
                 },
@@ -114,7 +114,7 @@ fun ActionSearchBar(
                     text = error,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                    modifier = Modifier.padding(start = 8.dp, top = 4.dp)
                 )
             }
         }

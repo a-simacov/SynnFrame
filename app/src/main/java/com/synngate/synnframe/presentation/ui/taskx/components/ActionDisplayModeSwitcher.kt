@@ -52,7 +52,7 @@ fun ActionDisplayModeSwitcher(
     Row(
         modifier = modifier
             .horizontalScroll(scrollState),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         displayModes.forEach { mode ->
             val label = ALL_DISPLAY_MODES[mode] ?: "Неизвестно"

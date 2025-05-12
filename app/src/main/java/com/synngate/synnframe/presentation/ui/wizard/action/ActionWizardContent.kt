@@ -315,7 +315,7 @@ fun ActionSummaryScreen(
 
         if (action != null) {
             Text(
-                text = "Действие: ${action.actionTemplate.name}",
+                text = action.actionTemplate.name,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.surfaceTint,
                 modifier = Modifier.padding(bottom = 4.dp)

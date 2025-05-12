@@ -268,7 +268,7 @@ fun TaskXDetailScreen(
                         visible = state.showSearchField,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 8.dp)
+                            .padding(horizontal = 4.dp)
                     )
 
                     ActionDisplayModeSwitcher(
@@ -277,7 +277,7 @@ fun TaskXDetailScreen(
                         hasFinalActions = task.plannedActions.any { it.isFinalAction },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 8.dp)
+                            .padding(horizontal = 4.dp)
                     )
 
                     Box(modifier = Modifier.weight(1f)) {
