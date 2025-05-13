@@ -12,11 +12,17 @@ import com.synngate.synnframe.domain.model.wizard.WizardEvent
 import com.synngate.synnframe.domain.model.wizard.WizardState
 import com.synngate.synnframe.domain.model.wizard.WizardStateMachine
 import com.synngate.synnframe.domain.repository.TaskXRepository
+import com.synngate.synnframe.presentation.di.Disposable
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
@@ -27,23 +33,35 @@ class FsmWizardControllerAdapter(
     private val stateMachine: WizardStateMachine,
     private val taskContextManager: TaskContextManager,
     private val taskXRepository: TaskXRepository? = null
-) {
+) : Disposable {
     // State flow для UI
     private val _adaptedState = MutableStateFlow<ActionWizardState?>(null)
     val adaptedState: StateFlow<ActionWizardState?> = _adaptedState
 
+    // Создаем собственный CoroutineScope для адаптера
+    private val adapterScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var stateObservationJob: Job? = null
+
     // Следим за изменениями в FSM и преобразуем их в ActionWizardState
     init {
-        // Комбинируем состояние FSM с контекстом для создания полного адаптированного состояния
-        stateMachine.currentState.combine(stateMachine.currentState.map {
-            it?.let { stateMachine.wizardContext }
-        }) { state, _ ->
-            adaptStateToActionWizardState(state)
+        // Запускаем наблюдение за состоянием FSM
+        startStateObservation()
+    }
+
+    /**
+     * Начинаем наблюдение за состоянием машины состояний
+     */
+    private fun startStateObservation() {
+        stateObservationJob?.cancel()
+        stateObservationJob = adapterScope.launch {
+            // Наблюдаем за изменениями в состоянии FSM
+            stateMachine.currentState
+                .map { state -> adaptStateToActionWizardState(state) }
+                .distinctUntilChanged()
+                .collect { adaptedState ->
+                    _adaptedState.value = adaptedState
+                }
         }
-            .distinctUntilChanged()
-            .collect { adaptedState ->
-                _adaptedState.value = adaptedState
-            }
     }
 
     /**
@@ -87,7 +105,9 @@ class FsmWizardControllerAdapter(
         if (state is StepState) {
             val stepId = context.steps.getOrNull(state.stepIndex)?.id
             if (stepId != null && stepId in context.results) {
-                stateMachine.handleEvent(WizardEvent.Next(context.results[stepId]!!))
+                adapterScope.launch {
+                    stateMachine.handleEvent(WizardEvent.Next(context.results[stepId]!!))
+                }
             }
         }
     }
@@ -103,8 +123,10 @@ class FsmWizardControllerAdapter(
      * Отменяет визард
      */
     fun cancel() {
-        stateMachine.handleEvent(WizardEvent.Cancel)
-        stateMachine.reset()
+        adapterScope.launch {
+            stateMachine.handleEvent(WizardEvent.Cancel)
+            stateMachine.reset()
+        }
     }
 
     /**
@@ -199,5 +221,12 @@ class FsmWizardControllerAdapter(
 
             else -> null
         }
+    }
+
+    override fun dispose() {
+        // Отменяем все корутины при уничтожении адаптера
+        stateObservationJob?.cancel()
+        adapterScope.cancel()
+        stateMachine.reset()
     }
 }

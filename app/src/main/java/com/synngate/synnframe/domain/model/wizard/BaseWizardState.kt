@@ -10,7 +10,7 @@ import timber.log.Timber
  */
 abstract class BaseWizardState(
     override val id: String,
-    protected val context: WizardContextInterface
+    protected val context: WizardContext
 ) : WizardState {
 
     override val isTerminal: Boolean = false
@@ -41,63 +41,63 @@ abstract class BaseWizardState(
  * Также отвечает за создание новых состояний.
  */
 data class WizardContext(
-    override val taskId: String = "",
-    override val actionId: String = "",
-    override val task: TaskX? = null,
-    override val action: PlannedAction? = null,
-    override val steps: List<WizardStep> = emptyList(),
-    override val results: Map<String, Any> = emptyMap(),
-    override val errors: Map<String, String> = emptyMap(),
-    override val lastScannedBarcode: String? = null
-) : WizardContextInterface {
+     val taskId: String = "",
+     val actionId: String = "",
+     val task: TaskX? = null,
+     val action: PlannedAction? = null,
+     val steps: List<WizardStep> = emptyList(),
+    val results: Map<String, Any> = emptyMap(),
+    val errors: Map<String, String> = emptyMap(),
+    val lastScannedBarcode: String? = null
+) {
     // Фабричные методы для создания состояний
 
-    fun createInitializingState(): InitializingState {
+     fun createInitializingState(): InitializingState {
         return InitializingState(this)
     }
 
-    fun createStepState(stepIndex: Int): StepState {
+     fun createStepState(stepIndex: Int): StepState {
         return StepState(stepIndex, this)
     }
 
-    fun createCompletingState(): CompletingState {
+     fun createCompletingState(): CompletingState {
         return CompletingState(this)
     }
 
-    fun createCompletedState(): CompletedState {
+     fun createCompletedState(): CompletedState {
         return CompletedState(this)
     }
 
-    fun createCancelledState(): CancelledState {
+     fun createCancelledState(): CancelledState {
         return CancelledState(this)
     }
 
-    fun createErrorState(error: String): ErrorState {
+     fun createErrorState(error: String): ErrorState {
         return ErrorState(error, this)
     }
 
     /**
      * Создает новый контекст с обновленными данными
      */
-    override fun copy(
-        taskId: String,
-        actionId: String,
-        task: TaskX?,
-        action: PlannedAction?,
-        steps: List<WizardStep>,
-        results: Map<String, Any>,
-        errors: Map<String, String>,
-        lastScannedBarcode: String?
-    ): WizardContextInterface {
-        return WizardContext(
-            taskId = taskId,
-            actionId = actionId,
-            task = task,
-            action = action,
-            steps = steps,
-            results = results,
-            errors = errors,
-            lastScannedBarcode = lastScannedBarcode
-        )
-    }
+//    override fun copy(
+//        taskId: String,
+//        actionId: String,
+//        task: TaskX?,
+//        action: PlannedAction?,
+//        steps: List<WizardStep>,
+//        results: Map<String, Any>,
+//        errors: Map<String, String>,
+//        lastScannedBarcode: String?
+//    ): WizardContextInterface {
+//        return WizardContext(
+//            taskId = taskId,
+//            actionId = actionId,
+//            task = task,
+//            action = action,
+//            steps = steps,
+//            results = results,
+//            errors = errors,
+//            lastScannedBarcode = lastScannedBarcode
+//        )
+//    }
 }

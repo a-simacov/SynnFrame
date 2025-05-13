@@ -109,15 +109,16 @@ class WizardStateMachine(
             }
 
             // Обновляем контекст
-            context = WizardContext(
-                taskId = taskId,
-                actionId = actionId,
-                task = task,
-                action = action,
-                steps = steps,
-                // Здесь можно добавить дополнительные данные
-                results = mapOf("taskType" to taskType)
-            )
+            if (taskType != null)
+                context = WizardContext(
+                    taskId = taskId,
+                    actionId = actionId,
+                    task = task,
+                    action = action,
+                    steps = steps,
+                    // Здесь можно добавить дополнительные данные
+                    results = mapOf("taskType" to taskType)
+                )
 
             // Создаем начальное состояние и устанавливаем его
             val initialState = context.createInitializingState()

@@ -44,6 +44,7 @@ import com.synngate.synnframe.data.service.WebServerManagerImpl
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
+import com.synngate.synnframe.domain.model.wizard.WizardStateMachine
 import com.synngate.synnframe.domain.repository.DynamicMenuRepository
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
@@ -60,6 +61,7 @@ import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.FileService
 import com.synngate.synnframe.domain.service.FinalActionsValidator
+import com.synngate.synnframe.domain.service.FsmWizardControllerAdapter
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.service.SoundService
@@ -398,13 +400,38 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         )
     }
 
+//    val actionWizardController by lazy {
+//        Timber.d("Creating ActionWizardController")
+//        ActionWizardController(
+//            actionExecutionService = actionExecutionService,
+//            actionStepExecutionService = actionStepExecutionService,
+//            taskContextManager = taskContextManager,
+//            taskXRepository = taskXRepository // Добавляем TaskXRepository
+//        )
+//    }
+
+    val wizardStateMachine by lazy {
+        Timber.d("Creating WizardStateMachine")
+        WizardStateMachine(
+            taskContextManager = taskContextManager,
+            actionExecutionService = actionExecutionService,
+            actionStepExecutionService = actionStepExecutionService
+        )
+    }
+
+    val fsmWizardControllerAdapter by lazy {
+        Timber.d("Creating FsmWizardControllerAdapter")
+        FsmWizardControllerAdapter(
+            stateMachine = wizardStateMachine,
+            taskContextManager = taskContextManager,
+            taskXRepository = taskXRepository
+        )
+    }
+
     val actionWizardController by lazy {
         Timber.d("Creating ActionWizardController")
         ActionWizardController(
-            actionExecutionService = actionExecutionService,
-            actionStepExecutionService = actionStepExecutionService,
-            taskContextManager = taskContextManager,
-            taskXRepository = taskXRepository // Добавляем TaskXRepository
+            fsmAdapter = fsmWizardControllerAdapter
         )
     }
 
