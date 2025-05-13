@@ -91,7 +91,6 @@ fun ActionWizardContent(
                 isProcessingGlobalBarcode = true
                 Timber.d("Глобальный сканер визарда: обнаружен штрих-код $barcode")
                 onBarcodeScanned(barcode)
-                //delay(500) // Предотвращаем множественное срабатывание
                 isProcessingGlobalBarcode = false
             }
         })
@@ -101,6 +100,7 @@ fun ActionWizardContent(
     var previousStepIndex by remember { mutableStateOf(wizardState.currentStepIndex) }
     val isForwardTransition = wizardState.currentStepIndex >= previousStepIndex
 
+    // Храним текущий ViewModel для получения данных напрямую
     var currentViewModel by remember { mutableStateOf<BaseStepViewModel<*>?>(null) }
 
     LaunchedEffect(wizardState.currentStepIndex) {
@@ -170,17 +170,22 @@ fun ActionWizardContent(
                                     state = wizardState,
                                     onStepComplete = { result -> onProcessStepResult(result) },
                                     onBack = { onProcessStepResult(null) },
-                                    // Модифицируем обработчик onForward:
+                                    // ИСПРАВЛЕНИЕ: Модифицируем обработчик onForward для получения данных из ViewModel напрямую
                                     onForward = {
-                                        // Получаем текущие данные из ViewModel и используем их при переходе вперед
-                                        if (currentViewModel != null && currentViewModel?.state?.value?.data != null) {
-                                            // Получаем данные из ViewModel
+                                        if (currentViewModel != null) {
+                                            // Получаем данные из текущего ViewModel
                                             val data = currentViewModel?.state?.value?.data
-                                            // Передаем их в обработчик результата
-                                            onProcessStepResult(data)
+                                            Timber.d("onForward: getting data directly from ViewModel: ${data?.javaClass?.simpleName}")
+
+                                            if (data != null) {
+                                                // Если данные есть, передаем их в обработчик результата
+                                                onProcessStepResult(data)
+                                            } else {
+                                                // Логируем отсутствие данных
+                                                Timber.w("No data available in current ViewModel for forward action")
+                                            }
                                         } else {
-                                            // Логируем отсутствие данных
-                                            Timber.w("No data available in current ViewModel for forward action")
+                                            Timber.w("No current ViewModel available")
                                         }
                                     },
                                     onSkip = { /* Пустая реализация */ },
@@ -195,10 +200,15 @@ fun ActionWizardContent(
                                     context = context
                                 )
 
-                                // Сохраняем ссылку на ViewModel (добавить этот код)
+                                // Сохраняем ссылку на ViewModel
                                 LaunchedEffect(actionStep.id) {
                                     val viewModel = factory.getViewModel(actionStep, action, context)
-                                    currentViewModel = viewModel
+                                    if (viewModel != null) {
+                                        Timber.d("Saved reference to ViewModel: ${viewModel.javaClass.simpleName}")
+                                        currentViewModel = viewModel
+                                    } else {
+                                        Timber.w("Factory returned null ViewModel")
+                                    }
                                 }
                             } else {
                                 NoFactoryFoundScreen(actionStep.objectType.toString())

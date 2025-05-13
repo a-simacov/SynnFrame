@@ -41,8 +41,9 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.base.StepViewState
-import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardStepUtils
+import com.synngate.synnframe.presentation.ui.wizard.action.pallet.PalletSelectionViewModel
 import kotlinx.coroutines.delay
+import timber.log.Timber
 
 /**
  * Улучшенный контейнер для шага визарда
@@ -178,13 +179,34 @@ fun <T> WizardStepContainer(
                 // Кнопка "Вперед"
                 Button(
                     onClick = {
-                        // Если есть данные, и это шаг с API-валидацией, запускаем полную валидацию
-                        if (state.data != null && WizardStepUtils.hasApiValidation(step)) {
-                            // Вызываем validateData непосредственно в ViewModel
-                            viewModel.validateAndCompleteIfValid(state.data)
-                        } else {
-                            // Иначе просто передаем управление обработчику
-                            onForward()
+                        // ИСПРАВЛЕНО: Добавлена специальная обработка для разных типов ViewModel
+                        // В зависимости от типа ViewModel вызываем соответствующий метод
+                        when (viewModel) {
+                            // Для PalletSelectionViewModel вызываем специальный метод
+                            is PalletSelectionViewModel -> {
+                                Timber.d("Вызываем manuallyCompleteStep для PalletSelectionViewModel")
+                                viewModel.manuallyCompleteStep()
+                            }
+                            // Для остальных типов используем общий подход
+                            else -> {
+                                Timber.d("Используем стандартный onForward для ${viewModel.javaClass.simpleName}")
+
+                                // Если есть данные, пытаемся вызвать validateAndCompleteIfValid
+                                if (state.data != null) {
+                                    // Проверяем, есть ли у ViewModel метод validateAndCompleteIfValid
+                                    try {
+                                        Timber.d("Вызываем validateAndCompleteIfValid с данными: ${state.data}")
+                                        viewModel.validateAndCompleteIfValid(state.data)
+                                    } catch (e: Exception) {
+                                        Timber.e("Ошибка при вызове validateAndCompleteIfValid: ${e.message}")
+                                        // Если возникла ошибка, используем стандартный onForward
+                                        onForward()
+                                    }
+                                } else {
+                                    // Если данных нет, просто вызываем onForward
+                                    onForward()
+                                }
+                            }
                         }
                     },
                     enabled = forwardEnabled && !isReallyLoading,
@@ -197,7 +219,6 @@ fun <T> WizardStepContainer(
                         modifier = Modifier.padding(start = 4.dp)
                     )
                 }
-
             }
         }
     }

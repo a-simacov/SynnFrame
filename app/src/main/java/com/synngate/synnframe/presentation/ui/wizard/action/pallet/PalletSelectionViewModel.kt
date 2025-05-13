@@ -9,6 +9,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableF
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
 import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
+import timber.log.Timber
 
 /**
  * Оптимизированная ViewModel для шага выбора паллеты
@@ -203,11 +204,14 @@ class PalletSelectionViewModel(
         selectedPallet = pallet
         WizardLogger.logPallet(TAG, pallet)
 
+        // ИСПРАВЛЕНО: Важное изменение - явно вызываем setData для обновления состояния
+        // Это гарантирует, что data в state будет обновлена
+        setData(pallet)
+        Timber.d("Обновили state.data паллетой: ${pallet.code}")
+
         // Обновляем состояние и проверяем автопереход
         if (stepFactory is AutoCompleteCapableFactory) {
             handleFieldUpdate("selectedPallet", pallet)
-        } else {
-            setData(pallet)
         }
     }
 
@@ -280,5 +284,20 @@ class PalletSelectionViewModel(
     fun isSelectedPalletMatchingPlan(): Boolean {
         val selected = selectedPallet ?: return false
         return plannedPallet != null && selected.code == plannedPallet.code
+    }
+
+    /**
+     * ИСПРАВЛЕНО: Добавлен метод для ручного завершения шага
+     * Вызывается при нажатии кнопки "Вперед"
+     */
+    fun manuallyCompleteStep() {
+        val pallet = selectedPallet
+        if (pallet != null) {
+            Timber.d("Вручную завершаем шаг с паллетой: ${pallet.code}")
+            completeStep(pallet)
+        } else {
+            Timber.w("Попытка завершить шаг без выбранной паллеты")
+            setError("Необходимо выбрать паллету")
+        }
     }
 }
