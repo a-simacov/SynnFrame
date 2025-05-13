@@ -54,7 +54,6 @@ import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.ActionExecutionService
 import com.synngate.synnframe.domain.service.ActionSearchServiceImpl
-import com.synngate.synnframe.domain.service.ActionStepExecutionService
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.FileService
@@ -352,14 +351,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         ActionSearchServiceImpl(
             actionSearchApi = actionSearchApi,
             productRepository = productRepository
-        )
-    }
-
-    val actionStepExecutionService by lazy {
-        Timber.d("Creating ActionStepExecutionService")
-        ActionStepExecutionService(
-            validationService = validationService,
-            taskContextManager = taskContextManager // Добавляем параметр taskContextManager
         )
     }
 

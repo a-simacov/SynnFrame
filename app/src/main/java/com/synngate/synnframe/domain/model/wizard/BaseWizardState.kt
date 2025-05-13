@@ -41,38 +41,38 @@ abstract class BaseWizardState(
  * Также отвечает за создание новых состояний.
  */
 data class WizardContext(
-     val taskId: String = "",
-     val actionId: String = "",
-     val task: TaskX? = null,
-     val action: PlannedAction? = null,
-     val steps: List<WizardStep> = emptyList(),
+    val taskId: String = "",
+    val actionId: String = "",
+    val task: TaskX? = null,
+    val action: PlannedAction? = null,
+    val steps: List<WizardStep> = emptyList(),
     val results: Map<String, Any> = emptyMap(),
     val errors: Map<String, String> = emptyMap(),
     val lastScannedBarcode: String? = null
 ) {
     // Фабричные методы для создания состояний
 
-     fun createInitializingState(): InitializingState {
+    fun createInitializingState(): InitializingState {
         return InitializingState(this)
     }
 
-     fun createStepState(stepIndex: Int): StepState {
+    fun createStepState(stepIndex: Int): StepState {
         return StepState(stepIndex, this)
     }
 
-     fun createCompletingState(): CompletingState {
+    fun createCompletingState(): CompletingState {
         return CompletingState(this)
     }
 
-     fun createCompletedState(): CompletedState {
+    fun createCompletedState(): CompletedState {
         return CompletedState(this)
     }
 
-     fun createCancelledState(): CancelledState {
+    fun createCancelledState(): CancelledState {
         return CancelledState(this)
     }
 
-     fun createErrorState(error: String): ErrorState {
+    fun createErrorState(error: String): ErrorState {
         return ErrorState(error, this)
     }
 

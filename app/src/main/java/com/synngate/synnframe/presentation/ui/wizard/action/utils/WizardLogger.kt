@@ -1,3 +1,5 @@
+// app/src/main/java/com/synngate/synnframe/presentation/ui/wizard/action/utils/WizardLogger.kt
+
 package com.synngate.synnframe.presentation.ui.wizard.action.utils
 
 import com.synngate.synnframe.domain.entity.Product
@@ -28,9 +30,6 @@ object WizardLogger {
 
     /**
      * Логирует содержимое карты результатов
-     * @param tag Метка логирования
-     * @param results Карта результатов для логирования
-     * @param level Минимальный уровень для вывода этого лога
      */
     fun logResults(tag: String, results: Map<String, Any>, level: LogLevel = LogLevel.VERBOSE) {
         if (level.ordinal > currentLogLevel.ordinal) return
@@ -45,9 +44,6 @@ object WizardLogger {
 
     /**
      * Логирует значения специальных ключей
-     * @param tag Метка логирования
-     * @param results Карта результатов для проверки
-     * @param level Минимальный уровень для вывода этого лога
      */
     fun logSpecialKeys(tag: String, results: Map<String, Any>, level: LogLevel = LogLevel.NORMAL) {
         if (level.ordinal > currentLogLevel.ordinal) return
@@ -71,10 +67,6 @@ object WizardLogger {
 
     /**
      * Логирует шаг в работе визарда
-     * @param tag Метка логирования
-     * @param stepName Название шага
-     * @param message Сообщение для логирования
-     * @param level Минимальный уровень для вывода этого лога
      */
     fun logStep(tag: String, stepName: String, message: String, level: LogLevel = LogLevel.NORMAL) {
         if (level.ordinal > currentLogLevel.ordinal) return
@@ -84,9 +76,6 @@ object WizardLogger {
 
     /**
      * Логирует информацию о продукте
-     * @param tag Метка логирования
-     * @param product Продукт для логирования
-     * @param level Минимальный уровень для вывода этого лога
      */
     fun logProduct(tag: String, product: Product?, level: LogLevel = LogLevel.NORMAL) {
         if (level.ordinal > currentLogLevel.ordinal) return
@@ -101,9 +90,6 @@ object WizardLogger {
 
     /**
      * Логирует информацию о TaskProduct
-     * @param tag Метка логирования
-     * @param taskProduct TaskProduct для логирования
-     * @param level Минимальный уровень для вывода этого лога
      */
     fun logTaskProduct(tag: String, taskProduct: TaskProduct?, level: LogLevel = LogLevel.NORMAL) {
         if (level.ordinal > currentLogLevel.ordinal) return
@@ -119,9 +105,6 @@ object WizardLogger {
 
     /**
      * Логирует информацию о паллете
-     * @param tag Метка логирования
-     * @param pallet Паллета для логирования
-     * @param level Минимальный уровень для вывода этого лога
      */
     fun logPallet(tag: String, pallet: Pallet?, level: LogLevel = LogLevel.NORMAL) {
         if (level.ordinal > currentLogLevel.ordinal) return
@@ -136,9 +119,6 @@ object WizardLogger {
 
     /**
      * Логирует информацию о ячейке
-     * @param tag Метка логирования
-     * @param bin Ячейка для логирования
-     * @param level Минимальный уровень для вывода этого лога
      */
     fun logBin(tag: String, bin: BinX?, level: LogLevel = LogLevel.NORMAL) {
         if (level.ordinal > currentLogLevel.ordinal) return
@@ -153,12 +133,9 @@ object WizardLogger {
 
     /**
      * Логирует обработку ошибки
-     * @param tag Метка логирования
-     * @param e Исключение
-     * @param operation Название операции, при которой произошла ошибка
-     * @param level Минимальный уровень для вывода этого лога
+     * ИЗМЕНЕНО: Параметр e теперь принимает Throwable вместо Exception
      */
-    fun logError(tag: String, e: Exception, operation: String, level: LogLevel = LogLevel.MINIMAL) {
+    fun logError(tag: String, e: Throwable, operation: String, level: LogLevel = LogLevel.MINIMAL) {
         if (level.ordinal > currentLogLevel.ordinal) return
 
         Timber.e(e, "$tag: Error during $operation: ${e.message}")
