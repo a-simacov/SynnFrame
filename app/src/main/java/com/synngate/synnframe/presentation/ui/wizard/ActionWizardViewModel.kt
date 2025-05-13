@@ -6,6 +6,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryReg
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.flow.collectLatest
+import timber.log.Timber
 
 /**
  * Оптимизированная ViewModel для экрана визарда действий.
@@ -62,11 +63,16 @@ class ActionWizardViewModel(
     fun completeWizard() {
         launchIO {
             try {
+                // Добавляем логирование для отслеживания
+                Timber.d("$TAG: Начинаем завершение визарда для actionId=$actionId, taskId=$taskId")
                 val result = wizardStateMachine.complete()
 
                 if (result.isSuccess) {
                     WizardLogger.logStep(TAG, "complete", "Визард успешно завершен",
                         WizardLogger.LogLevel.MINIMAL)
+
+                    // ВАЖНОЕ ИСПРАВЛЕНИЕ: Добавляем логирование перед отправкой события
+                    Timber.d("$TAG: Отправляем событие NavigateBackWithSuccess с actionId=$actionId")
                     sendEvent(ActionWizardEvent.NavigateBackWithSuccess(actionId))
                 } else {
                     val errorMessage = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
@@ -92,6 +98,8 @@ class ActionWizardViewModel(
      * Отменяет визард
      */
     fun cancelWizard() {
+        // ИСПРАВЛЕНИЕ: Добавляем логирование
+        Timber.d("$TAG: Отменяем визард")
         wizardStateMachine.cancel()
         sendEvent(ActionWizardEvent.NavigateBack)
     }

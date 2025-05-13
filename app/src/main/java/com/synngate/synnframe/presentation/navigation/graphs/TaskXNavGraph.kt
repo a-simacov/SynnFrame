@@ -14,6 +14,7 @@ import com.synngate.synnframe.presentation.navigation.routes.TaskXRoutes
 import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailScreen
 import com.synngate.synnframe.presentation.ui.taskx.TaskXListScreen
 import com.synngate.synnframe.presentation.ui.wizard.ActionWizardScreen
+import timber.log.Timber
 
 /**
  * Создает навигационный граф для экранов заданий X.
@@ -65,6 +66,7 @@ fun NavGraphBuilder.taskXNavGraph(
             val completedActionId = entry.savedStateHandle.get<String>("completedActionId")
             if (completedActionId != null) {
                 // Если есть результат, обрабатываем его и очищаем
+                Timber.d("Found completedActionId: $completedActionId in savedStateHandle")
                 viewModel.onActionCompleted(completedActionId)
                 entry.savedStateHandle.remove<String>("completedActionId")
             }
@@ -108,13 +110,26 @@ fun NavGraphBuilder.taskXNavGraph(
             ActionWizardScreen(
                 viewModel = viewModel,
                 navigateBack = {
+                    // ИСПРАВЛЕНИЕ: Добавляем логирование для отладки
+                    Timber.d("Navigating back from ActionWizardScreen")
                     navController.popBackStack()
                 },
                 navigateBackWithSuccess = { completedActionId ->
+                    // ИСПРАВЛЕНИЕ: Улучшенная навигация с возвратом на экран задания
+                    Timber.d("Navigating back with success, completedActionId: $completedActionId")
+
+                    // Сохраняем ID выполненного действия в переменную состояния предыдущего экрана
                     navController.previousBackStackEntry?.savedStateHandle?.set(
                         "completedActionId",
                         completedActionId
                     )
+
+                    // Проверяем, есть ли предыдущий экран в стеке навигации
+                    val previousRoute = navController.previousBackStackEntry?.destination?.route
+                    Timber.d("Previous route: $previousRoute")
+
+                    // Простой popBackStack() для возврата на предыдущий экран
+                    // Это должен быть экран задания TaskXDetail
                     navController.popBackStack()
                 }
             )
