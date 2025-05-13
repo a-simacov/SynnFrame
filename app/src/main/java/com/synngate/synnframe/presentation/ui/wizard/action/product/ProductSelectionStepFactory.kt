@@ -112,6 +112,7 @@ class ProductSelectionStepFactory(
             state = state,
             step = step,
             action = action,
+            viewModel = productViewModel,
             context = context,
             forwardEnabled = productViewModel.hasSelectedProduct(),
             content = {

@@ -107,6 +107,7 @@ class PalletSelectionStepFactory(
             state = state,
             step = step,
             action = action,
+            viewModel = palletViewModel,
             context = context,
             forwardEnabled = palletViewModel.hasSelectedPallet(),
             content = {

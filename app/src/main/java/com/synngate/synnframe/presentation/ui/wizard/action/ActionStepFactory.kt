@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 
 /**
  * Интерфейс фабрики компонентов шага действия
@@ -22,6 +23,19 @@ interface ActionStepFactory {
         action: PlannedAction,
         context: ActionContext
     )
+
+    /**
+     * Возвращает ViewModel для шага (новый метод)
+     * @param step Шаг действия
+     * @param action Запланированное действие
+     * @param context Контекст шага
+     * @return ViewModel для шага или null, если не удалось создать
+     */
+    fun getViewModel(
+        step: ActionStep,
+        action: PlannedAction,
+        context: ActionContext
+    ): BaseStepViewModel<*>?
 
     /**
      * Проверяет результат шага

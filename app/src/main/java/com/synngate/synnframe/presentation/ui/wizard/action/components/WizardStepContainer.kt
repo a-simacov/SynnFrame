@@ -39,7 +39,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
+import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.base.StepViewState
+import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardStepUtils
 import kotlinx.coroutines.delay
 
 /**
@@ -63,6 +65,7 @@ fun <T> WizardStepContainer(
     state: StepViewState<T>,
     step: ActionStep,
     action: PlannedAction,
+    viewModel: BaseStepViewModel<T>,
     onBack: () -> Unit,
     onForward: () -> Unit,
     onCancel: () -> Unit = {},
@@ -174,7 +177,16 @@ fun <T> WizardStepContainer(
 
                 // Кнопка "Вперед"
                 Button(
-                    onClick = onForward,
+                    onClick = {
+                        // Если есть данные, и это шаг с API-валидацией, запускаем полную валидацию
+                        if (state.data != null && WizardStepUtils.hasApiValidation(step)) {
+                            // Вызываем validateData непосредственно в ViewModel
+                            viewModel.validateAndCompleteIfValid(state.data)
+                        } else {
+                            // Иначе просто передаем управление обработчику
+                            onForward()
+                        }
+                    },
                     enabled = forwardEnabled && !isReallyLoading,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -185,6 +197,7 @@ fun <T> WizardStepContainer(
                         modifier = Modifier.padding(start = 4.dp)
                     )
                 }
+
             }
         }
     }

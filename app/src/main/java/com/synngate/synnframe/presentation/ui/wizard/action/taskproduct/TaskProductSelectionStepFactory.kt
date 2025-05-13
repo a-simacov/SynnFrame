@@ -117,6 +117,7 @@ class TaskProductSelectionStepFactory(
             state = state,
             step = step,
             action = action,
+            viewModel = taskProductViewModel,
             context = context,
             forwardEnabled = taskProductViewModel.isFormValid(),
             content = {

@@ -18,13 +18,19 @@ import timber.log.Timber
  */
 abstract class BaseActionStepFactory<T> : ActionStepFactory {
 
+    // Кэш для ViewModel, чтобы не создавать их заново каждый раз
+    private val viewModelCache = mutableMapOf<String, BaseStepViewModel<T>>()
+
     @Composable
     override fun createComponent(step: ActionStep, action: PlannedAction, context: ActionContext) {
         val viewModel = remember(step.id, action.id) {
-            // Передаем в ViewModel ссылку на текущую фабрику
-            // для поддержки автоперехода
+            // Получаем ViewModel для шага
             getStepViewModel(step, action, context, this)
         }
+
+        // Сохраняем ViewModel в кэше для возможности доступа через getViewModel
+        val cacheKey = "${step.id}_${action.id}"
+        viewModelCache[cacheKey] = viewModel
 
         // Получаем состояние из ViewModel
         val state by viewModel.state.collectAsState()
@@ -37,6 +43,16 @@ abstract class BaseActionStepFactory<T> : ActionStepFactory {
             action = action,
             context = context
         )
+    }
+
+    /**
+     * Возвращает ViewModel для заданного шага
+     */
+    override fun getViewModel(step: ActionStep, action: PlannedAction, context: ActionContext): BaseStepViewModel<*>? {
+        val cacheKey = "${step.id}_${action.id}"
+
+        // Возвращаем существующий ViewModel из кэша или создаем новый
+        return viewModelCache[cacheKey] ?: getStepViewModel(step, action, context, this)
     }
 
     /**

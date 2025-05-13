@@ -2,6 +2,7 @@ package com.synngate.synnframe.presentation.ui.wizard.action.base
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
@@ -11,6 +12,7 @@ import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -193,6 +195,13 @@ abstract class BaseStepViewModel<T>(
                 // Вызываем валидацию
                 when (val result = validationService.validate(validationRules, data, validationContext)) {
                     is ValidationResult.Success -> {
+                        // ИСПРАВЛЕНИЕ: Перед вызовом onComplete, убедимся, что данные сохранены
+                        // Обновляем состояние, чтобы в итоговом экране использовались правильные данные
+                        setData(data)
+
+                        // Добавляем небольшую задержку, чтобы убедиться, что состояние обновилось
+                        delay(100)
+
                         // Продолжаем действие после успешной валидации
                         context.onComplete(data)
                     }
@@ -232,6 +241,13 @@ abstract class BaseStepViewModel<T>(
      */
     fun completeStep(result: T) {
         executeWithErrorHandling("завершения шага") {
+            Timber.d("$TAG: Completing step with result: ${result}")
+
+            // Для TaskProduct дополнительно выводим количество
+            if (result is TaskProduct) {
+                Timber.d("$TAG: TaskProduct quantity: ${result.quantity}")
+            }
+
             if (validateData(result)) {
                 // Валидация прошла успешно
 
@@ -241,6 +257,17 @@ abstract class BaseStepViewModel<T>(
                 }
 
                 if (!hasApiValidation) {
+                    // Важно: обновляем данные перед вызовом onComplete
+                    setData(result)
+
+                    // Обновляем объекты в специальных ключах контекста при необходимости
+                    if (result is TaskProduct) {
+                        Timber.d("$TAG: Updating context with TaskProduct quantity=${result.quantity}")
+                    }
+
+                    // Небольшая задержка для гарантии обновления состояния
+                    delay(50)
+
                     context.onComplete(result)
                 }
                 // Иначе context.onComplete будет вызван асинхронно после API-валидации
@@ -356,5 +383,24 @@ abstract class BaseStepViewModel<T>(
         // По умолчанию пустая реализация
         // Подклассы должны переопределить, если требуется подтверждение
         Timber.w("$TAG: showConfirmationDialog не реализован")
+    }
+
+    fun validateAndCompleteIfValid(data: T) {
+        executeWithErrorHandling("валидации данных") {
+            if (validateData(data)) {
+                // Для не-API валидации, вызываем onComplete напрямую
+                val hasApiValidation = step.validationRules.rules.any {
+                    it.type == ValidationType.API_REQUEST && it.apiEndpoint != null
+                }
+
+                if (!hasApiValidation) {
+                    // Для простой валидации вызываем onComplete сразу
+                    context.onComplete(data)
+                }
+                // Иначе context.onComplete будет вызван асинхронно после API-валидации
+            } else {
+                setError("Некорректные данные для завершения шага")
+            }
+        }
     }
 }

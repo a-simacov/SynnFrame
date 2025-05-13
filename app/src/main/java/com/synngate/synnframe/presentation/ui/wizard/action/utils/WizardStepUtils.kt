@@ -20,7 +20,9 @@ import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
+import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.base.StepViewState
 import com.synngate.synnframe.presentation.ui.wizard.action.components.FormSpacer
 import com.synngate.synnframe.presentation.ui.wizard.action.components.StateType
@@ -32,6 +34,8 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.
 import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.PalletCard
 import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.ProductCard
 import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.TaskProductCard
+import com.synngate.synnframe.presentation.ui.wizard.action.quantity.ProductQuantityViewModel
+import timber.log.Timber
 
 /**
  * Утилитный класс для помощи фабрикам шагов в использовании стандартных компонентов
@@ -46,6 +50,7 @@ object WizardStepUtils {
         state: StepViewState<T>,
         step: ActionStep,
         action: PlannedAction,
+        viewModel: BaseStepViewModel<T>,
         context: ActionContext,
         forwardEnabled: Boolean,
         content: @Composable () -> Unit
@@ -54,8 +59,19 @@ object WizardStepUtils {
             state = state,
             step = step,
             action = action,
+            viewModel = viewModel,
             onBack = { context.onBack() },
-            onForward = { context.onForward() },
+            // КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: используем специальный обработчик для шага ввода количества
+            onForward = {
+                // Если это шаг ввода количества, вызываем saveResult()
+                if (viewModel is ProductQuantityViewModel && state.data != null) {
+                    Timber.d("StandardStepContainer: detected quantity step, using direct saveResult()")
+                    viewModel.saveResult()
+                } else {
+                    // Иначе используем стандартный onForward
+                    context.onForward()
+                }
+            },
             onCancel = { context.onCancel() },
             forwardEnabled = forwardEnabled,
             isProcessingGlobal = context.isProcessingStep,
@@ -262,6 +278,12 @@ object WizardStepUtils {
                     textAlign = TextAlign.Center
                 )
             }
+        }
+    }
+
+    fun hasApiValidation(step: ActionStep): Boolean {
+        return step.validationRules.rules.any {
+            it.type == ValidationType.API_REQUEST && it.apiEndpoint != null
         }
     }
 }

@@ -96,11 +96,12 @@ class BinSelectionStepFactory(
             )
         }
 
-        // Используем стандартный контейнер для шага
+        // Используем стандартный контейнер для шага, но теперь передаем viewModel
         WizardStepUtils.StandardStepContainer(
             state = state,
             step = step,
             action = action,
+            viewModel = binViewModel, // Передаем ViewModel в контейнер
             context = context,
             forwardEnabled = binViewModel.hasSelectedBin(),
             content = {

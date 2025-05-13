@@ -286,11 +286,23 @@ class WizardStateMachine(
         // Сохраняем результат текущего шага
         updatedResults[currentStep.id] = result
 
+        // ИСПРАВЛЕНИЕ: Лучше обрабатываем специальные типы
         // Также сохраняем отдельные индексы для определенных типов данных
         // для упрощения доступа в следующих шагах
         when (result) {
             is TaskProduct -> {
-                updatedResults["lastTaskProduct"] = result
+                // Сохраняем TaskProduct, убедившись, что предыдущее значение не затирается
+                // при таком же количестве
+                val existingTaskProduct = updatedResults["lastTaskProduct"] as? TaskProduct
+                if (existingTaskProduct == null ||
+                    existingTaskProduct.product.id != result.product.id ||
+                    existingTaskProduct.quantity != result.quantity) {
+
+                    updatedResults["lastTaskProduct"] = result
+                    Timber.d("Updated lastTaskProduct with quantity ${result.quantity}")
+                }
+
+                // Также сохраняем продукт отдельно
                 updatedResults["lastProduct"] = result.product
             }
             is Product -> {
@@ -312,11 +324,30 @@ class WizardStateMachine(
         }
 
         // Обновляем состояние
-        _state.update { it?.copy(
-            currentStepIndex = nextStepIndex,
-            results = updatedResults,
-            lastScannedBarcode = null
-        ) }
+        _state.update { state ->
+            state?.copy(
+                currentStepIndex = nextStepIndex,
+                results = updatedResults,
+                lastScannedBarcode = null
+            )
+        }
+
+        // Логируем сохраненный результат для отладки
+        Timber.d("Saved step result for ${currentStep.id}: ${result.javaClass.simpleName}")
+
+        // При создании итогового экрана логируем все результаты
+        if (nextStepIndex >= currentState.steps.size) {
+            Timber.d("Creating summary screen, all results:")
+            updatedResults.entries.forEach { (key, value) ->
+                when (value) {
+                    is TaskProduct -> Timber.d("  $key: TaskProduct(${value.product.name}, quantity=${value.quantity})")
+                    is Product -> Timber.d("  $key: Product(${value.name})")
+                    is Pallet -> Timber.d("  $key: Pallet(${value.code})")
+                    is BinX -> Timber.d("  $key: BinX(${value.code})")
+                    else -> Timber.d("  $key: ${value.javaClass.simpleName}")
+                }
+            }
+        }
     }
 
     /**

@@ -85,6 +85,7 @@ class ProductQuantityStepFactory(
             state = state,
             step = step,
             action = action,
+            viewModel = quantityViewModel,
             context = context,
             forwardEnabled = quantityViewModel.quantityInput.let { input ->
                 val floatValue = input.toFloatOrNull() ?: 0f
