@@ -286,33 +286,38 @@ class WizardStateMachine(
         // Сохраняем результат текущего шага
         updatedResults[currentStep.id] = result
 
-        // ИСПРАВЛЕНИЕ: Лучше обрабатываем специальные типы
-        // Также сохраняем отдельные индексы для определенных типов данных
-        // для упрощения доступа в следующих шагах
+        // Логируем сохраняемый результат
+        Timber.d("Saving result for step ${currentStep.id}: ${result.javaClass.simpleName}")
+
+        // Также сохраняем специальные ключи для быстрого доступа
         when (result) {
             is TaskProduct -> {
-                // Сохраняем TaskProduct, убедившись, что предыдущее значение не затирается
-                // при таком же количестве
+                // Проверяем, есть ли уже TaskProduct для этого продукта
                 val existingTaskProduct = updatedResults["lastTaskProduct"] as? TaskProduct
+
                 if (existingTaskProduct == null ||
                     existingTaskProduct.product.id != result.product.id ||
                     existingTaskProduct.quantity != result.quantity) {
 
+                    // Сохраняем новый TaskProduct
                     updatedResults["lastTaskProduct"] = result
                     Timber.d("Updated lastTaskProduct with quantity ${result.quantity}")
-                }
 
-                // Также сохраняем продукт отдельно
-                updatedResults["lastProduct"] = result.product
+                    // Также сохраняем продукт отдельно
+                    updatedResults["lastProduct"] = result.product
+                }
             }
             is Product -> {
                 updatedResults["lastProduct"] = result
+                Timber.d("Updated lastProduct: ${result.name}")
             }
             is Pallet -> {
                 updatedResults["lastPallet"] = result
+                Timber.d("Updated lastPallet: ${result.code}")
             }
             is BinX -> {
                 updatedResults["lastBin"] = result
+                Timber.d("Updated lastBin: ${result.code}")
             }
         }
 
@@ -331,9 +336,6 @@ class WizardStateMachine(
                 lastScannedBarcode = null
             )
         }
-
-        // Логируем сохраненный результат для отладки
-        Timber.d("Saved step result for ${currentStep.id}: ${result.javaClass.simpleName}")
 
         // При создании итогового экрана логируем все результаты
         if (nextStepIndex >= currentState.steps.size) {

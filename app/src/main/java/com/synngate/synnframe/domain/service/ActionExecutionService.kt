@@ -42,6 +42,13 @@ class ActionExecutionService(
             val action = task.plannedActions.find { it.id == actionId }
                 ?: return@withContext Result.failure(IllegalArgumentException("Planned action not found: $actionId"))
 
+            // Логируем все TaskProduct в контексте для отладки
+            stepResults.entries.forEach { (key, value) ->
+                if (value is TaskProduct) {
+                    Timber.d("TaskProduct in context: key=$key, product=${value.product.name}, quantity=${value.quantity}")
+                }
+            }
+
             val factAction = createFactAction(taskId, action, stepResults)
 
             val endpoint = taskContextManager.currentEndpoint.value
@@ -206,12 +213,23 @@ class ActionExecutionService(
         action: PlannedAction,
         stepResults: Map<String, Any>
     ): TaskProduct? {
-        for ((_, value) in stepResults) {
+        // 1. Сначала проверяем специальный ключ "lastTaskProduct", который должен содержать
+        // самый актуальный TaskProduct с правильным количеством
+        val lastTaskProduct = stepResults["lastTaskProduct"] as? TaskProduct
+        if (lastTaskProduct != null && lastTaskProduct.quantity > 0f) {
+            Timber.d("Using lastTaskProduct for action execution, quantity: ${lastTaskProduct.quantity}")
+            return lastTaskProduct
+        }
+
+        // 2. Ищем любой TaskProduct с положительным количеством
+        for ((key, value) in stepResults) {
             if (value is TaskProduct && value.quantity > 0f) {
+                Timber.d("Found TaskProduct with quantity ${value.quantity} for key $key")
                 return value
             }
         }
 
+        // 3. Ищем Product и пытаемся создать из него TaskProduct
         for ((_, value) in stepResults) {
             if (value is Product) {
                 var quantity = 0f
@@ -268,7 +286,8 @@ class ActionExecutionService(
             }
         }
 
-        // Если ничего не нашли, возвращаем исходный StorageProduct из действия
+        // 4. Если ничего не нашли, возвращаем исходный StorageProduct из действия с логированием
+        Timber.w("No suitable TaskProduct found, using original storage product from action")
         return action.storageProduct
     }
 
