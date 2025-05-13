@@ -1,4 +1,3 @@
-// app/src/main/java/com/synngate/synnframe/presentation/ui/wizard/action/taskproduct/TaskProductSelectionViewModel.kt
 package com.synngate.synnframe.presentation.ui.wizard.action.taskproduct
 
 import androidx.lifecycle.viewModelScope
@@ -10,32 +9,37 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
+import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
 
+/**
+ * Обновленная ViewModel для шага выбора товара с учетными характеристиками
+ */
 class TaskProductSelectionViewModel(
     step: ActionStep,
     action: PlannedAction,
     context: ActionContext,
     private val productLookupService: ProductLookupService,
-    validationService: ValidationService
+    validationService: ValidationService,
 ) : BaseStepViewModel<TaskProduct>(step, action, context, validationService) {
 
     private val plannedTaskProduct = action.storageProduct
 
-    // Изменяемый список продуктов плана
+    // Данные для списка товаров из плана
     private var _planProducts = listOfNotNull(plannedTaskProduct)
     val planProducts: List<TaskProduct>
         get() = _planProducts
 
-    // Изменяемый набор ID продуктов плана
+    // Набор ID товаров для быстрого поиска
     private var _planProductIds = _planProducts.mapNotNull { it.product.id }.toSet()
     val planProductIds: Set<String>
         get() = _planProductIds
 
+    // Состояние выбранного товара
     private var selectedProduct: Product? = null
     private var selectedTaskProduct: TaskProduct? = null
     var selectedStatus = ProductStatus.STANDARD
@@ -43,9 +47,11 @@ class TaskProductSelectionViewModel(
     var expirationDate: LocalDateTime? = null
         private set
 
+    // Состояние поля ввода
     var productCodeInput = ""
         private set
 
+    // Состояние диалогов
     var showCameraScannerDialog = false
         private set
     var showProductSelectionDialog = false
@@ -59,6 +65,9 @@ class TaskProductSelectionViewModel(
         updateProductsFromLocalDb()
     }
 
+    /**
+     * Инициализация данных из контекста
+     */
     private fun initFromContext() {
         if (context.hasStepResult) {
             try {
@@ -70,9 +79,10 @@ class TaskProductSelectionViewModel(
                     expirationDate = if (result.hasExpirationDate()) result.expirationDate else null
 
                     setData(result)
+                    Timber.d("Initialized from context: product=${result.product.name}")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка инициализации из контекста: ${e.message}")
+                Timber.e(e, "Error initializing from context: ${e.message}")
             }
         }
     }
@@ -89,7 +99,6 @@ class TaskProductSelectionViewModel(
 
                 // Собираем ID товаров для запроса
                 val productIds = _planProducts.mapNotNull { it.product.id }.toSet()
-
                 if (productIds.isEmpty()) {
                     setLoading(false)
                     return@launch
@@ -97,9 +106,8 @@ class TaskProductSelectionViewModel(
 
                 // Запрашиваем полные данные о товарах из БД
                 val productsFromDb = productLookupService.getProductsByIds(productIds)
-
                 if (productsFromDb.isEmpty()) {
-                    Timber.w("Не найдено товаров в локальной БД")
+                    Timber.w("No products found in local DB")
                     setLoading(false)
                     return@launch
                 }
@@ -146,9 +154,9 @@ class TaskProductSelectionViewModel(
                     }
                 }
 
-                Timber.d("Обновлены данные ${updatedPlanProducts.size} товаров из локальной БД")
+                Timber.d("Updated ${updatedPlanProducts.size} products from local DB")
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при обновлении данных товаров из локальной БД: ${e.message}")
+                Timber.e(e, "Error updating products from local DB: ${e.message}")
             } finally {
                 setLoading(false)
             }
@@ -186,7 +194,7 @@ class TaskProductSelectionViewModel(
                     }
                 )
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при обработке штрихкода: $barcode")
+                Timber.e(e, "Error processing barcode: $barcode")
                 setError("Ошибка: ${e.message}")
                 setLoading(false)
             }
@@ -220,6 +228,9 @@ class TaskProductSelectionViewModel(
         return true
     }
 
+    /**
+     * Создает TaskProduct из текущего состояния
+     */
     fun createTaskProductFromState(): TaskProduct? {
         val product = selectedProduct ?: return null
 
@@ -236,6 +247,9 @@ class TaskProductSelectionViewModel(
         )
     }
 
+    /**
+     * Сохраняет результат и переходит к следующему шагу
+     */
     fun saveResult() {
         val taskProduct = createTaskProductFromState()
         if (taskProduct != null) {
@@ -245,6 +259,9 @@ class TaskProductSelectionViewModel(
         }
     }
 
+    /**
+     * Устанавливает выбранный продукт
+     */
     fun setSelectedProduct(product: Product) {
         selectedProduct = product
 
@@ -261,9 +278,13 @@ class TaskProductSelectionViewModel(
             expirationDate = null
         }
 
-        updateStateFromSelectedProduct()
+        // Обновляем состояние и проверяем автопереход
+        updateStateFromSelectedProduct(true)
     }
 
+    /**
+     * Устанавливает статус продукта
+     */
     fun setSelectedStatus(status: ProductStatus) {
         selectedStatus = status
 
@@ -275,6 +296,9 @@ class TaskProductSelectionViewModel(
         updateStateFromSelectedProduct()
     }
 
+    /**
+     * Устанавливает срок годности
+     */
     fun setExpirationDate(date: LocalDateTime?) {
         expirationDate = date
 
@@ -285,6 +309,9 @@ class TaskProductSelectionViewModel(
         updateStateFromSelectedProduct()
     }
 
+    /**
+     * Выбирает товар из плана
+     */
     fun selectTaskProductFromPlan(taskProduct: TaskProduct) {
         setLoading(true)
         setError(null)
@@ -323,11 +350,11 @@ class TaskProductSelectionViewModel(
                     taskProduct.expirationDate
                 } else null
 
-                // Обновляем состояние данных
-                updateStateFromSelectedProduct()
+                // Обновляем состояние данных с проверкой автоперехода
+                updateStateFromSelectedProduct(true)
                 setLoading(false)
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при выборе товара из плана: ${e.message}")
+                Timber.e(e, "Error selecting product from plan: ${e.message}")
 
                 // В случае ошибки используем имеющиеся данные
                 selectedProduct = taskProduct.product
@@ -344,68 +371,117 @@ class TaskProductSelectionViewModel(
         }
     }
 
-    private fun updateStateFromSelectedProduct() {
+    /**
+     * Обновляет состояние на основе выбранного продукта
+     * @param checkAutoTransition Проверять автопереход
+     */
+    private fun updateStateFromSelectedProduct(checkAutoTransition: Boolean = false) {
         val taskProduct = createTaskProductFromState()
         if (taskProduct != null) {
-            setData(taskProduct)
+            if (checkAutoTransition && stepFactory is AutoCompleteCapableFactory) {
+                // Проверяем автопереход если указано
+                handleFieldUpdate("selectedTaskProduct", taskProduct)
+            } else {
+                // Просто обновляем состояние
+                setData(taskProduct)
+            }
         }
     }
 
+    /**
+     * Обновляет поле ввода кода продукта
+     */
     fun updateProductCodeInput(input: String) {
         productCodeInput = input
         updateAdditionalData("productCodeInput", input)
     }
 
+    /**
+     * Выполняет поиск по коду продукта
+     */
     fun searchByProductCode() {
         if (productCodeInput.isNotEmpty()) {
             processBarcode(productCodeInput)
         }
     }
 
+    /**
+     * Управляет видимостью диалога сканера
+     */
     fun toggleCameraScannerDialog(show: Boolean) {
         showCameraScannerDialog = show
         updateAdditionalData("showCameraScannerDialog", show)
     }
 
+    /**
+     * Управляет видимостью диалога выбора продукта
+     */
     fun toggleProductSelectionDialog(show: Boolean) {
         showProductSelectionDialog = show
         updateAdditionalData("showProductSelectionDialog", show)
     }
 
+    /**
+     * Скрывает диалог сканера
+     */
     fun hideCameraScannerDialog() {
         toggleCameraScannerDialog(false)
     }
 
+    /**
+     * Скрывает диалог выбора продукта
+     */
     fun hideProductSelectionDialog() {
         toggleProductSelectionDialog(false)
     }
 
+    /**
+     * Проверяет валидность формы
+     */
     fun isFormValid(): Boolean {
         val product = selectedProduct ?: return false
 
         return !(product.accountingModel == AccountingModel.BATCH && expirationDate == null)
     }
 
+    /**
+     * Проверяет, просрочен ли товар
+     */
     fun isExpirationDateExpired(): Boolean {
         return expirationDate != null && expirationDate!!.isBefore(LocalDateTime.now())
     }
 
+    /**
+     * Проверяет наличие товаров в плане
+     */
     fun hasPlanProducts(): Boolean {
         return _planProducts.isNotEmpty()
     }
 
+    /**
+     * Возвращает выбранный продукт
+     */
     fun getSelectedProduct(): Product? {
         return selectedProduct
     }
 
+    /**
+     * Возвращает выбранный TaskProduct
+     */
     fun getSelectedTaskProduct(): TaskProduct? {
         return selectedTaskProduct
     }
 
+    /**
+     * Проверяет, выбран ли продукт
+     */
     fun hasSelectedProduct(): Boolean {
         return selectedProduct != null
     }
 
+    /**
+     * Проверяет, соответствует ли выбранный продукт плану
+     */
     fun isSelectedProductMatchingPlan(): Boolean {
         val product = selectedProduct ?: return false
         return _planProductIds.contains(product.id)

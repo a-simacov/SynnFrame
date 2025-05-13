@@ -1,59 +1,55 @@
 package com.synngate.synnframe.presentation.ui.wizard.action.quantity
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
+import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.base.StepViewState
-import com.synngate.synnframe.presentation.ui.wizard.action.components.QuantityTextField
-import com.synngate.synnframe.presentation.ui.wizard.action.components.StepContainer
-import com.synngate.synnframe.presentation.util.formatDate
+import com.synngate.synnframe.presentation.ui.wizard.action.components.FormSpacer
+import com.synngate.synnframe.presentation.ui.wizard.action.components.WizardQuantityInput
+import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.ProductCard
+import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.TaskProductCard
+import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardStepUtils
 import timber.log.Timber
-import kotlin.math.roundToInt
 
+/**
+ * Обновленная фабрика для шага ввода количества продукта
+ */
 class ProductQuantityStepFactory(
     private val validationService: ValidationService
 ) : BaseActionStepFactory<TaskProduct>() {
 
+    /**
+     * Создает ViewModel для шага
+     */
     override fun getStepViewModel(
         step: ActionStep,
         action: PlannedAction,
-        context: ActionContext
+        context: ActionContext,
+        factory: ActionStepFactory
     ): BaseStepViewModel<TaskProduct> {
         return ProductQuantityViewModel(
             step = step,
             action = action,
             context = context,
-            validationService = validationService
+            validationService = validationService,
         )
     }
 
+    /**
+     * Отображает UI для шага
+     */
     @Composable
     override fun StepContent(
         state: StepViewState<TaskProduct>,
@@ -62,102 +58,40 @@ class ProductQuantityStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        val quantityViewModel = try {
-            viewModel as ProductQuantityViewModel
-        } catch (e: ClassCastException) {
-            Timber.e(e, "Ошибка приведения ViewModel к ProductQuantityViewModel")
-            null
-        }
+        // Безопасное приведение ViewModel к конкретному типу
+        val quantityViewModel = viewModel as? ProductQuantityViewModel
 
         if (quantityViewModel == null) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Ошибка инициализации шага. Пожалуйста, вернитесь назад и попробуйте снова.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
+            WizardStepUtils.ViewModelErrorScreen()
             return
         }
 
-        // Добавляем отладочную информацию
+        // Отладочная информация
         LaunchedEffect(Unit) {
             Timber.d("ProductQuantityStepFactory.StepContent: hasSelectedProduct=${quantityViewModel.hasSelectedProduct()}")
             Timber.d("Context results: ${context.results.entries.joinToString { "${it.key} -> ${it.value?.javaClass?.simpleName}" }}")
-
-            // Принудительно визуализируем contextTrace для отладки
-            val contextTrace = context.results.entries.joinToString("\n") {
-                "${it.key} = ${it.value?.javaClass?.simpleName}"
-            }
-
-            Timber.d("Context trace:\n$contextTrace")
         }
 
+        // Проверяем, что товар выбран
         if (!quantityViewModel.hasSelectedProduct()) {
-            // Добавляем подробное сообщение об ошибке для пользователя
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Ошибка: Товар не обнаружен",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Для решения проблемы вернитесь назад и повторно выберите товар.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center
-                    )
-
-                    // Добавляем кнопку "Назад" для упрощения
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = { context.onBack() },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    ) {
-                        Text("Вернуться назад")
-                    }
-                }
-            }
+            WizardStepUtils.ViewModelErrorScreen(message =
+            "Ошибка: Товар не обнаружен. Вернитесь назад и повторно выберите товар."
+            )
             return
         }
 
-        StepContainer(
+        // Используем стандартный контейнер для шага
+        WizardStepUtils.StandardStepContainer(
             state = state,
             step = step,
             action = action,
-            onBack = { context.onBack() },
-            onForward = {
-                quantityViewModel.saveResult()
-            },
-            onCancel = { context.onCancel() },
+            context = context,
             forwardEnabled = quantityViewModel.quantityInput.let { input ->
                 val floatValue = input.toFloatOrNull() ?: 0f
                 floatValue > 0f
             },
-            isProcessingGlobal = context.isProcessingStep,
-            isFirstStep = context.isFirstStep,
             content = {
-                SafeProductQuantityContent(
+                ProductQuantityContent(
                     state = state,
                     viewModel = quantityViewModel
                 )
@@ -166,71 +100,40 @@ class ProductQuantityStepFactory(
     }
 
     @Composable
-    private fun SafeProductQuantityContent(
+    private fun ProductQuantityContent(
         state: StepViewState<TaskProduct>,
         viewModel: ProductQuantityViewModel
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(4.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Получаем данные продукта для отображения
             val product = viewModel.getSelectedProduct()
+            val taskProduct = viewModel.getSelectedTaskProduct()
 
             if (product != null) {
-                SimpleProductInfo(
-                    product = product,
-                    taskProduct = viewModel.getSelectedTaskProduct(),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = formatQuantityDisplay(viewModel.plannedQuantity),
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = "план",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = formatQuantityDisplay(viewModel.projectedTotalQuantity),
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = "будет",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+                // Отображаем информацию о товаре
+                if (taskProduct != null) {
+                    TaskProductCard(
+                        taskProduct = taskProduct,
+                        isSelected = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    ProductCard(
+                        product = product,
+                        isSelected = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                FormSpacer(8)
 
-                QuantityTextFieldCentered(
+                // Отображаем показатели количеств
+                QuantityIndicators(viewModel)
+
+                FormSpacer(8)
+
+                // Поле ввода количества
+                WizardQuantityInput(
                     value = viewModel.quantityInput,
                     onValueChange = { viewModel.updateQuantityInput(it) },
                     onIncrement = { viewModel.incrementQuantity() },
@@ -238,192 +141,112 @@ class ProductQuantityStepFactory(
                     onClear = { viewModel.clearQuantity() },
                     isError = state.error != null,
                     errorText = state.error,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    fontSize = 24.sp,
+                    label = ""  // Убираем метку, так как она не нужна
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = formatQuantityDisplay(viewModel.completedQuantity),
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = "выполнено",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-
-                    val remainingColor = when {
-                        // Зеленый, если осталось 0 (план выполнен)
-                        viewModel.remainingQuantity <= 0 && !viewModel.willExceedPlan ->
-                            MaterialTheme.colorScheme.primary
-                        // Красный, если идет превышение плана
-                        viewModel.willExceedPlan ->
-                            MaterialTheme.colorScheme.error
-                        // Синий по умолчанию (план еще не выполнен)
-                        else ->
-                            MaterialTheme.colorScheme.tertiary
-                    }
-
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = formatQuantityDisplay(viewModel.remainingQuantity),
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = remainingColor,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = "осталось",
-                            fontSize = 12.sp,
-                            color = remainingColor,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-
-                // Показываем предупреждение, если есть превышение плана
+                // Предупреждение о превышении планового количества
                 if (viewModel.willExceedPlan) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Внимание: превышение планового количества!",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                    FormSpacer(8)
+
+                    WarningMessage(
+                        message = "Внимание: превышение планового количества!"
                     )
                 }
-            } else {
-                // Показываем сообщение, если продукт не найден
-                Text(
-                    text = "Продукт не выбран или данные некорректны",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(16.dp)
-                )
             }
         }
     }
 
     /**
-     * Центрированное поле ввода количества с большим шрифтом
+     * Компонент для отображения показателей количеств
      */
     @Composable
-    private fun QuantityTextFieldCentered(
+    private fun QuantityIndicators(viewModel: ProductQuantityViewModel) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Строка с плановым количеством
+            QuantityRow(
+                label = "План:",
+                value = formatQuantityForDisplay(viewModel.plannedQuantity)
+            )
+
+            FormSpacer(4)
+
+            // Строка с выполненным количеством
+            QuantityRow(
+                label = "Выполнено:",
+                value = formatQuantityForDisplay(viewModel.completedQuantity)
+            )
+
+            FormSpacer(4)
+
+            // Строка с вводимым количеством
+            QuantityRow(
+                label = "Текущее:",
+                value = formatQuantityForDisplay(viewModel.currentInputQuantity)
+            )
+
+            FormSpacer(4)
+
+            // Строка с прогнозируемым итогом
+            QuantityRow(
+                label = "Итого будет:",
+                value = formatQuantityForDisplay(viewModel.projectedTotalQuantity),
+                isHighlighted = true,
+                isWarning = viewModel.willExceedPlan
+            )
+
+            FormSpacer(4)
+
+            // Строка с оставшимся количеством
+            QuantityRow(
+                label = "Осталось:",
+                value = formatQuantityForDisplay(viewModel.remainingQuantity),
+                isWarning = viewModel.willExceedPlan
+            )
+        }
+    }
+
+    /**
+     * Компонент для отображения строки с меткой и значением количества
+     */
+    @Composable
+    private fun QuantityRow(
+        label: String,
         value: String,
-        onValueChange: (String) -> Unit,
-        onIncrement: () -> Unit,
-        onDecrement: () -> Unit,
-        onClear: () -> Unit,
-        modifier: Modifier = Modifier,
-        isError: Boolean = false,
-        errorText: String? = null
+        isHighlighted: Boolean = false,
+        isWarning: Boolean = false
     ) {
-        // Используем модифицированную версию стандартного QuantityTextField
-        QuantityTextField(
+        com.synngate.synnframe.presentation.ui.wizard.action.components.QuantityRow(
+            label = label,
             value = value,
-            onValueChange = onValueChange,
-            onIncrement = onIncrement,
-            onDecrement = onDecrement,
-            label = "",  // Убираем лейбл
-            isError = isError,
-            errorText = errorText,
-            modifier = modifier,
-            textAlign = TextAlign.Center,  // Центрируем текст
-            fontSize = 24.sp  // Устанавливаем большой размер шрифта
+            highlight = isHighlighted,
+            warning = isWarning
         )
     }
 
     /**
-     * Валидация результата шага
+     * Компонент для отображения предупреждения
      */
+    @Composable
+    private fun WarningMessage(message: String) {
+        com.synngate.synnframe.presentation.ui.wizard.action.components.WizardStateMessage(
+            message = message,
+            type = com.synngate.synnframe.presentation.ui.wizard.action.components.StateType.WARNING
+        )
+    }
+
     override fun validateStepResult(step: ActionStep, value: Any?): Boolean {
+        // Валидация результата шага
         val taskProduct = value as? TaskProduct
         return taskProduct != null && taskProduct.quantity > 0
     }
 
     /**
-     * Форматирует количество для отображения с округлением до 3 знаков после запятой
+     * Форматирует количество для отображения
      */
-    private fun formatQuantityDisplay(value: Float): String {
-        return if (value % 1f == 0f) {
-            value.roundToInt().toString()
-        } else {
-            "%.3f".format(value).trimEnd('0').trimEnd('.')
-        }
-    }
-}
-
-/**
- * Компонент для отображения упрощенной информации о товаре
- */
-@Composable
-private fun SimpleProductInfo(
-    product: Product,
-    taskProduct: TaskProduct?,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-        ) {
-            // Наименование товара
-            Text(
-                text = product.name,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Артикул
-            Text(
-                text = "Артикул: ${product.articleNumber}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-
-            // Статус
-            if (taskProduct != null) {
-                Text(
-                    text = "Статус: ${taskProduct.status.format()}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    fontWeight = FontWeight.Bold
-                )
-
-                // Срок годности (если есть)
-                if (taskProduct.hasExpirationDate()) {
-                    Text(
-                        text = "Срок годности: ${formatDate(taskProduct.expirationDate)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
+    private fun formatQuantityForDisplay(value: Float): String {
+        return com.synngate.synnframe.presentation.ui.wizard.action.components.formatQuantityDisplay(value)
     }
 }

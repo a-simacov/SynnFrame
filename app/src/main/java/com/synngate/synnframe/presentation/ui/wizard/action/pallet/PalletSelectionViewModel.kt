@@ -6,13 +6,14 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
+import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * ViewModel для шага выбора паллеты
+ * Обновленная ViewModel для шага выбора паллеты
  */
 class PalletSelectionViewModel(
     step: ActionStep,
@@ -51,13 +52,12 @@ class PalletSelectionViewModel(
         private set
 
     init {
-        // ВАЖНО: Не устанавливаем паллету из плана как выбранную
-        // Просто добавляем запланированную паллету в список
+        // Если есть паллеты в плане, добавляем их в список
         if (plannedPallet != null) {
             filteredPallets = listOf(plannedPallet)
         }
 
-        // Инициализация из предыдущего контекста
+        // Инициализация из контекста
         initFromContext()
     }
 
@@ -71,9 +71,10 @@ class PalletSelectionViewModel(
                 if (result is Pallet) {
                     selectedPallet = result
                     setData(result)
+                    Timber.d("Initialized from context: pallet=${result.code}")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка инициализации из контекста: ${e.message}")
+                Timber.e(e, "Error initializing from context: ${e.message}")
             }
         }
     }
@@ -100,8 +101,7 @@ class PalletSelectionViewModel(
                     expectedBarcode = plannedPallet?.code,
                     onResult = { found, data ->
                         if (found && data is Pallet) {
-                            selectedPallet = data
-                            setData(data)
+                            selectPallet(data)
                             // Очищаем поле ввода
                             updatePalletCodeInput("")
                         } else {
@@ -115,7 +115,7 @@ class PalletSelectionViewModel(
                     }
                 )
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при обработке штрихкода: $barcode")
+                Timber.e(e, "Error processing barcode: $barcode")
                 setError("Ошибка: ${e.message}")
                 setLoading(false)
             }
@@ -128,8 +128,7 @@ class PalletSelectionViewModel(
     override fun createValidationContext(): Map<String, Any> {
         val baseContext = super.createValidationContext().toMutableMap()
 
-        // Добавляем планируемую паллету и список паллет плана для валидации
-        // Используем safe call, чтобы избежать добавления null-значений
+        // Добавляем планируемую паллету для валидации
         plannedPallet?.let { baseContext["plannedPallet"] = it }
         if (planPallets.isNotEmpty()) {
             baseContext["planPallets"] = planPallets
@@ -185,7 +184,7 @@ class PalletSelectionViewModel(
         viewModelScope.launch {
             try {
                 setLoading(true)
-                // Поиск в репозитории, если он доступен, или локальная фильтрация
+                // Поиск через сервис
                 val pallets = if (searchQuery.isEmpty() && plannedPallet != null) {
                     listOf(plannedPallet)
                 } else {
@@ -195,7 +194,7 @@ class PalletSelectionViewModel(
                 updateAdditionalData("filteredPallets", filteredPallets)
                 setLoading(false)
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при фильтрации паллет: ${e.message}")
+                Timber.e(e, "Error filtering pallets: ${e.message}")
                 setError("Ошибка поиска: ${e.message}")
                 setLoading(false)
             }
@@ -217,9 +216,8 @@ class PalletSelectionViewModel(
                 if (result.isSuccess) {
                     val newPallet = result.getOrNull()
                     if (newPallet != null) {
-                        selectedPallet = newPallet
-                        setData(newPallet)
-                        Timber.d("Создана новая паллета: ${newPallet.code}")
+                        selectPallet(newPallet)
+                        Timber.d("Created new pallet: ${newPallet.code}")
                     } else {
                         setError("Не удалось создать паллету: пустой результат")
                     }
@@ -228,7 +226,7 @@ class PalletSelectionViewModel(
                     setError("Не удалось создать паллету: ${exception?.message}")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при создании паллеты: ${e.message}")
+                Timber.e(e, "Error creating pallet: ${e.message}")
                 setError("Ошибка создания паллеты: ${e.message}")
             } finally {
                 isCreatingPallet = false
@@ -238,11 +236,17 @@ class PalletSelectionViewModel(
     }
 
     /**
-     * Выбор паллеты из списка
+     * Выбор паллеты с поддержкой автоперехода
      */
     fun selectPallet(pallet: Pallet) {
         selectedPallet = pallet
-        setData(pallet)
+
+        // Обновляем состояние и проверяем автопереход
+        if (stepFactory is AutoCompleteCapableFactory) {
+            handleFieldUpdate("selectedPallet", pallet)
+        } else {
+            setData(pallet)
+        }
     }
 
     /**

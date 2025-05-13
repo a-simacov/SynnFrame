@@ -15,7 +15,7 @@ import java.util.Locale
 import kotlin.math.round
 
 /**
- * ViewModel для шага ввода количества продукта
+ * Обновленная ViewModel для шага ввода количества продукта
  */
 class ProductQuantityViewModel(
     step: ActionStep,
@@ -63,10 +63,11 @@ class ProductQuantityViewModel(
      */
     override fun processBarcode(barcode: String) {
         // Для этого типа шага обработка штрих-кода не требуется
+        Timber.d("Barcode processing not supported in quantity step")
     }
 
     /**
-     * Расширенный метод поиска продукта из предыдущего шага с дополнительными проверками
+     * Расширенный метод поиска продукта из предыдущего шага
      */
     private fun findPreviousStepResultWithExtendedSearch(): Pair<Product?, TaskProduct?> {
         try {
@@ -114,7 +115,6 @@ class ProductQuantityViewModel(
             }
 
             // Если нашли только Product, создаем из него TaskProduct
-            // ИСПРАВЛЕНО: используем безопасный вызов для избежания проблемы со smart cast
             val finalProduct = foundProduct // создаем неизменяемую копию
             if (finalProduct != null && foundTaskProduct == null) {
                 Timber.d("Creating TaskProduct from found Product")
@@ -148,7 +148,6 @@ class ProductQuantityViewModel(
             }
 
             // Если нашли только Product, создаем из него TaskProduct
-            // ИСПРАВЛЕНО: используем безопасный вызов
             val finalFoundProduct = foundProduct // создаем неизменяемую копию
             if (finalFoundProduct != null && foundTaskProduct == null) {
                 foundTaskProduct = TaskProduct(product = finalFoundProduct, quantity = 0f)
@@ -172,7 +171,7 @@ class ProductQuantityViewModel(
                 setLoading(true)
 
                 // ДОБАВЛЯЕМ ПОЛНОЕ ЛОГИРОВАНИЕ КОНТЕКСТА
-                Timber.d("initFromPreviousStep: context = ${context.results}")
+                Timber.d("initFromPreviousStep: context results count = ${context.results.size}")
 
                 // Находим продукт из предыдущего шага с расширенным поиском
                 val (product, taskProduct) = findPreviousStepResultWithExtendedSearch()
@@ -229,7 +228,7 @@ class ProductQuantityViewModel(
 
                 setLoading(false)
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при инициализации данных из предыдущего шага: ${e.message}")
+                Timber.e(e, "Error initializing data from previous step: ${e.message}")
                 setError("Ошибка загрузки данных: ${e.message}")
                 setLoading(false)
             }
@@ -245,7 +244,7 @@ class ProductQuantityViewModel(
             val factActionsInfo = context.results["factActions"] as? Map<*, *> ?: emptyMap<String, Any>()
             return (factActionsInfo[action.id] as? List<FactAction>) ?: emptyList()
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при получении связанных фактических действий: ${e.message}")
+            Timber.e(e, "Error getting related fact actions: ${e.message}")
             return emptyList()
         }
     }
@@ -278,6 +277,7 @@ class ProductQuantityViewModel(
         // Рассчитываем прогнозируемый итог
         projectedTotalQuantity = roundToThreeDecimals(completedQuantity + currentInputQuantity)
 
+        // Рассчитываем оставшееся количество
         remainingQuantity = roundToThreeDecimals((plannedQuantity - projectedTotalQuantity).coerceAtLeast(0f))
 
         // Проверяем, будет ли превышение плана
