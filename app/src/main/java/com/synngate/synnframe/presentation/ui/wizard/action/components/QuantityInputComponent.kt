@@ -1,15 +1,12 @@
 package com.synngate.synnframe.presentation.ui.wizard.action.components
 
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -34,7 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -259,38 +255,5 @@ fun QuantityTextField(
                 )
             }
         }
-    }
-}
-
-@Composable
-fun QuantityRow(
-    label: String,
-    value: String,
-    highlight: Boolean = false,
-    warning: Boolean = false
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
-        )
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (warning)
-                MaterialTheme.colorScheme.error
-            else
-                MaterialTheme.colorScheme.onPrimaryContainer,
-            fontWeight = if (highlight) FontWeight.Bold else FontWeight.Normal
-        )
     }
 }
