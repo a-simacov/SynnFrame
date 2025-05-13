@@ -1,15 +1,14 @@
-// Заменяет com.synngate.synnframe.presentation.ui.wizard.ActionWizardViewModel
 package com.synngate.synnframe.presentation.ui.wizard
 
 import com.synngate.synnframe.domain.model.wizard.WizardStateMachine
 import com.synngate.synnframe.presentation.di.Disposable
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
+import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.flow.collectLatest
-import timber.log.Timber
 
 /**
- * Упрощенная ViewModel для экрана визарда действий.
+ * Оптимизированная ViewModel для экрана визарда действий.
  * Использует WizardStateMachine напрямую без прослоек-адаптеров.
  */
 class ActionWizardViewModel(
@@ -18,6 +17,7 @@ class ActionWizardViewModel(
     val wizardStateMachine: WizardStateMachine,
     val actionStepFactoryRegistry: ActionStepFactoryRegistry
 ) : BaseViewModel<Unit, ActionWizardEvent>(Unit), Disposable {
+    private val TAG = "ActionWizardViewModel"
 
     init {
         initializeWizard()
@@ -43,12 +43,13 @@ class ActionWizardViewModel(
 
                 if (!result.isSuccess) {
                     val errorMessage = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
-                    Timber.e("Ошибка инициализации визарда: $errorMessage")
+                    WizardLogger.logError(TAG, result.exceptionOrNull() ?: Exception(errorMessage),
+                        "инициализации визарда")
                     sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: $errorMessage"))
                     sendEvent(ActionWizardEvent.NavigateBack)
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при инициализации визарда")
+                WizardLogger.logError(TAG, e, "инициализации визарда")
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка инициализации: ${e.message}"))
                 sendEvent(ActionWizardEvent.NavigateBack)
             }
@@ -64,14 +65,17 @@ class ActionWizardViewModel(
                 val result = wizardStateMachine.complete()
 
                 if (result.isSuccess) {
+                    WizardLogger.logStep(TAG, "complete", "Визард успешно завершен",
+                        WizardLogger.LogLevel.MINIMAL)
                     sendEvent(ActionWizardEvent.NavigateBackWithSuccess(actionId))
                 } else {
                     val errorMessage = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
-                    Timber.e("Ошибка завершения визарда: $errorMessage")
+                    WizardLogger.logError(TAG, result.exceptionOrNull() ?: Exception(errorMessage),
+                        "завершения визарда")
                     sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: $errorMessage"))
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при завершении визарда")
+                WizardLogger.logError(TAG, e, "завершения визарда")
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка завершения: ${e.message}"))
             }
         }
@@ -100,7 +104,7 @@ class ActionWizardViewModel(
             try {
                 wizardStateMachine.processStepResult(null)
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при возврате к предыдущему шагу: ${e.message}")
+                WizardLogger.logError(TAG, e, "возврата к предыдущему шагу")
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка навигации: ${e.message}"))
             }
         }
@@ -123,7 +127,7 @@ class ActionWizardViewModel(
             try {
                 wizardStateMachine.processStepResult(result)
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при обработке результата шага: ${e.message}")
+                WizardLogger.logError(TAG, e, "обработки результата шага")
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: ${e.message}"))
             }
         }

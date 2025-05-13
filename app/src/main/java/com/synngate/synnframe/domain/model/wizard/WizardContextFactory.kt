@@ -1,8 +1,9 @@
-// Заменяет com.synngate.synnframe.domain.service.ActionWizardContextFactory
 package com.synngate.synnframe.domain.model.wizard
 
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
+import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
+import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardUtils
 import timber.log.Timber
 
 /**
@@ -10,6 +11,7 @@ import timber.log.Timber
  * Обеспечивает надежную передачу данных между шагами.
  */
 class WizardContextFactory {
+    private val TAG = "WizardContextFactory"
 
     /**
      * Создает контекст для текущего шага на основе состояния визарда
@@ -31,20 +33,44 @@ class WizardContextFactory {
         // Создаем обогащенный контекст результатов
         val enrichedResults = enrichResultsContext(state, stepId)
 
+        // Логируем контекст для отладки
+        WizardLogger.logResults(TAG, enrichedResults, WizardLogger.LogLevel.VERBOSE)
+        WizardLogger.logSpecialKeys(TAG, enrichedResults)
+
         return ActionContext(
             taskId = state.taskId,
             actionId = state.actionId,
             stepId = stepId,
             results = enrichedResults,
             hasStepResult = hasResult,
-            onUpdate = { newResults -> updateResultsInState(state, newResults, currentStep.id) },
-            onComplete = { result -> handleStepCompletion(result, onStepComplete, onBack) },
-            onBack = { onBack() },
-            onForward = { onForward() },
-            onSkip = { result -> onSkip(result) },
-            onCancel = { onCancel() },
+            onUpdate = { /* Не используется в текущей реализации */ },
+            onComplete = { result ->
+                Timber.d("$TAG: onComplete called with result: ${result?.javaClass?.simpleName}")
+                if (result != null) {
+                    onStepComplete(result)
+                } else {
+                    onBack()
+                }
+            },
+            onBack = {
+                Timber.d("$TAG: onBack called")
+                onBack()
+            },
+            onForward = {
+                Timber.d("$TAG: onForward called")
+                onForward()
+            },
+            onSkip = { result ->
+                Timber.d("$TAG: onSkip called with result: ${result?.javaClass?.simpleName}")
+                onSkip(result)
+            },
+            onCancel = {
+                Timber.d("$TAG: onCancel called")
+                onCancel()
+            },
             lastScannedBarcode = lastScannedBarcode,
             validationError = validationError,
+            // Передаем флаг глобального состояния для обработки в UI
             isProcessingStep = state.isProcessingStep,
             isFirstStep = state.currentStepIndex == 0
         )
@@ -84,35 +110,37 @@ class WizardContextFactory {
     ): Map<String, Any> {
         val results = state.results.toMutableMap()
 
-        // Ищем данные о продукте и TaskProduct для обеспечения
-        // надежного доступа в шагах ввода количества
+        // Если отсутствуют специальные ключи, ищем нужные данные в предыдущих шагах
         if (!results.containsKey("lastTaskProduct") || !results.containsKey("lastProduct")) {
-            // Ищем в предыдущих шагах
-            val previousSteps = state.steps
-                .take(state.currentStepIndex)
-                .map { it.id }
-
-            for (stepId in previousSteps.reversed()) {
-                if (stepId in state.results) {
-                    val stepResult = state.results[stepId]
-                    if (stepResult is TaskProduct) {
-                        results["lastTaskProduct"] = stepResult
-                        results["lastProduct"] = stepResult.product
-                        break
-                    } else if (stepResult is Product) {
-                        results["lastProduct"] = stepResult
-
-                        // Пытаемся найти TaskProduct с этим продуктом
-                        val taskProduct = state.results.values
-                            .filterIsInstance<TaskProduct>()
-                            .firstOrNull { it.product.id == stepResult.id }
-
-                        if (taskProduct != null) {
-                            results["lastTaskProduct"] = taskProduct
-                        }
-                        break
-                    }
+            // Пытаемся найти данные в предыдущих шагах
+            findObjectsInPreviousSteps(state)?.let { (taskProduct, product) ->
+                // Добавляем найденные данные в контекст
+                if (taskProduct != null && !results.containsKey("lastTaskProduct")) {
+                    results["lastTaskProduct"] = taskProduct
+                    WizardLogger.logTaskProduct(TAG, taskProduct)
                 }
+
+                if (product != null && !results.containsKey("lastProduct")) {
+                    results["lastProduct"] = product
+                    WizardLogger.logProduct(TAG, product)
+                }
+            }
+        }
+
+        // Проверяем наличие необходимых данных после обогащения
+        if (state.currentStepIndex > 0 &&
+            !results.containsKey("lastProduct") &&
+            !results.containsKey("lastTaskProduct")) {
+
+            // Экстренное восстановление: ищем данные в запланированном действии
+            state.action?.storageProduct?.let { actionProduct ->
+                Timber.d("$TAG: Emergency recovery - using product from action: ${actionProduct.product.name}")
+                results["emergency_lastTaskProduct"] = actionProduct
+                results["emergency_lastProduct"] = actionProduct.product
+
+                // Обычные ключи тоже заполняем
+                results["lastTaskProduct"] = actionProduct
+                results["lastProduct"] = actionProduct.product
             }
         }
 
@@ -120,32 +148,52 @@ class WizardContextFactory {
     }
 
     /**
-     * Обрабатывает завершение шага
+     * Ищет TaskProduct и Product в предыдущих шагах
+     * @return Пара (TaskProduct?, Product?) с найденными объектами
      */
-    private fun handleStepCompletion(
-        result: Any?,
-        onStepComplete: (Any) -> Unit,
-        onBack: () -> Unit
-    ) {
-        Timber.d("Step completed with result: ${result?.javaClass?.simpleName}")
-        if (result != null) {
-            onStepComplete(result)
-        } else {
-            onBack()
-        }
-    }
+    private fun findObjectsInPreviousSteps(state: ActionWizardState): Pair<TaskProduct?, Product?>? {
+        // Получаем ID предыдущих шагов в обратном порядке (от последнего к первому)
+        val previousSteps = state.steps
+            .take(state.currentStepIndex)
+            .map { it.id }
+            .reversed()
 
-    /**
-     * Обновляет результаты в состоянии
-     * Примечание: в текущей реализации это пустая функция, так как
-     * обновление происходит через onStepComplete
-     */
-    private fun updateResultsInState(
-        state: ActionWizardState,
-        newResults: Map<String, Any>,
-        stepId: String
-    ) {
-        // В текущей реализации не используется,
-        // так как обновление происходит через машину состояний
+        if (previousSteps.isEmpty()) return null
+
+        var foundTaskProduct: TaskProduct? = null
+        var foundProduct: Product? = null
+
+        // Ищем объекты в предыдущих шагах
+        for (stepId in previousSteps) {
+            val stepResult = state.results[stepId]
+
+            when (stepResult) {
+                is TaskProduct -> {
+                    foundTaskProduct = stepResult
+                    foundProduct = stepResult.product
+                    break
+                }
+                is Product -> {
+                    foundProduct = stepResult
+                    // Продолжаем поиск, возможно найдем TaskProduct
+                }
+            }
+        }
+
+        // Если нашли только Product, можем создать из него TaskProduct
+        if (foundProduct != null && foundTaskProduct == null) {
+            // Проверяем, может быть в результатах уже есть TaskProduct с этим продуктом
+            val existingTaskProduct = state.results.values
+                .filterIsInstance<TaskProduct>()
+                .firstOrNull { it.product.id == foundProduct.id }
+
+            foundTaskProduct = existingTaskProduct ?: WizardUtils.createTaskProductFromProduct(foundProduct)
+        }
+
+        return if (foundTaskProduct != null || foundProduct != null) {
+            Pair(foundTaskProduct, foundProduct)
+        } else {
+            null
+        }
     }
 }

@@ -1,6 +1,5 @@
 package com.synngate.synnframe.presentation.ui.wizard.action.pallet
 
-import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
@@ -8,12 +7,11 @@ import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
+import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
 import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
-import kotlinx.coroutines.launch
-import timber.log.Timber
 
 /**
- * Обновленная ViewModel для шага выбора паллеты
+ * Оптимизированная ViewModel для шага выбора паллеты
  */
 class PalletSelectionViewModel(
     step: ActionStep,
@@ -57,26 +55,8 @@ class PalletSelectionViewModel(
             filteredPallets = listOf(plannedPallet)
         }
 
-        // Инициализация из контекста
-        initFromContext()
-    }
-
-    /**
-     * Инициализация из данных контекста
-     */
-    private fun initFromContext() {
-        if (context.hasStepResult) {
-            try {
-                val result = context.getCurrentStepResult()
-                if (result is Pallet) {
-                    selectedPallet = result
-                    setData(result)
-                    Timber.d("Initialized from context: pallet=${result.code}")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error initializing from context: ${e.message}")
-            }
-        }
+        // Логируем информацию о планируемой паллете
+        WizardLogger.logPallet(TAG, plannedPallet)
     }
 
     /**
@@ -87,38 +67,35 @@ class PalletSelectionViewModel(
     }
 
     /**
+     * Переопределяем для загрузки паллеты из контекста
+     */
+    override fun onResultLoadedFromContext(result: Pallet) {
+        selectedPallet = result
+        WizardLogger.logPallet(TAG, selectedPallet)
+    }
+
+    /**
      * Обработка штрих-кода
      */
     override fun processBarcode(barcode: String) {
-        viewModelScope.launch {
-            try {
-                setLoading(true)
-                setError(null)
-
-                palletLookupService.processBarcode(
-                    barcode = barcode,
-                    // При запланированной паллете проверяем соответствие
-                    expectedBarcode = plannedPallet?.code,
-                    onResult = { found, data ->
-                        if (found && data is Pallet) {
-                            selectPallet(data)
-                            // Очищаем поле ввода
-                            updatePalletCodeInput("")
-                        } else {
-                            setError("Паллета с кодом '$barcode' не найдена")
-                        }
-                        setLoading(false)
-                    },
-                    onError = { message ->
-                        setError(message)
-                        setLoading(false)
+        executeWithErrorHandling("обработки кода паллеты") {
+            palletLookupService.processBarcode(
+                barcode = barcode,
+                // При запланированной паллете проверяем соответствие
+                expectedBarcode = plannedPallet?.code,
+                onResult = { found, data ->
+                    if (found && data is Pallet) {
+                        selectPallet(data)
+                        // Очищаем поле ввода
+                        updatePalletCodeInput("")
+                    } else {
+                        setError("Паллета с кодом '$barcode' не найдена")
                     }
-                )
-            } catch (e: Exception) {
-                Timber.e(e, "Error processing barcode: $barcode")
-                setError("Ошибка: ${e.message}")
-                setLoading(false)
-            }
+                },
+                onError = { message ->
+                    setError(message)
+                }
+            )
         }
     }
 
@@ -181,23 +158,15 @@ class PalletSelectionViewModel(
      * Фильтрация списка паллет
      */
     fun filterPallets() {
-        viewModelScope.launch {
-            try {
-                setLoading(true)
-                // Поиск через сервис
-                val pallets = if (searchQuery.isEmpty() && plannedPallet != null) {
-                    listOf(plannedPallet)
-                } else {
-                    palletLookupService.searchPallets(searchQuery)
-                }
-                filteredPallets = pallets
-                updateAdditionalData("filteredPallets", filteredPallets)
-                setLoading(false)
-            } catch (e: Exception) {
-                Timber.e(e, "Error filtering pallets: ${e.message}")
-                setError("Ошибка поиска: ${e.message}")
-                setLoading(false)
+        executeWithErrorHandling("поиска паллет") {
+            // Поиск через сервис
+            val pallets = if (searchQuery.isEmpty() && plannedPallet != null) {
+                listOf(plannedPallet)
+            } else {
+                palletLookupService.searchPallets(searchQuery)
             }
+            filteredPallets = pallets
+            updateAdditionalData("filteredPallets", filteredPallets)
         }
     }
 
@@ -205,33 +174,25 @@ class PalletSelectionViewModel(
      * Создание новой паллеты
      */
     fun createNewPallet() {
-        viewModelScope.launch {
-            try {
-                isCreatingPallet = true
-                setLoading(true)
-                setError(null)
+        executeWithErrorHandling("создания паллеты") {
+            isCreatingPallet = true
 
-                val result = palletLookupService.createNewPallet()
+            val result = palletLookupService.createNewPallet()
 
-                if (result.isSuccess) {
-                    val newPallet = result.getOrNull()
-                    if (newPallet != null) {
-                        selectPallet(newPallet)
-                        Timber.d("Created new pallet: ${newPallet.code}")
-                    } else {
-                        setError("Не удалось создать паллету: пустой результат")
-                    }
+            if (result.isSuccess) {
+                val newPallet = result.getOrNull()
+                if (newPallet != null) {
+                    selectPallet(newPallet)
+                    WizardLogger.logPallet(TAG, newPallet, WizardLogger.LogLevel.MINIMAL)
                 } else {
-                    val exception = result.exceptionOrNull()
-                    setError("Не удалось создать паллету: ${exception?.message}")
+                    setError("Не удалось создать паллету: пустой результат")
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Error creating pallet: ${e.message}")
-                setError("Ошибка создания паллеты: ${e.message}")
-            } finally {
-                isCreatingPallet = false
-                setLoading(false)
+            } else {
+                val exception = result.exceptionOrNull()
+                setError("Не удалось создать паллету: ${exception?.message}")
             }
+
+            isCreatingPallet = false
         }
     }
 
@@ -240,6 +201,7 @@ class PalletSelectionViewModel(
      */
     fun selectPallet(pallet: Pallet) {
         selectedPallet = pallet
+        WizardLogger.logPallet(TAG, pallet)
 
         // Обновляем состояние и проверяем автопереход
         if (stepFactory is AutoCompleteCapableFactory) {

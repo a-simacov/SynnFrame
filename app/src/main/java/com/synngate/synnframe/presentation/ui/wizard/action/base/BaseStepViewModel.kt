@@ -1,4 +1,3 @@
-// Заменяет com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 package com.synngate.synnframe.presentation.ui.wizard.action.base
 
 import androidx.lifecycle.ViewModel
@@ -11,6 +10,7 @@ import com.synngate.synnframe.domain.service.ValidationResult
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
+import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +36,8 @@ abstract class BaseStepViewModel<T>(
     protected val validationService: ValidationService,
     protected val stepFactory: ActionStepFactory? = null
 ) : ViewModel() {
+    // Добавим тег для логирования
+    protected val TAG = this::class.java.simpleName
 
     private val _state = MutableStateFlow(StepViewState<T>())
     val state: StateFlow<StepViewState<T>> = _state.asStateFlow()
@@ -47,7 +49,7 @@ abstract class BaseStepViewModel<T>(
     private var autoTransitionActivated = false
 
     init {
-        Timber.d("Инициализация ${this::class.java.simpleName} для шага ${step.id}")
+        Timber.d("$TAG: Инициализация для шага ${step.id}")
 
         // Инициализируем состояние из контекста
         initStateFromContext()
@@ -83,13 +85,13 @@ abstract class BaseStepViewModel<T>(
 
                             // Уведомляем подклассы о загрузке данных из контекста
                             onResultLoadedFromContext(typedResult)
+                            //Timber.d("$TAG: Loaded result from context: ${typedResult?.javaClass?.simpleName}")
                         } else {
-                            Timber.w("Несовместимый тип для шага ${context.stepId}: " +
-                                    "найден ${result::class.simpleName}")
+                            Timber.w("$TAG: Incompatible type for step ${context.stepId}: " +
+                                    "found ${result::class.simpleName}")
                         }
                     } catch (e: ClassCastException) {
-                        Timber.e(e, "Ошибка приведения результата к ожидаемому типу")
-                        setError("Ошибка при загрузке данных: несовместимый тип данных")
+                        handleException(e, "приведения результата к ожидаемому типу")
                     }
                 }
             }
@@ -101,8 +103,7 @@ abstract class BaseStepViewModel<T>(
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка инициализации состояния из контекста")
-            setError("Ошибка инициализации состояния: ${e.message}")
+            handleException(e, "инициализации состояния из контекста")
         }
     }
 
@@ -125,6 +126,37 @@ abstract class BaseStepViewModel<T>(
      * Подклассы должны переопределить этот метод для обработки штрих-кода.
      */
     abstract fun processBarcode(barcode: String)
+
+    /**
+     * Обрабатывает исключение и устанавливает ошибку
+     */
+    protected fun handleException(e: Exception, operation: String) {
+        WizardLogger.logError(TAG, e, operation)
+        setError("Ошибка при $operation: ${e.message}")
+        setLoading(false)
+    }
+
+    /**
+     * Асинхронно выполняет операцию с обработкой ошибок
+     */
+    protected fun executeWithErrorHandling(
+        operation: String,
+        showLoading: Boolean = true,
+        block: suspend () -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                if (showLoading) setLoading(true)
+                setError(null)
+
+                block()
+
+                if (showLoading) setLoading(false)
+            } catch (e: Exception) {
+                handleException(e, operation)
+            }
+        }
+    }
 
     /**
      * Валидирует данные перед завершением шага.
@@ -154,9 +186,7 @@ abstract class BaseStepViewModel<T>(
 
         // Если есть API-правила, запускаем асинхронную валидацию
         if (hasApiValidation) {
-            viewModelScope.launch {
-                setLoading(true)
-
+            executeWithErrorHandling("валидации данных") {
                 // Создаем контекст для валидации
                 val validationContext = createValidationContext()
 
@@ -171,8 +201,6 @@ abstract class BaseStepViewModel<T>(
                         setError(result.message)
                     }
                 }
-
-                setLoading(false)
             }
             // Возвращаем true, чтобы показать, что валидация запущена
             // Реальный результат будет обработан асинхронно
@@ -203,38 +231,21 @@ abstract class BaseStepViewModel<T>(
      * Завершает шаг с указанным результатом, если данные валидны.
      */
     fun completeStep(result: T) {
-        viewModelScope.launch {
-            try {
-                _state.update { it.copy(isLoading = true, error = null) }
+        executeWithErrorHandling("завершения шага") {
+            if (validateData(result)) {
+                // Валидация прошла успешно
 
-                if (validateData(result)) {
-                    // Валидация прошла успешно
-
-                    // Для не-API валидации, вызываем onComplete напрямую
-                    val hasApiValidation = step.validationRules.rules.any {
-                        it.type == ValidationType.API_REQUEST && it.apiEndpoint != null
-                    }
-
-                    if (!hasApiValidation) {
-                        context.onComplete(result)
-                    }
-                    // Иначе context.onComplete будет вызван асинхронно после API-валидации
-                } else {
-                    _state.update {
-                        it.copy(
-                            isLoading = false,
-                            error = "Некорректные данные для завершения шага"
-                        )
-                    }
+                // Для не-API валидации, вызываем onComplete напрямую
+                val hasApiValidation = step.validationRules.rules.any {
+                    it.type == ValidationType.API_REQUEST && it.apiEndpoint != null
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Ошибка при завершении шага: ${step.id}")
-                _state.update {
-                    it.copy(
-                        isLoading = false,
-                        error = "Ошибка: ${e.message}"
-                    )
+
+                if (!hasApiValidation) {
+                    context.onComplete(result)
                 }
+                // Иначе context.onComplete будет вызван асинхронно после API-валидации
+            } else {
+                setError("Некорректные данные для завершения шага")
             }
         }
     }
@@ -301,6 +312,7 @@ abstract class BaseStepViewModel<T>(
 
         // Отмечаем, что автопереход был активирован
         autoTransitionActivated = true
+        Timber.d("$TAG: Auto-transition activated for field $fieldName")
 
         // Проверяем, требуется ли подтверждение перед автопереходом
         if (requiresConfirmationForAutoTransition(fieldName)) {
@@ -343,6 +355,6 @@ abstract class BaseStepViewModel<T>(
     protected open fun showConfirmationDialog(value: T) {
         // По умолчанию пустая реализация
         // Подклассы должны переопределить, если требуется подтверждение
-        Timber.w("showConfirmationDialog не реализован в ${this::class.java.simpleName}")
+        Timber.w("$TAG: showConfirmationDialog не реализован")
     }
 }

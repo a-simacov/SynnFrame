@@ -1,12 +1,16 @@
 package com.synngate.synnframe.domain.model.wizard
 
 import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.taskx.BinX
+import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.service.ActionExecutionService
 import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.presentation.di.Disposable
+import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
+import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,17 +27,21 @@ class WizardStateMachine(
     private val taskContextManager: TaskContextManager,
     private val actionExecutionService: ActionExecutionService
 ) : Disposable {
+    private val TAG = "WizardStateMachine"
 
     // Состояние визарда (доступное для UI)
     private val _state = MutableStateFlow<ActionWizardState?>(null)
     val state: StateFlow<ActionWizardState?> = _state.asStateFlow()
+
+    // Сохраненное состояние для восстановления после ошибок
+    private var _lastSavedState: ActionWizardState? = null
 
     /**
      * Инициализирует визард для указанного задания и действия
      * @return результат инициализации
      */
     suspend fun initialize(taskId: String, actionId: String): Result<Boolean> {
-        Timber.d("Initializing wizard for task $taskId, action $actionId")
+        Timber.d("$TAG: Initializing wizard for task $taskId, action $actionId")
 
         try {
             // Получаем задание из контекста
@@ -58,24 +66,47 @@ class WizardStateMachine(
                 return Result.failure(IllegalStateException("No steps found for action"))
             }
 
-            // Создаем базовое состояние визарда
+            // Собираем имеющиеся факт-действия для контекста
+            val factActionsMap = task.factActions
+                .groupBy { it.plannedActionId }
+                .mapValues { (_, factActions) -> factActions }
+
+            // Создаем базовое состояние визарда с обогащенными данными
+            val initialData = mutableMapOf<String, Any>(
+                "taskType" to taskType,
+                "factActions" to factActionsMap
+            )
+
+            // Если в действии есть Product/TaskProduct, добавляем его в контекст
+            action.storageProduct?.let {
+                initialData["actionTaskProduct"] = it
+                initialData["actionProduct"] = it.product
+
+                // Добавляем и как специальные ключи
+                initialData["lastTaskProduct"] = it
+                initialData["lastProduct"] = it.product
+            }
+
             val initialState = ActionWizardState(
                 taskId = taskId,
                 actionId = actionId,
                 action = action,
                 steps = steps,
                 currentStepIndex = 0,
-                results = mapOf("taskType" to taskType),
+                results = initialData,
                 startedAt = LocalDateTime.now(),
                 isInitialized = true
             )
+
+            // Сохраняем состояние для возможного восстановления
+            saveStateForRecovery(initialState)
 
             // Устанавливаем начальное состояние
             _state.value = initialState
 
             return Result.success(true)
         } catch (e: Exception) {
-            Timber.e(e, "Error initializing wizard")
+            Timber.e(e, "$TAG: Error initializing wizard")
             return Result.failure(e)
         }
     }
@@ -92,17 +123,27 @@ class WizardStateMachine(
                 // Навигация назад
                 navigateBack(currentState)
             } else {
+                // Сохраняем текущее состояние перед изменением
+                saveStateForRecovery(currentState)
+
                 // Сохраняем результат и переходим к следующему шагу
                 saveStepResultAndMoveForward(currentState, result)
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error processing step result")
-            // Обновляем состояние с ошибкой
-            _state.update { currentState ->
-                currentState?.let {
-                    val updatedErrors = it.errors.toMutableMap()
-                    updatedErrors[it.currentStep?.id ?: ""] = e.message ?: "Unknown error"
-                    it.copy(errors = updatedErrors)
+            WizardLogger.logError(TAG, e, "processing step result")
+
+            // Пытаемся восстановить предыдущее состояние
+            val recoveredState = recoverFromError(e.message ?: "Unknown error")
+            if (recoveredState != null) {
+                _state.value = recoveredState
+            } else {
+                // Обновляем состояние с ошибкой, если не смогли восстановить
+                _state.update { state ->
+                    state?.let {
+                        val updatedErrors = it.errors.toMutableMap()
+                        updatedErrors[it.currentStep?.id ?: ""] = e.message ?: "Unknown error"
+                        it.copy(errors = updatedErrors)
+                    }
                 }
             }
         }
@@ -127,17 +168,23 @@ class WizardStateMachine(
      */
     suspend fun complete(): Result<TaskX> {
         try {
+            // Сохраняем текущее состояние перед выполнением действия
             val currentState = _state.value ?:
             return Result.failure(IllegalStateException("Wizard not initialized"))
 
+            saveStateForRecovery(currentState)
+
             // Устанавливаем флаг отправки
             _state.update { it?.copy(isSending = true) }
+
+            // Улучшенная обработка данных перед отправкой
+            val enrichedResults = WizardUtils.enrichResultsData(currentState.results)
 
             // Выполняем действие через ActionExecutionService
             val result = actionExecutionService.executeAction(
                 taskId = currentState.taskId,
                 actionId = currentState.actionId,
-                stepResults = currentState.results,
+                stepResults = enrichedResults,
                 completeAction = true
             )
 
@@ -146,13 +193,28 @@ class WizardStateMachine(
                 _state.update { it?.copy(isSending = false, sendError = null) }
             } else {
                 val errorMessage = result.exceptionOrNull()?.message ?: "Unknown error"
-                _state.update { it?.copy(isSending = false, sendError = errorMessage) }
+
+                // Пытаемся восстановить состояние после ошибки
+                val recoveredState = recoverFromError(errorMessage)
+                if (recoveredState != null) {
+                    _state.value = recoveredState
+                } else {
+                    _state.update { it?.copy(isSending = false, sendError = errorMessage) }
+                }
             }
 
             return result
         } catch (e: Exception) {
-            Timber.e(e, "Error completing wizard")
-            _state.update { it?.copy(isSending = false, sendError = e.message) }
+            WizardLogger.logError(TAG, e, "completing wizard")
+
+            // Пытаемся восстановить состояние после ошибки
+            val recoveredState = recoverFromError(e.message ?: "Unknown error")
+            if (recoveredState != null) {
+                _state.value = recoveredState
+            } else {
+                _state.update { it?.copy(isSending = false, sendError = e.message) }
+            }
+
             return Result.failure(e)
         }
     }
@@ -167,8 +229,32 @@ class WizardStateMachine(
     /**
      * Сбрасывает состояние машины
      */
-    private fun reset() {
+    fun reset() {
         _state.value = null
+        _lastSavedState = null
+    }
+
+    /**
+     * Сохраняет текущее состояние для возможного восстановления
+     */
+    private fun saveStateForRecovery(state: ActionWizardState) {
+        _lastSavedState = state.copy()
+        Timber.d("$TAG: Saved state for recovery: step=${state.currentStepIndex}")
+    }
+
+    /**
+     * Восстанавливает состояние после ошибки
+     */
+    private fun recoverFromError(errorMessage: String): ActionWizardState? {
+        val savedState = _lastSavedState ?: return null
+
+        Timber.d("$TAG: Recovering from error: $errorMessage")
+
+        // Создаем новое состояние на основе сохраненного, но с установленной ошибкой
+        return savedState.copy(
+            sendError = errorMessage,
+            isSending = false
+        )
     }
 
     /**
@@ -209,6 +295,12 @@ class WizardStateMachine(
             }
             is Product -> {
                 updatedResults["lastProduct"] = result
+            }
+            is Pallet -> {
+                updatedResults["lastPallet"] = result
+            }
+            is BinX -> {
+                updatedResults["lastBin"] = result
             }
         }
 

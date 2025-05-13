@@ -1,6 +1,5 @@
 package com.synngate.synnframe.presentation.ui.wizard.action.taskproduct
 
-import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.ProductStatus
@@ -11,13 +10,13 @@ import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
+import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
+import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardUtils
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
-import kotlinx.coroutines.launch
-import timber.log.Timber
 import java.time.LocalDateTime
 
 /**
- * Обновленная ViewModel для шага выбора товара с учетными характеристиками
+ * Оптимизированная ViewModel для шага выбора товара с учетными характеристиками
  */
 class TaskProductSelectionViewModel(
     step: ActionStep,
@@ -58,33 +57,30 @@ class TaskProductSelectionViewModel(
         private set
 
     init {
-        // Инициализация из контекста
-        initFromContext()
-
         // Обновление товаров из локальной БД
         updateProductsFromLocalDb()
+
+        // Логирование планового товара
+        WizardLogger.logTaskProduct(TAG, plannedTaskProduct)
     }
 
     /**
-     * Инициализация данных из контекста
+     * Переопределяем для загрузки TaskProduct из контекста
      */
-    private fun initFromContext() {
-        if (context.hasStepResult) {
-            try {
-                val result = context.getCurrentStepResult()
-                if (result is TaskProduct) {
-                    selectedProduct = result.product
-                    selectedTaskProduct = result
-                    selectedStatus = result.status
-                    expirationDate = if (result.hasExpirationDate()) result.expirationDate else null
+    override fun onResultLoadedFromContext(result: TaskProduct) {
+        selectedProduct = result.product
+        selectedTaskProduct = result
+        selectedStatus = result.status
+        expirationDate = if (result.hasExpirationDate()) result.expirationDate else null
 
-                    setData(result)
-                    Timber.d("Initialized from context: product=${result.product.name}")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error initializing from context: ${e.message}")
-            }
-        }
+        WizardLogger.logTaskProduct(TAG, result)
+    }
+
+    /**
+     * Проверка типа результата
+     */
+    override fun isValidType(result: Any): Boolean {
+        return result is TaskProduct
     }
 
     /**
@@ -93,111 +89,86 @@ class TaskProductSelectionViewModel(
     private fun updateProductsFromLocalDb() {
         if (_planProducts.isEmpty()) return
 
-        viewModelScope.launch {
-            try {
-                setLoading(true)
-
-                // Собираем ID товаров для запроса
-                val productIds = _planProducts.mapNotNull { it.product.id }.toSet()
-                if (productIds.isEmpty()) {
-                    setLoading(false)
-                    return@launch
-                }
-
-                // Запрашиваем полные данные о товарах из БД
-                val productsFromDb = productLookupService.getProductsByIds(productIds)
-                if (productsFromDb.isEmpty()) {
-                    Timber.w("No products found in local DB")
-                    setLoading(false)
-                    return@launch
-                }
-
-                // Создаем мапу для быстрого доступа к продуктам
-                val productsMap = productsFromDb.associateBy { it.id }
-
-                // Создаем обновленные TaskProduct с полными данными о товарах
-                val updatedPlanProducts = _planProducts.map { taskProduct ->
-                    val productId = taskProduct.product.id
-                    val fullProduct = productsMap[productId]
-
-                    if (fullProduct != null) {
-                        // Если нашли полную информацию, создаем новый TaskProduct
-                        TaskProduct(
-                            product = fullProduct,
-                            status = taskProduct.status,
-                            expirationDate = taskProduct.expirationDate,
-                            quantity = taskProduct.quantity
-                        )
-                    } else {
-                        // Иначе оставляем как есть
-                        taskProduct
-                    }
-                }
-
-                // Обновляем списки
-                _planProducts = updatedPlanProducts
-                _planProductIds = updatedPlanProducts.mapNotNull { it.product.id }.toSet()
-
-                // Если уже выбран продукт, обновляем и его
-                if (selectedProduct != null && selectedTaskProduct != null) {
-                    val selectedId = selectedProduct?.id
-                    val updatedProduct = selectedId?.let { productsMap[it] }
-
-                    if (updatedProduct != null) {
-                        selectedProduct = updatedProduct
-                        selectedTaskProduct = selectedTaskProduct?.copy(
-                            product = updatedProduct
-                        )
-
-                        // Обновляем состояние
-                        updateStateFromSelectedProduct()
-                    }
-                }
-
-                Timber.d("Updated ${updatedPlanProducts.size} products from local DB")
-            } catch (e: Exception) {
-                Timber.e(e, "Error updating products from local DB: ${e.message}")
-            } finally {
-                setLoading(false)
+        executeWithErrorHandling("обновления данных товаров", showLoading = false) {
+            // Собираем ID товаров для запроса
+            val productIds = _planProducts.mapNotNull { it.product.id }.toSet()
+            if (productIds.isEmpty()) {
+                return@executeWithErrorHandling
             }
+
+            // Запрашиваем полные данные о товарах из БД
+            val productsFromDb = productLookupService.getProductsByIds(productIds)
+            if (productsFromDb.isEmpty()) {
+                WizardLogger.logStep(TAG, step.id, "Не найдены товары в локальной БД", WizardLogger.LogLevel.MINIMAL)
+                return@executeWithErrorHandling
+            }
+
+            // Создаем мапу для быстрого доступа к продуктам
+            val productsMap = productsFromDb.associateBy { it.id }
+
+            // Создаем обновленные TaskProduct с полными данными о товарах
+            val updatedPlanProducts = _planProducts.map { taskProduct ->
+                val productId = taskProduct.product.id
+                val fullProduct = productsMap[productId]
+
+                if (fullProduct != null) {
+                    // Если нашли полную информацию, создаем новый TaskProduct
+                    TaskProduct(
+                        product = fullProduct,
+                        status = taskProduct.status,
+                        expirationDate = taskProduct.expirationDate,
+                        quantity = taskProduct.quantity
+                    )
+                } else {
+                    // Иначе оставляем как есть
+                    taskProduct
+                }
+            }
+
+            // Обновляем списки
+            _planProducts = updatedPlanProducts
+            _planProductIds = updatedPlanProducts.mapNotNull { it.product.id }.toSet()
+
+            // Если уже выбран продукт, обновляем и его
+            if (selectedProduct != null && selectedTaskProduct != null) {
+                val selectedId = selectedProduct?.id
+                val updatedProduct = selectedId?.let { productsMap[it] }
+
+                if (updatedProduct != null) {
+                    selectedProduct = updatedProduct
+                    selectedTaskProduct = selectedTaskProduct?.copy(
+                        product = updatedProduct
+                    )
+
+                    // Обновляем состояние
+                    updateStateFromSelectedProduct()
+                }
+            }
+
+            WizardLogger.logStep(TAG, step.id, "Обновлено ${updatedPlanProducts.size} товаров из локальной БД")
         }
     }
 
-    override fun isValidType(result: Any): Boolean {
-        return result is TaskProduct
-    }
-
     override fun processBarcode(barcode: String) {
-        viewModelScope.launch {
-            try {
-                setLoading(true)
-                setError(null)
-
-                productLookupService.processBarcode(
-                    barcode = barcode,
-                    onResult = { found, data ->
-                        if (found && data is Product) {
-                            if (_planProductIds.isEmpty() || _planProductIds.contains(data.id)) {
-                                setSelectedProduct(data)
-                                updateProductCodeInput("")
-                            } else {
-                                setError("Продукт не соответствует плану")
-                            }
+        executeWithErrorHandling("обработки штрих-кода") {
+            productLookupService.processBarcode(
+                barcode = barcode,
+                onResult = { found, data ->
+                    if (found && data is Product) {
+                        if (_planProductIds.isEmpty() || _planProductIds.contains(data.id)) {
+                            setSelectedProduct(data)
+                            updateProductCodeInput("")
                         } else {
-                            setError("Продукт со штрихкодом '$barcode' не найден")
+                            setError("Продукт не соответствует плану")
                         }
-                        setLoading(false)
-                    },
-                    onError = { message ->
-                        setError(message)
-                        setLoading(false)
+                    } else {
+                        setError("Продукт со штрихкодом '$barcode' не найден")
                     }
-                )
-            } catch (e: Exception) {
-                Timber.e(e, "Error processing barcode: $barcode")
-                setError("Ошибка: ${e.message}")
-                setLoading(false)
-            }
+                },
+                onError = { message ->
+                    setError(message)
+                }
+            )
         }
     }
 
@@ -240,10 +211,10 @@ class TaskProductSelectionViewModel(
             selectedStatus
         }
 
-        return TaskProduct(
+        return WizardUtils.createTaskProductFromProduct(
             product = product,
             status = finalStatus,
-            expirationDate = expirationDate ?: LocalDateTime.of(1970, 1, 1, 0, 0)
+            expirationDate = expirationDate
         )
     }
 
@@ -263,23 +234,26 @@ class TaskProductSelectionViewModel(
      * Устанавливает выбранный продукт
      */
     fun setSelectedProduct(product: Product) {
-        selectedProduct = product
+        executeWithErrorHandling("выбора продукта", showLoading = false) {
+            selectedProduct = product
+            WizardLogger.logProduct(TAG, product)
 
-        val plannedTaskProduct = _planProducts.find { it.product.id == product.id }
-        if (plannedTaskProduct != null) {
-            selectedTaskProduct = plannedTaskProduct
-            selectedStatus = plannedTaskProduct.status
-            expirationDate = if (plannedTaskProduct.hasExpirationDate()) {
-                plannedTaskProduct.expirationDate
-            } else null
-        } else {
-            selectedTaskProduct = TaskProduct(product = product)
-            selectedStatus = ProductStatus.STANDARD
-            expirationDate = null
+            val plannedTaskProduct = _planProducts.find { it.product.id == product.id }
+            if (plannedTaskProduct != null) {
+                selectedTaskProduct = plannedTaskProduct
+                selectedStatus = plannedTaskProduct.status
+                expirationDate = if (plannedTaskProduct.hasExpirationDate()) {
+                    plannedTaskProduct.expirationDate
+                } else null
+            } else {
+                selectedTaskProduct = WizardUtils.createTaskProductFromProduct(product = product)
+                selectedStatus = ProductStatus.STANDARD
+                expirationDate = null
+            }
+
+            // Обновляем состояние и проверяем автопереход
+            updateStateFromSelectedProduct(true)
         }
-
-        // Обновляем состояние и проверяем автопереход
-        updateStateFromSelectedProduct(true)
     }
 
     /**
@@ -313,61 +287,41 @@ class TaskProductSelectionViewModel(
      * Выбирает товар из плана
      */
     fun selectTaskProductFromPlan(taskProduct: TaskProduct) {
-        setLoading(true)
-        setError(null)
+        executeWithErrorHandling("выбора товара из плана") {
+            // Получаем ID продукта из TaskProduct плана
+            val productId = taskProduct.product.id
 
-        viewModelScope.launch {
-            try {
-                // Получаем ID продукта из TaskProduct плана
-                val productId = taskProduct.product.id
+            // Проверяем, есть ли уже полная информация о продукте
+            val existingFullProduct = planProducts.find { it.product.id == productId }?.product
 
-                // Проверяем, есть ли уже полная информация о продукте
-                val existingFullProduct = planProducts.find { it.product.id == productId }?.product
+            // Если в планируемом товаре уже есть полная информация о продукте
+            if (existingFullProduct != null && existingFullProduct.articleNumber.isNotEmpty()) {
+                // Используем её
+                selectedProduct = existingFullProduct
+                selectedTaskProduct = taskProduct.copy(product = existingFullProduct)
+            } else {
+                // Иначе, запрашиваем полную информацию из БД
+                val fullProduct = productLookupService.getProductById(productId)
 
-                // Если в планируемом товаре уже есть полная информация о продукте
-                if (existingFullProduct != null && existingFullProduct.articleNumber.isNotEmpty()) {
-                    // Используем её
-                    selectedProduct = existingFullProduct
-                    selectedTaskProduct = taskProduct.copy(product = existingFullProduct)
+                if (fullProduct != null) {
+                    // Если нашли, обновляем продукт в текущей позиции товара задания
+                    selectedProduct = fullProduct
+                    selectedTaskProduct = taskProduct.copy(product = fullProduct)
                 } else {
-                    // Иначе, запрашиваем полную информацию из БД
-                    val fullProduct = productLookupService.getProductById(productId)
-
-                    if (fullProduct != null) {
-                        // Если нашли, обновляем продукт в текущей позиции товара задания
-                        selectedProduct = fullProduct
-                        selectedTaskProduct = taskProduct.copy(product = fullProduct)
-                    } else {
-                        // Используем то, что есть
-                        selectedProduct = taskProduct.product
-                        selectedTaskProduct = taskProduct
-                    }
+                    // Используем то, что есть
+                    selectedProduct = taskProduct.product
+                    selectedTaskProduct = taskProduct
                 }
-
-                // Обновляем состояние UI
-                selectedStatus = taskProduct.status
-                expirationDate = if (taskProduct.hasExpirationDate()) {
-                    taskProduct.expirationDate
-                } else null
-
-                // Обновляем состояние данных с проверкой автоперехода
-                updateStateFromSelectedProduct(true)
-                setLoading(false)
-            } catch (e: Exception) {
-                Timber.e(e, "Error selecting product from plan: ${e.message}")
-
-                // В случае ошибки используем имеющиеся данные
-                selectedProduct = taskProduct.product
-                selectedTaskProduct = taskProduct
-                selectedStatus = taskProduct.status
-                expirationDate = if (taskProduct.hasExpirationDate()) {
-                    taskProduct.expirationDate
-                } else null
-
-                updateStateFromSelectedProduct()
-                setLoading(false)
-                setError("Ошибка при загрузке полных данных о товаре")
             }
+
+            // Обновляем состояние UI
+            selectedStatus = taskProduct.status
+            expirationDate = if (taskProduct.hasExpirationDate()) {
+                taskProduct.expirationDate
+            } else null
+
+            // Обновляем состояние данных с проверкой автоперехода
+            updateStateFromSelectedProduct(true)
         }
     }
 

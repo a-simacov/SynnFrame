@@ -1,6 +1,5 @@
 package com.synngate.synnframe.presentation.ui.wizard.action.product
 
-import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
@@ -9,12 +8,11 @@ import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
+import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
-import kotlinx.coroutines.launch
-import timber.log.Timber
 
 /**
- * Обновленная ViewModel для шага выбора продукта
+ * Оптимизированная ViewModel для шага выбора продукта
  */
 class ProductSelectionViewModel(
     step: ActionStep,
@@ -51,26 +49,8 @@ class ProductSelectionViewModel(
             filteredProducts = listOf(plannedProduct)
         }
 
-        // Инициализация из контекста
-        initFromContext()
-    }
-
-    /**
-     * Инициализация из данных контекста
-     */
-    private fun initFromContext() {
-        if (context.hasStepResult) {
-            try {
-                val result = context.getCurrentStepResult()
-                if (result is Product) {
-                    selectedProduct = result
-                    setData(result)
-                    Timber.d("Initialized from context: product=${result.name}")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error initializing from context: ${e.message}")
-            }
-        }
+        // Логируем полезную информацию для отладки
+        WizardLogger.logTaskProduct(TAG, action.storageProduct)
     }
 
     /**
@@ -81,39 +61,36 @@ class ProductSelectionViewModel(
     }
 
     /**
+     * Переопределяем для загрузки продукта из контекста
+     */
+    override fun onResultLoadedFromContext(result: Product) {
+        selectedProduct = result
+        WizardLogger.logProduct(TAG, selectedProduct)
+    }
+
+    /**
      * Обработка штрих-кода
      */
     override fun processBarcode(barcode: String) {
-        viewModelScope.launch {
-            try {
-                setLoading(true)
-                setError(null)
-
-                productLookupService.processBarcode(
-                    barcode = barcode,
-                    onResult = { found, data ->
-                        if (found && data is Product) {
-                            if (planProductIds.isEmpty() || planProductIds.contains(data.id)) {
-                                selectProduct(data)
-                                updateBarcodeInput("")
-                            } else {
-                                setError("Продукт не соответствует плану")
-                            }
+        executeWithErrorHandling("обработки штрих-кода") {
+            productLookupService.processBarcode(
+                barcode = barcode,
+                onResult = { found, data ->
+                    if (found && data is Product) {
+                        if (planProductIds.isEmpty() || planProductIds.contains(data.id)) {
+                            selectProduct(data)
+                            updateBarcodeInput("")
                         } else {
-                            setError("Продукт со штрихкодом '$barcode' не найден")
+                            setError("Продукт не соответствует плану")
                         }
-                        setLoading(false)
-                    },
-                    onError = { message ->
-                        setError(message)
-                        setLoading(false)
+                    } else {
+                        setError("Продукт со штрихкодом '$barcode' не найден")
                     }
-                )
-            } catch (e: Exception) {
-                Timber.e(e, "Error processing barcode: $barcode")
-                setError("Ошибка: ${e.message}")
-                setLoading(false)
-            }
+                },
+                onError = { message ->
+                    setError(message)
+                }
+            )
         }
     }
 
@@ -167,26 +144,18 @@ class ProductSelectionViewModel(
      * Поиск продуктов по запросу
      */
     fun searchProducts(query: String) {
-        viewModelScope.launch {
-            try {
-                setLoading(true)
-                val products = productLookupService.searchProducts(query)
+        executeWithErrorHandling("поиска продуктов") {
+            val products = productLookupService.searchProducts(query)
 
-                // Если есть ограничения по плану, фильтруем результаты
-                filteredProducts = if (planProductIds.isNotEmpty()) {
-                    products.filter { planProductIds.contains(it.id) }
-                } else {
-                    products
-                }
-
-                setLoading(false)
-                // Обновляем список в состоянии
-                updateAdditionalData("filteredProducts", filteredProducts)
-            } catch (e: Exception) {
-                Timber.e(e, "Error searching products: ${e.message}")
-                setError("Ошибка поиска: ${e.message}")
-                setLoading(false)
+            // Если есть ограничения по плану, фильтруем результаты
+            filteredProducts = if (planProductIds.isNotEmpty()) {
+                products.filter { planProductIds.contains(it.id) }
+            } else {
+                products
             }
+
+            // Обновляем список в состоянии
+            updateAdditionalData("filteredProducts", filteredProducts)
         }
     }
 
@@ -195,6 +164,7 @@ class ProductSelectionViewModel(
      */
     fun selectProduct(product: Product) {
         selectedProduct = product
+        WizardLogger.logProduct(TAG, product)
 
         // Обновляем состояние и проверяем автопереход
         if (stepFactory is AutoCompleteCapableFactory) {
