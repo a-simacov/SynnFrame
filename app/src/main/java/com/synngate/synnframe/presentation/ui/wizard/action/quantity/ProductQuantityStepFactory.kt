@@ -8,11 +8,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -82,17 +85,58 @@ class ProductQuantityStepFactory(
             return
         }
 
+        // Добавляем отладочную информацию
+        LaunchedEffect(Unit) {
+            Timber.d("ProductQuantityStepFactory.StepContent: hasSelectedProduct=${quantityViewModel.hasSelectedProduct()}")
+            Timber.d("Context results: ${context.results.entries.joinToString { "${it.key} -> ${it.value?.javaClass?.simpleName}" }}")
+
+            // Принудительно визуализируем contextTrace для отладки
+            val contextTrace = context.results.entries.joinToString("\n") {
+                "${it.key} = ${it.value?.javaClass?.simpleName}"
+            }
+
+            Timber.d("Context trace:\n$contextTrace")
+        }
+
         if (!quantityViewModel.hasSelectedProduct()) {
+            // Добавляем подробное сообщение об ошибке для пользователя
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Сначала необходимо выбрать товар",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Ошибка: Товар не обнаружен",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Для решения проблемы вернитесь назад и повторно выберите товар.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center
+                    )
+
+                    // Добавляем кнопку "Назад" для упрощения
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = { context.onBack() },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    ) {
+                        Text("Вернуться назад")
+                    }
+                }
             }
             return
         }

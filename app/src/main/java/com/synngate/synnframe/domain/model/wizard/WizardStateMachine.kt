@@ -41,25 +41,13 @@ class WizardStateMachine(
      */
     fun handleEvent(event: WizardEvent): Boolean {
         val currentState = _currentState.value
+        Timber.d("WizardStateMachine: handling event $event in state ${currentState?.id}")
 
         // Если текущее состояние не установлено и событие не инициализация,
         // то сначала нужно инициализировать
         if (currentState == null && event !is WizardEvent.Initialize) {
             Timber.e("Cannot handle event $event: machine not initialized")
             return false
-        }
-
-        // Обработка события Initialize, когда состояние еще не установлено
-        if (currentState == null && event is WizardEvent.Initialize) {
-            context = WizardContext(
-                taskId = event.taskId,
-                actionId = event.actionId
-            )
-            val initialState = context.createInitializingState()
-            _currentState.value = initialState
-
-            // Сразу передаем событие на обработку новому состоянию
-            return handleEvent(event)
         }
 
         // Запрашиваем у текущего состояния новое состояние для данного события
@@ -69,14 +57,13 @@ class WizardStateMachine(
         if (nextState != null && nextState != currentState) {
             Timber.d("Transitioning from ${currentState?.id} to ${nextState.id}")
             _currentState.value = nextState
-
-            // Если новое состояние терминальное, выполняем соответствующие действия
-            if (nextState.isTerminal) {
-                Timber.d("Reached terminal state: ${nextState.id}")
-                // Здесь может быть логика для терминальных состояний
-            }
-
             return true
+        }
+
+        if (nextState == currentState) {
+            Timber.d("State unchanged after handling event $event")
+        } else if (nextState == null) {
+            Timber.d("No state transition for event $event in state ${currentState?.id}")
         }
 
         return false

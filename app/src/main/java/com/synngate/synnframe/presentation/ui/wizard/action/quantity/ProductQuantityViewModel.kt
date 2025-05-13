@@ -66,25 +66,47 @@ class ProductQuantityViewModel(
     }
 
     /**
-     * Находит предыдущий результат шага с продуктом
+     * Расширенный метод поиска продукта из предыдущего шага с дополнительными проверками
      */
-    private fun findPreviousStepResult(): Pair<Product?, TaskProduct?> {
+    private fun findPreviousStepResultWithExtendedSearch(): Pair<Product?, TaskProduct?> {
         try {
+            // Логируем весь контекст для отладки
+            Timber.d("Context.results size: ${context.results.size}")
+            context.results.forEach { (key, value) ->
+                Timber.d("Context contains: key=$key, value=${value?.javaClass?.simpleName}")
+            }
+
+            // ПРЯМОЙ ПОИСК ПО КЛЮЧУ lastTaskProduct
+            val directTaskProduct = context.results["lastTaskProduct"] as? TaskProduct
+            if (directTaskProduct != null) {
+                Timber.d("Found TaskProduct directly by lastTaskProduct key: $directTaskProduct")
+                return Pair(directTaskProduct.product, directTaskProduct)
+            }
+
+            // ПОИСК ПО КЛЮЧУ lastProduct
+            val directProduct = context.results["lastProduct"] as? Product
+            if (directProduct != null) {
+                Timber.d("Found Product directly by lastProduct key: $directProduct")
+                val taskProduct = TaskProduct(product = directProduct, quantity = 0f)
+                return Pair(directProduct, taskProduct)
+            }
+
+            // ПОИСК ПО ВСЕМ КЛЮЧАМ, ИСКЛЮЧАЯ ТЕКУЩИЙ ШАГ
+            // Тщательно проверяем каждый элемент в контексте независимо от ключа
             var foundProduct: Product? = null
             var foundTaskProduct: TaskProduct? = null
 
-            // Сначала пытаемся найти TaskProduct в результатах
             for ((stepId, value) in context.results) {
                 if (stepId != context.stepId) {
                     when (value) {
                         is TaskProduct -> {
-                            Timber.d("Found TaskProduct from previous step: $stepId")
+                            Timber.d("Found TaskProduct from previous step $stepId: $value")
                             foundTaskProduct = value
                             foundProduct = value.product
                             break
                         }
                         is Product -> {
-                            Timber.d("Found Product from previous step: $stepId")
+                            Timber.d("Found Product from previous step $stepId: $value")
                             foundProduct = value
                         }
                     }
@@ -92,13 +114,51 @@ class ProductQuantityViewModel(
             }
 
             // Если нашли только Product, создаем из него TaskProduct
-            if (foundProduct != null && foundTaskProduct == null) {
-                foundTaskProduct = TaskProduct(product = foundProduct, quantity = 0f)
+            // ИСПРАВЛЕНО: используем безопасный вызов для избежания проблемы со smart cast
+            val finalProduct = foundProduct // создаем неизменяемую копию
+            if (finalProduct != null && foundTaskProduct == null) {
+                Timber.d("Creating TaskProduct from found Product")
+                foundTaskProduct = TaskProduct(product = finalProduct, quantity = 0f)
             }
 
+            // Если нашли что-то, возвращаем
+            if (foundProduct != null) {
+                Timber.d("Returning found Product and TaskProduct")
+                return Pair(foundProduct, foundTaskProduct)
+            }
+
+            // ЗАПАСНОЙ МЕТОД: ПРОВЕРКА ВСЕХ ОБЪЕКТОВ В КОНТЕКСТЕ
+            // В крайнем случае просмотрим все объекты, независимо от ключа
+            Timber.d("No Product found by keys, checking all objects in context...")
+            for (value in context.results.values) {
+                when (value) {
+                    is TaskProduct -> {
+                        Timber.d("Found TaskProduct object in values: $value")
+                        foundTaskProduct = value
+                        foundProduct = value.product
+                        break
+                    }
+                    is Product -> {
+                        if (foundProduct == null) {
+                            Timber.d("Found Product object in values: $value")
+                            foundProduct = value
+                        }
+                    }
+                }
+            }
+
+            // Если нашли только Product, создаем из него TaskProduct
+            // ИСПРАВЛЕНО: используем безопасный вызов
+            val finalFoundProduct = foundProduct // создаем неизменяемую копию
+            if (finalFoundProduct != null && foundTaskProduct == null) {
+                foundTaskProduct = TaskProduct(product = finalFoundProduct, quantity = 0f)
+                Timber.d("Created TaskProduct from found Product in values")
+            }
+
+            Timber.d("Final search result: product=$foundProduct, taskProduct=$foundTaskProduct")
             return Pair(foundProduct, foundTaskProduct)
         } catch (e: Exception) {
-            Timber.e(e, "Error finding previous step result")
+            Timber.e(e, "Error in extended search for previous step result")
             return Pair(null, null)
         }
     }
@@ -111,17 +171,49 @@ class ProductQuantityViewModel(
             try {
                 setLoading(true)
 
-                // Находим продукт из предыдущего шага
-                val (product, taskProduct) = findPreviousStepResult()
-                selectedProduct = product
-                selectedTaskProduct = taskProduct
+                // ДОБАВЛЯЕМ ПОЛНОЕ ЛОГИРОВАНИЕ КОНТЕКСТА
+                Timber.d("initFromPreviousStep: context = ${context.results}")
 
-                if (product != null) {
+                // Находим продукт из предыдущего шага с расширенным поиском
+                val (product, taskProduct) = findPreviousStepResultWithExtendedSearch()
+
+                // Если не нашли ничего в контексте, используем продукт из действия
+                if (product == null) {
+                    Timber.w("Product not found in context, using emergency recovery from action")
+                    // ЭКСТРЕННОЕ ВОССТАНОВЛЕНИЕ из запланированного действия
+                    val actionProduct = action.storageProduct
+                    if (actionProduct != null) {
+                        Timber.d("Found product in action: ${actionProduct.product.name}")
+                        selectedProduct = actionProduct.product
+                        selectedTaskProduct = actionProduct
+
+                        // Искусственно обогащаем контекст для последующих вызовов
+                        val contextResults = context.results.toMutableMap()
+                        contextResults["emergency_lastTaskProduct"] = actionProduct
+                        contextResults["emergency_lastProduct"] = actionProduct.product
+                        context.onUpdate(contextResults)
+
+                        Timber.d("Emergency recovery successful!")
+                    } else {
+                        Timber.e("Emergency recovery failed: no product in action")
+                    }
+                } else {
+                    // Продукт найден в контексте, используем его
+                    selectedProduct = product
+                    selectedTaskProduct = taskProduct
+                    Timber.d("Using product from context: ${product.name}")
+                }
+
+                Timber.d("After product resolution: product=${selectedProduct?.name}, taskProduct=${selectedTaskProduct?.product?.name}")
+
+                if (selectedProduct != null) {
                     // Если у нас уже есть результат в контексте, используем его количество
                     if (context.hasStepResult) {
                         val currentResult = context.getCurrentStepResult()
+                        Timber.d("Current step has result: $currentResult")
                         if (currentResult is TaskProduct && currentResult.quantity > 0) {
                             quantityInput = formatQuantityForDisplay(currentResult.quantity)
+                            Timber.d("Using quantity from context: ${currentResult.quantity}")
                         }
                     }
 
@@ -130,6 +222,9 @@ class ProductQuantityViewModel(
 
                     // Обновляем состояние с выбранным продуктом и текущим количеством
                     updateStateFromQuantity()
+                    Timber.d("View state updated with product")
+                } else {
+                    Timber.e("NO PRODUCT AVAILABLE AFTER ALL RECOVERY ATTEMPTS!")
                 }
 
                 setLoading(false)

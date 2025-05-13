@@ -29,3 +29,23 @@ interface ActionStepFactory {
      */
     fun validateStepResult(step: ActionStep, value: Any?): Boolean = true
 }
+
+/**
+ * Интерфейс для фабрик шагов, поддерживающих автоматический переход
+ */
+interface AutoCompleteCapableFactory {
+    /**
+     * Возвращает имя поля, при заполнении которого происходит автопереход
+     */
+    fun getAutoCompleteFieldName(step: ActionStep): String?
+
+    /**
+     * Проверяет, включен ли автопереход для данного шага
+     */
+    fun isAutoCompleteEnabled(step: ActionStep): Boolean
+
+    /**
+     * Проверяет, требует ли поле подтверждения перед автопереходом
+     */
+    fun requiresConfirmation(step: ActionStep, fieldName: String): Boolean
+}

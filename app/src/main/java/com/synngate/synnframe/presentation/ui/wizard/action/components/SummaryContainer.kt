@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import timber.log.Timber
 
 /**
  * Контейнер для отображения итогового экрана визарда с результатами
@@ -60,17 +61,25 @@ fun SummaryContainer(
     var showLoading by remember { mutableStateOf(false) }
     var previousLoadingState by remember { mutableStateOf(false) }
 
-    // Используем эффект для отложенного отображения индикатора загрузки
+    // Добавляем логирование для отладки
     LaunchedEffect(isSending) {
+        Timber.d("SummaryContainer: isSending changed to $isSending")
         if (isSending && !previousLoadingState) {
             // Если началась отправка, ждем 300мс перед показом индикатора
             delay(300)
             showLoading = isSending
+            Timber.d("SummaryContainer: showLoading set to $showLoading after delay")
         } else if (!isSending && previousLoadingState) {
             // Если отправка завершилась, сразу убираем индикатор
             showLoading = false
+            Timber.d("SummaryContainer: showLoading set to $showLoading immediately")
         }
         previousLoadingState = isSending
+    }
+
+    // Принудительно сбрасываем showLoading в false, если isSending = false
+    if (!isSending && showLoading) {
+        showLoading = false
     }
 
     Column(
@@ -140,7 +149,7 @@ fun SummaryContainer(
                 Button(
                     onClick = onComplete,
                     modifier = Modifier.weight(1f),
-                    enabled = !isSending
+                    enabled = !isSending && !showLoading // Добавляем проверку showLoading
                 ) {
                     if (showLoading) {
                         CircularProgressIndicator(

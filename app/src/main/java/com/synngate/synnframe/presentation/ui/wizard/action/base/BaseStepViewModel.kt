@@ -8,6 +8,8 @@ import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationResult
 import com.synngate.synnframe.domain.service.ValidationService
+import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
+import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,7 +30,8 @@ abstract class BaseStepViewModel<T>(
     protected val step: ActionStep,
     protected val action: PlannedAction,
     protected val context: ActionContext,
-    protected val validationService: ValidationService
+    protected val validationService: ValidationService,
+    protected val actionStepFactoryRegistry: ActionStepFactoryRegistry? = null // Добавляем опциональную зависимость
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(StepViewState<T>())
@@ -242,5 +245,51 @@ abstract class BaseStepViewModel<T>(
      */
     fun goBack() {
         context.onBack()
+    }
+
+    /**
+     * Обрабатывает обновление поля и выполняет автопереход при необходимости
+     */
+    /**
+     * Обрабатывает обновление поля и выполняет автопереход при необходимости
+     * @param fieldName Название поля
+     * @param value Значение поля
+     * @param autoTransition Флаг, указывающий нужен ли автопереход (по умолчанию false)
+     */
+    protected fun handleFieldUpdate(fieldName: String, value: T, autoTransition: Boolean = false) {
+        // Обновляем данные
+        setData(value)
+
+        // Если автопереход запрещен явно или нет реестра фабрик, не делаем автопереход
+        if (!autoTransition || actionStepFactoryRegistry == null) {
+            return
+        }
+
+        // Получаем фабрику для типа объекта текущего шага
+        val factory = actionStepFactoryRegistry.getFactory(step.objectType)
+
+        // Проверяем, поддерживает ли фабрика автопереход
+        if (factory is AutoCompleteCapableFactory &&
+            factory.isAutoCompleteEnabled(step) &&
+            factory.getAutoCompleteFieldName(step) == fieldName) {
+
+            // Если требуется подтверждение, показываем диалог
+            if (factory.requiresConfirmation(step, fieldName)) {
+                showConfirmationDialog(value)
+            } else {
+                // Автоматически завершаем шаг
+                completeStep(value)
+            }
+        }
+    }
+
+    /**
+     * Показывает диалог подтверждения перед автопереходом
+     * Подклассы должны переопределить этот метод если поддерживают автопереход
+     */
+    protected open fun showConfirmationDialog(value: T) {
+        // По умолчанию пустая реализация
+        // Подклассы должны переопределить, если требуется подтверждение
+        Timber.w("showConfirmationDialog not implemented for ${this::class.java.simpleName}")
     }
 }

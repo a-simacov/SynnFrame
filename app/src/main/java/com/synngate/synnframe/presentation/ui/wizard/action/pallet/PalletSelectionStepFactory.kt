@@ -27,6 +27,7 @@ import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
+import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.base.StepViewState
@@ -40,7 +41,7 @@ import timber.log.Timber
 class PalletSelectionStepFactory(
     private val palletLookupService: PalletLookupService,
     private val validationService: ValidationService
-) : BaseActionStepFactory<Pallet>() {
+) : BaseActionStepFactory<Pallet>(), AutoCompleteCapableFactory {
 
     override fun getStepViewModel(
         step: ActionStep,
@@ -218,5 +219,19 @@ class PalletSelectionStepFactory(
 
     override fun validateStepResult(step: ActionStep, value: Any?): Boolean {
         return value is Pallet
+    }
+
+    override fun getAutoCompleteFieldName(step: ActionStep): String? {
+        return "selectedPallet" // автопереход при выборе паллеты
+    }
+
+    override fun isAutoCompleteEnabled(step: ActionStep): Boolean {
+        // Включаем автопереход для шагов выбора паллеты из плана
+        return step.promptText.contains("план", ignoreCase = true)
+    }
+
+    override fun requiresConfirmation(step: ActionStep, fieldName: String): Boolean {
+        // Паллета не требует подтверждения
+        return false
     }
 }

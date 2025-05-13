@@ -1,5 +1,7 @@
 package com.synngate.synnframe.domain.service
 
+import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.model.wizard.ActionWizardState
 import com.synngate.synnframe.domain.model.wizard.CancelledState
@@ -56,10 +58,16 @@ class FsmWizardControllerAdapter(
         stateObservationJob = adapterScope.launch {
             // Наблюдаем за изменениями в состоянии FSM
             stateMachine.currentState
-                .map { state -> adaptStateToActionWizardState(state) }
+                .map { state ->
+                    Timber.d("FSM state changed: ${state?.id}")
+                    val adapted = adaptStateToActionWizardState(state)
+                    Timber.d("Adapted to ActionWizardState: currentStep=${adapted?.currentStepIndex}, results=${adapted?.results?.size ?: 0}")
+                    adapted
+                }
                 .distinctUntilChanged()
                 .collect { adaptedState ->
                     _adaptedState.value = adaptedState
+                    Timber.d("Updated _adaptedState: ${adaptedState?.currentStepIndex}, hasError=${adaptedState?.sendError != null}")
                 }
         }
     }
@@ -84,13 +92,71 @@ class FsmWizardControllerAdapter(
     /**
      * Обрабатывает результат шага
      */
+    // app/src/main/java/com/synngate/synnframe/domain/service/FsmWizardControllerAdapter.kt
+
+    /**
+     * Обрабатывает результат шага
+     */
     suspend fun processStepResult(result: Any?) {
+        // Очень подробное логирование для отладки
+        val currentFsmState = stateMachine.currentState.value
+        val currentAdaptedState = _adaptedState.value
+
+        Timber.d("processStepResult called with: ${result?.javaClass?.simpleName}")
+        Timber.d("Current FSM state: ${currentFsmState?.id}")
+        Timber.d("Current adapted state: step=${currentAdaptedState?.currentStepIndex}, " +
+                "results=${currentAdaptedState?.results?.entries?.joinToString { "${it.key} -> ${it.value?.javaClass?.simpleName}" }}")
+
+        // Проверяем и логируем состояние контекста машины
+        val contextResults = stateMachine.wizardContext.results
+        Timber.d("FSM context before processing: ${contextResults.entries.joinToString { "${it.key} -> ${it.value?.javaClass?.simpleName}" }}")
+
         // Если result == null, то это событие "назад"
         if (result == null) {
+            Timber.d("Processing Back event")
             stateMachine.handleEvent(WizardEvent.Back)
         } else {
+            Timber.d("Processing Next event with result: ${result.javaClass.simpleName}")
+            // Перед обработкой результата в FSM, сохраняем его в специальные ключи
+            // Это дополнительная гарантия от потери данных
+            if (result is TaskProduct) {
+                val context = stateMachine.wizardContext
+                val updatedResults = context.results.toMutableMap()
+                updatedResults["lastTaskProduct"] = result
+                updatedResults["lastProduct"] = result.product
+                Timber.d("Added lastTaskProduct and lastProduct to context before FSM processing")
+                // Мы не можем напрямую обновить контекст машины, но можем обновить
+                // промежуточное состояние адаптера
+                val adaptedState = _adaptedState.value
+                if (adaptedState != null) {
+                    val stateResults = adaptedState.results.toMutableMap()
+                    stateResults["lastTaskProduct"] = result
+                    stateResults["lastProduct"] = result.product
+                    val updatedState = adaptedState.copy(results = stateResults)
+                    _adaptedState.value = updatedState
+                    Timber.d("Updated _adaptedState with lastTaskProduct and lastProduct")
+                }
+            } else if (result is Product) {
+                val adaptedState = _adaptedState.value
+                if (adaptedState != null) {
+                    val stateResults = adaptedState.results.toMutableMap()
+                    stateResults["lastProduct"] = result
+                    val updatedState = adaptedState.copy(results = stateResults)
+                    _adaptedState.value = updatedState
+                    Timber.d("Updated _adaptedState with lastProduct")
+                }
+            }
+
+            // Теперь отправляем событие в машину состояний
             stateMachine.handleEvent(WizardEvent.Next(result))
         }
+
+        // Проверяем состояние после обработки
+        val newFsmState = stateMachine.currentState.value
+        val newContextResults = stateMachine.wizardContext.results
+
+        Timber.d("New FSM state after processing: ${newFsmState?.id}")
+        Timber.d("New FSM context after processing: ${newContextResults.entries.joinToString { "${it.key} -> ${it.value?.javaClass?.simpleName}" }}")
     }
 
     /**
@@ -151,14 +217,18 @@ class FsmWizardControllerAdapter(
 
         val context = stateMachine.wizardContext
 
-        return when (state) {
+        // Подробное логирование контекста для отладки
+        Timber.d("Adapting state ${state.javaClass.simpleName} to ActionWizardState")
+        Timber.d("WizardContext results: ${context.results.entries.joinToString { "${it.key} -> ${it.value?.javaClass?.simpleName}" }}")
+
+        val result = when (state) {
             is InitializingState -> ActionWizardState(
                 taskId = context.taskId,
                 actionId = context.actionId,
                 action = context.action,
                 steps = context.steps,
                 currentStepIndex = -1, // -1 означает "инициализация"
-                results = context.results,
+                results = context.results, // Критически важно передавать все результаты
                 isInitialized = false,
                 lastScannedBarcode = context.lastScannedBarcode,
                 isProcessingStep = true
@@ -170,25 +240,33 @@ class FsmWizardControllerAdapter(
                 action = context.action,
                 steps = context.steps,
                 currentStepIndex = state.stepIndex,
-                results = context.results,
+                results = context.results, // Критически важно передавать все результаты
                 errors = context.errors,
                 isInitialized = true,
                 lastScannedBarcode = context.lastScannedBarcode,
                 isProcessingStep = false
             )
 
-            is CompletingState -> ActionWizardState(
-                taskId = context.taskId,
-                actionId = context.actionId,
-                action = context.action,
-                steps = context.steps,
-                currentStepIndex = context.steps.size, // После последнего шага
-                results = context.results,
-                isInitialized = true,
-                lastScannedBarcode = context.lastScannedBarcode,
-                isProcessingStep = true,
-                isSending = true
-            )
+            is CompletingState -> {
+                Timber.d("Adapting CompletingState to ActionWizardState")
+                // Автоматически запускаем переход в CompletedState
+                adapterScope.launch {
+                    Timber.d("Auto-transitioning CompletingState to CompletedState")
+                    stateMachine.handleEvent(WizardEvent.Complete)
+                }
+                ActionWizardState(
+                    taskId = context.taskId,
+                    actionId = context.actionId,
+                    action = context.action,
+                    steps = context.steps,
+                    currentStepIndex = context.steps.size, // После последнего шага
+                    results = context.results, // Критически важно передавать все результаты
+                    isInitialized = true,
+                    lastScannedBarcode = context.lastScannedBarcode,
+                    isProcessingStep = false, // Было true, меняем на false
+                    isSending = false // Было true, меняем на false
+                )
+            }
 
             is CompletedState -> ActionWizardState(
                 taskId = context.taskId,
@@ -196,7 +274,7 @@ class FsmWizardControllerAdapter(
                 action = context.action,
                 steps = context.steps,
                 currentStepIndex = context.steps.size, // После последнего шага
-                results = context.results,
+                results = context.results, // Критически важно передавать все результаты
                 isInitialized = true,
                 lastScannedBarcode = context.lastScannedBarcode,
                 isProcessingStep = false,
@@ -211,7 +289,7 @@ class FsmWizardControllerAdapter(
                 action = context.action,
                 steps = context.steps,
                 currentStepIndex = context.steps.size, // После последнего шага
-                results = context.results,
+                results = context.results, // Критически важно передавать все результаты
                 isInitialized = true,
                 lastScannedBarcode = context.lastScannedBarcode,
                 isProcessingStep = false,
@@ -221,6 +299,12 @@ class FsmWizardControllerAdapter(
 
             else -> null
         }
+
+        if (result != null) {
+            Timber.d("Adapted state results: ${result.results.entries.joinToString { "${it.key} -> ${it.value?.javaClass?.simpleName}" }}")
+        }
+
+        return result
     }
 
     override fun dispose() {

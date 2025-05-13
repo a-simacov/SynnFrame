@@ -30,7 +30,27 @@ class ActionWizardController(
      * @param result Результат шага или null для навигации назад
      */
     suspend fun processStepResult(result: Any?) {
+        Timber.d("ActionWizardController.processStepResult called with result: ${result?.javaClass?.simpleName}")
+
+        // Перед вызовом адаптера проверяем состояние
+        val currentState = fsmAdapter.adaptedState.value
+        Timber.d("Current state before processing: step=${currentState?.currentStepIndex}, results=${currentState?.results?.size}")
+
+        // Если есть предыдущий результат, логируем его для отладки
+        val currentStep = currentState?.currentStep
+        if (currentStep != null) {
+            val stepId = currentStep.id
+            if (stepId in (currentState.results)) {
+                Timber.d("Current step ${stepId} already has result: ${currentState.results[stepId]?.javaClass?.simpleName}")
+            }
+        }
+
+        // Вызываем метод адаптера
         fsmAdapter.processStepResult(result)
+
+        // После вызова проверяем, изменилось ли состояние
+        val newState = fsmAdapter.adaptedState.value
+        Timber.d("New state after processing: step=${newState?.currentStepIndex}, results=${newState?.results?.size}")
     }
 
     /**

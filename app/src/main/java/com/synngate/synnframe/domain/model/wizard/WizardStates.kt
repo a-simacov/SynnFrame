@@ -1,5 +1,9 @@
 package com.synngate.synnframe.domain.model.wizard
 
+import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.taskx.BinX
+import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import timber.log.Timber
 
 /**
@@ -47,13 +51,66 @@ class StepState(
 
                 // Сохраняем результат текущего шага
                 val updatedResults = context.results.toMutableMap()
+
+                // Подробное логирование сохраняемого результата
+                Timber.d("Saving result for step ${step.id}: ${event.result} (${event.result.javaClass.simpleName})")
                 updatedResults[step.id] = event.result
+
+                // Сохраняем также специальные ключи для быстрого доступа
+                when (event.result) {
+                    is TaskProduct -> {
+                        updatedResults["lastTaskProduct"] = event.result
+                        Timber.d("Also saved as lastTaskProduct for easier retrieval")
+
+                        // Также сохраняем продукт отдельно
+                        updatedResults["lastProduct"] = event.result.product
+                        Timber.d("Also saved as lastProduct for easier retrieval")
+                    }
+                    is Product -> {
+                        updatedResults["lastProduct"] = event.result
+                        Timber.d("Also saved as lastProduct for easier retrieval")
+                    }
+                    is Pallet -> {
+                        updatedResults["lastPallet"] = event.result
+                        Timber.d("Also saved as lastPallet for easier retrieval")
+                    }
+                    is BinX -> {
+                        updatedResults["lastBin"] = event.result
+                        Timber.d("Also saved as lastBin for easier retrieval")
+                    }
+                }
 
                 // Создаем обновленный контекст с новыми результатами
                 val updatedContext = context.copy(
                     results = updatedResults,
                     lastScannedBarcode = null
                 )
+
+                // Детальное логирование для отладки
+                Timber.d("Updated context results: ${updatedContext.results.entries.joinToString { "${it.key} -> ${it.value?.javaClass?.simpleName}" }}")
+
+                // Добавляем проверку для специфических случаев с TaskProduct
+                if (event.result is TaskProduct) {
+                    val next = stepIndex + 1
+                    if (next < context.steps.size) {
+                        val nextStep = context.steps[next]
+                        Timber.d("Next step will be: ${nextStep.id}, checking if it needs TaskProduct...")
+
+                        // Если следующий шаг идентифицирован как шаг ввода количества товара,
+                        // проверяем, что мы действительно передали TaskProduct
+                        if (nextStep.title.contains("количество", ignoreCase = true) ||
+                            nextStep.id.contains("quantity", ignoreCase = true)) {
+                            Timber.d("Next step appears to be a quantity step, ensuring TaskProduct is in context")
+
+                            // Дополнительное логирование для проверки
+                            if ("lastTaskProduct" in updatedResults) {
+                                Timber.d("lastTaskProduct is in context")
+                            } else {
+                                Timber.w("lastTaskProduct is NOT in context, this may cause problems!")
+                            }
+                        }
+                    }
+                }
 
                 // Определяем, нужно ли перейти к следующему шагу или завершить визард
                 if (isLastStep) {
