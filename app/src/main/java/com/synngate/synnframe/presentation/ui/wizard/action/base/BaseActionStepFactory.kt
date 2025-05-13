@@ -1,3 +1,4 @@
+// Заменяет com.synngate.synnframe.presentation.ui.wizard.action.base.BaseActionStepFactory
 package com.synngate.synnframe.presentation.ui.wizard.action.base
 
 import androidx.compose.runtime.Composable
@@ -11,7 +12,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
 import timber.log.Timber
 
 /**
- * Базовый класс фабрики шагов визарда.
+ * Улучшенный базовый класс фабрики шагов визарда.
  *
  * @param T тип данных, используемый на данном шаге
  */
@@ -20,7 +21,9 @@ abstract class BaseActionStepFactory<T> : ActionStepFactory {
     @Composable
     override fun createComponent(step: ActionStep, action: PlannedAction, context: ActionContext) {
         val viewModel = remember(step.id, action.id) {
-            getStepViewModel(step, action, context)
+            // Передаем в ViewModel ссылку на текущую фабрику
+            // для поддержки автоперехода
+            getStepViewModel(step, action, context, this)
         }
 
         // Получаем состояние из ViewModel
@@ -38,12 +41,13 @@ abstract class BaseActionStepFactory<T> : ActionStepFactory {
 
     /**
      * Создает или возвращает ViewModel для шага.
-     * Подклассы должны реализовать этот метод для своей конкретной логики.
+     * @param factory Ссылка на текущую фабрику (для поддержки автоперехода)
      */
     protected abstract fun getStepViewModel(
         step: ActionStep,
         action: PlannedAction,
-        context: ActionContext
+        context: ActionContext,
+        factory: ActionStepFactory
     ): BaseStepViewModel<T>
 
     /**

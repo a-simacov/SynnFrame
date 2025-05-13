@@ -1,3 +1,4 @@
+// Заменяет com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 package com.synngate.synnframe.presentation.ui.wizard.action.base
 
 import androidx.lifecycle.ViewModel
@@ -8,7 +9,7 @@ import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationResult
 import com.synngate.synnframe.domain.service.ValidationService
-import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
+import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,26 +19,36 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * Базовый класс ViewModel для шагов визарда.
+ * Улучшенный базовый класс ViewModel для шагов визарда.
+ * Добавляет встроенную поддержку автоперехода и надежную передачу данных.
  *
  * @param T тип данных, используемый на данном шаге
  * @property step текущий шаг действия
  * @property action запланированное действие
  * @property context контекст выполнения действия
  * @property validationService сервис для валидации данных
+ * @property stepFactory фабрика компонентов шага (используется для автоперехода)
  */
 abstract class BaseStepViewModel<T>(
     protected val step: ActionStep,
     protected val action: PlannedAction,
     protected val context: ActionContext,
     protected val validationService: ValidationService,
-    protected val actionStepFactoryRegistry: ActionStepFactoryRegistry? = null // Добавляем опциональную зависимость
+    protected val stepFactory: ActionStepFactory? = null
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(StepViewState<T>())
     val state: StateFlow<StepViewState<T>> = _state.asStateFlow()
 
+    // Флаг для предотвращения повторного автоперехода при инициализации
+    private var isInitializing = true
+
+    // Флаг, указывающий, был ли активирован автопереход
+    private var autoTransitionActivated = false
+
     init {
+        Timber.d("Инициализация ${this::class.java.simpleName} для шага ${step.id}")
+
         // Инициализируем состояние из контекста
         initStateFromContext()
 
@@ -45,6 +56,9 @@ abstract class BaseStepViewModel<T>(
         context.lastScannedBarcode?.let { barcode ->
             processBarcode(barcode)
         }
+
+        // Сбрасываем флаг инициализации
+        isInitializing = false
     }
 
     /**
@@ -60,14 +74,21 @@ abstract class BaseStepViewModel<T>(
                     try {
                         if (isValidType(result)) {
                             @Suppress("UNCHECKED_CAST")
+                            val typedResult = result as T
+
+                            // Устанавливаем данные в состояние
                             _state.update {
-                                it.copy(data = result as T)
+                                it.copy(data = typedResult)
                             }
+
+                            // Уведомляем подклассы о загрузке данных из контекста
+                            onResultLoadedFromContext(typedResult)
                         } else {
-                            Timber.w("Incompatible type for step ${context.stepId}: found ${result::class.simpleName}")
+                            Timber.w("Несовместимый тип для шага ${context.stepId}: " +
+                                    "найден ${result::class.simpleName}")
                         }
                     } catch (e: ClassCastException) {
-                        Timber.e(e, "Error casting result to expected type")
+                        Timber.e(e, "Ошибка приведения результата к ожидаемому типу")
                         setError("Ошибка при загрузке данных: несовместимый тип данных")
                     }
                 }
@@ -80,9 +101,17 @@ abstract class BaseStepViewModel<T>(
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error initializing state from context")
+            Timber.e(e, "Ошибка инициализации состояния из контекста")
             setError("Ошибка инициализации состояния: ${e.message}")
         }
+    }
+
+    /**
+     * Вызывается при загрузке результата из контекста.
+     * Подклассы могут переопределить этот метод для обработки загруженных данных.
+     */
+    protected open fun onResultLoadedFromContext(result: T) {
+        // Базовая реализация пуста
     }
 
     /**
@@ -106,6 +135,11 @@ abstract class BaseStepViewModel<T>(
      */
     open fun validateData(data: T?): Boolean {
         if (data == null) return false
+
+        // Проверяем базовые правила
+        if (!validateBasicRules(data)) {
+            return false
+        }
 
         // Получаем правила валидации из шага
         val validationRules = step.validationRules
@@ -145,8 +179,7 @@ abstract class BaseStepViewModel<T>(
             return true
         }
 
-        // Выполняем синхронную базовую валидацию
-        return validateBasicRules(data)
+        return true
     }
 
     /**
@@ -175,9 +208,7 @@ abstract class BaseStepViewModel<T>(
                 _state.update { it.copy(isLoading = true, error = null) }
 
                 if (validateData(result)) {
-                    // Обратите внимание, что ValidationService может асинхронно
-                    // вызвать context.onComplete, поэтому здесь мы не вызываем его повторно,
-                    // если метод validateData вернул true из-за API-валидации
+                    // Валидация прошла успешно
 
                     // Для не-API валидации, вызываем onComplete напрямую
                     val hasApiValidation = step.validationRules.rules.any {
@@ -249,38 +280,60 @@ abstract class BaseStepViewModel<T>(
 
     /**
      * Обрабатывает обновление поля и выполняет автопереход при необходимости
-     */
-    /**
-     * Обрабатывает обновление поля и выполняет автопереход при необходимости
      * @param fieldName Название поля
      * @param value Значение поля
-     * @param autoTransition Флаг, указывающий нужен ли автопереход (по умолчанию false)
+     * @param forceAutoTransition Принудительно выполнить автопереход, игнорируя проверки
      */
-    protected fun handleFieldUpdate(fieldName: String, value: T, autoTransition: Boolean = false) {
+    protected fun handleFieldUpdate(fieldName: String, value: T, forceAutoTransition: Boolean = false) {
         // Обновляем данные
         setData(value)
 
-        // Если автопереход запрещен явно или нет реестра фабрик, не делаем автопереход
-        if (!autoTransition || actionStepFactoryRegistry == null) {
+        // Если мы на этапе инициализации или автопереход уже активирован,
+        // не запускаем его снова
+        if (isInitializing || autoTransitionActivated) {
             return
         }
 
-        // Получаем фабрику для типа объекта текущего шага
-        val factory = actionStepFactoryRegistry.getFactory(step.objectType)
-
-        // Проверяем, поддерживает ли фабрика автопереход
-        if (factory is AutoCompleteCapableFactory &&
-            factory.isAutoCompleteEnabled(step) &&
-            factory.getAutoCompleteFieldName(step) == fieldName) {
-
-            // Если требуется подтверждение, показываем диалог
-            if (factory.requiresConfirmation(step, fieldName)) {
-                showConfirmationDialog(value)
-            } else {
-                // Автоматически завершаем шаг
-                completeStep(value)
-            }
+        // Если автопереход принудительно запрещен, не делаем его
+        if (!forceAutoTransition && !shouldAutoTransition(fieldName)) {
+            return
         }
+
+        // Отмечаем, что автопереход был активирован
+        autoTransitionActivated = true
+
+        // Проверяем, требуется ли подтверждение перед автопереходом
+        if (requiresConfirmationForAutoTransition(fieldName)) {
+            showConfirmationDialog(value)
+        } else {
+            // Автоматически завершаем шаг
+            completeStep(value)
+        }
+    }
+
+    /**
+     * Проверяет, нужен ли автопереход для текущего поля
+     */
+    protected fun shouldAutoTransition(fieldName: String): Boolean {
+        if (stepFactory !is AutoCompleteCapableFactory) {
+            return false
+        }
+
+        return (stepFactory as AutoCompleteCapableFactory).let { factory ->
+            factory.isAutoCompleteEnabled(step) &&
+                    factory.getAutoCompleteFieldName(step) == fieldName
+        }
+    }
+
+    /**
+     * Проверяет, требуется ли подтверждение перед автопереходом
+     */
+    protected fun requiresConfirmationForAutoTransition(fieldName: String): Boolean {
+        if (stepFactory !is AutoCompleteCapableFactory) {
+            return false
+        }
+
+        return (stepFactory as AutoCompleteCapableFactory).requiresConfirmation(step, fieldName)
     }
 
     /**
@@ -290,6 +343,6 @@ abstract class BaseStepViewModel<T>(
     protected open fun showConfirmationDialog(value: T) {
         // По умолчанию пустая реализация
         // Подклассы должны переопределить, если требуется подтверждение
-        Timber.w("showConfirmationDialog not implemented for ${this::class.java.simpleName}")
+        Timber.w("showConfirmationDialog не реализован в ${this::class.java.simpleName}")
     }
 }

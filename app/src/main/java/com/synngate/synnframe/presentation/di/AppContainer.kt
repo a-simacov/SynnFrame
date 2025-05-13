@@ -55,13 +55,10 @@ import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.ActionExecutionService
 import com.synngate.synnframe.domain.service.ActionSearchServiceImpl
 import com.synngate.synnframe.domain.service.ActionStepExecutionService
-import com.synngate.synnframe.domain.service.ActionWizardContextFactory
-import com.synngate.synnframe.domain.service.ActionWizardController
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.FileService
 import com.synngate.synnframe.domain.service.FinalActionsValidator
-import com.synngate.synnframe.domain.service.FsmWizardControllerAdapter
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.service.SoundService
@@ -400,44 +397,12 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         )
     }
 
-//    val actionWizardController by lazy {
-//        Timber.d("Creating ActionWizardController")
-//        ActionWizardController(
-//            actionExecutionService = actionExecutionService,
-//            actionStepExecutionService = actionStepExecutionService,
-//            taskContextManager = taskContextManager,
-//            taskXRepository = taskXRepository // Добавляем TaskXRepository
-//        )
-//    }
-
     val wizardStateMachine by lazy {
         Timber.d("Creating WizardStateMachine")
         WizardStateMachine(
             taskContextManager = taskContextManager,
-            actionExecutionService = actionExecutionService,
-            actionStepExecutionService = actionStepExecutionService
+            actionExecutionService = actionExecutionService
         )
-    }
-
-    val fsmWizardControllerAdapter by lazy {
-        Timber.d("Creating FsmWizardControllerAdapter")
-        FsmWizardControllerAdapter(
-            stateMachine = wizardStateMachine,
-            taskContextManager = taskContextManager,
-            taskXRepository = taskXRepository
-        )
-    }
-
-    val actionWizardController by lazy {
-        Timber.d("Creating ActionWizardController")
-        ActionWizardController(
-            fsmAdapter = fsmWizardControllerAdapter
-        )
-    }
-
-    val actionWizardContextFactory by lazy {
-        Timber.d("Creating ActionWizardContextFactory")
-        ActionWizardContextFactory()
     }
 
     val taskXApi: TaskXApi by lazy {
@@ -807,8 +772,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
             ActionWizardViewModel(
                 taskId = taskId,
                 actionId = actionId,
-                actionWizardController = appContainer.actionWizardController,
-                actionWizardContextFactory = appContainer.actionWizardContextFactory,
+                wizardStateMachine = appContainer.wizardStateMachine,
                 actionStepFactoryRegistry = createActionStepFactoryRegistry()
             )
         }

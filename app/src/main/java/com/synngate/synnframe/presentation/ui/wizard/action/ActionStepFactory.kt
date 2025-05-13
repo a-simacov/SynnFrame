@@ -1,3 +1,4 @@
+// Обновление интерфейса AutoCompleteCapableFactory
 package com.synngate.synnframe.presentation.ui.wizard.action
 
 import androidx.compose.runtime.Composable
@@ -36,16 +37,52 @@ interface ActionStepFactory {
 interface AutoCompleteCapableFactory {
     /**
      * Возвращает имя поля, при заполнении которого происходит автопереход
+     * @param step Шаг действия
+     * @return Название поля или null, если автопереход не поддерживается
      */
     fun getAutoCompleteFieldName(step: ActionStep): String?
 
     /**
      * Проверяет, включен ли автопереход для данного шага
+     * @param step Шаг действия
+     * @return true, если автопереход включен, иначе false
      */
     fun isAutoCompleteEnabled(step: ActionStep): Boolean
 
     /**
      * Проверяет, требует ли поле подтверждения перед автопереходом
+     * @param step Шаг действия
+     * @param fieldName Название поля
+     * @return true, если требуется подтверждение, иначе false
      */
     fun requiresConfirmation(step: ActionStep, fieldName: String): Boolean
+}
+
+/**
+ * Класс-помощник для работы с автопереходом
+ */
+object AutoTransitionHelper {
+    /**
+     * Проверяет, нужен ли автопереход для шага при изменении поля
+     * @param factory Фабрика шагов
+     * @param step Текущий шаг
+     * @param fieldName Название измененного поля
+     * @return true, если нужен автопереход, иначе false
+     */
+    fun shouldAutoTransition(factory: ActionStepFactory?, step: ActionStep, fieldName: String): Boolean {
+        return factory is AutoCompleteCapableFactory &&
+                factory.isAutoCompleteEnabled(step) &&
+                factory.getAutoCompleteFieldName(step) == fieldName
+    }
+
+    /**
+     * Проверяет, нужно ли подтверждение перед автопереходом
+     * @param factory Фабрика шагов
+     * @param step Текущий шаг
+     * @param fieldName Название поля
+     * @return true, если нужно подтверждение, иначе false
+     */
+    fun requiresConfirmation(factory: ActionStepFactory?, step: ActionStep, fieldName: String): Boolean {
+        return (factory as? AutoCompleteCapableFactory)?.requiresConfirmation(step, fieldName) ?: false
+    }
 }

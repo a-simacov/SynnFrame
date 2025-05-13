@@ -1,5 +1,4 @@
-// Файл: app/src/main/java/com/synngate/synnframe/presentation/ui/wizard/ActionWizardScreen.kt
-
+// Заменяет com.synngate.synnframe.presentation.ui.wizard.ActionWizardScreen
 package com.synngate.synnframe.presentation.ui.wizard
 
 import androidx.activity.compose.BackHandler
@@ -14,12 +13,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.synngate.synnframe.domain.model.wizard.WizardContextFactory
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionWizardContent
 
+/**
+ * Упрощенный экран визарда действий
+ */
 @Composable
 fun ActionWizardScreen(
     viewModel: ActionWizardViewModel,
@@ -27,8 +30,9 @@ fun ActionWizardScreen(
     navigateBackWithSuccess: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val wizardState by viewModel.actionWizardController.wizardState.collectAsState()
+    val wizardState by viewModel.wizardStateMachine.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val wizardContextFactory = remember { WizardContextFactory() }
 
     BackHandler {
         val currentState = wizardState
@@ -39,7 +43,7 @@ fun ActionWizardScreen(
                     viewModel.cancelWizard()
                 }
                 currentState.isCompleted -> {
-                    viewModel.goBackFromSummary()
+                    viewModel.goBackToPreviousStep()
                 }
                 else -> {
                     viewModel.goBackToPreviousStep()
@@ -97,13 +101,13 @@ fun ActionWizardScreen(
         ) { paddingValues ->
             ActionWizardContent(
                 wizardState = wizardState,
-                actionWizardController = viewModel.actionWizardController,
-                actionWizardContextFactory = viewModel.actionWizardContextFactory,
-                actionStepFactoryRegistry = viewModel.actionStepFactoryRegistry,
+                onProcessStepResult = { result -> viewModel.processStepResult(result) },
                 onComplete = { viewModel.completeWizard() },
                 onCancel = { viewModel.cancelWizard() },
                 onRetryComplete = { viewModel.retryCompleteWizard() },
                 onBarcodeScanned = { viewModel.processBarcodeFromScanner(it) },
+                actionStepFactoryRegistry = viewModel.actionStepFactoryRegistry,
+                wizardContextFactory = wizardContextFactory,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)

@@ -1,126 +1,234 @@
 package com.synngate.synnframe.domain.model.wizard
 
+import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.service.ActionExecutionService
-import com.synngate.synnframe.domain.service.ActionStepExecutionService
 import com.synngate.synnframe.domain.service.TaskContextManager
+import com.synngate.synnframe.presentation.di.Disposable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import timber.log.Timber
+import java.time.LocalDateTime
 
 /**
- * Машина состояний для управления визардом действий.
- * Отвечает за переходы между состояниями на основе внешних событий.
+ * Улучшенная машина состояний для управления визардом действий.
+ * Предоставляет единый интерфейс для работы с визардом без необходимости адаптеров.
+ * Все методы безопасны в отношении потоков и исключений.
  */
 class WizardStateMachine(
     private val taskContextManager: TaskContextManager,
-    private val actionExecutionService: ActionExecutionService,
-    private val actionStepExecutionService: ActionStepExecutionService
-) {
-    // Текущее состояние машины
-    private val _currentState = MutableStateFlow<WizardState?>(null)
-    val currentState: StateFlow<WizardState?> = _currentState.asStateFlow()
+    private val actionExecutionService: ActionExecutionService
+) : Disposable {
 
-    // Текущий контекст
-    private var context: WizardContext = WizardContext()
-
-    // Публичный доступ к контексту (только для чтения)
-    val wizardContext: WizardContext get() = context
-
-    init {
-        // Начальное состояние - null
-        _currentState.value = null
-    }
+    // Состояние визарда (доступное для UI)
+    private val _state = MutableStateFlow<ActionWizardState?>(null)
+    val state: StateFlow<ActionWizardState?> = _state.asStateFlow()
 
     /**
-     * Обрабатывает событие и переходит в новое состояние, если это необходимо.
-     * @param event Событие для обработки
-     * @return true, если переход состоялся, false - если состояние не изменилось
+     * Инициализирует визард для указанного задания и действия
+     * @return результат инициализации
      */
-    fun handleEvent(event: WizardEvent): Boolean {
-        val currentState = _currentState.value
-        Timber.d("WizardStateMachine: handling event $event in state ${currentState?.id}")
+    suspend fun initialize(taskId: String, actionId: String): Result<Boolean> {
+        Timber.d("Initializing wizard for task $taskId, action $actionId")
 
-        // Если текущее состояние не установлено и событие не инициализация,
-        // то сначала нужно инициализировать
-        if (currentState == null && event !is WizardEvent.Initialize) {
-            Timber.e("Cannot handle event $event: machine not initialized")
-            return false
-        }
-
-        // Запрашиваем у текущего состояния новое состояние для данного события
-        val nextState = currentState?.handleEvent(event)
-
-        // Если получили новое состояние, обновляем текущее
-        if (nextState != null && nextState != currentState) {
-            Timber.d("Transitioning from ${currentState?.id} to ${nextState.id}")
-            _currentState.value = nextState
-            return true
-        }
-
-        if (nextState == currentState) {
-            Timber.d("State unchanged after handling event $event")
-        } else if (nextState == null) {
-            Timber.d("No state transition for event $event in state ${currentState?.id}")
-        }
-
-        return false
-    }
-
-    /**
-     * Инициализация визарда с данными из TaskContextManager
-     */
-    suspend fun initialize(taskId: String, actionId: String): Boolean {
         try {
+            // Получаем задание из контекста
             val task = taskContextManager.lastStartedTaskX.value
-                ?: return false
+                ?: return Result.failure(IllegalStateException("Task not found in context"))
 
             if (task.id != taskId) {
-                Timber.e("Task ID mismatch: expected $taskId, got ${task.id}")
-                return false
+                return Result.failure(IllegalStateException("Task ID mismatch: expected $taskId, got ${task.id}"))
             }
 
+            // Находим действие в задании
             val action = task.plannedActions.find { it.id == actionId }
-                ?: return false
+                ?: return Result.failure(IllegalStateException("Action not found: $actionId"))
 
+            // Получаем тип задания
             val taskType = taskContextManager.lastTaskTypeX.value
+                ?: return Result.failure(IllegalStateException("Task type not found in context"))
 
             // Создаем шаги из шаблона действия
             val steps = createStepsFromAction(action)
-
             if (steps.isEmpty()) {
-                Timber.e("No steps created for action $actionId")
-                return false
+                return Result.failure(IllegalStateException("No steps found for action"))
             }
 
-            // Обновляем контекст
-            if (taskType != null)
-                context = WizardContext(
-                    taskId = taskId,
-                    actionId = actionId,
-                    task = task,
-                    action = action,
-                    steps = steps,
-                    // Здесь можно добавить дополнительные данные
-                    results = mapOf("taskType" to taskType)
-                )
+            // Создаем базовое состояние визарда
+            val initialState = ActionWizardState(
+                taskId = taskId,
+                actionId = actionId,
+                action = action,
+                steps = steps,
+                currentStepIndex = 0,
+                results = mapOf("taskType" to taskType),
+                startedAt = LocalDateTime.now(),
+                isInitialized = true
+            )
 
-            // Создаем начальное состояние и устанавливаем его
-            val initialState = context.createInitializingState()
-            _currentState.value = initialState
+            // Устанавливаем начальное состояние
+            _state.value = initialState
 
-            // Обрабатываем событие инициализации
-            return handleEvent(WizardEvent.Initialize(taskId, actionId))
+            return Result.success(true)
         } catch (e: Exception) {
-            Timber.e(e, "Error initializing wizard for task $taskId, action $actionId")
-            return false
+            Timber.e(e, "Error initializing wizard")
+            return Result.failure(e)
         }
     }
 
     /**
-     * Создает список шагов из шаблона действия
+     * Обрабатывает результат шага
+     * @param result результат шага или null для навигации назад
+     */
+    suspend fun processStepResult(result: Any?) {
+        val currentState = _state.value ?: return
+
+        try {
+            if (result == null) {
+                // Навигация назад
+                navigateBack(currentState)
+            } else {
+                // Сохраняем результат и переходим к следующему шагу
+                saveStepResultAndMoveForward(currentState, result)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error processing step result")
+            // Обновляем состояние с ошибкой
+            _state.update { currentState ->
+                currentState?.let {
+                    val updatedErrors = it.errors.toMutableMap()
+                    updatedErrors[it.currentStep?.id ?: ""] = e.message ?: "Unknown error"
+                    it.copy(errors = updatedErrors)
+                }
+            }
+        }
+    }
+
+    /**
+     * Обрабатывает штрих-код от сканера
+     */
+    fun processBarcodeFromScanner(barcode: String) {
+        _state.update { it?.copy(lastScannedBarcode = barcode) }
+    }
+
+    /**
+     * Отменяет визард
+     */
+    fun cancel() {
+        reset()
+    }
+
+    /**
+     * Завершает визард с выполнением действия
+     */
+    suspend fun complete(): Result<TaskX> {
+        try {
+            val currentState = _state.value ?:
+            return Result.failure(IllegalStateException("Wizard not initialized"))
+
+            // Устанавливаем флаг отправки
+            _state.update { it?.copy(isSending = true) }
+
+            // Выполняем действие через ActionExecutionService
+            val result = actionExecutionService.executeAction(
+                taskId = currentState.taskId,
+                actionId = currentState.actionId,
+                stepResults = currentState.results,
+                completeAction = true
+            )
+
+            // Обновляем состояние в зависимости от результата
+            if (result.isSuccess) {
+                _state.update { it?.copy(isSending = false, sendError = null) }
+            } else {
+                val errorMessage = result.exceptionOrNull()?.message ?: "Unknown error"
+                _state.update { it?.copy(isSending = false, sendError = errorMessage) }
+            }
+
+            return result
+        } catch (e: Exception) {
+            Timber.e(e, "Error completing wizard")
+            _state.update { it?.copy(isSending = false, sendError = e.message) }
+            return Result.failure(e)
+        }
+    }
+
+    /**
+     * Сбрасывает машину состояний
+     */
+    override fun dispose() {
+        reset()
+    }
+
+    /**
+     * Сбрасывает состояние машины
+     */
+    private fun reset() {
+        _state.value = null
+    }
+
+    /**
+     * Навигация назад
+     */
+    private fun navigateBack(currentState: ActionWizardState) {
+        if (currentState.currentStepIndex > 0) {
+            // Если мы не на первом шаге, переходим к предыдущему
+            _state.update { it?.copy(
+                currentStepIndex = currentState.currentStepIndex - 1,
+                lastScannedBarcode = null
+            ) }
+        } else if (currentState.isCompleted) {
+            // Если мы на экране завершения, возвращаемся к последнему шагу
+            _state.update { it?.copy(
+                currentStepIndex = currentState.steps.size - 1,
+                lastScannedBarcode = null
+            ) }
+        }
+    }
+
+    /**
+     * Сохраняет результат шага и переходит к следующему
+     */
+    private fun saveStepResultAndMoveForward(currentState: ActionWizardState, result: Any) {
+        val currentStep = currentState.currentStep ?: return
+        val updatedResults = currentState.results.toMutableMap()
+
+        // Сохраняем результат текущего шага
+        updatedResults[currentStep.id] = result
+
+        // Также сохраняем отдельные индексы для определенных типов данных
+        // для упрощения доступа в следующих шагах
+        when (result) {
+            is TaskProduct -> {
+                updatedResults["lastTaskProduct"] = result
+                updatedResults["lastProduct"] = result.product
+            }
+            is Product -> {
+                updatedResults["lastProduct"] = result
+            }
+        }
+
+        // Определяем следующий шаг
+        val nextStepIndex = if (currentState.currentStepIndex < currentState.steps.size - 1) {
+            currentState.currentStepIndex + 1
+        } else {
+            currentState.steps.size // Указывает на завершение визарда
+        }
+
+        // Обновляем состояние
+        _state.update { it?.copy(
+            currentStepIndex = nextStepIndex,
+            results = updatedResults,
+            lastScannedBarcode = null
+        ) }
+    }
+
+    /**
+     * Создает шаги из шаблона действия
      */
     private fun createStepsFromAction(action: PlannedAction): List<WizardStep> {
         val steps = mutableListOf<WizardStep>()
@@ -155,33 +263,5 @@ class WizardStateMachine(
         }
 
         return steps
-    }
-
-    /**
-     * Сброс машины состояний в начальное состояние
-     */
-    fun reset() {
-        Timber.d("Resetting state machine")
-        _currentState.value = null
-        context = WizardContext()
-    }
-
-    /**
-     * Выполнение действия с текущими данными контекста
-     */
-    suspend fun executeAction(): Result<TaskX> {
-        val taskId = context.taskId
-        val actionId = context.actionId
-
-        if (taskId.isEmpty() || actionId.isEmpty()) {
-            return Result.failure(IllegalStateException("Task ID or Action ID is empty"))
-        }
-
-        return actionExecutionService.executeAction(
-            taskId = taskId,
-            actionId = actionId,
-            stepResults = context.results,
-            completeAction = false
-        )
     }
 }
