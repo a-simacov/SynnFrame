@@ -10,7 +10,7 @@ import timber.log.Timber
  */
 abstract class BaseWizardState(
     override val id: String,
-    protected val context: WizardContext
+    protected val context: WizardContextInterface
 ) : WizardState {
 
     override val isTerminal: Boolean = false
@@ -41,15 +41,15 @@ abstract class BaseWizardState(
  * Также отвечает за создание новых состояний.
  */
 data class WizardContext(
-    val taskId: String = "",
-    val actionId: String = "",
-    val task: TaskX? = null,
-    val action: PlannedAction? = null,
-    val steps: List<WizardStep> = emptyList(),
-    val results: Map<String, Any> = emptyMap(),
-    val errors: Map<String, String> = emptyMap(),
-    val lastScannedBarcode: String? = null
-) {
+    override val taskId: String = "",
+    override val actionId: String = "",
+    override val task: TaskX? = null,
+    override val action: PlannedAction? = null,
+    override val steps: List<WizardStep> = emptyList(),
+    override val results: Map<String, Any> = emptyMap(),
+    override val errors: Map<String, String> = emptyMap(),
+    override val lastScannedBarcode: String? = null
+) : WizardContextInterface {
     // Фабричные методы для создания состояний
 
     fun createInitializingState(): InitializingState {
@@ -79,25 +79,25 @@ data class WizardContext(
     /**
      * Создает новый контекст с обновленными данными
      */
-//    fun copy(
-//        taskId: String = this.taskId,
-//        actionId: String = this.actionId,
-//        task: TaskX? = this.task,
-//        action: PlannedAction? = this.action,
-//        steps: List<WizardStep> = this.steps,
-//        results: Map<String, Any> = this.results,
-//        errors: Map<String, String> = this.errors,
-//        lastScannedBarcode: String? = this.lastScannedBarcode
-//    ): WizardContext {
-//        return WizardContext(
-//            taskId = taskId,
-//            actionId = actionId,
-//            task = task,
-//            action = action,
-//            steps = steps,
-//            results = results,
-//            errors = errors,
-//            lastScannedBarcode = lastScannedBarcode
-//        )
-//    }
+    override fun copy(
+        taskId: String,
+        actionId: String,
+        task: TaskX?,
+        action: PlannedAction?,
+        steps: List<WizardStep>,
+        results: Map<String, Any>,
+        errors: Map<String, String>,
+        lastScannedBarcode: String?
+    ): WizardContextInterface {
+        return WizardContext(
+            taskId = taskId,
+            actionId = actionId,
+            task = task,
+            action = action,
+            steps = steps,
+            results = results,
+            errors = errors,
+            lastScannedBarcode = lastScannedBarcode
+        )
+    }
 }
