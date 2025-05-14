@@ -1,6 +1,7 @@
 package com.synngate.synnframe.presentation.ui.dynamicmenu.menu
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -28,9 +29,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.type
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.DynamicMenuItemType
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
@@ -49,8 +58,19 @@ fun DynamicMenuScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
-
     val snackbarHostState = remember { SnackbarHostState() }
+    val focusRequester = remember { FocusRequester() }
+
+    // Создаем список кнопок навигации
+    val navigationButtons = state.menuItems.mapIndexed { index, menuItem ->
+        NavigationButtonData(
+            text = menuItem.name,
+            onClick = { viewModel.onMenuItemClick(menuItem) },
+            icon = getIconForMenuItemType(menuItem.type),
+            contentDescription = menuItem.name,
+            keyCode = android.view.KeyEvent.KEYCODE_1 + index
+        )
+    }
 
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
@@ -82,6 +102,10 @@ fun DynamicMenuScreen(
                 }
             }
         }
+    }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
     }
 
     val onBackAction = {
@@ -123,6 +147,16 @@ fun DynamicMenuScreen(
             modifier = modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .focusRequester(focusRequester)
+                .focusable()
+                .onKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown) {
+                        handleKeyPress(event.key.nativeKeyCode, navigationButtons)
+                        true
+                    } else {
+                        false
+                    }
+                }
         ) {
             if (state.menuItems.isEmpty() && !state.isLoading) {
                 Text(
@@ -157,19 +191,32 @@ private fun DynamicMenuContent(
             .padding(horizontal = 4.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        menuItems.forEach { menuItem ->
+        menuItems.forEachIndexed { index, menuItem ->
             val icon = getIconForMenuItemType(menuItem.type)
 
             NavigationButton(
                 text = menuItem.name,
                 onClick = { onMenuItemClick(menuItem) },
                 icon = icon,
-                contentDescription = menuItem.name
+                contentDescription = menuItem.name,
+                keyCode = index + 1
             )
 
             Spacer(modifier = Modifier.height(12.dp))
         }
     }
+}
+
+private data class NavigationButtonData(
+    val text: String,
+    val onClick: () -> Unit,
+    val icon: ImageVector,
+    val contentDescription: String,
+    val keyCode: Int
+)
+
+private fun handleKeyPress(keyCode: Int, navigationButtons: List<NavigationButtonData>) {
+    navigationButtons.find { it.keyCode == keyCode }?.onClick?.invoke()
 }
 
 @Composable
