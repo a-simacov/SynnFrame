@@ -5,6 +5,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
+import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
@@ -18,8 +19,9 @@ class BinSelectionViewModel(
     action: PlannedAction,
     context: ActionContext,
     private val binLookupService: BinLookupService,
-    validationService: ValidationService
-) : BaseStepViewModel<BinX>(step, action, context, validationService) {
+    validationService: ValidationService,
+    stepFactory: ActionStepFactory? = null
+) : BaseStepViewModel<BinX>(step, action, context, validationService, stepFactory) {
 
     // Данные о ячейках из плана
     private val plannedBin = action.placementBin

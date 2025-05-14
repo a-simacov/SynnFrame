@@ -46,6 +46,7 @@ class BinSelectionStepFactory(
             context = context,
             binLookupService = binLookupService,
             validationService = validationService,
+            stepFactory = factory
         )
     }
 
@@ -179,7 +180,7 @@ class BinSelectionStepFactory(
 
     override fun isAutoCompleteEnabled(step: ActionStep): Boolean {
         // Включаем автопереход для шагов выбора ячейки из плана
-        return step.promptText.contains("план", ignoreCase = true)
+        return true//return step.promptText.contains("план", ignoreCase = true)
     }
 
     override fun requiresConfirmation(step: ActionStep, fieldName: String): Boolean {
