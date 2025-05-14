@@ -1,7 +1,9 @@
 package com.synngate.synnframe.presentation.common.buttons
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.presentation.theme.LocalNavigationButtonHeight
@@ -31,7 +35,8 @@ fun NavigationButton(
     icon: ImageVector? = null,
     contentDescription: String? = null,
     badge: Int? = null,
-    badgeColor: Color = MaterialTheme.colorScheme.error
+    badgeColor: Color = MaterialTheme.colorScheme.error,
+    keyCode: Int? = null
 ) {
     val buttonHeight = LocalNavigationButtonHeight.current
 
@@ -40,7 +45,10 @@ fun NavigationButton(
         enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
-            .height(buttonHeight.dp),
+            .height(buttonHeight.dp)
+            .semantics {
+                this.contentDescription = "tag:${keyCode ?: ""}"
+            },
         contentPadding = PaddingValues(8.dp),
         shape = MaterialTheme.shapes.medium
     ) {
@@ -56,12 +64,23 @@ fun NavigationButton(
                         .align(Alignment.CenterStart)
                 )
             }
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center,
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.align(Alignment.Center)
-            )
+            ) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center,
+                )
+                if (keyCode != null)
+                    Text(
+                        text = "($keyCode)",
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center,
+                    )
+            }
 
             if (badge != null && badge > 0) {
                 Badge(
