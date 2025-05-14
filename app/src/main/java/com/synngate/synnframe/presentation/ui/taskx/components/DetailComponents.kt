@@ -203,17 +203,6 @@ fun PlannedActionItem(
                 .fillMaxWidth()
                 .padding(4.dp)
         ) {
-//            // Верхняя часть карточки с названием и статусом
-//            Row(
-//                verticalAlignment = Alignment.CenterVertically,
-//                modifier = Modifier.fillMaxWidth()
-//            ) {
-//                // Основная информация о действии
-//
-//
-//                // Статус действия теперь отображается только цветом фона,
-//                // поэтому здесь не показываем иконку статуса
-//            }
             if (hasMultipleFactActions.not())
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(

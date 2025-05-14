@@ -5,9 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
@@ -17,8 +15,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +30,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -42,16 +39,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.math.roundToInt
 
-/**
- * Улучшенный компонент для ввода количества с возможностью инкремента/декремента
- * и поддержкой десятичных значений
- */
 @Composable
 fun WizardQuantityInput(
     value: String,
@@ -201,9 +195,6 @@ fun WizardQuantityInput(
     }
 }
 
-/**
- * Кнопка управления количеством с поддержкой долгого нажатия
- */
 @Composable
 private fun QuantityControlButton(
     icon: ImageVector,
@@ -264,98 +255,6 @@ private fun QuantityControlButton(
     }
 }
 
-/**
- * Компонент для отображения количественных показателей
- */
-@Composable
-fun QuantityIndicatorCard(
-    title: String,
-    planned: Float,
-    completed: Float,
-    current: Float = 0f,
-    modifier: Modifier = Modifier
-) {
-    val total = completed + current
-    val remaining = (planned - total).coerceAtLeast(0f)
-    val isOverLimit = planned > 0f && total > planned
-
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Строка с плановым количеством
-            QuantityRow(
-                label = "План:",
-                value = formatQuantityDisplay(planned)
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Строка с выполненным количеством
-            QuantityRow(
-                label = "Выполнено:",
-                value = formatQuantityDisplay(completed)
-            )
-
-            if (current > 0f) {
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Строка с текущим вводимым количеством
-                QuantityRow(
-                    label = "Текущее:",
-                    value = formatQuantityDisplay(current)
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Строка с итоговым количеством
-                QuantityRow(
-                    label = "Итого будет:",
-                    value = formatQuantityDisplay(total),
-                    highlight = true,
-                    warning = isOverLimit
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Строка с оставшимся количеством
-            QuantityRow(
-                label = "Осталось:",
-                value = formatQuantityDisplay(remaining),
-                warning = isOverLimit
-            )
-
-            if (isOverLimit) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Внимание: превышение планового количества!",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        }
-    }
-}
-
-/**
- * Компонент для отображения строки с меткой и значением
- */
 @Composable
 fun QuantityRow(
     label: String,
@@ -384,6 +283,41 @@ fun QuantityRow(
                 MaterialTheme.colorScheme.onPrimaryContainer,
             fontWeight = if (highlight) FontWeight.Bold else FontWeight.Normal
         )
+    }
+}
+
+@Composable
+fun QuantityColumn(
+    label: String,
+    valueSmall: String,
+    valueLarge: String,
+    color: Color
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            textAlign = TextAlign.Center
+        )
+        Row(
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Text(
+                text = valueLarge,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = color,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "($valueSmall)",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 
