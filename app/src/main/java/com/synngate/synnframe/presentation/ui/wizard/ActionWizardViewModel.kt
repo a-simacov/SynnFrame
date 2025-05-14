@@ -63,16 +63,13 @@ class ActionWizardViewModel(
     fun completeWizard() {
         launchIO {
             try {
-                // Добавляем логирование для отслеживания
-                Timber.d("$TAG: Начинаем завершение визарда для actionId=$actionId, taskId=$taskId")
+                Timber.d("Начинаем завершение визарда для actionId=$actionId, taskId=$taskId")
                 val result = wizardStateMachine.complete()
 
                 if (result.isSuccess) {
                     WizardLogger.logStep(TAG, "complete", "Визард успешно завершен",
                         WizardLogger.LogLevel.MINIMAL)
-
-                    // ВАЖНОЕ ИСПРАВЛЕНИЕ: Добавляем логирование перед отправкой события
-                    Timber.d("$TAG: Отправляем событие NavigateBackWithSuccess с actionId=$actionId")
+                    Timber.d("Отправляем событие NavigateBackWithSuccess с actionId=$actionId")
                     sendEvent(ActionWizardEvent.NavigateBackWithSuccess(actionId))
                 } else {
                     val errorMessage = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
@@ -98,8 +95,6 @@ class ActionWizardViewModel(
      * Отменяет визард
      */
     fun cancelWizard() {
-        // ИСПРАВЛЕНИЕ: Добавляем логирование
-        Timber.d("$TAG: Отменяем визард")
         wizardStateMachine.cancel()
         sendEvent(ActionWizardEvent.NavigateBack)
     }

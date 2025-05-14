@@ -35,31 +35,22 @@ fun ActionWizardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val wizardContextFactory = remember { WizardContextFactory() }
 
-    // ИСПРАВЛЕНО: Добавлено логирование при первой загрузке экрана
-    LaunchedEffect(Unit) {
-        Timber.d("ActionWizardScreen: Инициализация")// с taskId=${viewModel.taskId}, actionId=${viewModel.actionId}")
-    }
-
     BackHandler {
         val currentState = wizardState
 
         if (currentState != null) {
             when {
                 currentState.currentStepIndex == 0 -> {
-                    Timber.d("BackHandler: отмена визарда (первый шаг)")
                     viewModel.cancelWizard()
                 }
                 currentState.isCompleted -> {
-                    Timber.d("BackHandler: возврат к предыдущему шагу (из итогового экрана)")
                     viewModel.goBackToPreviousStep()
                 }
                 else -> {
-                    Timber.d("BackHandler: возврат к предыдущему шагу (текущий индекс: ${currentState.currentStepIndex})")
                     viewModel.goBackToPreviousStep()
                 }
             }
         } else {
-            Timber.d("BackHandler: отмена визарда (нет состояния)")
             viewModel.cancelWizard()
         }
     }
@@ -77,9 +68,7 @@ fun ActionWizardScreen(
     }
 
     LaunchedEffect(viewModel) {
-        Timber.d("Начинаем сбор событий от ActionWizardViewModel")
         viewModel.events.collect { event ->
-            Timber.d("Получено событие: $event")
             when (event) {
                 is ActionWizardEvent.NavigateBack -> {
                     Timber.d("Выполняем navigateBack")
@@ -87,10 +76,12 @@ fun ActionWizardScreen(
                 }
                 is ActionWizardEvent.NavigateBackWithSuccess -> {
                     Timber.d("Выполняем navigateBackWithSuccess с actionId=${event.actionId}")
+                    // ИСПРАВЛЕНИЕ: добавляем задержку перед навигацией, чтобы убедиться,
+                    // что все данные очищены и сохранены
+                    kotlinx.coroutines.delay(100)
                     navigateBackWithSuccess(event.actionId)
                 }
                 is ActionWizardEvent.ShowSnackbar -> {
-                    Timber.d("Показываем Snackbar: ${event.message}")
                     snackbarHostState.showSnackbar(
                         message = event.message,
                         duration = SnackbarDuration.Short
@@ -111,33 +102,19 @@ fun ActionWizardScreen(
             notification = wizardState?.sendError?.let {
                 Pair(it, StatusType.ERROR)
             },
-            onNavigateBack = {
-                Timber.d("AppScaffold: вызов onNavigateBack")
-                viewModel.cancelWizard()
-            },
+            onNavigateBack = { viewModel.cancelWizard() },
             snackbarHostState = snackbarHostState
         ) { paddingValues ->
             ActionWizardContent(
                 wizardState = wizardState,
-                onProcessStepResult = { result ->
-                    Timber.d("ActionWizardContent: вызов onProcessStepResult с результатом: ${result?.javaClass?.simpleName}")
-                    viewModel.processStepResult(result)
-                },
+                onProcessStepResult = { result -> viewModel.processStepResult(result) },
                 onComplete = {
                     Timber.d("ActionWizardContent: вызов onComplete")
                     viewModel.completeWizard()
                 },
-                onCancel = {
-                    Timber.d("ActionWizardContent: вызов onCancel")
-                    viewModel.cancelWizard()
-                },
-                onRetryComplete = {
-                    Timber.d("ActionWizardContent: вызов onRetryComplete")
-                    viewModel.retryCompleteWizard()
-                },
-                onBarcodeScanned = {
-                    viewModel.processBarcodeFromScanner(it)
-                },
+                onCancel = { viewModel.cancelWizard() },
+                onRetryComplete = { viewModel.retryCompleteWizard() },
+                onBarcodeScanned = { viewModel.processBarcodeFromScanner(it) },
                 actionStepFactoryRegistry = viewModel.actionStepFactoryRegistry,
                 wizardContextFactory = wizardContextFactory,
                 modifier = Modifier

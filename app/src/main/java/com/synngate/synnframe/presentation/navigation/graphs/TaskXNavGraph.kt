@@ -66,7 +66,7 @@ fun NavGraphBuilder.taskXNavGraph(
             val completedActionId = entry.savedStateHandle.get<String>("completedActionId")
             if (completedActionId != null) {
                 // Если есть результат, обрабатываем его и очищаем
-                Timber.d("Found completedActionId: $completedActionId in savedStateHandle")
+                Timber.d("TaskXDetail: Получен результат completedActionId=$completedActionId")
                 viewModel.onActionCompleted(completedActionId)
                 entry.savedStateHandle.remove<String>("completedActionId")
             }
@@ -78,7 +78,13 @@ fun NavGraphBuilder.taskXNavGraph(
                 },
                 // Добавляем функцию навигации к экрану визарда
                 navigateToActionWizard = { taskIdLambda, actionId ->
-                    navController.navigate(TaskXRoutes.ActionWizardScreen.createRoute(taskIdLambda, actionId))
+                    // ИСПРАВЛЕНИЕ: изменяем параметры навигации для корректного возврата из визарда
+                    navController.navigate(TaskXRoutes.ActionWizardScreen.createRoute(taskIdLambda, actionId)) {
+                        // Сохраняем состояние текущего экрана (без его удаления из стека)
+                        restoreState = true
+                        // Используем launchSingleTop, чтобы избежать создания нескольких экземпляров визарда
+                        launchSingleTop = true
+                    }
                 }
             )
         }
@@ -110,26 +116,17 @@ fun NavGraphBuilder.taskXNavGraph(
             ActionWizardScreen(
                 viewModel = viewModel,
                 navigateBack = {
-                    // ИСПРАВЛЕНИЕ: Добавляем логирование для отладки
-                    Timber.d("Navigating back from ActionWizardScreen")
+                    // ИСПРАВЛЕНИЕ: простой возврат назад без каких-либо дополнительных действий
                     navController.popBackStack()
                 },
                 navigateBackWithSuccess = { completedActionId ->
-                    // ИСПРАВЛЕНИЕ: Улучшенная навигация с возвратом на экран задания
-                    Timber.d("Navigating back with success, completedActionId: $completedActionId")
-
-                    // Сохраняем ID выполненного действия в переменную состояния предыдущего экрана
-                    navController.previousBackStackEntry?.savedStateHandle?.set(
-                        "completedActionId",
-                        completedActionId
-                    )
-
-                    // Проверяем, есть ли предыдущий экран в стеке навигации
-                    val previousRoute = navController.previousBackStackEntry?.destination?.route
-                    Timber.d("Previous route: $previousRoute")
-
-                    // Простой popBackStack() для возврата на предыдущий экран
-                    // Это должен быть экран задания TaskXDetail
+                    // ИСПРАВЛЕНИЕ: убеждаемся, что есть предыдущий экран в стеке
+                    navController.previousBackStackEntry?.let { previousEntry ->
+                        // Сохраняем результат в savedStateHandle предыдущего экрана
+                        Timber.d("ActionWizard: Сохраняем результат completedActionId=$completedActionId для предыдущего экрана")
+                        previousEntry.savedStateHandle["completedActionId"] = completedActionId
+                    }
+                    // Просто возвращаемся назад, что должно привести нас к TaskXDetail
                     navController.popBackStack()
                 }
             )
