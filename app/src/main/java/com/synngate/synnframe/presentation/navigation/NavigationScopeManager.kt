@@ -131,7 +131,8 @@ class NavigationScopeManager(
             route.startsWith("log_list") || route.startsWith("log_detail") -> "logs_graph"
             route.startsWith("task_list") || route.startsWith("task_detail") -> "tasks_graph"
             route.startsWith("product_list") || route.startsWith("product_detail") -> "products_graph"
-            route.startsWith("taskx_list") || route.startsWith("taskx_detail") -> "taskx_graph" // Добавляем маршруты заданий X
+            route.startsWith("taskx_list") || route.startsWith("taskx_detail") ||
+                route.startsWith("action_wizard") -> "taskx_graph"
             else -> null
         }
     }

@@ -78,11 +78,10 @@ fun NavGraphBuilder.taskXNavGraph(
                 },
                 // Добавляем функцию навигации к экрану визарда
                 navigateToActionWizard = { taskIdLambda, actionId ->
-                    // ИСПРАВЛЕНИЕ: изменяем параметры навигации для корректного возврата из визарда
                     navController.navigate(TaskXRoutes.ActionWizardScreen.createRoute(taskIdLambda, actionId)) {
-                        // Сохраняем состояние текущего экрана (без его удаления из стека)
-                        restoreState = true
-                        // Используем launchSingleTop, чтобы избежать создания нескольких экземпляров визарда
+                        // Явно указываем, что при возврате мы должны вернуться к этому экрану
+                        // Без закрытия самого экрана задания
+                        popUpTo(TaskXRoutes.TaskXDetail.route) { inclusive = false }
                         launchSingleTop = true
                     }
                 }
@@ -116,18 +115,18 @@ fun NavGraphBuilder.taskXNavGraph(
             ActionWizardScreen(
                 viewModel = viewModel,
                 navigateBack = {
-                    // ИСПРАВЛЕНИЕ: простой возврат назад без каких-либо дополнительных действий
-                    navController.popBackStack()
+                    // Явно указываем, что возвращаемся к экрану задания
+                    navController.popBackStack(TaskXRoutes.TaskXDetail.route, false)
                 },
                 navigateBackWithSuccess = { completedActionId ->
-                    // ИСПРАВЛЕНИЕ: убеждаемся, что есть предыдущий экран в стеке
+                    // Сохраняем результат и возвращаемся к экрану задания
                     navController.previousBackStackEntry?.let { previousEntry ->
                         // Сохраняем результат в savedStateHandle предыдущего экрана
                         Timber.d("ActionWizard: Сохраняем результат completedActionId=$completedActionId для предыдущего экрана")
                         previousEntry.savedStateHandle["completedActionId"] = completedActionId
                     }
-                    // Просто возвращаемся назад, что должно привести нас к TaskXDetail
-                    navController.popBackStack()
+                    // Явно указываем, что возвращаемся к экрану задания
+                    navController.popBackStack(TaskXRoutes.TaskXDetail.route, false)
                 }
             )
         }

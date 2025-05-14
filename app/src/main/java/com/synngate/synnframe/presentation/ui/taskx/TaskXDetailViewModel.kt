@@ -647,7 +647,8 @@ class TaskXDetailViewModel(
             uiState.value.task?.status == TaskXStatus.PAUSED) {
             showActionsDialog()
         } else {
-            showActionsDialog()
+            // Если задание не в активном состоянии, просто выполняем навигацию назад
+            sendEvent(TaskXDetailEvent.NavigateBack)
         }
     }
 

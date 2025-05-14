@@ -70,6 +70,7 @@ class ActionWizardViewModel(
                     WizardLogger.logStep(TAG, "complete", "Визард успешно завершен",
                         WizardLogger.LogLevel.MINIMAL)
                     Timber.d("Отправляем событие NavigateBackWithSuccess с actionId=$actionId")
+                    //delay(100)
                     sendEvent(ActionWizardEvent.NavigateBackWithSuccess(actionId))
                 } else {
                     val errorMessage = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"

@@ -77,7 +77,7 @@ fun TaskXDetailScreen(
     }
 
     // Перехватываем нажатие кнопки Назад
-    BackHandler {
+    BackHandler(enabled = !state.showActionsDialog) {
         viewModel.handleBackNavigation()
     }
 
