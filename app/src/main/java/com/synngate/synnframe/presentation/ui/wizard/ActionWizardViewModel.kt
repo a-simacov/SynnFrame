@@ -43,7 +43,7 @@ class ActionWizardViewModel(
                 val result = wizardStateMachine.initialize(taskId, actionId)
 
                 if (!result.isSuccess) {
-                    val errorMessage = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                    val errorMessage = result.exceptionOrNull()?.message ?: "Неизвестная ошибка      "
                     WizardLogger.logError(TAG, result.exceptionOrNull() ?: Exception(errorMessage),
                         "инициализации визарда")
                     sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: $errorMessage"))
