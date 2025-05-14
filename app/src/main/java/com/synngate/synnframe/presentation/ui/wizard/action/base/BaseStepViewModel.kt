@@ -124,8 +124,7 @@ abstract class BaseStepViewModel<T>(
     protected abstract fun isValidType(result: Any): Boolean
 
     /**
-     * Обрабатывает штрих-код.
-     * Подклассы должны переопределить этот метод для обработки штрих-кода.
+     * Абстрактный метод для обработки штрих-кода
      */
     abstract fun processBarcode(barcode: String)
 
@@ -136,6 +135,9 @@ abstract class BaseStepViewModel<T>(
         WizardLogger.logError(TAG, e, operation)
         setError("Ошибка при $operation: ${e.message}")
         setLoading(false)
+
+        // ИСПРАВЛЕНИЕ: Сбрасываем флаг автоперехода при любой ошибке
+        resetAutoTransition()
     }
 
     /**
@@ -172,6 +174,8 @@ abstract class BaseStepViewModel<T>(
 
         // Проверяем базовые правила
         if (!validateBasicRules(data)) {
+            // ИСПРАВЛЕНИЕ: Сбрасываем флаг при любой ошибке валидации
+            resetAutoTransition()
             return false
         }
 
@@ -208,6 +212,10 @@ abstract class BaseStepViewModel<T>(
                     is ValidationResult.Error -> {
                         // Отображаем ошибку
                         setError(result.message)
+
+                        // ИСПРАВЛЕНИЕ: Сбрасываем флаг автоперехода, чтобы можно было
+                        // повторно попробовать после исправления ошибки
+                        resetAutoTransition()
                     }
                 }
             }
@@ -289,6 +297,11 @@ abstract class BaseStepViewModel<T>(
      */
     protected fun setError(message: String?) {
         _state.update { it.copy(error = message) }
+
+        // ИСПРАВЛЕНИЕ: Сбрасываем флаг автоперехода при возникновении ошибки
+        if (message != null) {
+            resetAutoTransition()
+        }
     }
 
     /**
@@ -300,12 +313,26 @@ abstract class BaseStepViewModel<T>(
 
     /**
      * Обновляет дополнительные данные в состоянии.
+     * ОБНОВЛЕНИЕ: Сбрасываем флаг автоперехода при любом изменении дополнительных данных
      */
     protected fun updateAdditionalData(key: String, value: Any) {
         _state.update {
             val newAdditionalData = it.additionalData.toMutableMap()
             newAdditionalData[key] = value
             it.copy(additionalData = newAdditionalData)
+        }
+
+        resetAutoTransition()
+    }
+
+    /**
+     * Сбрасывает флаг автоперехода, чтобы позволить повторные попытки
+     * автоматического перехода к следующему шагу после исправления ошибок.
+     */
+    protected fun resetAutoTransition() {
+        if (autoTransitionActivated) {
+            Timber.d("$TAG: Сброс флага автоперехода для повторной попытки")
+            autoTransitionActivated = false
         }
     }
 
