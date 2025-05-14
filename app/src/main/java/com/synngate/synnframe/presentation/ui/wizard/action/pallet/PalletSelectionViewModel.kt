@@ -5,6 +5,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
+import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
@@ -19,8 +20,9 @@ class PalletSelectionViewModel(
     action: PlannedAction,
     context: ActionContext,
     private val palletLookupService: PalletLookupService,
-    validationService: ValidationService
-) : BaseStepViewModel<Pallet>(step, action, context, validationService) {
+    validationService: ValidationService,
+    stepFactory: ActionStepFactory? = null
+) : BaseStepViewModel<Pallet>(step, action, context, validationService, stepFactory) {
 
     // Определяем, для какого типа объекта (хранения или размещения) нужна паллета
     private val isStorageStep = action.actionTemplate.storageSteps.any { it.id == step.id }
@@ -204,14 +206,10 @@ class PalletSelectionViewModel(
         selectedPallet = pallet
         WizardLogger.logPallet(TAG, pallet)
 
-        // ИСПРАВЛЕНО: Важное изменение - явно вызываем setData для обновления состояния
-        // Это гарантирует, что data в state будет обновлена
-        setData(pallet)
-        Timber.d("Обновили state.data паллетой: ${pallet.code}")
-
-        // Обновляем состояние и проверяем автопереход
         if (stepFactory is AutoCompleteCapableFactory) {
             handleFieldUpdate("selectedPallet", pallet)
+        } else {
+            setData(pallet)
         }
     }
 

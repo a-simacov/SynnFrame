@@ -51,6 +51,7 @@ class PalletSelectionStepFactory(
             context = context,
             palletLookupService = palletLookupService,
             validationService = validationService,
+            stepFactory = factory
         )
     }
 
@@ -207,7 +208,7 @@ class PalletSelectionStepFactory(
 
     override fun isAutoCompleteEnabled(step: ActionStep): Boolean {
         // Включаем автопереход для шагов выбора паллеты из плана
-        return step.promptText.contains("план", ignoreCase = true)
+        return true
     }
 
     override fun requiresConfirmation(step: ActionStep, fieldName: String): Boolean {
