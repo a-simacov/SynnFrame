@@ -26,7 +26,6 @@ import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.InfoCard
-import com.synngate.synnframe.presentation.common.scaffold.InfoRow
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.common.status.TaskXStatusIndicator
 import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTaskDetailEvent
@@ -79,11 +78,6 @@ fun DynamicTaskDetailScreen(
         ) {
             state.task?.let { task ->
                 InfoCard {
-                    InfoRow(
-                        label = stringResource(id = R.string.task_id),
-                        value = task.id
-                    )
-
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -106,13 +100,6 @@ fun DynamicTaskDetailScreen(
                             .fillMaxWidth()
                             .padding(vertical = 8.dp)
                     )
-
-                    task.executorId?.let { executorId ->
-                        InfoRow(
-                            label = stringResource(id = R.string.task_executor),
-                            value = executorId
-                        )
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
