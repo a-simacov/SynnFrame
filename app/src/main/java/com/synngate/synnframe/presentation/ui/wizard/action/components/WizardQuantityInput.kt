@@ -59,6 +59,7 @@ fun WizardQuantityInput(
     onIncrement: (() -> Unit)? = null,
     onDecrement: (() -> Unit)? = null,
     onClear: (() -> Unit)? = null,
+    onImeAction: (() -> Unit)? = null,
     enabled: Boolean = true,
     textAlign: TextAlign = TextAlign.Start,
     fontSize: TextUnit = TextUnit.Unspecified,
@@ -128,7 +129,13 @@ fun WizardQuantityInput(
                     keyboardType = if (allowDecimals) KeyboardType.Decimal else KeyboardType.Number,
                     imeAction = ImeAction.Done
                 ),
-                keyboardActions = KeyboardActions.Default,
+                keyboardActions = KeyboardActions(
+                    onAny = {
+                        if (onImeAction != null) {
+                            onImeAction()
+                        }
+                    }
+                ),
                 modifier = Modifier
                     .weight(1f)
                     .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier),

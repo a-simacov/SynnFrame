@@ -8,6 +8,8 @@ import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
+import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
+import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardUtils
@@ -20,8 +22,9 @@ class ProductQuantityViewModel(
     step: ActionStep,
     action: PlannedAction,
     context: ActionContext,
-    validationService: ValidationService
-) : BaseStepViewModel<TaskProduct>(step, action, context, validationService) {
+    validationService: ValidationService,
+    stepFactory: ActionStepFactory? = null
+) : BaseStepViewModel<TaskProduct>(step, action, context, validationService, stepFactory) {
 
     // Данные выбранного продукта
     private var selectedProduct: Product? = null
@@ -193,6 +196,17 @@ class ProductQuantityViewModel(
 
         // Обновляем расчетные данные
         updateCalculatedValues()
+    }
+
+    /**
+     * Проверяет возможность автоперехода при изменении количества
+     */
+    private fun maybeAutoTransition(quantity: Float, taskProduct: TaskProduct) {
+        // Только если количество больше нуля и фабрика поддерживает автопереход
+        if (quantity > 0f && stepFactory is AutoCompleteCapableFactory) {
+            // Проверяем готовность к автопереходу
+            handleFieldUpdate("quantityInput", taskProduct)
+        }
     }
 
     /**

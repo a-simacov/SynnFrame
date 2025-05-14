@@ -25,6 +25,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
+import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.base.StepViewState
@@ -42,7 +43,7 @@ import timber.log.Timber
 
 class ProductQuantityStepFactory(
     private val validationService: ValidationService
-) : BaseActionStepFactory<TaskProduct>() {
+) : BaseActionStepFactory<TaskProduct>(), AutoCompleteCapableFactory {
 
     override fun getStepViewModel(
         step: ActionStep,
@@ -55,6 +56,7 @@ class ProductQuantityStepFactory(
             action = action,
             context = context,
             validationService = validationService,
+            stepFactory = factory
         )
     }
 
@@ -105,9 +107,8 @@ class ProductQuantityStepFactory(
         state: StepViewState<TaskProduct>,
         viewModel: ProductQuantityViewModel
     ) {
-        // Создаем FocusRequester для управления фокусом
         val focusRequester = remember { FocusRequester() }
-        var inputValue by remember { mutableStateOf(viewModel.quantityInput) } // default will be viewModel.quantityInput
+        var inputValue by remember { mutableStateOf(viewModel.quantityInput) }
 
         // Используем LaunchedEffect для установки фокуса при появлении компонента
         LaunchedEffect(Unit) {
@@ -159,6 +160,9 @@ class ProductQuantityStepFactory(
                     onDecrement = {
                         viewModel.decrementQuantity()
                         inputValue = viewModel.quantityInput
+                    },
+                    onImeAction = {
+                        viewModel.saveResult()
                     },
                     isError = state.error != null,
                     errorText = state.error,
@@ -220,5 +224,21 @@ class ProductQuantityStepFactory(
     override fun validateStepResult(step: ActionStep, value: Any?): Boolean {
         val taskProduct = value as? TaskProduct
         return taskProduct != null && taskProduct.quantity > 0
+    }
+
+    // Реализация интерфейса AutoCompleteCapableFactory
+
+    override fun getAutoCompleteFieldName(step: ActionStep): String? {
+        return "quantityInput" // Имя поля, при изменении которого происходит автопереход
+    }
+
+    override fun isAutoCompleteEnabled(step: ActionStep): Boolean {
+        // Включаем автопереход для всех шагов ввода количества
+        return true
+    }
+
+    override fun requiresConfirmation(step: ActionStep, fieldName: String): Boolean {
+        // Для ввода количества не требуется дополнительное подтверждение
+        return false
     }
 }
