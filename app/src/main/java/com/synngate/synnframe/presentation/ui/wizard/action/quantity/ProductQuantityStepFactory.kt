@@ -9,7 +9,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
@@ -71,8 +74,9 @@ class ProductQuantityStepFactory(
         }
 
         if (!quantityViewModel.hasSelectedProduct()) {
-            WizardStepUtils.ViewModelErrorScreen(message =
-            "Ошибка: Товар не обнаружен. Вернитесь назад и повторно выберите товар."
+            WizardStepUtils.ViewModelErrorScreen(
+                message =
+                "Ошибка: Товар не обнаружен. Вернитесь назад и повторно выберите товар."
             )
             return
         }
@@ -103,6 +107,7 @@ class ProductQuantityStepFactory(
     ) {
         // Создаем FocusRequester для управления фокусом
         val focusRequester = remember { FocusRequester() }
+        var inputValue by remember { mutableStateOf(viewModel.quantityInput) } // default will be viewModel.quantityInput
 
         // Используем LaunchedEffect для установки фокуса при появлении компонента
         LaunchedEffect(Unit) {
@@ -142,10 +147,19 @@ class ProductQuantityStepFactory(
                 FormSpacer(8)
 
                 WizardQuantityInput(
-                    value = viewModel.quantityInput,
-                    onValueChange = { viewModel.updateQuantityInput(it) },
-                    onIncrement = { viewModel.incrementQuantity() },
-                    onDecrement = { viewModel.decrementQuantity() },
+                    value = inputValue,
+                    onValueChange = { newValue ->
+                        inputValue = newValue
+                        viewModel.updateQuantityInput(inputValue)
+                    },
+                    onIncrement = {
+                        viewModel.incrementQuantity()
+                        inputValue = viewModel.quantityInput
+                    },
+                    onDecrement = {
+                        viewModel.decrementQuantity()
+                        inputValue = viewModel.quantityInput
+                    },
                     isError = state.error != null,
                     errorText = state.error,
                     modifier = Modifier.fillMaxWidth(),

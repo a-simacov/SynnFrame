@@ -63,6 +63,7 @@ fun WizardQuantityInput(
     textAlign: TextAlign = TextAlign.Start,
     fontSize: TextUnit = TextUnit.Unspecified,
     allowDecimals: Boolean = true,
+    maxDecimalPlaces: Int = 3,
     focusRequester: FocusRequester? = null
 ) {
     Column(modifier = modifier) {
@@ -81,53 +82,42 @@ fun WizardQuantityInput(
 
             OutlinedTextField(
                 value = value,
-                onValueChange = { newValue ->
-                    // Заменяем запятую на точку
-                    val withDot = newValue.replace(",", ".")
+                onValueChange = { newText ->
+                    // Удаляем все, кроме цифр, одной точки и одного минуса в начале
+                    var filteredText = ""
+                    var hasDecimalPoint = false
+                    var hasMinusSign = false
 
-                    // Применяем фильтрацию в зависимости от того, разрешены ли десятичные
-                    val filtered = if (allowDecimals) {
-                        // Фильтруем, оставляя только цифры и точку
-                        withDot.filter { char ->
-                            char.isDigit() || char == '.'
-                        }
-                    } else {
-                        // Оставляем только цифры
-                        withDot.filter { it.isDigit() }
-                    }
-
-                    // Обрабатываем особые случаи для десятичных чисел
-                    val processed = if (allowDecimals) {
+                    for ((index, char) in newText.withIndex()) {
                         when {
-                            // Если пустая строка - передаем как есть
-                            filtered.isEmpty() -> ""
-                            // Если только точка - разрешаем
-                            filtered == "." -> "0."
-                            // Если более одной точки - оставляем только первую
-                            filtered.count { it == '.' } > 1 -> {
-                                val firstDotIndex = filtered.indexOf('.')
-                                filtered.substring(0, firstDotIndex + 1) +
-                                        filtered.substring(firstDotIndex + 1).replace(".", "")
+                            char.isDigit() -> filteredText += char
+                            char == '.' && !hasDecimalPoint -> {
+                                // Разрешаем точку, только если она не первая (или после минуса)
+                                if (filteredText.isNotEmpty() || (hasMinusSign && filteredText.isEmpty())) {
+                                    filteredText += char
+                                    hasDecimalPoint = true
+                                } else if (index == 0 && newText.length > 1 && newText[1].isDigit()){
+                                    // Позволяем начать с "0." если пользователь вводит ".5"
+                                    filteredText = "0."
+                                    hasDecimalPoint = true
+                                }
                             }
-                            else -> filtered
+                            char == '-' && index == 0 && !hasMinusSign -> {
+                                filteredText += char
+                                hasMinusSign = true
+                            }
                         }
-                    } else {
-                        filtered
                     }
 
-                    // Ограничиваем количество знаков после запятой до 3
-                    val finalValue = if (allowDecimals && processed.contains('.')) {
-                        val parts = processed.split('.')
-                        if (parts.size > 1 && parts[1].length > 3) {
-                            "${parts[0]}.${parts[1].substring(0, 3)}"
-                        } else {
-                            processed
+                    // Ограничиваем количество знаков после запятой
+                    if (hasDecimalPoint) {
+                        val parts = filteredText.split('.')
+                        if (parts.size > 1 && parts[1].length > maxDecimalPlaces) {
+                            // Обрезаем лишние знаки после запятой
+                            filteredText = "${parts[0]}.${parts[1].substring(0, maxDecimalPlaces)}"
                         }
-                    } else {
-                        processed
                     }
-
-                    onValueChange(finalValue)
+                    onValueChange(filteredText)
                 },
                 label = if (label.isNotEmpty()) {
                     { Text(label) }
@@ -198,6 +188,27 @@ fun WizardQuantityInput(
             }
         }
     }
+}
+
+/**
+ * Вспомогательная функция для проверки валидности десятичного числа.
+ * @param input Строка для проверки.
+ * @param maxDecimalPlaces Максимальное количество знаков после запятой.
+ * @return true, если строка является валидным десятичным числом, иначе false.
+ */
+fun isValidDecimal(input: String, maxDecimalPlaces: Int): Boolean {
+    if (input.isEmpty()) return true // Пустое поле считаем валидным (или можно изменить логику)
+    if (input == "-") return true // Разрешаем ввод одного минуса
+
+    // Регулярное выражение для проверки:
+    // ^-?                - опциональный минус в начале
+    // (\\d+             - одна или более цифр (целая часть)
+    // (\\.\\d{0,maxDecimalPlaces})? - опциональная десятичная часть с 0 до maxDecimalPlaces цифр
+    // |                  - ИЛИ
+    // \\.\\d{1,maxDecimalPlaces}) - только десятичная часть (например, ".5")
+    // $                  - конец строки
+    val regex = Regex("^-?((\\d+(\\.\\d{0,$maxDecimalPlaces})?)|(\\.\\d{1,$maxDecimalPlaces}))$")
+    return regex.matches(input)
 }
 
 @Composable
