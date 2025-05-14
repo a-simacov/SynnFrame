@@ -101,6 +101,38 @@ fun TaskProductCard(
     }
 }
 
+@Composable
+fun TaskProductCardShort(
+    taskProduct: TaskProduct,
+    onClick: (() -> Unit)? = null,
+    isSelected: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    WizardCard(
+        title = taskProduct.product.name,
+        onClick = onClick,
+        isSelected = isSelected,
+        modifier = modifier
+    ) {
+        CardProperty(
+            label = "Статус",
+            value = when (taskProduct.status) {
+                ProductStatus.STANDARD -> "Стандартный"
+                ProductStatus.EXPIRED -> "Просроченный"
+                ProductStatus.DEFECTIVE -> "Брак"
+            }
+        )
+
+        if (taskProduct.hasExpirationDate()) {
+            CardSpacer()
+            CardProperty(
+                label = "Срок годности",
+                value = formatDate(taskProduct.expirationDate)
+            )
+        }
+    }
+}
+
 /**
  * Адаптер для отображения паллеты в стандартной карточке
  */

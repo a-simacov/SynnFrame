@@ -68,7 +68,7 @@ fun WizardCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp)
+                .padding(4.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

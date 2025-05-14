@@ -28,7 +28,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.StateType
 import com.synngate.synnframe.presentation.ui.wizard.action.components.WizardQuantityInput
 import com.synngate.synnframe.presentation.ui.wizard.action.components.WizardStateMessage
 import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.ProductCard
-import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.TaskProductCard
+import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.TaskProductCardShort
 import com.synngate.synnframe.presentation.ui.wizard.action.components.formatQuantityDisplay
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardStepUtils
 
@@ -102,7 +102,7 @@ class ProductQuantityStepFactory(
 
             if (product != null) {
                 if (taskProduct != null) {
-                    TaskProductCard(
+                    TaskProductCardShort(
                         taskProduct = taskProduct,
                         isSelected = true,
                         modifier = Modifier.fillMaxWidth()

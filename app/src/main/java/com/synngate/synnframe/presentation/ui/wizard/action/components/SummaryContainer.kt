@@ -85,13 +85,13 @@ fun SummaryContainer(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(4.dp)
     ) {
         // Заголовок
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 4.dp)
         )
 
         // Основное содержимое
@@ -104,7 +104,7 @@ fun SummaryContainer(
             content()
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         // Нижний блок с кнопками
         Row(
@@ -122,7 +122,6 @@ fun SummaryContainer(
                     contentDescription = "Назад",
                     modifier = Modifier.padding(end = 4.dp)
                 )
-                Text("Назад")
             }
 
             Spacer(modifier = Modifier.width(8.dp))

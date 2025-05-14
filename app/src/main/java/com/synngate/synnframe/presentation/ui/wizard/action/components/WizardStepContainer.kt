@@ -17,8 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.NavigateBefore
-import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -73,8 +74,8 @@ fun <T> WizardStepContainer(
     forwardEnabled: Boolean = state.data != null,
     isProcessingGlobal: Boolean = false,
     isFirstStep: Boolean = false,
-    forwardText: String = "Вперед",
-    backText: String = "Назад",
+    forwardText: String = "",
+    backText: String = "",
     content: @Composable () -> Unit
 ) {
     // Используем отложенное отображение индикатора загрузки
@@ -100,7 +101,7 @@ fun <T> WizardStepContainer(
     Card(
         modifier = Modifier
             .fillMaxSize()
-            .padding(8.dp),
+            .padding(4.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
@@ -108,7 +109,7 @@ fun <T> WizardStepContainer(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(4.dp)
         ) {
             // Заголовок шага с информацией о действии
             WizardStepHeader(step)
@@ -166,7 +167,7 @@ fun <T> WizardStepContainer(
                         enabled = !isReallyLoading // Блокируем, если идет загрузка
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.NavigateBefore,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Назад",
                             modifier = Modifier.padding(end = 4.dp)
                         )
@@ -214,7 +215,7 @@ fun <T> WizardStepContainer(
                 ) {
                     Text(forwardText)
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.NavigateNext,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = "Вперед",
                         modifier = Modifier.padding(start = 4.dp)
                     )
