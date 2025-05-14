@@ -8,7 +8,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -31,6 +34,8 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.
 import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.TaskProductCardShort
 import com.synngate.synnframe.presentation.ui.wizard.action.components.formatQuantityDisplay
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardStepUtils
+import kotlinx.coroutines.delay
+import timber.log.Timber
 
 class ProductQuantityStepFactory(
     private val validationService: ValidationService
@@ -96,6 +101,21 @@ class ProductQuantityStepFactory(
         state: StepViewState<TaskProduct>,
         viewModel: ProductQuantityViewModel
     ) {
+        // Создаем FocusRequester для управления фокусом
+        val focusRequester = remember { FocusRequester() }
+
+        // Используем LaunchedEffect для установки фокуса при появлении компонента
+        LaunchedEffect(Unit) {
+            try {
+                // Небольшая задержка для гарантии, что поле уже отрисовано
+                delay(100)
+                Timber.d("Запрашиваем фокус для поля ввода количества")
+                focusRequester.requestFocus()
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при установке фокуса на поле ввода количества")
+            }
+        }
+
         Column(modifier = Modifier.fillMaxWidth()) {
             val product = viewModel.getSelectedProduct()
             val taskProduct = viewModel.getSelectedTaskProduct()
@@ -131,7 +151,8 @@ class ProductQuantityStepFactory(
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center,
                     fontSize = 24.sp,
-                    label = ""
+                    label = "",
+                    focusRequester = focusRequester
                 )
 
                 if (viewModel.willExceedPlan) {

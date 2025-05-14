@@ -28,7 +28,7 @@ class ProductQuantityViewModel(
     private var selectedTaskProduct: TaskProduct? = null
 
     // Состояние поля ввода количества
-    var quantityInput = "1.0"
+    var quantityInput = ".0"
         private set
 
     // Расчетные данные для отображения

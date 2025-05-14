@@ -30,6 +30,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -60,7 +62,8 @@ fun WizardQuantityInput(
     enabled: Boolean = true,
     textAlign: TextAlign = TextAlign.Start,
     fontSize: TextUnit = TextUnit.Unspecified,
-    allowDecimals: Boolean = true
+    allowDecimals: Boolean = true,
+    focusRequester: FocusRequester? = null
 ) {
     Column(modifier = modifier) {
         Row(
@@ -136,7 +139,9 @@ fun WizardQuantityInput(
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions.Default,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier),
                 isError = isError,
                 enabled = enabled,
                 singleLine = true,
