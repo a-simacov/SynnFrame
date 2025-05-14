@@ -73,7 +73,7 @@ fun DynamicTaskDetailScreen(
             modifier = modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
+                .padding(4.dp)
                 .verticalScroll(rememberScrollState())
         ) {
             state.task?.let { task ->
@@ -81,7 +81,7 @@ fun DynamicTaskDetailScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 0.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
@@ -98,11 +98,11 @@ fun DynamicTaskDetailScreen(
                         text = HtmlUtils.htmlToAnnotatedString(task.name),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp)
+                            .padding(vertical = 0.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 if (taskStatus == TaskXStatus.TO_DO) {
                     ActionButton(
@@ -121,7 +121,7 @@ fun DynamicTaskDetailScreen(
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
-                        .padding(top = 32.dp)
+                        .padding(top = 4.dp)
                 )
             }
         }
