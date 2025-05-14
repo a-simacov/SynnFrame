@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.BinX
@@ -183,6 +185,9 @@ fun PlannedActionItem(
         null
     }
 
+    val density = LocalDensity.current
+    val lineHeight = with(density) { MaterialTheme.typography.titleMedium.lineHeight.toDp() }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -240,8 +245,12 @@ fun PlannedActionItem(
             action.storageProduct?.let { product ->
                 Text(
                     text = product.product.name,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = modifier
+                        .padding(top = 4.dp)
+                        .heightIn(min = lineHeight * 2)
                 )
 
                 // Показываем количество для действий с учетом количества
