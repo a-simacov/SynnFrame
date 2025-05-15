@@ -5,6 +5,7 @@ import com.synngate.synnframe.presentation.di.Disposable
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import timber.log.Timber
 
@@ -21,15 +22,31 @@ class ActionWizardViewModel(
     private val TAG = "ActionWizardViewModel"
 
     init {
-        initializeWizard()
-        // Наблюдаем за состоянием визарда для отправки событий UI
+        // Флаг для отслеживания завершения инициализации
+        var initializationCompleted = false
+
+        // Инициализация
         launchIO {
+            try {
+                initializeWizard()
+                initializationCompleted = true
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при инициализации визарда")
+                // Обработка ошибки инициализации
+            }
+        }
+
+        // Подписка на состояние с защитой от начального null
+        launchIO {
+            // Ждем небольшое время для завершения инициализации
+            delay(100)
+
             wizardStateMachine.state.collectLatest { state ->
-                if (state == null) {
-                    // Если состояние стало null, это означает отмену визарда
+                // Проверяем, завершена ли инициализация и явно ли установлен null
+                if (state == null && initializationCompleted) {
+                    Timber.d("Обнаружен null в состоянии после инициализации, выполняем навигацию назад")
                     sendEvent(ActionWizardEvent.NavigateBack)
                 }
-                // Здесь можно добавить дополнительную логику обработки изменений состояния
             }
         }
     }
