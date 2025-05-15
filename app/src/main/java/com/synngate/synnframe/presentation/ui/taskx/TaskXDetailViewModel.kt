@@ -722,8 +722,6 @@ class TaskXDetailViewModel(
         // Автопоиск при вводе
         if (query.isEmpty()) {
             clearSearch()
-        } else {
-            searchActionsDebounced(query)
         }
     }
 
