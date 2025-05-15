@@ -44,4 +44,7 @@ data class ActionWizardState(
      */
     val canGoBack: Boolean
         get() = currentStepIndex > 0 && currentStep?.canNavigateBack ?: true
+
+    val isUninitialized: Boolean
+        get() = !isInitialized && action == null
 }

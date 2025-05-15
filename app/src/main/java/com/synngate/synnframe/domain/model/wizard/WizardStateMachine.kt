@@ -29,9 +29,9 @@ class WizardStateMachine(
 ) : Disposable {
     private val TAG = "WizardStateMachine"
 
-    // Состояние визарда (доступное для UI)
-    private val _state = MutableStateFlow<ActionWizardState?>(null)
-    val state: StateFlow<ActionWizardState?> = _state.asStateFlow()
+    // Ненуллабельное состояние визарда (доступное для UI)
+    private val _state = MutableStateFlow(ActionWizardState())
+    val state: StateFlow<ActionWizardState> = _state.asStateFlow()
 
     // Сохраненное состояние для восстановления после ошибок
     private var _lastSavedState: ActionWizardState? = null
@@ -99,18 +99,29 @@ class WizardStateMachine(
                 currentStepIndex = 0,
                 results = initialData,
                 startedAt = LocalDateTime.now(),
-                isInitialized = true
+                isInitialized = true // Важно установить флаг инициализации
             )
 
             // Сохраняем состояние для возможного восстановления
             saveStateForRecovery(initialState)
 
-            // Устанавливаем начальное состояние - используем update вместо прямой установки значения
+            // Устанавливаем начальное состояние
             _state.update { initialState }
 
             return Result.success(true)
         } catch (e: Exception) {
             Timber.e(e, "$TAG: Error initializing wizard")
+
+            // В случае ошибки устанавливаем состояние с ошибкой вместо null
+            _state.update {
+                ActionWizardState(
+                    taskId = taskId,
+                    actionId = actionId,
+                    isInitialized = false,
+                    errors = mapOf("initialization" to (e.message ?: "Unknown error"))
+                )
+            }
+
             return Result.failure(e)
         }
     }
@@ -126,7 +137,13 @@ class WizardStateMachine(
             return
         }
 
-        val currentState = _state.value ?: return
+        val currentState = _state.value
+
+        // Проверяем, инициализирован ли визард
+        if (!currentState.isInitialized) {
+            Timber.d("$TAG: Cannot process step result - wizard not initialized")
+            return
+        }
 
         try {
             if (result == null) {
@@ -149,11 +166,9 @@ class WizardStateMachine(
             } else {
                 // Обновляем состояние с ошибкой, если не смогли восстановить
                 _state.update { state ->
-                    state?.let {
-                        val updatedErrors = it.errors.toMutableMap()
-                        updatedErrors[it.currentStep?.id ?: ""] = e.message ?: "Unknown error"
-                        it.copy(errors = updatedErrors)
-                    }
+                    val updatedErrors = state.errors.toMutableMap()
+                    updatedErrors[state.currentStep?.id ?: ""] = e.message ?: "Unknown error"
+                    state.copy(errors = updatedErrors)
                 }
             }
         }
@@ -169,9 +184,15 @@ class WizardStateMachine(
             return
         }
 
+        // Проверяем, инициализирован ли визард
+        if (!_state.value.isInitialized) {
+            Timber.d("$TAG: Cannot process barcode - wizard not initialized")
+            return
+        }
+
         Timber.d("$TAG: Обработка штрих-кода: $barcode")
         _state.update { state ->
-            state?.copy(lastScannedBarcode = barcode)
+            state.copy(lastScannedBarcode = barcode)
         }
     }
 
@@ -189,21 +210,24 @@ class WizardStateMachine(
      * Завершает визард с выполнением действия
      */
     suspend fun complete(): Result<TaskX> {
-        // Проверка, не был ли визард отменен
+        // Проверка, не был ли визард отменен и инициализирован ли он
         if (isExplicitlyCancelled) {
-            Timber.d("$TAG: Ignoring complete request as wizard was explicitly cancelled")
+            Timber.d("$TAG: Ignoring complete request as wizard was cancelled")
             return Result.failure(IllegalStateException("Wizard was cancelled"))
+        }
+
+        val currentState = _state.value
+        if (!currentState.isInitialized) {
+            Timber.d("$TAG: Cannot complete - wizard not initialized")
+            return Result.failure(IllegalStateException("Wizard not initialized"))
         }
 
         try {
             // Сохраняем текущее состояние перед выполнением действия
-            val currentState = _state.value ?:
-            return Result.failure(IllegalStateException("Wizard not initialized"))
-
             saveStateForRecovery(currentState)
 
             // Устанавливаем флаг отправки
-            _state.update { it?.copy(isSending = true) }
+            _state.update { it.copy(isSending = true) }
 
             // Улучшенная обработка данных перед отправкой
             val enrichedResults = WizardUtils.enrichResultsData(currentState.results)
@@ -218,7 +242,7 @@ class WizardStateMachine(
 
             // Обновляем состояние в зависимости от результата
             if (result.isSuccess) {
-                _state.update { it?.copy(isSending = false, sendError = null) }
+                _state.update { it.copy(isSending = false, sendError = null) }
             } else {
                 val errorMessage = result.exceptionOrNull()?.message ?: "Unknown error"
 
@@ -227,7 +251,7 @@ class WizardStateMachine(
                 if (recoveredState != null) {
                     _state.update { recoveredState }
                 } else {
-                    _state.update { it?.copy(isSending = false, sendError = errorMessage) }
+                    _state.update { it.copy(isSending = false, sendError = errorMessage) }
                 }
             }
 
@@ -240,7 +264,7 @@ class WizardStateMachine(
             if (recoveredState != null) {
                 _state.update { recoveredState }
             } else {
-                _state.update { it?.copy(isSending = false, sendError = e.message) }
+                _state.update { it.copy(isSending = false, sendError = e.message) }
             }
 
             return Result.failure(e)
@@ -259,9 +283,16 @@ class WizardStateMachine(
      */
     fun reset() {
         Timber.d("$TAG: Resetting wizard state machine")
-        // Важно использовать update вместо прямой установки, чтобы сохранить атомарность
-        _state.update { null }
+        // Устанавливаем исходное неинициализированное состояние вместо null
+        _state.update { ActionWizardState() }
         _lastSavedState = null
+    }
+
+    /**
+     * Проверяет, инициализирован ли визард
+     */
+    fun isInitialized(): Boolean {
+        return _state.value.isInitialized
     }
 
     /**
@@ -293,18 +324,20 @@ class WizardStateMachine(
     private fun navigateBack(currentState: ActionWizardState) {
         if (currentState.currentStepIndex > 0) {
             // Если мы не на первом шаге, переходим к предыдущему
-            _state.update { it?.copy(
+            _state.update { it.copy(
                 currentStepIndex = currentState.currentStepIndex - 1,
                 lastScannedBarcode = null
             ) }
         } else if (currentState.isCompleted) {
             // Если мы на экране завершения, возвращаемся к последнему шагу
-            _state.update { it?.copy(
+            _state.update { it.copy(
                 currentStepIndex = currentState.steps.size - 1,
                 lastScannedBarcode = null
             ) }
         }
     }
+
+    // [Оставшиеся методы из оригинального класса...]
 
     /**
      * Сохраняет результат шага и переходит к следующему
@@ -360,7 +393,7 @@ class WizardStateMachine(
 
         // Обновляем состояние используя update для атомарного обновления
         _state.update { state ->
-            state?.copy(
+            state.copy(
                 currentStepIndex = nextStepIndex,
                 results = updatedResults,
                 lastScannedBarcode = null

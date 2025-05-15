@@ -1,17 +1,20 @@
 package com.synngate.synnframe.presentation.ui.wizard
 
+import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.model.wizard.WizardStateMachine
 import com.synngate.synnframe.presentation.di.Disposable
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * Оптимизированная ViewModel для экрана визарда действий.
- * Использует WizardStateMachine напрямую без прослоек-адаптеров.
+ * Улучшенная ViewModel для экрана визарда действий.
+ * Использует WizardStateMachine с ненуллабельным состоянием.
  */
 class ActionWizardViewModel(
     private val taskId: String,
@@ -22,55 +25,48 @@ class ActionWizardViewModel(
     private val TAG = "ActionWizardViewModel"
 
     init {
-        // Флаг для отслеживания завершения инициализации
-        var initializationCompleted = false
-
-        // Инициализация
-        launchIO {
+        // Этот подход заменяет предыдущий с флагом initializationCompleted и delay
+        // Запускаем инициализацию и настраиваем наблюдение за состоянием
+        viewModelScope.launch {
             try {
-                initializeWizard()
-                initializationCompleted = true
-            } catch (e: Exception) {
-                Timber.e(e, "Ошибка при инициализации визарда")
-                // Обработка ошибки инициализации
-            }
-        }
+                // Запускаем инициализацию
+                val initResult = wizardStateMachine.initialize(taskId, actionId)
 
-        // Подписка на состояние с защитой от начального null
-        launchIO {
-            // Ждем небольшое время для завершения инициализации
-            delay(100)
-
-            wizardStateMachine.state.collectLatest { state ->
-                // Проверяем, завершена ли инициализация и явно ли установлен null
-                if (state == null && initializationCompleted) {
-                    Timber.d("Обнаружен null в состоянии после инициализации, выполняем навигацию назад")
-                    sendEvent(ActionWizardEvent.NavigateBack)
-                }
-            }
-        }
-    }
-
-    /**
-     * Инициализирует визард для текущего действия
-     */
-    private fun initializeWizard() {
-        launchIO {
-            try {
-                val result = wizardStateMachine.initialize(taskId, actionId)
-
-                if (!result.isSuccess) {
-                    val errorMessage = result.exceptionOrNull()?.message ?: "Неизвестная ошибка      "
-                    WizardLogger.logError(TAG, result.exceptionOrNull() ?: Exception(errorMessage),
+                if (!initResult.isSuccess) {
+                    // Если инициализация не удалась, обрабатываем ошибку и навигируем назад
+                    val error = initResult.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                    WizardLogger.logError(TAG, initResult.exceptionOrNull() ?: Exception(error),
                         "инициализации визарда")
-                    sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: $errorMessage"))
+                    sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: $error"))
                     sendEvent(ActionWizardEvent.NavigateBack)
                 }
+
+                // Начинаем наблюдение за состоянием визарда после инициализации
+                startObservingState()
             } catch (e: Exception) {
                 WizardLogger.logError(TAG, e, "инициализации визарда")
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка инициализации: ${e.message}"))
                 sendEvent(ActionWizardEvent.NavigateBack)
             }
+        }
+    }
+
+    /**
+     * Настраивает наблюдение за состоянием визарда
+     */
+    private fun startObservingState() {
+        viewModelScope.launch {
+            // Наблюдаем за изменениями флага инициализации
+            wizardStateMachine.state
+                .map { it.isUninitialized && wizardStateMachine.isInitialized() }
+                .distinctUntilChanged()
+                .collectLatest { isReset ->
+                    // Если состояние было сброшено после инициализации, выполняем навигацию назад
+                    if (isReset) {
+                        Timber.d("Визард был сброшен, выполняем навигацию назад")
+                        sendEvent(ActionWizardEvent.NavigateBack)
+                    }
+                }
         }
     }
 
@@ -87,7 +83,6 @@ class ActionWizardViewModel(
                     WizardLogger.logStep(TAG, "complete", "Визард успешно завершен",
                         WizardLogger.LogLevel.MINIMAL)
                     Timber.d("Отправляем событие NavigateBackWithSuccess с actionId=$actionId")
-                    //delay(100)
                     sendEvent(ActionWizardEvent.NavigateBackWithSuccess(actionId))
                 } else {
                     val errorMessage = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
@@ -135,9 +130,7 @@ class ActionWizardViewModel(
      * Обработка штрих-кода от сканера
      */
     fun processBarcodeFromScanner(barcode: String) {
-        launchIO {
-            wizardStateMachine.processBarcodeFromScanner(barcode)
-        }
+        wizardStateMachine.processBarcodeFromScanner(barcode)
     }
 
     /**
