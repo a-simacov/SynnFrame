@@ -36,12 +36,16 @@ class WizardStateMachine(
     // Сохраненное состояние для восстановления после ошибок
     private var _lastSavedState: ActionWizardState? = null
 
+    // Флаг, указывающий, был ли визард явно отменен
+    private var isExplicitlyCancelled = false
+
     /**
      * Инициализирует визард для указанного задания и действия
      * @return результат инициализации
      */
     suspend fun initialize(taskId: String, actionId: String): Result<Boolean> {
         Timber.d("$TAG: Initializing wizard for task $taskId, action $actionId")
+        isExplicitlyCancelled = false
 
         try {
             // Получаем задание из контекста
@@ -101,8 +105,8 @@ class WizardStateMachine(
             // Сохраняем состояние для возможного восстановления
             saveStateForRecovery(initialState)
 
-            // Устанавливаем начальное состояние
-            _state.value = initialState
+            // Устанавливаем начальное состояние - используем update вместо прямой установки значения
+            _state.update { initialState }
 
             return Result.success(true)
         } catch (e: Exception) {
@@ -116,6 +120,12 @@ class WizardStateMachine(
      * @param result результат шага или null для навигации назад
      */
     suspend fun processStepResult(result: Any?) {
+        // Проверяем, не был ли визард отменен
+        if (isExplicitlyCancelled) {
+            Timber.d("$TAG: Ignoring step result as wizard was explicitly cancelled")
+            return
+        }
+
         val currentState = _state.value ?: return
 
         try {
@@ -135,7 +145,7 @@ class WizardStateMachine(
             // Пытаемся восстановить предыдущее состояние
             val recoveredState = recoverFromError(e.message ?: "Unknown error")
             if (recoveredState != null) {
-                _state.value = recoveredState
+                _state.update { recoveredState }
             } else {
                 // Обновляем состояние с ошибкой, если не смогли восстановить
                 _state.update { state ->
@@ -153,13 +163,25 @@ class WizardStateMachine(
      * Обрабатывает штрих-код от сканера
      */
     fun processBarcodeFromScanner(barcode: String) {
-        _state.update { it?.copy(lastScannedBarcode = barcode) }
+        // Проверка, не был ли визард отменен
+        if (isExplicitlyCancelled) {
+            Timber.d("$TAG: Ignoring barcode as wizard was explicitly cancelled")
+            return
+        }
+
+        Timber.d("$TAG: Обработка штрих-кода: $barcode")
+        _state.update { state ->
+            state?.copy(lastScannedBarcode = barcode)
+        }
     }
 
     /**
      * Отменяет визард
      */
     fun cancel() {
+        Timber.d("$TAG: Wizard cancelled explicitly")
+        // Устанавливаем флаг явной отмены
+        isExplicitlyCancelled = true
         reset()
     }
 
@@ -167,6 +189,12 @@ class WizardStateMachine(
      * Завершает визард с выполнением действия
      */
     suspend fun complete(): Result<TaskX> {
+        // Проверка, не был ли визард отменен
+        if (isExplicitlyCancelled) {
+            Timber.d("$TAG: Ignoring complete request as wizard was explicitly cancelled")
+            return Result.failure(IllegalStateException("Wizard was cancelled"))
+        }
+
         try {
             // Сохраняем текущее состояние перед выполнением действия
             val currentState = _state.value ?:
@@ -197,7 +225,7 @@ class WizardStateMachine(
                 // Пытаемся восстановить состояние после ошибки
                 val recoveredState = recoverFromError(errorMessage)
                 if (recoveredState != null) {
-                    _state.value = recoveredState
+                    _state.update { recoveredState }
                 } else {
                     _state.update { it?.copy(isSending = false, sendError = errorMessage) }
                 }
@@ -210,7 +238,7 @@ class WizardStateMachine(
             // Пытаемся восстановить состояние после ошибки
             val recoveredState = recoverFromError(e.message ?: "Unknown error")
             if (recoveredState != null) {
-                _state.value = recoveredState
+                _state.update { recoveredState }
             } else {
                 _state.update { it?.copy(isSending = false, sendError = e.message) }
             }
@@ -230,7 +258,9 @@ class WizardStateMachine(
      * Сбрасывает состояние машины
      */
     fun reset() {
-        _state.value = null
+        Timber.d("$TAG: Resetting wizard state machine")
+        // Важно использовать update вместо прямой установки, чтобы сохранить атомарность
+        _state.update { null }
         _lastSavedState = null
     }
 
@@ -328,7 +358,7 @@ class WizardStateMachine(
             currentState.steps.size // Указывает на завершение визарда
         }
 
-        // Обновляем состояние
+        // Обновляем состояние используя update для атомарного обновления
         _state.update { state ->
             state?.copy(
                 currentStepIndex = nextStepIndex,
