@@ -44,15 +44,8 @@ class TaskContextManager {
         }
 
         val updatedPlannedActions = task.plannedActions.map { plannedAction ->
-            // Используем метод isActionCompleted для корректного определения завершенности
-            // Этот метод учитывает:
-            // 1. Наличие флага isCompleted
-            // 2. Наличие флага manuallyCompleted
-            // 3. Для действий с учетом количества - сравнение планового и фактического количества
             val isActionActuallyCompleted = plannedAction.isActionCompleted(task.factActions)
 
-            // Обновляем статус только если текущий статус не соответствует фактическому
-            // Это позволяет сохранять ручные изменения статуса
             if (isActionActuallyCompleted != plannedAction.isCompleted) {
                 plannedAction.copy(isCompleted = isActionActuallyCompleted)
             } else {
@@ -61,11 +54,5 @@ class TaskContextManager {
         }
 
         return task.copy(plannedActions = updatedPlannedActions)
-    }
-
-    fun clearContext() {
-        _lastStartedTaskX.value = null
-        _lastTaskTypeX.value = null
-        _currentEndpoint.value = null
     }
 }

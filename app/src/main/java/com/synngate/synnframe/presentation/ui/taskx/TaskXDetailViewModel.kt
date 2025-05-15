@@ -19,7 +19,6 @@ import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -73,7 +72,6 @@ class TaskXDetailViewModel(
                     return@launchIO
                 }
 
-                // Проверка на строгий порядок выполнения действий
                 val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
                 val action = task.plannedActions.find { it.id == actionId }
 
@@ -85,7 +83,6 @@ class TaskXDetailViewModel(
                     }
                 }
 
-                // Отправляем событие навигации к экрану визарда
                 sendEvent(TaskXDetailEvent.NavigateToActionWizard(task.id, actionId))
             } catch (e: Exception) {
                 Timber.e(e, "Error starting action execution")
@@ -281,16 +278,13 @@ class TaskXDetailViewModel(
                 val result = taskXUseCases.completeTask(task.id)
 
                 if (result.isSuccess) {
-                    // Сразу отправляем один комбинированный ивент с сообщением и навигацией
                     sendEvent(TaskXDetailEvent.TaskActionCompleted("Задание завершено"))
                 } else {
-                    // В случае ошибки - показываем сообщение и оставляем диалог открытым
                     updateState { it.copy(isProcessingDialogAction = false) }
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при завершении задания"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error on completing task")
-                // Сбрасываем флаг загрузки в случае исключения
                 updateState { it.copy(isProcessingDialogAction = false) }
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при завершении задания"))
             }
@@ -301,23 +295,19 @@ class TaskXDetailViewModel(
         launchIO {
             val task = uiState.value.task ?: return@launchIO
 
-            // Устанавливаем флаг обработки действия в диалоге
             updateState { it.copy(isProcessingDialogAction = true) }
 
             try {
                 val result = taskXUseCases.pauseTask(task.id)
 
                 if (result.isSuccess) {
-                    // Сразу отправляем один комбинированный ивент с сообщением и навигацией
                     sendEvent(TaskXDetailEvent.TaskActionCompleted("Задание приостановлено"))
                 } else {
-                    // В случае ошибки - показываем сообщение и оставляем диалог открытым
                     updateState { it.copy(isProcessingDialogAction = false) }
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при приостановке задания"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error on pausing task")
-                // Сбрасываем флаг загрузки в случае исключения
                 updateState { it.copy(isProcessingDialogAction = false) }
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при приостановке задания"))
             }
@@ -416,9 +406,6 @@ class TaskXDetailViewModel(
                 .collect { task ->
                     if (task != null) {
                         val taskType = uiState.value.taskType
-                        Timber.d("Задание изменилось, обновляем UI: ${task.status}, " +
-                                "факт. действий: ${task.factActions.size}, " +
-                                "завершено плановых: ${task.plannedActions.count { it.isCompleted }}")
                         updateDependentState(task, taskType)
                     }
                 }
@@ -435,7 +422,6 @@ class TaskXDetailViewModel(
         val hasAdditionalActions = checkHasAdditionalActions(task)
         val statusActions = createStatusActions(task)
 
-        // Определяем видимость поиска на основе настроек типа задания
         val shouldShowSearch = taskType?.enableActionSearch == true
 
         updateState { currentState ->
@@ -443,11 +429,10 @@ class TaskXDetailViewModel(
                 nextActionId = nextActionId,
                 hasAdditionalActions = hasAdditionalActions,
                 statusActions = statusActions,
-                // Автоматически показываем поле поиска если включено в настройках
                 showSearchField = if (shouldShowSearch) {
-                    true // Всегда показываем поле поиска, если enableActionSearch = true
+                    true
                 } else {
-                    false // Скрываем поле поиска, если enableActionSearch = false
+                    false
                 }
             )
         }
@@ -709,31 +694,15 @@ class TaskXDetailViewModel(
         }
     }
 
-    fun toggleSearchField() {
-        val taskType = uiState.value.taskType
-        if (taskType?.enableActionSearch == true) {
-            updateState { it.copy(showSearchField = !it.showSearchField) }
-        }
-    }
-
     fun updateSearchQuery(query: String) {
         updateState { it.copy(searchQuery = query) }
 
-        // Автопоиск при вводе
         if (query.isEmpty()) {
             clearSearch()
         }
     }
 
     private var searchJob: Job? = null
-
-    private fun searchActionsDebounced(query: String) {
-        searchJob?.cancel()
-        searchJob = viewModelScope.launch {
-            delay(300) // debounce delay
-            searchActions()
-        }
-    }
 
     fun searchActions() {
         val state = uiState.value
@@ -791,7 +760,6 @@ class TaskXDetailViewModel(
                 searchError = null
             )
         }
-        // Восстанавливаем исходную фильтрацию
         updateFilteredActions()
     }
 
@@ -812,7 +780,6 @@ class TaskXDetailViewModel(
             return
         }
 
-        // Для строгого порядка - ищем следующее доступное действие
         if (taskType.strictActionOrder) {
             val nextAvailableAction = task.plannedActions
                 .filter { it.id in foundActionIds }
@@ -820,17 +787,14 @@ class TaskXDetailViewModel(
                 .firstOrNull { !it.isCompleted && !it.isSkipped }
 
             if (nextAvailableAction != null) {
-                // Открываем визард для найденного действия
                 startActionExecution(nextAvailableAction.id)
                 clearSearch()
             } else {
                 updateState { it.copy(searchError = "Найденные действия уже выполнены или недоступны") }
             }
         } else {
-            // Для произвольного порядка - фильтруем список
             updateFilteredActionsBySearch()
 
-            // Если найдено ровно одно действие - автоматически открываем визард
             if (foundActionIds.size == 1) {
                 val actionId = foundActionIds.first()
                 val action = task.plannedActions.find { it.id == actionId }

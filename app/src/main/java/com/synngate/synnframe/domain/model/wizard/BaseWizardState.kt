@@ -4,10 +4,6 @@ import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import timber.log.Timber
 
-/**
- * Базовый абстрактный класс для состояний визарда.
- * Предоставляет общую функциональность для всех состояний.
- */
 abstract class BaseWizardState(
     override val id: String,
     protected val context: WizardContext
@@ -15,10 +11,6 @@ abstract class BaseWizardState(
 
     override val isTerminal: Boolean = false
 
-    /**
-     * Базовая реализация обработки события.
-     * Подклассы должны переопределить этот метод для специфической логики.
-     */
     override fun handleEvent(event: WizardEvent): WizardState? {
         return when (event) {
             // Обрабатываем общие события для всех состояний
@@ -27,9 +19,6 @@ abstract class BaseWizardState(
         }
     }
 
-    /**
-     * Логирует попытку обработать неподдерживаемое событие
-     */
     protected fun logUnsupportedEvent(event: WizardEvent): WizardState? {
         Timber.w("Event $event is not supported in state $id")
         return null
@@ -75,29 +64,4 @@ data class WizardContext(
     fun createErrorState(error: String): ErrorState {
         return ErrorState(error, this)
     }
-
-    /**
-     * Создает новый контекст с обновленными данными
-     */
-//    override fun copy(
-//        taskId: String,
-//        actionId: String,
-//        task: TaskX?,
-//        action: PlannedAction?,
-//        steps: List<WizardStep>,
-//        results: Map<String, Any>,
-//        errors: Map<String, String>,
-//        lastScannedBarcode: String?
-//    ): WizardContextInterface {
-//        return WizardContext(
-//            taskId = taskId,
-//            actionId = actionId,
-//            task = task,
-//            action = action,
-//            steps = steps,
-//            results = results,
-//            errors = errors,
-//            lastScannedBarcode = lastScannedBarcode
-//        )
-//    }
 }

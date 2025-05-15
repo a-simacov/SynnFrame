@@ -23,17 +23,11 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardStepUtils
 import com.synngate.synnframe.presentation.ui.wizard.service.BinLookupService
 
-/**
- * Обновленная фабрика для шага выбора ячейки
- */
 class BinSelectionStepFactory(
     private val binLookupService: BinLookupService,
     private val validationService: ValidationService
 ) : BaseActionStepFactory<BinX>(), AutoCompleteCapableFactory {
 
-    /**
-     * Создает ViewModel для шага
-     */
     override fun getStepViewModel(
         step: ActionStep,
         action: PlannedAction,
@@ -50,9 +44,6 @@ class BinSelectionStepFactory(
         )
     }
 
-    /**
-     * Отображает UI для шага
-     */
     @Composable
     override fun StepContent(
         state: StepViewState<BinX>,
@@ -61,7 +52,6 @@ class BinSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Безопасное приведение ViewModel к конкретному типу
         val binViewModel = viewModel as? BinSelectionViewModel
 
         if (binViewModel == null) {
@@ -69,7 +59,6 @@ class BinSelectionStepFactory(
             return
         }
 
-        // Обработка штрих-кода из контекста
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
             if (!barcode.isNullOrEmpty()) {
@@ -77,7 +66,6 @@ class BinSelectionStepFactory(
             }
         }
 
-        // Диалог сканирования
         if (binViewModel.showCameraScannerDialog) {
             val plannedBin = action.placementBin
 
@@ -97,12 +85,11 @@ class BinSelectionStepFactory(
             )
         }
 
-        // Используем стандартный контейнер для шага, но теперь передаем viewModel
         WizardStepUtils.StandardStepContainer(
             state = state,
             step = step,
             action = action,
-            viewModel = binViewModel, // Передаем ViewModel в контейнер
+            viewModel = binViewModel,
             context = context,
             forwardEnabled = binViewModel.hasSelectedBin(),
             content = {
@@ -123,7 +110,6 @@ class BinSelectionStepFactory(
             val selectedBin = viewModel.getSelectedBin()
             val selectedBinCode = selectedBin?.code
 
-            // Отображаем ячейки из плана, если они есть
             if (viewModel.hasPlanBins()) {
                 WizardStepUtils.BinList(
                     bins = viewModel.getPlanBins(),
@@ -137,12 +123,10 @@ class BinSelectionStepFactory(
                 FormSpacer(8)
             }
 
-            // Скрываем поле ввода, когда выбрана запланированная ячейка
             if (!viewModel.hasPlanBins() ||
                 !viewModel.isSelectedBinMatchingPlan() ||
                 viewModel.getSelectedBin() == null) {
 
-                // Используем стандартное поле ввода штрих-кода
                 WizardStepUtils.StandardBarcodeField(
                     value = viewModel.binCodeInput,
                     onValueChange = { viewModel.updateBinCodeInput(it) },
@@ -155,7 +139,6 @@ class BinSelectionStepFactory(
                 )
             }
 
-            // Если выбранная ячейка не из плана, показываем ее
             if (selectedBin != null && !viewModel.isSelectedBinMatchingPlan()) {
                 FormSpacer(8)
 
@@ -172,19 +155,15 @@ class BinSelectionStepFactory(
         return value is BinX
     }
 
-    // Реализация интерфейса AutoCompleteCapableFactory
-
     override fun getAutoCompleteFieldName(step: ActionStep): String? {
-        return "selectedBin" // Автопереход при выборе ячейки
+        return "selectedBin"
     }
 
     override fun isAutoCompleteEnabled(step: ActionStep): Boolean {
-        // Включаем автопереход для шагов выбора ячейки из плана
-        return true//return step.promptText.contains("план", ignoreCase = true)
+        return true
     }
 
     override fun requiresConfirmation(step: ActionStep, fieldName: String): Boolean {
-        // Ячейка не требует подтверждения
         return false
     }
 }

@@ -42,13 +42,6 @@ class ActionExecutionService(
             val action = task.plannedActions.find { it.id == actionId }
                 ?: return@withContext Result.failure(IllegalArgumentException("Planned action not found: $actionId"))
 
-            // Логируем все TaskProduct в контексте для отладки
-            stepResults.entries.forEach { (key, value) ->
-                if (value is TaskProduct) {
-                    Timber.d("TaskProduct in context: key=$key, product=${value.product.name}, quantity=${value.quantity}")
-                }
-            }
-
             val factAction = createFactAction(taskId, action, stepResults)
 
             val endpoint = taskContextManager.currentEndpoint.value
@@ -71,41 +64,33 @@ class ActionExecutionService(
 
             val updatedPlannedActions = task.plannedActions.map { plannedAction ->
                 if (plannedAction.id == actionId) {
-                    // ИСПРАВЛЕНО: Учитываем тип прогресса и соотношение количеств
                     if (completeAction && plannedAction.getProgressType() == ProgressType.QUANTITY && plannedAction.storageProduct != null) {
                         val plannedQuantity = plannedAction.storageProduct.quantity
 
-                        // Получаем общее фактическое количество после добавления нового factAction
                         val completedQuantity = updatedFactActions
                             .filter { it.plannedActionId == plannedAction.id }
                             .sumOf { it.storageProduct?.quantity?.toDouble() ?: 0.0 }
                             .toFloat()
 
-                        // Устанавливаем manuallyCompleted только если достигнуто нужное количество
                         if (completedQuantity >= plannedQuantity) {
-                            Timber.d("Отмечаем действие как выполненное, т.к. достигнуто требуемое количество: $completedQuantity >= $plannedQuantity")
                             plannedAction.copy(
                                 isCompleted = true,
                                 manuallyCompleted = true,
                                 manuallyCompletedAt = LocalDateTime.now()
                             )
                         } else {
-                            // Иначе оставляем действие незавершенным, несмотря на completeAction = true
-                            Timber.d("Не отмечаем действие как выполненное, т.к. не достигнуто требуемое количество: $completedQuantity < $plannedQuantity")
                             plannedAction.copy(
                                 isCompleted = false,
                                 manuallyCompleted = false
                             )
                         }
                     } else if (completeAction) {
-                        // Для обычных действий сохраняем прежнее поведение
                         plannedAction.copy(
                             isCompleted = true,
                             manuallyCompleted = true,
                             manuallyCompletedAt = LocalDateTime.now()
                         )
                     } else {
-                        // Если не завершаем принудительно, используем стандартную логику
                         val isCompleted = plannedAction.isActionCompleted(updatedFactActions)
                         plannedAction.copy(isCompleted = isCompleted)
                     }
@@ -241,23 +226,17 @@ class ActionExecutionService(
         action: PlannedAction,
         stepResults: Map<String, Any>
     ): TaskProduct? {
-        // 1. Сначала проверяем специальный ключ "lastTaskProduct", который должен содержать
-        // самый актуальный TaskProduct с правильным количеством
         val lastTaskProduct = stepResults["lastTaskProduct"] as? TaskProduct
         if (lastTaskProduct != null && lastTaskProduct.quantity > 0f) {
-            Timber.d("Using lastTaskProduct for action execution, quantity: ${lastTaskProduct.quantity}")
             return lastTaskProduct
         }
 
-        // 2. Ищем любой TaskProduct с положительным количеством
         for ((key, value) in stepResults) {
             if (value is TaskProduct && value.quantity > 0f) {
-                Timber.d("Found TaskProduct with quantity ${value.quantity} for key $key")
                 return value
             }
         }
 
-        // 3. Ищем Product и пытаемся создать из него TaskProduct
         for ((_, value) in stepResults) {
             if (value is Product) {
                 var quantity = 0f
@@ -301,7 +280,6 @@ class ActionExecutionService(
                 val finalExpirationDate = if (value.accountingModel == AccountingModel.BATCH && expirationDate != null) {
                     expirationDate
                 } else {
-                    // Если срок годности не требуется или не указан, используем значение по умолчанию
                     LocalDateTime.of(1970, 1, 1, 0, 0)
                 }
 
@@ -314,8 +292,6 @@ class ActionExecutionService(
             }
         }
 
-        // 4. Если ничего не нашли, возвращаем исходный StorageProduct из действия с логированием
-        Timber.w("No suitable TaskProduct found, using original storage product from action")
         return action.storageProduct
     }
 

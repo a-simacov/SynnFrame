@@ -169,7 +169,6 @@ fun TaskXDetailScreen(
     AppScaffold(
         showTopBar = false,
         title = task?.taskTypeId?.let { viewModel.formatTaskType() } ?: "Unknown",
-// Перехватываем нажатие на кнопку "Назад" в заголовке
         onNavigateBack = { viewModel.handleBackNavigation() },
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {
@@ -212,12 +211,10 @@ fun TaskXDetailScreen(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Статус задания
                 TaskXStatusIndicator(
                     status = task.status,
                 )
 
-                // Можно добавить дополнительную информацию
                 task.startedAt?.let {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -236,7 +233,6 @@ fun TaskXDetailScreen(
                     )
                 }
 
-                // Панель переключения вида
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -304,32 +300,25 @@ fun TaskXDetailScreen(
                     )
 
                     Box(modifier = Modifier.weight(1f)) {
-                        // Обновляем компонент для отображения действий
                         PlannedActionsView(
                             plannedActions = state.filteredActions,
-                            factActions = task.factActions, // Передаем фактические действия
+                            factActions = task.factActions,
                             nextActionId = nextActionId,
                             onActionClick = { action ->
-                                // Проверяем, что задание в статусе "Выполняется"
                                 if (task.status == TaskXStatus.IN_PROGRESS &&
                                     !action.isSkipped
                                 ) {
-                                    // Если действие уже отмечено как выполненное, но разрешено
-                                    // множественное выполнение - запускаем выполнение
                                     if (action.isActionCompleted(task.factActions) &&
                                         viewModel.supportsMultipleFactActions() &&
                                         viewModel.isQuantityBasedAction(action)
                                     ) {
-                                        // Запускаем выполнение действия без изменения статуса
                                         viewModel.startActionExecution(action.id)
                                     } else if (!action.isActionCompleted(task.factActions)) {
-                                        // Обычный запуск действия
                                         viewModel.tryExecuteAction(action.id)
                                     }
                                 }
                             },
                             onToggleCompletion = { action, completed ->
-                                // Проверяем, можно ли управлять статусом выполнения
                                 if (viewModel.canManageCompletionStatus(action)) {
                                     viewModel.toggleActionCompletion(action.id, completed)
                                 }
@@ -337,8 +326,6 @@ fun TaskXDetailScreen(
                         )
                     }
 
-                    // Кнопка для запуска следующего действия, если задание в статусе "Выполняется"
-                    // и не требуется строгий порядок
                     if (task.status == TaskXStatus.IN_PROGRESS &&
                         state.taskType?.strictActionOrder != true
                     ) {

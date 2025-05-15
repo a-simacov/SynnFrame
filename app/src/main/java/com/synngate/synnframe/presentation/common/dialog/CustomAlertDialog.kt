@@ -7,10 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.synngate.synnframe.R
 
-/**
- * Простой компонент AlertDialog для отображения сообщений об ошибках
- * и информационных сообщений
- */
 @Composable
 fun CustomAlertDialog(
     title: String,

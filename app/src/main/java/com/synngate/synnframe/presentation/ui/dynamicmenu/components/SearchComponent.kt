@@ -16,12 +16,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.synngate.synnframe.R
-import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
 import com.synngate.synnframe.presentation.common.scanner.BarcodeHandlerWithState
 import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
-import timber.log.Timber
 
 class SearchComponent(
     private val searchValue: String,
@@ -31,17 +29,13 @@ class SearchComponent(
 
     @Composable
     override fun Render(modifier: Modifier) {
-        val scannerService = LocalScannerService.current
-        val hasRealScanner = scannerService?.hasRealScanner() ?: false
         var showCameraScannerDialog by remember { mutableStateOf(false) }
 
-        // Генерируем уникальный ключ для шага, используя хэш значений
         val stepKey = remember(searchValue) { "search_${searchValue.hashCode()}" }
 
         BarcodeHandlerWithState(
             stepKey = stepKey,
             onBarcodeScanned = { barcode, setProcessingState ->
-                Timber.d("Получен штрихкод от внешнего сканера: $barcode")
                 onSearchValueChanged(barcode)
                 onSearch()
                 setProcessingState(false)
@@ -51,7 +45,6 @@ class SearchComponent(
         ScannerListener(
             onBarcodeScanned = { barcode ->
                 if (barcode.isNotEmpty()) {
-                    Timber.d("Получен штрихкод от сервиса сканера: $barcode")
                     onSearchValueChanged(barcode)
                     onSearch()
                 }
@@ -61,7 +54,6 @@ class SearchComponent(
         if (showCameraScannerDialog) {
             UniversalScannerDialog(
                 onBarcodeScanned = { barcode ->
-                    Timber.d("Получен штрихкод от камеры: $barcode")
                     onSearchValueChanged(barcode)
                     onSearch()
                     showCameraScannerDialog = false

@@ -256,7 +256,7 @@ private fun getContentTransformation(forward: Boolean): ContentTransform {
  * Находит ActionStep по ID шага в визарде
  */
 private fun findActionStepForWizardStep(
-    action: com.synngate.synnframe.domain.entity.taskx.action.PlannedAction,
+    action: PlannedAction,
     stepId: String
 ): ActionStep? {
     action.actionTemplate.storageSteps.find { it.id == stepId }?.let {

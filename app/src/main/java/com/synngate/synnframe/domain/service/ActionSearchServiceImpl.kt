@@ -64,16 +64,13 @@ class ActionSearchServiceImpl(
                             action.placementPallet?.code?.lowercase() == searchLower
                 }
                 ActionObjectType.CLASSIFIER_PRODUCT -> {
-                    // Сначала пробуем искать по ID
                     if (action.storageProduct?.product?.id == searchValue) {
                         true
                     } else {
-                        // Если не найдено по ID, пробуем найти по штрихкоду через ProductRepository
                         val productFromBarcode = productRepository.findProductByBarcode(searchValue)
                         if (productFromBarcode != null) {
                             action.storageProduct?.product?.id == productFromBarcode.id
                         } else {
-                            // Проверяем штрихкоды в локальных данных продукта
                             action.storageProduct?.product?.getAllBarcodes()?.any {
                                 it.lowercase() == searchLower
                             } == true
@@ -81,15 +78,12 @@ class ActionSearchServiceImpl(
                     }
                 }
                 ActionObjectType.TASK_PRODUCT -> {
-                    // Для TASK_PRODUCT ищем только по ID продукта
                     action.storageProduct?.product?.id == searchValue ||
-                            // Или по штрихкоду через репозиторий
                             productRepository.findProductByBarcode(searchValue)?.let { foundProduct ->
                                 action.storageProduct?.product?.id == foundProduct.id
                             } == true
                 }
                 ActionObjectType.PRODUCT_QUANTITY -> {
-                    // Для количества не ищем по штрихкоду, только через другие типы
                     false
                 }
             }
@@ -110,20 +104,15 @@ class ActionSearchServiceImpl(
     ): List<String> {
         val endpoint = searchObject.endpoint ?: return emptyList()
 
-        // Заменяем параметры в endpoint
         val processedEndpoint = endpoint
             .replace("{taskId}", taskId)
             .replace("{actionId}", currentActionId ?: "")
 
-        Timber.d("Remote search: $searchValue, endpoint: $processedEndpoint")
-
         return when (val result = actionSearchApi.searchAction(processedEndpoint, searchValue)) {
             is ApiResult.Success -> {
-                // Сначала проверяем поле results для множественных результатов
                 if (!result.data.results.isNullOrEmpty()) {
                     result.data.results
                 } else {
-                    // Для обратной совместимости проверяем поле result
                     result.data.result?.let { listOf(it) } ?: emptyList()
                 }
             }
