@@ -71,13 +71,41 @@ class ActionExecutionService(
 
             val updatedPlannedActions = task.plannedActions.map { plannedAction ->
                 if (plannedAction.id == actionId) {
-                    if (completeAction) {
+                    // ИСПРАВЛЕНО: Учитываем тип прогресса и соотношение количеств
+                    if (completeAction && plannedAction.getProgressType() == ProgressType.QUANTITY && plannedAction.storageProduct != null) {
+                        val plannedQuantity = plannedAction.storageProduct.quantity
+
+                        // Получаем общее фактическое количество после добавления нового factAction
+                        val completedQuantity = updatedFactActions
+                            .filter { it.plannedActionId == plannedAction.id }
+                            .sumOf { it.storageProduct?.quantity?.toDouble() ?: 0.0 }
+                            .toFloat()
+
+                        // Устанавливаем manuallyCompleted только если достигнуто нужное количество
+                        if (completedQuantity >= plannedQuantity) {
+                            Timber.d("Отмечаем действие как выполненное, т.к. достигнуто требуемое количество: $completedQuantity >= $plannedQuantity")
+                            plannedAction.copy(
+                                isCompleted = true,
+                                manuallyCompleted = true,
+                                manuallyCompletedAt = LocalDateTime.now()
+                            )
+                        } else {
+                            // Иначе оставляем действие незавершенным, несмотря на completeAction = true
+                            Timber.d("Не отмечаем действие как выполненное, т.к. не достигнуто требуемое количество: $completedQuantity < $plannedQuantity")
+                            plannedAction.copy(
+                                isCompleted = false,
+                                manuallyCompleted = false
+                            )
+                        }
+                    } else if (completeAction) {
+                        // Для обычных действий сохраняем прежнее поведение
                         plannedAction.copy(
                             isCompleted = true,
                             manuallyCompleted = true,
                             manuallyCompletedAt = LocalDateTime.now()
                         )
                     } else {
+                        // Если не завершаем принудительно, используем стандартную логику
                         val isCompleted = plannedAction.isActionCompleted(updatedFactActions)
                         plannedAction.copy(isCompleted = isCompleted)
                     }
