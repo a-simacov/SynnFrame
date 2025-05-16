@@ -21,5 +21,6 @@ data class FactAction(
     val startedAt: LocalDateTime,
     @Serializable(with = LocalDateTimeSerializer::class)
     val completedAt: LocalDateTime,
-    val plannedActionId: String? = null
+    val plannedActionId: String? = null,
+    val actionTemplateId: String? = null
 )

@@ -18,7 +18,8 @@ data class FactActionRequestDto(
     val placementBin: BinX? = null,
     val startedAt: String, // ISO формат даты-времени
     val completedAt: String, // ISO формат даты-времени
-    val plannedActionId: String? = null
+    val plannedActionId: String? = null,
+    val actionTemplateId: String? = null
 ) {
     companion object {
         fun fromDomain(factAction: FactAction): FactActionRequestDto {
@@ -32,7 +33,8 @@ data class FactActionRequestDto(
                 placementBin = factAction.placementBin,
                 startedAt = factAction.startedAt.toString(),
                 completedAt = factAction.completedAt.toString(),
-                plannedActionId = factAction.plannedActionId
+                plannedActionId = factAction.plannedActionId,
+                actionTemplateId = factAction.actionTemplateId
             )
         }
     }

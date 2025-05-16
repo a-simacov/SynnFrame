@@ -218,7 +218,8 @@ class ActionExecutionService(
             placementBin = placementBin,
             startedAt = stepResults["startedAt"] as? LocalDateTime ?: LocalDateTime.now().minusMinutes(1),
             completedAt = LocalDateTime.now(),
-            plannedActionId = action.id
+            plannedActionId = action.id,
+            actionTemplateId = action.actionTemplate.id
         )
     }
 
