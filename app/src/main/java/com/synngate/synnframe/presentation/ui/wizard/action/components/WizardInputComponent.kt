@@ -25,24 +25,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
-/**
- * Унифицированный компонент ввода для шагов визарда
- *
- * @param value Текущее значение поля
- * @param onValueChange Обработчик изменения значения
- * @param label Метка поля ввода
- * @param modifier Модификатор
- * @param isError Флаг ошибки
- * @param errorText Текст ошибки
- * @param keyboardType Тип клавиатуры
- * @param imeAction Действие клавиатуры
- * @param onImeAction Обработчик действия клавиатуры
- * @param leadingIcon Иконка в начале поля
- * @param trailingIcon Иконка в конце поля
- * @param enabled Доступность поля для редактирования
- * @param singleLine Однострочный режим
- * @param placeholder Подсказка в поле
- */
 @Composable
 fun WizardInputField(
     value: String,
@@ -101,20 +83,6 @@ fun WizardInputField(
     }
 }
 
-/**
- * Поле ввода со сканером штрих-кода
- *
- * @param value Текущее значение
- * @param onValueChange Обработчик изменения значения
- * @param onSearch Обработчик поиска
- * @param onScannerClick Обработчик нажатия на кнопку сканера
- * @param modifier Модификатор
- * @param label Метка поля
- * @param isError Флаг ошибки
- * @param errorText Текст ошибки
- * @param onSelectFromList Обработчик выбора из списка (null, если выбор из списка не доступен)
- * @param placeholder Подсказка в поле
- */
 @Composable
 fun WizardBarcodeField(
     value: String,
@@ -160,9 +128,6 @@ fun WizardBarcodeField(
     )
 }
 
-/**
- * Вспомогательный компонент для создания отступа между элементами формы
- */
 @Composable
 fun FormSpacer(height: Int = 16) {
     Spacer(modifier = Modifier.height(height.dp))

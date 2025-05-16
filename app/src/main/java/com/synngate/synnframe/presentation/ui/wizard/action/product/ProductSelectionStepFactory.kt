@@ -28,9 +28,6 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardStepUtils
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 
-/**
- * Обновленная фабрика для шага выбора продукта с использованием стандартных компонентов
- */
 class ProductSelectionStepFactory(
     private val productLookupService: ProductLookupService,
     private val validationService: ValidationService
@@ -59,7 +56,6 @@ class ProductSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Безопасное приведение ViewModel к конкретному типу
         val productViewModel = viewModel as? ProductSelectionViewModel
 
         if (productViewModel == null) {
@@ -67,7 +63,6 @@ class ProductSelectionStepFactory(
             return
         }
 
-        // Обработка штрих-кода из контекста
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
             if (!barcode.isNullOrEmpty()) {
@@ -75,7 +70,6 @@ class ProductSelectionStepFactory(
             }
         }
 
-        // Диалог сканирования
         if (productViewModel.showCameraScannerDialog) {
             UniversalScannerDialog(
                 onBarcodeScanned = { barcode ->
@@ -89,7 +83,6 @@ class ProductSelectionStepFactory(
             )
         }
 
-        // Диалог выбора продукта
         if (productViewModel.showProductSelectionDialog) {
             OptimizedProductSelectionDialog(
                 onProductSelected = { product ->
@@ -107,7 +100,6 @@ class ProductSelectionStepFactory(
             )
         }
 
-        // Используем стандартный контейнер для шага
         WizardStepUtils.StandardStepContainer(
             state = state,
             step = step,
@@ -130,7 +122,6 @@ class ProductSelectionStepFactory(
         viewModel: ProductSelectionViewModel
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Отображаем список товаров из плана, если они есть
             if (viewModel.hasPlanProducts()) {
                 WizardStepUtils.ProductSelectionList(
                     products = viewModel.getPlanProducts(),
@@ -144,13 +135,10 @@ class ProductSelectionStepFactory(
                 FormSpacer(8)
             }
 
-            // ИЗМЕНЕНИЕ: Показываем поле поиска только если нет плана
-            // или выбранный товар не соответствует плану, или товар еще не выбран
             if (!viewModel.hasPlanProducts() ||
                 !viewModel.isSelectedProductMatchingPlan() ||
                 viewModel.getSelectedProduct() == null) {
 
-                // Используем стандартное поле ввода штрих-кода
                 WizardStepUtils.StandardBarcodeField(
                     value = viewModel.barcodeInput,
                     onValueChange = { viewModel.updateBarcodeInput(it) },
@@ -163,7 +151,6 @@ class ProductSelectionStepFactory(
 
                 FormSpacer(8)
 
-                // Кнопка выбора из списка только если нет товаров в плане
                 if (!viewModel.hasPlanProducts()) {
                     Button(
                         onClick = { viewModel.toggleProductSelectionDialog(true) },
@@ -180,7 +167,6 @@ class ProductSelectionStepFactory(
                 FormSpacer(8)
             }
 
-            // Отображаем выбранный продукт, если он не из плана
             val selectedProduct = viewModel.getSelectedProduct()
             if (selectedProduct != null && !viewModel.isSelectedProductMatchingPlan()) {
                 ProductCard(
@@ -196,19 +182,15 @@ class ProductSelectionStepFactory(
         return value is Product
     }
 
-    // Реализация интерфейса AutoCompleteCapableFactory
-
     override fun getAutoCompleteFieldName(step: ActionStep): String? {
-        return "selectedProduct" // Имя поля, при изменении которого происходит автопереход
+        return "selectedProduct"
     }
 
     override fun isAutoCompleteEnabled(step: ActionStep): Boolean {
-        // Включаем автопереход для шагов выбора товара из плана
-        return step.promptText.contains("план", ignoreCase = true)
+        return true
     }
 
     override fun requiresConfirmation(step: ActionStep, fieldName: String): Boolean {
-        // Для выбора товара не требуется подтверждение перед автопереходом
         return false
     }
 }

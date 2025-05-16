@@ -19,9 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.NavigateBefore
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -46,22 +44,6 @@ import com.synngate.synnframe.presentation.ui.wizard.action.pallet.PalletSelecti
 import kotlinx.coroutines.delay
 import timber.log.Timber
 
-/**
- * Улучшенный контейнер для шага визарда
- *
- * @param state Состояние шага
- * @param step Объект шага
- * @param action Запланированное действие
- * @param onBack Обработчик перехода назад
- * @param onForward Обработчик перехода вперед
- * @param onCancel Обработчик отмены (опционально)
- * @param forwardEnabled Доступна ли кнопка "Вперед"
- * @param isProcessingGlobal Флаг глобальной обработки шага
- * @param isFirstStep Флаг, указывающий на первый шаг
- * @param forwardText Текст кнопки перехода вперед
- * @param backText Текст кнопки возврата назад
- * @param content Содержимое шага
- */
 @Composable
 fun <T> WizardStepContainer(
     state: StepViewState<T>,
@@ -78,21 +60,16 @@ fun <T> WizardStepContainer(
     backText: String = "",
     content: @Composable () -> Unit
 ) {
-    // Используем отложенное отображение индикатора загрузки
     var showLoading by remember { mutableStateOf(false) }
     var previousLoadingState by remember { mutableStateOf(false) }
 
-    // Определяем, находится ли экран в состоянии загрузки
     val isReallyLoading = state.isLoading || isProcessingGlobal
 
-    // Эффект для отложенного отображения индикатора загрузки
     LaunchedEffect(isReallyLoading) {
         if (isReallyLoading && !previousLoadingState) {
-            // Если началась загрузка, ждем 300мс перед показом индикатора
             delay(300)
             showLoading = isReallyLoading
         } else if (!isReallyLoading && previousLoadingState) {
-            // Если загрузка завершилась, сразу убираем индикатор
             showLoading = false
         }
         previousLoadingState = isReallyLoading
@@ -111,12 +88,10 @@ fun <T> WizardStepContainer(
                 .fillMaxSize()
                 .padding(4.dp)
         ) {
-            // Заголовок шага с информацией о действии
             WizardStepHeader(step)
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Сообщение об ошибке, если есть
             AnimatedVisibility(
                 visible = state.error != null,
                 enter = fadeIn(animationSpec = tween(300)),
@@ -131,7 +106,6 @@ fun <T> WizardStepContainer(
                 }
             }
 
-            // Основное содержимое шага или индикатор загрузки
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -154,17 +128,15 @@ fun <T> WizardStepContainer(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Панель с кнопками навигации
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Кнопка "Назад" (скрывается на первом шаге)
                 if (!isFirstStep) {
                     OutlinedButton(
                         onClick = onBack,
                         modifier = Modifier.weight(1f),
-                        enabled = !isReallyLoading // Блокируем, если идет загрузка
+                        enabled = !isReallyLoading
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -177,34 +149,27 @@ fun <T> WizardStepContainer(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
 
-                // Кнопка "Вперед"
                 Button(
                     onClick = {
-                        // ИСПРАВЛЕНО: Добавлена специальная обработка для разных типов ViewModel
+                        // Добавлена специальная обработка для разных типов ViewModel
                         // В зависимости от типа ViewModel вызываем соответствующий метод
                         when (viewModel) {
                             // Для PalletSelectionViewModel вызываем специальный метод
                             is PalletSelectionViewModel -> {
-                                Timber.d("Вызываем manuallyCompleteStep для PalletSelectionViewModel")
                                 viewModel.manuallyCompleteStep()
                             }
                             // Для остальных типов используем общий подход
                             else -> {
-                                Timber.d("Используем стандартный onForward для ${viewModel.javaClass.simpleName}")
-
                                 // Если есть данные, пытаемся вызвать validateAndCompleteIfValid
                                 if (state.data != null) {
                                     // Проверяем, есть ли у ViewModel метод validateAndCompleteIfValid
                                     try {
-                                        Timber.d("Вызываем validateAndCompleteIfValid с данными: ${state.data}")
                                         viewModel.validateAndCompleteIfValid(state.data)
                                     } catch (e: Exception) {
                                         Timber.e("Ошибка при вызове validateAndCompleteIfValid: ${e.message}")
-                                        // Если возникла ошибка, используем стандартный onForward
                                         onForward()
                                     }
                                 } else {
-                                    // Если данных нет, просто вызываем onForward
                                     onForward()
                                 }
                             }
@@ -225,9 +190,6 @@ fun <T> WizardStepContainer(
     }
 }
 
-/**
- * Компонент для отображения заголовка шага
- */
 @Composable
 private fun WizardStepHeader(step: ActionStep) {
     Text(
@@ -236,125 +198,4 @@ private fun WizardStepHeader(step: ActionStep) {
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary
     )
-}
-
-/**
- * Контейнер для отображения итогового экрана визарда
- */
-@Composable
-fun WizardSummaryContainer(
-    title: String,
-    onBack: () -> Unit,
-    onComplete: () -> Unit,
-    onRetry: () -> Unit,
-    isSending: Boolean,
-    hasError: Boolean,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
-    var showLoading by remember { mutableStateOf(false) }
-    var previousLoadingState by remember { mutableStateOf(false) }
-
-    // Эффект для отложенного отображения индикатора загрузки
-    LaunchedEffect(isSending) {
-        if (isSending && !previousLoadingState) {
-            delay(300)
-            showLoading = isSending
-        } else if (!isSending && previousLoadingState) {
-            showLoading = false
-        }
-        previousLoadingState = isSending
-    }
-
-    Card(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            // Заголовок
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            // Основное содержимое
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                if (showLoading) {
-                    WizardLoadingIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        message = "Отправка данных..."
-                    )
-                } else {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        content()
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Нижний блок с кнопками
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Кнопка "Назад"
-                OutlinedButton(
-                    onClick = onBack,
-                    modifier = Modifier.weight(1f),
-                    enabled = !isSending && !showLoading
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.NavigateBefore,
-                        contentDescription = "Назад",
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
-                    Text("Назад")
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Кнопка "Завершить" или "Повторить"
-                if (hasError) {
-                    Button(
-                        onClick = onRetry,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    ) {
-                        Text("Повторить")
-                    }
-                } else {
-                    Button(
-                        onClick = onComplete,
-                        modifier = Modifier.weight(1f),
-                        enabled = !isSending && !showLoading
-                    ) {
-                        Text("Завершить")
-                    }
-                }
-            }
-        }
-    }
 }

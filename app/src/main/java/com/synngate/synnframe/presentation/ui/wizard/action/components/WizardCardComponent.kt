@@ -24,19 +24,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-/**
- * Базовый компонент карточки для использования в шагах визарда.
- * Обеспечивает единый внешний вид и поведение для всех типов объектов.
- *
- * @param title Основной заголовок карточки
- * @param onClick Обработчик нажатия на карточку (null, если карточка не кликабельна)
- * @param isSelected Выбрана ли карточка
- * @param modifier Модификатор
- * @param containerColor Цвет фона карточки (по умолчанию использует цвет из темы)
- * @param actionIcon Иконка действия (по умолчанию галочка)
- * @param actionIconDescription Описание иконки действия для доступности
- * @param content Содержимое карточки
- */
 @Composable
 fun WizardCard(
     title: String,
@@ -96,15 +83,11 @@ fun WizardCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Содержимое карточки
             content()
         }
     }
 }
 
-/**
- * Вспомогательный компонент для отображения строки с меткой и значением
- */
 @Composable
 fun CardProperty(
     label: String,
@@ -132,9 +115,6 @@ fun CardProperty(
     }
 }
 
-/**
- * Вспомогательный компонент для добавления вертикального отступа между элементами
- */
 @Composable
 fun CardSpacer(height: Int = 4) {
     Spacer(modifier = Modifier.height(height.dp))

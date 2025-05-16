@@ -12,9 +12,6 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.CardSpace
 import com.synngate.synnframe.presentation.ui.wizard.action.components.WizardCard
 import com.synngate.synnframe.presentation.util.formatDate
 
-/**
- * Адаптер для отображения продукта в стандартной карточке
- */
 @Composable
 fun ProductCard(
     product: Product,
@@ -28,7 +25,6 @@ fun ProductCard(
         isSelected = isSelected,
         modifier = modifier
     ) {
-        // Добавляем свойства продукта
         CardProperty(label = "Артикул", value = product.articleNumber)
         CardSpacer()
 
@@ -43,9 +39,6 @@ fun ProductCard(
     }
 }
 
-/**
- * Адаптер для отображения TaskProduct в стандартной карточке
- */
 @Composable
 fun TaskProductCard(
     taskProduct: TaskProduct,
@@ -59,11 +52,9 @@ fun TaskProductCard(
         isSelected = isSelected,
         modifier = modifier
     ) {
-        // Добавляем свойства TaskProduct
         CardProperty(label = "Артикул", value = taskProduct.product.articleNumber)
         CardSpacer()
 
-        // Штрихкод основной единицы измерения
         taskProduct.product.getMainUnit()?.let { unit ->
             if (unit.mainBarcode.isNotEmpty()) {
                 CardProperty(label = "Штрихкод", value = unit.mainBarcode)
@@ -71,7 +62,6 @@ fun TaskProductCard(
             }
         }
 
-        // Количество
         if (taskProduct.quantity > 0) {
             CardProperty(
                 label = "Количество",
@@ -80,7 +70,6 @@ fun TaskProductCard(
             CardSpacer()
         }
 
-        // Статус продукта
         CardProperty(
             label = "Статус",
             value = when (taskProduct.status) {
@@ -90,7 +79,6 @@ fun TaskProductCard(
             }
         )
 
-        // Срок годности
         if (taskProduct.hasExpirationDate()) {
             CardSpacer()
             CardProperty(
@@ -133,9 +121,6 @@ fun TaskProductCardShort(
     }
 }
 
-/**
- * Адаптер для отображения паллеты в стандартной карточке
- */
 @Composable
 fun PalletCard(
     pallet: Pallet,
@@ -149,18 +134,12 @@ fun PalletCard(
         isSelected = isSelected,
         modifier = modifier
     ) {
-        // Дополнительная информация о паллете, если есть
         if (pallet.isClosed) {
             CardProperty(label = "Статус", value = "Закрыта")
         }
-
-        // Тут можно добавить другие свойства паллеты
     }
 }
 
-/**
- * Адаптер для отображения ячейки в стандартной карточке
- */
 @Composable
 fun BinCard(
     bin: BinX,
@@ -174,11 +153,8 @@ fun BinCard(
         isSelected = isSelected,
         modifier = modifier
     ) {
-        // Дополнительная информация о ячейке, если есть
         if (bin.zone.isNotEmpty()) {
             CardProperty(label = "Зона", value = bin.zone)
         }
-
-        // Тут можно добавить другие свойства ячейки
     }
 }

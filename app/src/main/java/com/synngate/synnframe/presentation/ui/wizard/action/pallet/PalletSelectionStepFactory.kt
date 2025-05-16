@@ -28,17 +28,11 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardStepUtils
 import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
 
-/**
- * Обновленная фабрика для шага выбора паллеты
- */
 class PalletSelectionStepFactory(
     private val palletLookupService: PalletLookupService,
     private val validationService: ValidationService
 ) : BaseActionStepFactory<Pallet>(), AutoCompleteCapableFactory {
 
-    /**
-     * Создает ViewModel для шага
-     */
     override fun getStepViewModel(
         step: ActionStep,
         action: PlannedAction,
@@ -55,9 +49,6 @@ class PalletSelectionStepFactory(
         )
     }
 
-    /**
-     * Отображает UI для шага
-     */
     @Composable
     override fun StepContent(
         state: StepViewState<Pallet>,
@@ -66,7 +57,6 @@ class PalletSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Безопасное приведение ViewModel к конкретному типу
         val palletViewModel = viewModel as? PalletSelectionViewModel
 
         if (palletViewModel == null) {
@@ -74,7 +64,6 @@ class PalletSelectionStepFactory(
             return
         }
 
-        // Обработка штрих-кода из контекста
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
             if (!barcode.isNullOrEmpty()) {
@@ -82,7 +71,6 @@ class PalletSelectionStepFactory(
             }
         }
 
-        // Диалог сканирования
         if (palletViewModel.showCameraScannerDialog) {
             val isStorageStep = palletViewModel.isStoragePalletStep()
             val plannedPallet = if (isStorageStep) action.storagePallet else action.placementPallet
@@ -103,7 +91,6 @@ class PalletSelectionStepFactory(
             )
         }
 
-        // Используем стандартный контейнер для шага
         WizardStepUtils.StandardStepContainer(
             state = state,
             step = step,
@@ -131,7 +118,6 @@ class PalletSelectionStepFactory(
             val selectedPallet = viewModel.getSelectedPallet()
             val selectedPalletCode = selectedPallet?.code
 
-            // Отображаем паллеты из плана, если они есть
             if (viewModel.hasPlanPallets()) {
                 WizardStepUtils.PalletList(
                     pallets = viewModel.getPlanPallets(),
@@ -145,12 +131,10 @@ class PalletSelectionStepFactory(
                 FormSpacer(8)
             }
 
-            // Скрываем поле ввода, когда выбрана запланированная паллета
             if (!viewModel.hasPlanPallets() ||
                 !viewModel.isSelectedPalletMatchingPlan() ||
                 viewModel.getSelectedPallet() == null) {
 
-                // Используем стандартное поле ввода штрих-кода
                 WizardStepUtils.StandardBarcodeField(
                     value = viewModel.palletCodeInput,
                     onValueChange = { viewModel.updatePalletCodeInput(it) },
@@ -162,9 +146,6 @@ class PalletSelectionStepFactory(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Кнопка создания новой паллеты - показываем только если:
-                // - нет строгого требования использовать паллету из плана
-                // - либо план пуст
                 if (!step.validationRules.rules.any { it.type == ValidationType.FROM_PLAN } ||
                     !viewModel.hasPlanPallets()) {
 
@@ -183,7 +164,6 @@ class PalletSelectionStepFactory(
                 }
             }
 
-            // Если выбранная паллета не из плана, показываем ее
             if (selectedPallet != null && !viewModel.isSelectedPalletMatchingPlan()) {
                 FormSpacer(8)
 
@@ -200,19 +180,15 @@ class PalletSelectionStepFactory(
         return value is Pallet
     }
 
-    // Реализация интерфейса AutoCompleteCapableFactory
-
     override fun getAutoCompleteFieldName(step: ActionStep): String? {
-        return "selectedPallet" // Автопереход при выборе паллеты
+        return "selectedPallet"
     }
 
     override fun isAutoCompleteEnabled(step: ActionStep): Boolean {
-        // Включаем автопереход для шагов выбора паллеты из плана
         return true
     }
 
     override fun requiresConfirmation(step: ActionStep, fieldName: String): Boolean {
-        // Паллета не требует подтверждения
         return false
     }
 }

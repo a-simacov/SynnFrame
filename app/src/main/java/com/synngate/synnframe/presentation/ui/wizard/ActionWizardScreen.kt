@@ -1,4 +1,3 @@
-// Заменяет com.synngate.synnframe.presentation.ui.wizard.ActionWizardScreen
 package com.synngate.synnframe.presentation.ui.wizard
 
 import androidx.activity.compose.BackHandler
@@ -19,11 +18,9 @@ import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionWizardContent
+import kotlinx.coroutines.delay
 import timber.log.Timber
 
-/**
- * Упрощенный экран визарда действий
- */
 @Composable
 fun ActionWizardScreen(
     viewModel: ActionWizardViewModel,
@@ -38,20 +35,16 @@ fun ActionWizardScreen(
     BackHandler {
         val currentState = wizardState
 
-        if (currentState != null) {
-            when {
-                currentState.currentStepIndex == 0 -> {
-                    viewModel.cancelWizard()
-                }
-                currentState.isCompleted -> {
-                    viewModel.goBackToPreviousStep()
-                }
-                else -> {
-                    viewModel.goBackToPreviousStep()
-                }
+        when {
+            currentState.currentStepIndex == 0 -> {
+                viewModel.cancelWizard()
             }
-        } else {
-            viewModel.cancelWizard()
+            currentState.isCompleted -> {
+                viewModel.goBackToPreviousStep()
+            }
+            else -> {
+                viewModel.goBackToPreviousStep()
+            }
         }
     }
 
@@ -76,9 +69,7 @@ fun ActionWizardScreen(
                 }
                 is ActionWizardEvent.NavigateBackWithSuccess -> {
                     Timber.d("Выполняем navigateBackWithSuccess с actionId=${event.actionId}")
-                    // ИСПРАВЛЕНИЕ: добавляем задержку перед навигацией, чтобы убедиться,
-                    // что все данные очищены и сохранены
-                    kotlinx.coroutines.delay(100)
+                    delay(100)
                     navigateBackWithSuccess(event.actionId)
                 }
                 is ActionWizardEvent.ShowSnackbar -> {
@@ -109,7 +100,6 @@ fun ActionWizardScreen(
                 wizardState = wizardState,
                 onProcessStepResult = { result -> viewModel.processStepResult(result) },
                 onComplete = {
-                    Timber.d("ActionWizardContent: вызов onComplete")
                     viewModel.completeWizard()
                 },
                 onCancel = { viewModel.cancelWizard() },

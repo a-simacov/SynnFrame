@@ -27,10 +27,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.Product
@@ -77,7 +75,6 @@ fun ActionWizardContent(
         return
     }
 
-    // Обработка глобального сканирования
     val scannerService = LocalScannerService.current
     var isProcessingGlobalBarcode by remember { mutableStateOf(false) }
 
@@ -96,11 +93,9 @@ fun ActionWizardContent(
         })
     }
 
-    // Запоминаем последний индекс шага для определения направления анимации
     var previousStepIndex by remember { mutableStateOf(wizardState.currentStepIndex) }
     val isForwardTransition = wizardState.currentStepIndex >= previousStepIndex
 
-    // Храним текущий ViewModel для получения данных напрямую
     var currentViewModel by remember { mutableStateOf<BaseStepViewModel<*>?>(null) }
 
     LaunchedEffect(wizardState.currentStepIndex) {
@@ -119,7 +114,6 @@ fun ActionWizardContent(
                 .padding(vertical = 4.dp)
         )
 
-        // Используем AnimatedContent для плавного перехода между шагами
         AnimatedContent(
             targetState = wizardState.currentStepIndex,
             transitionSpec = { getContentTransformation(isForwardTransition) },
@@ -128,6 +122,7 @@ fun ActionWizardContent(
                 .weight(1f),
             label = "step-animation"
         ) { stepIndex ->
+            Timber.i(stepIndex.toString())
             Card(
                 modifier = Modifier.fillMaxSize(),
                 colors = CardDefaults.cardColors(
@@ -252,9 +247,6 @@ private fun getContentTransformation(forward: Boolean): ContentTransform {
     }
 }
 
-/**
- * Находит ActionStep по ID шага в визарде
- */
 private fun findActionStepForWizardStep(
     action: PlannedAction,
     stepId: String
@@ -270,9 +262,6 @@ private fun findActionStepForWizardStep(
     return null
 }
 
-/**
- * Экран, отображаемый при отсутствии фабрики для типа объекта
- */
 @Composable
 private fun NoFactoryFoundScreen(objectType: String) {
     EmptyScreenContent(
@@ -280,9 +269,6 @@ private fun NoFactoryFoundScreen(objectType: String) {
     )
 }
 
-/**
- * Экран, отображаемый при отсутствии шага
- */
 @Composable
 private fun NoStepFoundScreen(stepId: String) {
     EmptyScreenContent(
@@ -290,9 +276,6 @@ private fun NoStepFoundScreen(stepId: String) {
     )
 }
 
-/**
- * Экран, отображаемый при отсутствии действия
- */
 @Composable
 private fun NoActionFoundScreen() {
     EmptyScreenContent(
@@ -301,96 +284,55 @@ private fun NoActionFoundScreen() {
 }
 
 /**
- * Компонент для отображения ошибки инициализации
- */
-@Composable
-fun InitializationErrorScreen(message: String, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(16.dp)
-        )
-    }
-}
-
-/**
  * Находит наиболее релевантную запись с товаром и количеством.
  * Приоритет отдается результату шага с типом PRODUCT_QUANTITY (ввод количества),
  * если он есть, иначе возвращает первый найденный TaskProduct.
  */
 private fun findMostRelevantProductEntry(results: Map<String, Any>, state: ActionWizardState): Pair<String, TaskProduct>? {
-    // Для отладки выводим все TaskProduct в результатах
-    results.entries.filter { (_, value) -> value is TaskProduct }.forEach { (key, value) ->
-        val product = value as TaskProduct
-        Timber.d("Available TaskProduct: key=$key, product=${product.product.name}, quantity=${product.quantity}")
-    }
-
-    // ИСПРАВЛЕНИЕ: Динамически ищем шаг ввода количества по его типу объекта
     val quantityStepId = findQuantityStepId(state)
 
     if (quantityStepId != null) {
-        Timber.d("Found quantity step ID: $quantityStepId")
 
         val quantityEntry = results[quantityStepId] as? TaskProduct
         if (quantityEntry != null) {
-            Timber.d("Using quantity step with ID=$quantityStepId, quantity=${quantityEntry.quantity}")
             return Pair(quantityStepId, quantityEntry)
         }
     }
 
-    // Если нет записи с ID шага ввода количества, используем lastTaskProduct
     val lastTaskProduct = results["lastTaskProduct"] as? TaskProduct
     if (lastTaskProduct != null) {
-        Timber.d("Using lastTaskProduct with quantity=${lastTaskProduct.quantity}")
         return Pair("lastTaskProduct", lastTaskProduct)
     }
 
-    // Находим любой ненулевой TaskProduct для отображения
     val anyTaskProduct = results.entries.find { (_, value) ->
         value is TaskProduct && value.quantity > 0f
     }
 
     if (anyTaskProduct != null) {
         val taskProduct = anyTaskProduct.value as TaskProduct
-        Timber.d("Falling back to any TaskProduct with quantity=${taskProduct.quantity}")
         return Pair(anyTaskProduct.key, taskProduct)
     }
 
-    // В крайнем случае берем любой TaskProduct
     val fallbackProduct = results.entries.find { (_, value) -> value is TaskProduct }
 
     if (fallbackProduct != null) {
-        Timber.d("Using fallback TaskProduct")
         return Pair(fallbackProduct.key, fallbackProduct.value as TaskProduct)
     }
 
-    // Если ничего не нашли, пробуем создать из Product
     val productEntry = results.entries.find { (_, value) -> value is Product }
 
     if (productEntry != null) {
         val product = productEntry.value as Product
         val createdTaskProduct = WizardUtils.createTaskProductFromProduct(product, 0f)
-        Timber.d("Created TaskProduct from Product")
         return Pair(productEntry.key, createdTaskProduct)
     }
 
-    Timber.w("No suitable TaskProduct found!")
     return null
 }
 
-/**
- * Находит ID шага ввода количества в визарде по типу объекта
- */
 private fun findQuantityStepId(state: ActionWizardState): String? {
     val action = state.action ?: return null
 
-    // Находим шаг с типом объекта PRODUCT_QUANTITY
     for (step in state.steps) {
         val actionStep = findActionStepForWizardStep(action, step.id)
 
@@ -415,8 +357,6 @@ fun ActionSummaryScreen(
         modifier = modifier
             .fillMaxWidth()
     ) {
-        // Заголовок убран, т.к. он уже отображается в SummaryContainer
-
         if (action != null) {
             Text(
                 text = action.actionTemplate.name,
@@ -435,8 +375,6 @@ fun ActionSummaryScreen(
                 )
             }
 
-            // ИСПРАВЛЕНИЕ: Избегаем дублирования объектов
-            // Создаем набор уже отображенных ячеек и паллет по их коду
             val displayedBinCodes = mutableSetOf<String>()
             val displayedPalletCodes = mutableSetOf<String>()
 
@@ -444,7 +382,6 @@ fun ActionSummaryScreen(
                 if (value !is TaskProduct && value !is Product) {
                     when (value) {
                         is Pallet -> {
-                            // Проверяем, не отображали ли мы уже эту паллету
                             if (!displayedPalletCodes.contains(value.code)) {
                                 PalletInfo(value)
                                 displayedPalletCodes.add(value.code)
@@ -452,7 +389,6 @@ fun ActionSummaryScreen(
                         }
 
                         is BinX -> {
-                            // Проверяем, не отображали ли мы уже эту ячейку
                             if (!displayedBinCodes.contains(value.code)) {
                                 BinInfo(value)
                                 displayedBinCodes.add(value.code)
@@ -517,45 +453,25 @@ private fun TaskProductInfo(
 ) {
     val taskProduct = productEntry.second
 
-    // Логируем данные для отладки
-    Timber.d("TaskProductInfo: Using product ${taskProduct.product.name} with quantity ${taskProduct.quantity}")
-    Timber.d("TaskProductInfo: Found from key ${productEntry.first}")
-
-    if (action.storageProduct != null) {
-        Timber.d("TaskProductInfo: Planned product ${action.storageProduct.product.name} with quantity ${action.storageProduct.quantity}")
-    }
-
     @Suppress("UNCHECKED_CAST")
     val relatedFactActions =
         (factActionsInfo[action.id] as? List<FactAction>) ?: emptyList()
 
-    // Получаем количество из предыдущих фактических действий
     val previousCompletedQuantity = relatedFactActions.sumOf {
         val quantity = it.storageProduct?.quantity?.toDouble() ?: 0.0
-        Timber.d("  - Fact action quantity: $quantity")
         quantity
     }.toFloat()
 
-    Timber.d("TaskProductInfo: Previous completed quantity: $previousCompletedQuantity")
-
-    // ИСПРАВЛЕНИЕ: Здесь текущее количество берется из TaskProduct, выбранного пользователем
     val currentQuantity = taskProduct.quantity
-    Timber.d("TaskProductInfo: Current quantity from taskProduct: $currentQuantity")
 
-    // Итоговое количество - это сумма предыдущих выполненных действий и текущего вводимого значения
     val totalQuantity = previousCompletedQuantity + currentQuantity
-    Timber.d("TaskProductInfo: Total quantity: $totalQuantity")
 
-    // Запланированное количество из действия или 0, если не указано
     val plannedQuantity = action.storageProduct?.let {
         if (it.product.id == taskProduct.product.id) it.quantity else 0f
     } ?: 0f
-    Timber.d("TaskProductInfo: Planned quantity: $plannedQuantity")
 
-    // Вычисляем оставшееся количество (с ограничением не менее 0)
     val remainingQuantity = (plannedQuantity - totalQuantity).coerceAtLeast(0f)
 
-    // Проверяем, превышает ли общее количество запланированное
     val isOverLimit = plannedQuantity > 0f && totalQuantity > plannedQuantity
 
     Card(
@@ -605,7 +521,6 @@ private fun TaskProductInfo(
             HorizontalDivider()
             DefaultSpacer()
 
-            // Отображаем все требуемые строки с количествами
             QuantityRow(label = "Запланировано:", value = formatQuantityDisplay(plannedQuantity))
 
             if (previousCompletedQuantity > 0f) {
@@ -636,7 +551,6 @@ private fun TaskProductInfo(
                 }
             }
 
-            // Добавляем строку с оставшимся количеством
             DefaultSpacer()
             QuantityRow(
                 label = "Осталось:",

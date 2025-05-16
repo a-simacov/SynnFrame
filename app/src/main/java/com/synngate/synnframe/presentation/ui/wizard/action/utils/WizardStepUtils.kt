@@ -14,7 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
@@ -32,7 +31,6 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.WizardSta
 import com.synngate.synnframe.presentation.ui.wizard.action.components.WizardStepContainer
 import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.BinCard
 import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.PalletCard
-import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.ProductCard
 import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.TaskProductCard
 import com.synngate.synnframe.presentation.ui.wizard.action.quantity.ProductQuantityViewModel
 import timber.log.Timber
@@ -106,41 +104,6 @@ object WizardStepUtils {
                 TaskProductCard(
                     taskProduct = taskProduct,
                     onClick = { onProductSelect(taskProduct) },
-                    isSelected = isSelected,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                FormSpacer(4)
-            }
-        }
-    }
-
-    /**
-     * Отображает список товаров для выбора
-     */
-    @Composable
-    fun ProductList(
-        products: List<Product>,
-        onProductSelect: (Product) -> Unit,
-        selectedProductId: String? = null,
-        modifier: Modifier = Modifier
-    ) {
-        if (products.isEmpty()) {
-            WizardEmptyState(
-                message = "Список продуктов пуст",
-                icon = Icons.Default.Info,
-                modifier = modifier
-            )
-            return
-        }
-
-        Column(modifier = modifier.fillMaxWidth()) {
-            products.forEach { product ->
-                val isSelected = selectedProductId == product.id
-
-                ProductCard(
-                    product = product,
-                    onClick = { onProductSelect(product) },
                     isSelected = isSelected,
                     modifier = Modifier.fillMaxWidth()
                 )

@@ -110,12 +110,9 @@ class ProductQuantityStepFactory(
         val focusRequester = remember { FocusRequester() }
         var inputValue by remember { mutableStateOf(viewModel.quantityInput) }
 
-        // Используем LaunchedEffect для установки фокуса при появлении компонента
         LaunchedEffect(Unit) {
             try {
-                // Небольшая задержка для гарантии, что поле уже отрисовано
                 delay(100)
-                Timber.d("Запрашиваем фокус для поля ввода количества")
                 focusRequester.requestFocus()
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при установке фокуса на поле ввода количества")
@@ -226,19 +223,15 @@ class ProductQuantityStepFactory(
         return taskProduct != null && taskProduct.quantity > 0
     }
 
-    // Реализация интерфейса AutoCompleteCapableFactory
-
     override fun getAutoCompleteFieldName(step: ActionStep): String? {
-        return "quantityInput" // Имя поля, при изменении которого происходит автопереход
+        return "quantityInput"
     }
 
     override fun isAutoCompleteEnabled(step: ActionStep): Boolean {
-        // Включаем автопереход для всех шагов ввода количества
         return true
     }
 
     override fun requiresConfirmation(step: ActionStep, fieldName: String): Boolean {
-        // Для ввода количества не требуется дополнительное подтверждение
         return false
     }
 }

@@ -33,19 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
-import timber.log.Timber
 
-/**
- * Контейнер для отображения итогового экрана визарда с результатами
- *
- * @param title Заголовок экрана
- * @param onBack Обработчик кнопки "Назад"
- * @param onComplete Обработчик кнопки "Завершить"
- * @param onRetry Обработчик кнопки "Повторить" (при ошибке)
- * @param isSending Флаг отправки данных
- * @param hasError Есть ли ошибка при отправке
- * @param content Содержимое экрана
- */
 @Composable
 fun SummaryContainer(
     title: String,
@@ -57,27 +45,20 @@ fun SummaryContainer(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    // Используем отложенное отображение индикатора загрузки
     var showLoading by remember { mutableStateOf(false) }
     var previousLoadingState by remember { mutableStateOf(false) }
 
-    // Добавляем логирование для отладки
     LaunchedEffect(isSending) {
-        Timber.d("SummaryContainer: isSending changed to $isSending")
         if (isSending && !previousLoadingState) {
             // Если началась отправка, ждем 300мс перед показом индикатора
             delay(300)
             showLoading = isSending
-            Timber.d("SummaryContainer: showLoading set to $showLoading after delay")
         } else if (!isSending && previousLoadingState) {
-            // Если отправка завершилась, сразу убираем индикатор
             showLoading = false
-            Timber.d("SummaryContainer: showLoading set to $showLoading immediately")
         }
         previousLoadingState = isSending
     }
 
-    // Принудительно сбрасываем showLoading в false, если isSending = false
     if (!isSending && showLoading) {
         showLoading = false
     }
@@ -87,14 +68,12 @@ fun SummaryContainer(
             .fillMaxSize()
             .padding(4.dp)
     ) {
-        // Заголовок
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(bottom = 4.dp)
         )
 
-        // Основное содержимое
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -106,12 +85,10 @@ fun SummaryContainer(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Нижний блок с кнопками
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Кнопка "Назад" - сохраняем на итоговом экране
             OutlinedButton(
                 onClick = onBack,
                 modifier = Modifier.weight(1f),
@@ -126,9 +103,7 @@ fun SummaryContainer(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Кнопка "Завершить" или "Повторить"
             if (hasError) {
-                // Кнопка "Повторить" при ошибке
                 Button(
                     onClick = onRetry,
                     modifier = Modifier.weight(1f),
@@ -144,11 +119,10 @@ fun SummaryContainer(
                     Text("Повторить")
                 }
             } else {
-                // Кнопка "Завершить"
                 Button(
                     onClick = onComplete,
                     modifier = Modifier.weight(1f),
-                    enabled = !isSending && !showLoading // Добавляем проверку showLoading
+                    enabled = !isSending && !showLoading
                 ) {
                     if (showLoading) {
                         CircularProgressIndicator(

@@ -14,9 +14,6 @@ import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardUtils
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 import java.time.LocalDateTime
 
-/**
- * Оптимизированная ViewModel для шага выбора товара с учетными характеристиками
- */
 class TaskProductSelectionViewModel(
     step: ActionStep,
     action: PlannedAction,
@@ -27,17 +24,14 @@ class TaskProductSelectionViewModel(
 
     private val plannedTaskProduct = action.storageProduct
 
-    // Данные для списка товаров из плана
     private var _planProducts = listOfNotNull(plannedTaskProduct)
     val planProducts: List<TaskProduct>
         get() = _planProducts
 
-    // Набор ID товаров для быстрого поиска
-    private var _planProductIds = _planProducts.mapNotNull { it.product.id }.toSet()
+    private var _planProductIds = _planProducts.map { it.product.id }.toSet()
     val planProductIds: Set<String>
         get() = _planProductIds
 
-    // Состояние выбранного товара
     private var selectedProduct: Product? = null
     private var selectedTaskProduct: TaskProduct? = null
     var selectedStatus = ProductStatus.STANDARD
@@ -45,24 +39,18 @@ class TaskProductSelectionViewModel(
     var expirationDate: LocalDateTime? = null
         private set
 
-    // Состояние поля ввода
     var productCodeInput = ""
         private set
 
-    // Состояние диалогов
     var showCameraScannerDialog = false
         private set
     var showProductSelectionDialog = false
         private set
 
     init {
-        // Обновление товаров из локальной БД
         updateProductsFromLocalDb()
     }
 
-    /**
-     * Переопределяем для загрузки TaskProduct из контекста
-     */
     override fun onResultLoadedFromContext(result: TaskProduct) {
         selectedProduct = result.product
         selectedTaskProduct = result
@@ -70,42 +58,31 @@ class TaskProductSelectionViewModel(
         expirationDate = if (result.hasExpirationDate()) result.expirationDate else null
     }
 
-    /**
-     * Проверка типа результата
-     */
     override fun isValidType(result: Any): Boolean {
         return result is TaskProduct
     }
 
-    /**
-     * Обновляет данные товаров из локальной БД
-     */
     private fun updateProductsFromLocalDb() {
         if (_planProducts.isEmpty()) return
 
         executeWithErrorHandling("обновления данных товаров", showLoading = false) {
-            // Собираем ID товаров для запроса
-            val productIds = _planProducts.mapNotNull { it.product.id }.toSet()
+            val productIds = _planProducts.map { it.product.id }.toSet()
             if (productIds.isEmpty()) {
                 return@executeWithErrorHandling
             }
 
-            // Запрашиваем полные данные о товарах из БД
             val productsFromDb = productLookupService.getProductsByIds(productIds)
             if (productsFromDb.isEmpty()) {
                 return@executeWithErrorHandling
             }
 
-            // Создаем мапу для быстрого доступа к продуктам
             val productsMap = productsFromDb.associateBy { it.id }
 
-            // Создаем обновленные TaskProduct с полными данными о товарах
             val updatedPlanProducts = _planProducts.map { taskProduct ->
                 val productId = taskProduct.product.id
                 val fullProduct = productsMap[productId]
 
                 if (fullProduct != null) {
-                    // Если нашли полную информацию, создаем новый TaskProduct
                     TaskProduct(
                         product = fullProduct,
                         status = taskProduct.status,
@@ -113,16 +90,13 @@ class TaskProductSelectionViewModel(
                         quantity = taskProduct.quantity
                     )
                 } else {
-                    // Иначе оставляем как есть
                     taskProduct
                 }
             }
 
-            // Обновляем списки
             _planProducts = updatedPlanProducts
             _planProductIds = updatedPlanProducts.mapNotNull { it.product.id }.toSet()
 
-            // Если уже выбран продукт, обновляем и его
             if (selectedProduct != null && selectedTaskProduct != null) {
                 val selectedId = selectedProduct?.id
                 val updatedProduct = selectedId?.let { productsMap[it] }
@@ -133,7 +107,6 @@ class TaskProductSelectionViewModel(
                         product = updatedProduct
                     )
 
-                    // Обновляем состояние
                     updateStateFromSelectedProduct()
                 }
             }
@@ -190,9 +163,6 @@ class TaskProductSelectionViewModel(
         return true
     }
 
-    /**
-     * Создает TaskProduct из текущего состояния
-     */
     fun createTaskProductFromState(): TaskProduct? {
         val product = selectedProduct ?: return null
 
@@ -209,21 +179,6 @@ class TaskProductSelectionViewModel(
         )
     }
 
-    /**
-     * Сохраняет результат и переходит к следующему шагу
-     */
-    fun saveResult() {
-        val taskProduct = createTaskProductFromState()
-        if (taskProduct != null) {
-            completeStep(taskProduct)
-        } else {
-            setError("Необходимо выбрать товар")
-        }
-    }
-
-    /**
-     * Устанавливает выбранный продукт
-     */
     fun setSelectedProduct(product: Product) {
         executeWithErrorHandling("выбора продукта", showLoading = false) {
             selectedProduct = product
@@ -241,14 +196,10 @@ class TaskProductSelectionViewModel(
                 expirationDate = null
             }
 
-            // Обновляем состояние и проверяем автопереход
             updateStateFromSelectedProduct(true)
         }
     }
 
-    /**
-     * Устанавливает статус продукта
-     */
     fun setSelectedStatus(status: ProductStatus) {
         selectedStatus = status
 
@@ -260,9 +211,6 @@ class TaskProductSelectionViewModel(
         updateStateFromSelectedProduct()
     }
 
-    /**
-     * Устанавливает срок годности
-     */
     fun setExpirationDate(date: LocalDateTime?) {
         expirationDate = date
 
@@ -273,159 +221,94 @@ class TaskProductSelectionViewModel(
         updateStateFromSelectedProduct()
     }
 
-    /**
-     * Выбирает товар из плана
-     */
     fun selectTaskProductFromPlan(taskProduct: TaskProduct) {
         executeWithErrorHandling("выбора товара из плана") {
-            // Получаем ID продукта из TaskProduct плана
             val productId = taskProduct.product.id
 
-            // Проверяем, есть ли уже полная информация о продукте
             val existingFullProduct = planProducts.find { it.product.id == productId }?.product
 
-            // Если в планируемом товаре уже есть полная информация о продукте
             if (existingFullProduct != null && existingFullProduct.articleNumber.isNotEmpty()) {
-                // Используем её
                 selectedProduct = existingFullProduct
                 selectedTaskProduct = taskProduct.copy(product = existingFullProduct)
             } else {
-                // Иначе, запрашиваем полную информацию из БД
                 val fullProduct = productLookupService.getProductById(productId)
 
                 if (fullProduct != null) {
-                    // Если нашли, обновляем продукт в текущей позиции товара задания
                     selectedProduct = fullProduct
                     selectedTaskProduct = taskProduct.copy(product = fullProduct)
                 } else {
-                    // Используем то, что есть
                     selectedProduct = taskProduct.product
                     selectedTaskProduct = taskProduct
                 }
             }
 
-            // Обновляем состояние UI
             selectedStatus = taskProduct.status
             expirationDate = if (taskProduct.hasExpirationDate()) {
                 taskProduct.expirationDate
             } else null
 
-            // Обновляем состояние данных с проверкой автоперехода
             updateStateFromSelectedProduct(true)
         }
     }
 
-    /**
-     * Обновляет состояние на основе выбранного продукта
-     * @param checkAutoTransition Проверять автопереход
-     */
     private fun updateStateFromSelectedProduct(checkAutoTransition: Boolean = false) {
         val taskProduct = createTaskProductFromState()
         if (taskProduct != null) {
             if (checkAutoTransition && stepFactory is AutoCompleteCapableFactory) {
-                // Проверяем автопереход если указано
                 handleFieldUpdate("selectedTaskProduct", taskProduct)
             } else {
-                // Просто обновляем состояние
                 setData(taskProduct)
             }
         }
     }
 
-    /**
-     * Обновляет поле ввода кода продукта
-     */
     fun updateProductCodeInput(input: String) {
         productCodeInput = input
         updateAdditionalData("productCodeInput", input)
     }
 
-    /**
-     * Выполняет поиск по коду продукта
-     */
     fun searchByProductCode() {
         if (productCodeInput.isNotEmpty()) {
             processBarcode(productCodeInput)
         }
     }
 
-    /**
-     * Управляет видимостью диалога сканера
-     */
     fun toggleCameraScannerDialog(show: Boolean) {
         showCameraScannerDialog = show
         updateAdditionalData("showCameraScannerDialog", show)
     }
 
-    /**
-     * Управляет видимостью диалога выбора продукта
-     */
     fun toggleProductSelectionDialog(show: Boolean) {
         showProductSelectionDialog = show
         updateAdditionalData("showProductSelectionDialog", show)
     }
 
-    /**
-     * Скрывает диалог сканера
-     */
     fun hideCameraScannerDialog() {
         toggleCameraScannerDialog(false)
     }
 
-    /**
-     * Скрывает диалог выбора продукта
-     */
     fun hideProductSelectionDialog() {
         toggleProductSelectionDialog(false)
     }
 
-    /**
-     * Проверяет валидность формы
-     */
     fun isFormValid(): Boolean {
         val product = selectedProduct ?: return false
 
         return !(product.accountingModel == AccountingModel.BATCH && expirationDate == null)
     }
 
-    /**
-     * Проверяет, просрочен ли товар
-     */
     fun isExpirationDateExpired(): Boolean {
         return expirationDate != null && expirationDate!!.isBefore(LocalDateTime.now())
     }
 
-    /**
-     * Проверяет наличие товаров в плане
-     */
     fun hasPlanProducts(): Boolean {
         return _planProducts.isNotEmpty()
     }
 
-    /**
-     * Возвращает выбранный продукт
-     */
     fun getSelectedProduct(): Product? {
         return selectedProduct
     }
 
-    /**
-     * Возвращает выбранный TaskProduct
-     */
-    fun getSelectedTaskProduct(): TaskProduct? {
-        return selectedTaskProduct
-    }
-
-    /**
-     * Проверяет, выбран ли продукт
-     */
-    fun hasSelectedProduct(): Boolean {
-        return selectedProduct != null
-    }
-
-    /**
-     * Проверяет, соответствует ли выбранный продукт плану
-     */
     fun isSelectedProductMatchingPlan(): Boolean {
         val product = selectedProduct ?: return false
         return _planProductIds.contains(product.id)

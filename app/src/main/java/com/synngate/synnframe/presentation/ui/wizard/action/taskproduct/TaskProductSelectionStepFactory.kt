@@ -27,17 +27,11 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardStepUtils
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 
-/**
- * Обновленная фабрика для шага выбора TaskProduct (товара с учетными характеристиками)
- */
 class TaskProductSelectionStepFactory(
     private val productLookupService: ProductLookupService,
     private val validationService: ValidationService
 ) : BaseActionStepFactory<TaskProduct>(), AutoCompleteCapableFactory {
 
-    /**
-     * Создает ViewModel для шага
-     */
     override fun getStepViewModel(
         step: ActionStep,
         action: PlannedAction,
@@ -53,9 +47,6 @@ class TaskProductSelectionStepFactory(
         )
     }
 
-    /**
-     * Отображает UI для шага
-     */
     @Composable
     override fun StepContent(
         state: StepViewState<TaskProduct>,
@@ -64,7 +55,6 @@ class TaskProductSelectionStepFactory(
         action: PlannedAction,
         context: ActionContext
     ) {
-        // Безопасное приведение ViewModel к конкретному типу
         val taskProductViewModel = viewModel as? TaskProductSelectionViewModel
 
         if (taskProductViewModel == null) {
@@ -72,7 +62,6 @@ class TaskProductSelectionStepFactory(
             return
         }
 
-        // Обработка штрих-кода из контекста
         LaunchedEffect(context.lastScannedBarcode) {
             val barcode = context.lastScannedBarcode
             if (!barcode.isNullOrEmpty()) {
@@ -80,7 +69,6 @@ class TaskProductSelectionStepFactory(
             }
         }
 
-        // Диалог сканирования
         if (taskProductViewModel.showCameraScannerDialog) {
             UniversalScannerDialog(
                 onBarcodeScanned = { barcode ->
@@ -94,7 +82,6 @@ class TaskProductSelectionStepFactory(
             )
         }
 
-        // Диалог выбора продукта
         if (taskProductViewModel.showProductSelectionDialog) {
             OptimizedProductSelectionDialog(
                 onProductSelected = { product ->
@@ -112,7 +99,6 @@ class TaskProductSelectionStepFactory(
             )
         }
 
-        // Используем стандартный контейнер для шага
         WizardStepUtils.StandardStepContainer(
             state = state,
             step = step,
@@ -135,10 +121,8 @@ class TaskProductSelectionStepFactory(
         viewModel: TaskProductSelectionViewModel
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Получаем ID выбранного продукта для подсветки в списке
             val selectedProductId = viewModel.getSelectedProduct()?.id
 
-            // Отображаем товары из плана, подсвечивая выбранный
             if (viewModel.hasPlanProducts()) {
                 WizardStepUtils.ProductSelectionList(
                     products = viewModel.planProducts,
@@ -152,13 +136,10 @@ class TaskProductSelectionStepFactory(
                 FormSpacer(8)
             }
 
-            // Показываем поле поиска только если нет плана
-            // или выбранный товар не соответствует плану, или товар еще не выбран
             if (!viewModel.hasPlanProducts() ||
                 !viewModel.isSelectedProductMatchingPlan() ||
                 viewModel.getSelectedProduct() == null) {
 
-                // Используем стандартное поле ввода штрих-кода
                 WizardStepUtils.StandardBarcodeField(
                     value = viewModel.productCodeInput,
                     onValueChange = { viewModel.updateProductCodeInput(it) },
@@ -173,11 +154,9 @@ class TaskProductSelectionStepFactory(
                 FormSpacer(8)
             }
 
-            // Отображаем выбранный товар и дополнительные поля
             val selectedProduct = viewModel.getSelectedProduct()
 
             if (selectedProduct != null) {
-                // Показываем карточку товара, только если он не из плана
                 if (!viewModel.isSelectedProductMatchingPlan()) {
                     ProductCard(
                         product = selectedProduct,
@@ -188,7 +167,6 @@ class TaskProductSelectionStepFactory(
                     FormSpacer(8)
                 }
 
-                // Селектор статуса продукта
                 ProductStatusSelector(
                     selectedStatus = viewModel.selectedStatus,
                     onStatusSelected = { viewModel.setSelectedStatus(it) },
@@ -197,7 +175,6 @@ class TaskProductSelectionStepFactory(
 
                 FormSpacer(8)
 
-                // Поле для выбора срока годности (только для товаров с партионным учетом)
                 if (selectedProduct.accountingModel == AccountingModel.BATCH) {
                     ExpirationDatePicker(
                         expirationDate = viewModel.expirationDate,
@@ -220,21 +197,15 @@ class TaskProductSelectionStepFactory(
         return true
     }
 
-    // Реализация интерфейса AutoCompleteCapableFactory
-
     override fun getAutoCompleteFieldName(step: ActionStep): String? {
-        return "selectedTaskProduct" // Автопереход при выборе товара
+        return "selectedTaskProduct"
     }
 
     override fun isAutoCompleteEnabled(step: ActionStep): Boolean {
-        // Включаем автопереход только для шагов выбора товара из плана
-        // без необходимости указания статуса и срока годности
-        return step.promptText.contains("выберите товар", ignoreCase = true) &&
-                !step.promptText.contains("укажите статус", ignoreCase = true)
+        return true
     }
 
     override fun requiresConfirmation(step: ActionStep, fieldName: String): Boolean {
-        // Подтверждение для автозаполненных статусов товара
         return fieldName == "selectedStatus"
     }
 }

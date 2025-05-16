@@ -7,18 +7,10 @@ import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.validation.ValidationRule
 import timber.log.Timber
 
-/**
- * Результат валидации данных
- */
 sealed class ValidationResult {
-    /**
-     * Успешная валидация
-     */
+
     object Success : ValidationResult()
 
-    /**
-     * Ошибка валидации
-     */
     data class Error(val message: String) : ValidationResult()
 }
 
@@ -49,13 +41,11 @@ class ValidationServiceImpl : ValidationService {
         rule: ValidationRule,
         context: Map<String, Any>
     ): ValidationResult {
-        // Проверка на null
         if (value == null) {
             return ValidationResult.Error("Значение не может быть пустым")
         }
 
         try {
-            // Базовая валидация по типу объекта
             val isValidType = when (value) {
                 is Product, is TaskProduct -> validateProduct(value, rule, context)
                 is Pallet -> validatePallet(value, rule, context)
@@ -80,7 +70,6 @@ class ValidationServiceImpl : ValidationService {
         rule: ValidationRule,
         context: Map<String, Any>
     ): ValidationResult {
-        // Проверка по плану
         val planItems = context["planItems"] as? List<*>
         if (planItems != null && planItems.isNotEmpty()) {
             val inPlan = when (value) {
@@ -128,7 +117,6 @@ class ValidationServiceImpl : ValidationService {
         rule: ValidationRule,
         context: Map<String, Any>
     ): ValidationResult {
-        // Проверка по плану
         val planItems = context["planItems"] as? List<*>
         if (planItems != null && planItems.isNotEmpty()) {
             val inPlan = planItems.any { it is BinX && it.code == value.code }

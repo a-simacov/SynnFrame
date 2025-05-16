@@ -197,23 +197,10 @@ fun WizardQuantityInput(
     }
 }
 
-/**
- * Вспомогательная функция для проверки валидности десятичного числа.
- * @param input Строка для проверки.
- * @param maxDecimalPlaces Максимальное количество знаков после запятой.
- * @return true, если строка является валидным десятичным числом, иначе false.
- */
 fun isValidDecimal(input: String, maxDecimalPlaces: Int): Boolean {
     if (input.isEmpty()) return true // Пустое поле считаем валидным (или можно изменить логику)
     if (input == "-") return true // Разрешаем ввод одного минуса
 
-    // Регулярное выражение для проверки:
-    // ^-?                - опциональный минус в начале
-    // (\\d+             - одна или более цифр (целая часть)
-    // (\\.\\d{0,maxDecimalPlaces})? - опциональная десятичная часть с 0 до maxDecimalPlaces цифр
-    // |                  - ИЛИ
-    // \\.\\d{1,maxDecimalPlaces}) - только десятичная часть (например, ".5")
-    // $                  - конец строки
     val regex = Regex("^-?((\\d+(\\.\\d{0,$maxDecimalPlaces})?)|(\\.\\d{1,$maxDecimalPlaces}))$")
     return regex.matches(input)
 }
@@ -242,7 +229,6 @@ private fun QuantityControlButton(
                 detectTapGestures(
                     onPress = {
                         if (enabled) {
-                            // Сразу выполняем первое нажатие
                             onClick()
 
                             isPressed = true
@@ -344,9 +330,6 @@ fun QuantityColumn(
     }
 }
 
-/**
- * Форматирует количество для отображения с округлением до 3 знаков после запятой
- */
 fun formatQuantityDisplay(value: Float): String {
     return if (value % 1f == 0f) {
         value.roundToInt().toString()

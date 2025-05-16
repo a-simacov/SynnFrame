@@ -31,9 +31,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
-/**
- * Тип состояния для отображения
- */
 enum class StateType {
     ERROR,
     WARNING,
@@ -41,12 +38,6 @@ enum class StateType {
     SUCCESS
 }
 
-/**
- * Компонент для отображения индикатора загрузки
- *
- * @param modifier Модификатор
- * @param message Сообщение для отображения (опционально)
- */
 @Composable
 fun WizardLoadingIndicator(
     modifier: Modifier = Modifier,
@@ -71,14 +62,6 @@ fun WizardLoadingIndicator(
     }
 }
 
-/**
- * Компонент для отображения сообщения о состоянии (ошибка, предупреждение и т.д.)
- *
- * @param message Текст сообщения
- * @param type Тип состояния
- * @param modifier Модификатор
- * @param onDismiss Обработчик закрытия сообщения (опционально)
- */
 @Composable
 fun WizardStateMessage(
     message: String,
@@ -157,81 +140,6 @@ fun WizardStateMessage(
     }
 }
 
-/**
- * Компонент для отображения экрана с ошибкой
- *
- * @param title Заголовок ошибки
- * @param message Сообщение об ошибке
- * @param onRetry Обработчик повторной попытки (опционально)
- * @param onBack Обработчик возврата назад (опционально)
- * @param modifier Модификатор
- */
-@Composable
-fun WizardErrorScreen(
-    title: String,
-    message: String,
-    onRetry: (() -> Unit)? = null,
-    onBack: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Error,
-                contentDescription = "Ошибка",
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier
-                    .size(64.dp)
-                    .padding(bottom = 16.dp)
-            )
-
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.error,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            if (onRetry != null) {
-                Button(onClick = onRetry) {
-                    Text("Повторить")
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            if (onBack != null) {
-                Button(onClick = onBack) {
-                    Text("Назад")
-                }
-            }
-        }
-    }
-}
-
-/**
- * Компонент для отображения пустого состояния (когда данные отсутствуют)
- *
- * @param message Сообщение для отображения
- * @param icon Иконка для отображения (опционально)
- * @param modifier Модификатор
- */
 @Composable
 fun WizardEmptyState(
     message: String,
