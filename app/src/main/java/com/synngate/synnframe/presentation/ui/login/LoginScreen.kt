@@ -106,6 +106,7 @@ fun LoginScreen(
                 PasswordTextField(
                     value = state.password,
                     onValueChange = { viewModel.updatePassword(it) },
+                    onImeAction = { viewModel.login() },
                     label = stringResource(id = R.string.password),
                     isError = state.error != null,
                     errorText = state.error,
