@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
         val fromSplash = intent.getBooleanExtra(EXTRA_FROM_SPLASH, false)
 
         val startDestination = if (showServersScreen) {
-            ServerRoutes.ServerList.route
+            ServerRoutes.ServersGraph.route  // Изменено с ServerRoutes.ServerList.route
         } else {
             AuthRoutes.Login.route
         }

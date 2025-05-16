@@ -37,7 +37,7 @@ import timber.log.Timber
  */
 @Composable
 fun AppNavHost(
-    startDestination: String = ServerRoutes.ServerList.route,
+    startDestination: String = ServerRoutes.ServersGraph.route,
     navController: NavHostController = rememberNavController()
 ) {
     val context = LocalContext.current
