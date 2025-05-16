@@ -6,5 +6,6 @@ data class DynamicMenuState(
     val menuItems: List<DynamicMenuItem> = emptyList(),
     val currentMenuItemId: String? = null,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val navigationHistory: List<String?> = emptyList()
 )
