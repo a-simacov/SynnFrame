@@ -11,13 +11,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -30,6 +36,8 @@ import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.inputs.PasswordTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
+import com.synngate.synnframe.presentation.common.scanner.ScannerListener
+import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.login.model.LoginEvent
 
 @Composable
@@ -42,6 +50,8 @@ fun LoginScreen(
     val state by viewModel.uiState.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
+
+    var showCameraScannerDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
@@ -61,6 +71,28 @@ fun LoginScreen(
         viewModel.showExitConfirmation()
     }
 
+    ScannerListener(
+        onBarcodeScanned = { barcode ->
+            viewModel.updatePassword(barcode)
+            viewModel.login()
+        }
+    )
+
+    if (showCameraScannerDialog) {
+        UniversalScannerDialog(
+            onBarcodeScanned = { barcode ->
+                viewModel.updatePassword(barcode)
+                viewModel.login()
+                showCameraScannerDialog = false
+            },
+            onClose = {
+                showCameraScannerDialog = false
+            },
+            instructionText = "Сканируйте штрихкод пароля",
+            allowManualInput = true
+        )
+    }
+
     if (state.showExitConfirmation) {
         ConfirmationDialog(
             title = stringResource(id = R.string.exit_confirmation_title),
@@ -72,7 +104,15 @@ fun LoginScreen(
 
     AppScaffold(
         title = stringResource(id = R.string.login_title),
-        snackbarHostState = snackbarHostState
+        snackbarHostState = snackbarHostState,
+        actions = {
+            IconButton(onClick = { showCameraScannerDialog = true }) {
+                Icon(
+                    imageVector = Icons.Default.QrCodeScanner,
+                    contentDescription = stringResource(R.string.scan_with_camera)
+                )
+            }
+        }
     ) { paddingValues ->
         Box(
             contentAlignment = Alignment.Center,
