@@ -8,7 +8,6 @@ import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
-import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
 import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
 import timber.log.Timber
 
@@ -57,9 +56,6 @@ class PalletSelectionViewModel(
         if (plannedPallet != null) {
             filteredPallets = listOf(plannedPallet)
         }
-
-        // Логируем информацию о планируемой паллете
-        WizardLogger.logPallet(TAG, plannedPallet)
     }
 
     /**
@@ -74,7 +70,6 @@ class PalletSelectionViewModel(
      */
     override fun onResultLoadedFromContext(result: Pallet) {
         selectedPallet = result
-        WizardLogger.logPallet(TAG, selectedPallet)
     }
 
     /**
@@ -186,7 +181,6 @@ class PalletSelectionViewModel(
                 val newPallet = result.getOrNull()
                 if (newPallet != null) {
                     selectPallet(newPallet)
-                    WizardLogger.logPallet(TAG, newPallet, WizardLogger.LogLevel.MINIMAL)
                 } else {
                     setError("Не удалось создать паллету: пустой результат")
                 }
@@ -204,7 +198,6 @@ class PalletSelectionViewModel(
      */
     fun selectPallet(pallet: Pallet) {
         selectedPallet = pallet
-        WizardLogger.logPallet(TAG, pallet)
 
         if (stepFactory is AutoCompleteCapableFactory) {
             handleFieldUpdate("selectedPallet", pallet)

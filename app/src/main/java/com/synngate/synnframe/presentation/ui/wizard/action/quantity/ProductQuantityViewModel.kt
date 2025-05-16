@@ -11,7 +11,6 @@ import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
-import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardUtils
 import timber.log.Timber
 
@@ -65,7 +64,6 @@ class ProductQuantityViewModel(
      */
     override fun processBarcode(barcode: String) {
         // Для этого типа шага обработка штрих-кода не требуется
-        Timber.d("$TAG: Barcode processing not supported in quantity step")
     }
 
     /**
@@ -77,17 +75,11 @@ class ProductQuantityViewModel(
             selectedProduct = WizardUtils.findProduct(context.results)
             selectedTaskProduct = WizardUtils.findTaskProduct(context.results)
 
-            // Логируем найденные объекты
-            WizardLogger.logProduct(TAG, selectedProduct)
-            WizardLogger.logTaskProduct(TAG, selectedTaskProduct)
-
             // Если не нашли ничего в контексте, используем экстренное восстановление
             if (selectedProduct == null) {
-                Timber.w("$TAG: Product not found in context, using emergency recovery from action")
                 // Экстренное восстановление из запланированного действия
                 val actionProduct = action.storageProduct
                 if (actionProduct != null) {
-                    Timber.d("$TAG: Found product in action: ${actionProduct.product.name}")
                     selectedProduct = actionProduct.product
                     selectedTaskProduct = actionProduct
                 }
@@ -97,10 +89,8 @@ class ProductQuantityViewModel(
                 // Если у нас уже есть результат в контексте, используем его количество
                 if (context.hasStepResult) {
                     val currentResult = context.getCurrentStepResult()
-                    Timber.d("$TAG: Current step has result: $currentResult")
                     if (currentResult is TaskProduct && currentResult.quantity > 0) {
                         quantityInput = WizardUtils.formatQuantity(currentResult.quantity)
-                        Timber.d("$TAG: Using quantity from context: ${currentResult.quantity}")
                     }
                 }
 
@@ -109,7 +99,6 @@ class ProductQuantityViewModel(
 
                 // Обновляем состояние с выбранным продуктом и текущим количеством
                 updateStateFromQuantity()
-                Timber.d("$TAG: View state updated with product")
             } else {
                 setError("Не удалось найти товар для ввода количества")
             }
@@ -125,7 +114,6 @@ class ProductQuantityViewModel(
             val factActionsInfo = context.results["factActions"] as? Map<*, *> ?: emptyMap<String, Any>()
             return (factActionsInfo[action.id] as? List<FactAction>) ?: emptyList()
         } catch (e: Exception) {
-            Timber.e(e, "$TAG: Error getting related fact actions: ${e.message}")
             return emptyList()
         }
     }
@@ -337,17 +325,11 @@ class ProductQuantityViewModel(
             selectedProduct = WizardUtils.findProduct(context.results)
             selectedTaskProduct = WizardUtils.findTaskProduct(context.results)
 
-            // Логируем найденные объекты
-            WizardLogger.logProduct(TAG, selectedProduct)
-            WizardLogger.logTaskProduct(TAG, selectedTaskProduct)
-
             // Если не нашли ничего в контексте, используем экстренное восстановление
             if (selectedProduct == null) {
-                Timber.w("$TAG: Product not found in context, using emergency recovery from action")
                 // Экстренное восстановление из запланированного действия
                 val actionProduct = action.storageProduct
                 if (actionProduct != null) {
-                    Timber.d("$TAG: Found product in action: ${actionProduct.product.name}")
                     selectedProduct = actionProduct.product
                     selectedTaskProduct = actionProduct
                 }
@@ -360,22 +342,17 @@ class ProductQuantityViewModel(
                     val currentResult = context.getCurrentStepResult()
 
                     if (currentResult is TaskProduct) {
-                        Timber.d("$TAG: Current step has result: $currentResult")
-
                         // Проверяем, что это тот же продукт
                         if (currentResult.product.id == selectedProduct?.id) {
                             // Используем количество из результата этого же шага
-                            Timber.d("$TAG: Using quantity from this step result: ${currentResult.quantity}")
                             quantityInput = WizardUtils.formatQuantity(currentResult.quantity)
                             selectedTaskProduct = currentResult
                         } else {
                             // Если продукты не совпадают, используем плановое количество
-                            Timber.d("$TAG: Product ID mismatch, using planned quantity")
                             val plannedQuantity = action.storageProduct?.quantity ?: 1f
                             quantityInput = WizardUtils.formatQuantity(plannedQuantity)
                         }
                     } else {
-                        Timber.d("$TAG: Current step result is not TaskProduct: ${currentResult?.javaClass?.simpleName}")
                         // Используем quantity из selectedTaskProduct или 1 по умолчанию
                         quantityInput = WizardUtils.formatQuantity(selectedTaskProduct?.quantity ?: 1f)
                     }
@@ -385,12 +362,10 @@ class ProductQuantityViewModel(
 
                     if (lastTaskProduct != null && lastTaskProduct.product.id == selectedProduct?.id) {
                         // Используем quantity из lastTaskProduct
-                        Timber.d("$TAG: Using quantity from lastTaskProduct: ${lastTaskProduct.quantity}")
                         quantityInput = WizardUtils.formatQuantity(lastTaskProduct.quantity)
                     } else {
                         // Используем плановое количество
                         val plannedQuantity = action.storageProduct?.quantity ?: 1f
-                        Timber.d("$TAG: Using planned quantity: $plannedQuantity")
                         quantityInput = WizardUtils.formatQuantity(plannedQuantity)
                     }
                 }
@@ -400,7 +375,6 @@ class ProductQuantityViewModel(
 
                 // Обновляем состояние с выбранным продуктом и текущим количеством
                 updateStateFromQuantity()
-                Timber.d("$TAG: View state updated with product")
             } else {
                 setError("Не удалось найти товар для ввода количества")
             }

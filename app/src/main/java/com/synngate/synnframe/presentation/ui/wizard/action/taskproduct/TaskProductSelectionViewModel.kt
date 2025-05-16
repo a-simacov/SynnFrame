@@ -10,7 +10,6 @@ import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
-import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardUtils
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 import java.time.LocalDateTime
@@ -59,9 +58,6 @@ class TaskProductSelectionViewModel(
     init {
         // Обновление товаров из локальной БД
         updateProductsFromLocalDb()
-
-        // Логирование планового товара
-        WizardLogger.logTaskProduct(TAG, plannedTaskProduct)
     }
 
     /**
@@ -72,8 +68,6 @@ class TaskProductSelectionViewModel(
         selectedTaskProduct = result
         selectedStatus = result.status
         expirationDate = if (result.hasExpirationDate()) result.expirationDate else null
-
-        WizardLogger.logTaskProduct(TAG, result)
     }
 
     /**
@@ -99,7 +93,6 @@ class TaskProductSelectionViewModel(
             // Запрашиваем полные данные о товарах из БД
             val productsFromDb = productLookupService.getProductsByIds(productIds)
             if (productsFromDb.isEmpty()) {
-                WizardLogger.logStep(TAG, step.id, "Не найдены товары в локальной БД", WizardLogger.LogLevel.MINIMAL)
                 return@executeWithErrorHandling
             }
 
@@ -144,8 +137,6 @@ class TaskProductSelectionViewModel(
                     updateStateFromSelectedProduct()
                 }
             }
-
-            WizardLogger.logStep(TAG, step.id, "Обновлено ${updatedPlanProducts.size} товаров из локальной БД")
         }
     }
 
@@ -236,7 +227,6 @@ class TaskProductSelectionViewModel(
     fun setSelectedProduct(product: Product) {
         executeWithErrorHandling("выбора продукта", showLoading = false) {
             selectedProduct = product
-            WizardLogger.logProduct(TAG, product)
 
             val plannedTaskProduct = _planProducts.find { it.product.id == product.id }
             if (plannedTaskProduct != null) {

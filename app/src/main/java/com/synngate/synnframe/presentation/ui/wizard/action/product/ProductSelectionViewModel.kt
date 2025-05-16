@@ -8,7 +8,6 @@ import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
-import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardLogger
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 
 /**
@@ -48,9 +47,6 @@ class ProductSelectionViewModel(
         if (plannedProduct != null) {
             filteredProducts = listOf(plannedProduct)
         }
-
-        // Логируем полезную информацию для отладки
-        WizardLogger.logTaskProduct(TAG, action.storageProduct)
     }
 
     /**
@@ -65,7 +61,6 @@ class ProductSelectionViewModel(
      */
     override fun onResultLoadedFromContext(result: Product) {
         selectedProduct = result
-        WizardLogger.logProduct(TAG, selectedProduct)
     }
 
     /**
@@ -164,7 +159,6 @@ class ProductSelectionViewModel(
      */
     fun selectProduct(product: Product) {
         selectedProduct = product
-        WizardLogger.logProduct(TAG, product)
 
         // Обновляем состояние и проверяем автопереход
         if (stepFactory is AutoCompleteCapableFactory) {
