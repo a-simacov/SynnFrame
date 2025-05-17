@@ -44,18 +44,44 @@ abstract class DiContainer : Disposable {
      * Освобождение контейнера и всех его дочерних контейнеров
      */
     override fun dispose() {
-        Timber.d("Disposing container: ${this::class.java.simpleName}")
+        Timber.d("Disposing DiContainer: ${this::class.java.simpleName}")
 
         // Освобождаем дочерние контейнеры
-        childContainers.forEach { it.dispose() }
+        val childCount = childContainers.size
+        var disposedCount = 0
+
+        childContainers.forEach { container ->
+            try {
+                container.dispose()
+                disposedCount++
+            } catch (e: Exception) {
+                Timber.e(e, "Error disposing child container: ${container::class.java.simpleName}")
+            }
+        }
         childContainers.clear()
 
-        // Освобождаем ViewModel, поддерживающие специальный интерфейс
+        if (childCount > 0) {
+            Timber.d("Disposed $disposedCount of $childCount child containers")
+        }
+
+        // Освобождаем ViewModel, поддерживающие интерфейс Disposable
+        val viewModelCount = viewModels.size
+        disposedCount = 0
+
         viewModels.values.forEach { viewModel ->
             if (viewModel is Disposable) {
-                viewModel.dispose()
+                try {
+                    viewModel.dispose()
+                    disposedCount++
+                } catch (e: Exception) {
+                    Timber.e(e, "Error disposing ViewModel: ${viewModel::class.java.simpleName}")
+                }
             }
         }
         viewModels.clear()
+
+        if (viewModelCount > 0) {
+            Timber.d("Disposed $disposedCount of $viewModelCount ViewModels")
+        }
     }
 }

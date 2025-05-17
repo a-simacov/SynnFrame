@@ -143,5 +143,27 @@ class NetworkContainer(
 
     override fun cleanup() {
         Timber.d("Cleaning up Network module")
+
+        // Добавляем: Закрытие HTTP-клиента
+        try {
+            Timber.d("Closing HTTP client")
+            httpClient.close()
+        } catch (e: UninitializedPropertyAccessException) {
+            Timber.d("Skipping httpClient disposal - not initialized")
+        } catch (e: Exception) {
+            Timber.e(e, "Error closing HTTP client")
+        }
+    }
+
+    override fun dispose() {
+        // Сначала вызываем cleanup для освобождения специфичных ресурсов
+        try {
+            cleanup()
+        } catch (e: Exception) {
+            Timber.e(e, "Error during NetworkContainer cleanup")
+        }
+
+        // Затем вызываем базовую реализацию dispose
+        super.dispose()
     }
 }

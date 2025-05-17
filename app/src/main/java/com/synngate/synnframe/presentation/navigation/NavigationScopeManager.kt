@@ -119,6 +119,17 @@ class NavigationScopeManager(
                 if (previousGraph != null && previousGraph != currentGraph) {
                     cleanupContainersForGraph(previousGraph)
 
+                    // Добавляем: немедленная очистка кэша, если есть
+                    val keysToRemove = graphContainers.keys.filter {
+                        it == previousGraph && it != currentGraph
+                    }
+                    keysToRemove.forEach { key ->
+                        graphContainers.remove(key)?.let { container ->
+                            Timber.d("Immediately disposing graph container for: $key")
+                            container.dispose()
+                        }
+                    }
+
                     // Добавляем граф в список уничтоженных, чтобы очистить при повторном входе
                     destroyedGraphs.add(previousGraph)
                 }
@@ -150,6 +161,8 @@ class NavigationScopeManager(
      * Очистка контейнеров для графа навигации
      */
     private fun cleanupContainersForGraph(graphRoute: String) {
+        Timber.d("Cleaning up containers for graph: $graphRoute")
+
         // Удаляем постоянные контейнеры, связанные с графом
         val keysToRemove = persistentScreenContainers.keys
             .filter { it.startsWith("$graphRoute:") }
@@ -196,34 +209,49 @@ class NavigationScopeManager(
         Timber.d("Disposing NavigationScopeManager and all containers")
 
         // Сначала освобождаем временные контейнеры
+        val ephemeralCount = ephemeralScreenContainers.size
+        var disposedCount = 0
+
         ephemeralScreenContainers.values.forEach {
             try {
                 it.dispose()
+                disposedCount++
             } catch (e: Exception) {
                 Timber.e(e, "Error disposing ephemeral container")
             }
         }
         ephemeralScreenContainers.clear()
+        Timber.d("Disposed $disposedCount of $ephemeralCount ephemeral containers")
 
         // Затем освобождаем постоянные контейнеры
+        val persistentCount = persistentScreenContainers.size
+        disposedCount = 0
+
         persistentScreenContainers.values.forEach {
             try {
                 it.dispose()
+                disposedCount++
             } catch (e: Exception) {
                 Timber.e(e, "Error disposing persistent container")
             }
         }
         persistentScreenContainers.clear()
+        Timber.d("Disposed $disposedCount of $persistentCount persistent containers")
 
         // Наконец, освобождаем контейнеры графов
+        val graphCount = graphContainers.size
+        disposedCount = 0
+
         graphContainers.values.forEach {
             try {
                 it.dispose()
+                disposedCount++
             } catch (e: Exception) {
                 Timber.e(e, "Error disposing graph container")
             }
         }
         graphContainers.clear()
+        Timber.d("Disposed $disposedCount of $graphCount graph containers")
 
         // Очищаем список уничтоженных графов
         destroyedGraphs.clear()

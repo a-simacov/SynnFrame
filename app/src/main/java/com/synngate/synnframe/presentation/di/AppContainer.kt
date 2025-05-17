@@ -121,37 +121,56 @@ class AppContainer(val applicationContext: Context) : DiContainer() {
     override fun dispose() {
         Timber.d("Disposing AppContainer")
 
+        // Запускаем таймер для отслеживания времени освобождения ресурсов
+        val startTime = System.currentTimeMillis()
+
         // Сначала освобождаем все дочерние контейнеры (NavigationContainer и т.д.)
+        Timber.d("Disposing child containers")
         super.dispose()
+        val afterChildrenTime = System.currentTimeMillis()
+        Timber.d("Child containers disposed in ${afterChildrenTime - startTime}ms")
 
         // Затем освобождаем все функциональные контейнеры
+        val featureCount = _featureContainers.size
+        var disposedCount = 0
+
         _featureContainers.values.forEach {
             try {
                 Timber.d("Disposing feature container: ${it.moduleName}")
+                val featureStartTime = System.currentTimeMillis()
                 it.dispose()
+                val featureTime = System.currentTimeMillis() - featureStartTime
+                Timber.d("Feature container ${it.moduleName} disposed in ${featureTime}ms")
+                disposedCount++
             } catch (e: Exception) {
                 Timber.e(e, "Error disposing feature container: ${it.moduleName}")
             }
         }
         _featureContainers.clear()
 
+        val afterFeaturesTime = System.currentTimeMillis()
+        Timber.d("Disposed $disposedCount of $featureCount feature containers in ${afterFeaturesTime - afterChildrenTime}ms")
+
         // Освобождаем ресурсы общих сервисов
         try {
             Timber.d("Disposing scanner service")
+            val scannerStartTime = System.currentTimeMillis()
             scannerService.dispose()
+            Timber.d("Scanner service disposed in ${System.currentTimeMillis() - scannerStartTime}ms")
         } catch (e: Exception) {
             Timber.e(e, "Error disposing scanner service")
         }
 
         try {
             Timber.d("Disposing task context manager")
+            val contextStartTime = System.currentTimeMillis()
             taskContextManager.dispose()
+            Timber.d("Task context manager disposed in ${System.currentTimeMillis() - contextStartTime}ms")
         } catch (e: Exception) {
             Timber.e(e, "Error disposing task context manager")
         }
 
         // Освобождаем модульные контейнеры в обратном порядке их зависимостей
-        // Используем try-catch для проверки инициализации
         disposeLazyContainer("DomainContainer") {
             _domainContainer.dispose()
         }
@@ -167,16 +186,22 @@ class AppContainer(val applicationContext: Context) : DiContainer() {
         disposeLazyContainer("CoreContainer") {
             _coreContainer.dispose()
         }
+
+        val totalTime = System.currentTimeMillis() - startTime
+        Timber.d("AppContainer fully disposed in ${totalTime}ms")
     }
 
     /**
-     * Безопасное освобождение ресурсов lazy-контейнера
-     * Перехватывает UninitializedPropertyAccessException если контейнер не был инициализирован
+     * Улучшенная реализация безопасного освобождения ресурсов lazy-контейнера
+     * с таймером выполнения
      */
     private inline fun disposeLazyContainer(containerName: String, disposeAction: () -> Unit) {
         try {
             Timber.d("Disposing $containerName")
+            val startTime = System.currentTimeMillis()
             disposeAction()
+            val disposeTime = System.currentTimeMillis() - startTime
+            Timber.d("$containerName disposed in ${disposeTime}ms")
         } catch (e: UninitializedPropertyAccessException) {
             Timber.d("Skipping $containerName disposal - not initialized")
         } catch (e: Exception) {

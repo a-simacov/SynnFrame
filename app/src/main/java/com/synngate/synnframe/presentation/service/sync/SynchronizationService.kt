@@ -14,6 +14,7 @@ import com.synngate.synnframe.presentation.service.base.launchSafely
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.ui.MainActivity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
@@ -134,6 +135,30 @@ class SynchronizationService : BaseForegroundService() {
 
     override suspend fun onServiceStop() {
         Timber.d("Stopping synchronization service")
+
+        // Добавляем: Отмена всех задач корутин
+        serviceScope.coroutineContext.cancelChildren()
+
+        // Добавляем: Отключаем наблюдение за прогрессом синхронизации
+//        try {
+//            synchronizationController.resetSyncProgress()
+//        } catch (e: Exception) {
+//            Timber.e(e, "Error resetting sync progress")
+//        }
+
+        // Добавляем: Сбрасываем текущий прогресс
+        currentProgress = null
+    }
+
+    // Добавляем новый метод для сброса состояния
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        Timber.d("SynchronizationService task removed")
+        // Когда пользователь закрывает приложение из списка задач,
+        // нужно убедиться, что сервис корректно останавливается
+        if (isServiceRunning) {
+            stopSelf()
+        }
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun createNotification(): Notification {

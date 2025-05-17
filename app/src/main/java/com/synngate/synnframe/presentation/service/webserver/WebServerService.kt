@@ -43,6 +43,7 @@ import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -168,6 +169,15 @@ class WebServerService : BaseForegroundService() {
     override suspend fun onServiceStop() {
         Timber.d("Stopping web server")
         stopWebServer()
+
+        // Добавляем: Явно отменяем все задачи сервиса
+        serviceScope.coroutineContext.cancelChildren()
+
+        // Добавляем: Отключаем связь с контроллером
+        webServerController.updateRunningState(false)
+
+        // Добавляем: Освобождаем другие ресурсы
+        //syncIntegrator.reset()
     }
 
     override fun createNotification(): Notification {
@@ -363,6 +373,8 @@ class WebServerService : BaseForegroundService() {
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Timber.e(e, "Error stopping web server")
+            } finally {
+                server = null
             }
         }
     }
