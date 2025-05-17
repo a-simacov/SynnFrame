@@ -17,6 +17,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.synngate.synnframe.SynnFrameApplication
 import com.synngate.synnframe.presentation.common.LocalCurrentUser
+import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.navigation.graphs.authRoutes
 import com.synngate.synnframe.presentation.navigation.graphs.dynamicNavGraph
 import com.synngate.synnframe.presentation.navigation.graphs.logsNavGraph
@@ -48,8 +49,11 @@ fun AppNavHost(
     val app = context.applicationContext as SynnFrameApplication
 
     // Получаем данные о текущем пользователе
-    val userRepository = app.appContainer.userRepository
+    val userRepository = app.appContainer.getDataContainer().userRepository
     val currentUser by userRepository.getCurrentUser().collectAsState(initial = null)
+
+    // Получаем сервис сканера
+    val scannerService = app.appContainer.scannerService
 
     // Создаем менеджер областей навигации
     val navigationScopeManager = remember {
@@ -72,9 +76,10 @@ fun AppNavHost(
         }
     }
 
-    // Предоставляем текущего пользователя через CompositionLocal
+    // Предоставляем текущего пользователя и сервис сканера через CompositionLocal
     CompositionLocalProvider(
-        LocalCurrentUser provides currentUser
+        LocalCurrentUser provides currentUser,
+        LocalScannerService provides scannerService
     ) {
         NavHost(
             navController = navController,
@@ -98,9 +103,11 @@ fun AppNavHost(
 
             // Главное меню
             composable(MainRoutes.MainMenu.route) { entry ->
+                // Используем метод получения контейнера с указанием графа "main_graph"
                 val screenContainer = rememberEphemeralScreenContainer(
                     navBackStackEntry = entry,
-                    navigationScopeManager = navigationScopeManager
+                    navigationScopeManager = navigationScopeManager,
+                    graphRoute = "main_graph"
                 )
                 val viewModel = remember { screenContainer.createMainMenuViewModel() }
 

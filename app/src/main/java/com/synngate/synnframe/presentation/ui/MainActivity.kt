@@ -62,11 +62,11 @@ class MainActivity : ComponentActivity() {
         registerDataWedgeReceiver()
 
         setContent {
-            val themeMode by app.appContainer.appSettingsDataStore.themeMode
+            val themeMode by app.appContainer.getCoreContainer().appSettingsDataStore.themeMode
                 .collectAsState(initial = ThemeMode.SYSTEM)
 
             // Применение темы
-            SynnFrameTheme(themeMode = themeMode, settingsUseCases = app.appContainer.settingsUseCases) {
+            SynnFrameTheme(themeMode = themeMode, settingsUseCases = app.appContainer.getDomainContainer().settingsUseCases) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

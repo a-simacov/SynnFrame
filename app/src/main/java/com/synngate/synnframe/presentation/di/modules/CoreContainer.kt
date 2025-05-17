@@ -52,17 +52,11 @@ class CoreContainer(appContainer: AppContainer) : ModuleContainer(appContainer),
         // но он находится в Data слое, поэтому создаем заглушку
         // Позже, в DataContainer, мы настроим LoggingService правильно
         object : LoggingService {
-            override suspend fun logInfo(message: String): Long {
-                TODO("Not yet implemented")
-            }
+            override suspend fun logInfo(message: String): Long = 0L
 
-            override suspend fun logWarning(message: String): Long {
-                TODO("Not yet implemented")
-            }
+            override suspend fun logWarning(message: String): Long = 0L
 
-            override suspend fun logError(message: String): Long {
-                TODO("Not yet implemented")
-            }
+            override suspend fun logError(message: String): Long = 0L
         }
     }
 

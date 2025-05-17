@@ -42,7 +42,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,7 +67,6 @@ import com.synngate.synnframe.presentation.common.status.NotificationBar
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.common.status.SyncStatusIndicator
 import kotlinx.coroutines.launch
-import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,14 +106,8 @@ fun AppScaffold(
     val context = LocalContext.current
     val app = remember { context.applicationContext as SynnFrameApplication }
 
-    // Следим за состоянием синхронизации
-    val syncController = remember { app.appContainer.synchronizationController }
-    val lastSyncInfo by syncController.lastSyncInfo.collectAsState(initial = null)
-
     // Определяем, выполняется ли синхронизация и время последней синхронизации
     val finalIsSyncing = isSyncing
-    val finalLastSyncTime = lastSyncTime
-        ?: lastSyncInfo?.timestamp?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
 
     // Обновляем видимость уведомления при изменении параметра notification
     LaunchedEffect(notification) {
@@ -264,7 +256,6 @@ fun AppScaffold(
 
                             SyncStatusIndicator(
                                 isSyncing = finalIsSyncing,
-                                lastSyncTime = finalLastSyncTime,
                                 modifier = Modifier.align(Alignment.CenterEnd)
                             )
                         }

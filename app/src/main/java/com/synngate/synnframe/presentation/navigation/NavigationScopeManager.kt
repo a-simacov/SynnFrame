@@ -42,9 +42,10 @@ class NavigationScopeManager(
     /**
      * Получение временного контейнера для экрана (удаляется при выходе с экрана)
      */
-    fun getEphemeralScreenContainer(route: String): ScreenContainer {
-        return ephemeralScreenContainers.getOrPut(route) {
-            Timber.d("Creating ephemeral ScreenContainer for screen: $route")
+    fun getEphemeralScreenContainer(route: String, graphRoute: String? = null): ScreenContainer {
+        val key = if (graphRoute != null) "$route:$graphRoute" else route
+        return ephemeralScreenContainers.getOrPut(key) {
+            Timber.d("Creating ephemeral ScreenContainer for screen: $route with graph: $graphRoute")
             onCreateScreenContainer()
         }
     }
@@ -90,9 +91,14 @@ class NavigationScopeManager(
 
             if (isBackNavigation) {
                 // Всегда удаляем временный контейнер для предыдущего экрана
-                ephemeralScreenContainers.remove(previousRoute)?.let {
-                    Timber.d("Disposing ephemeral ScreenContainer for screen: $previousRoute")
-                    it.dispose()
+                val ephemeralKeys = ephemeralScreenContainers.keys
+                    .filter { it.startsWith("$previousRoute:") || it == previousRoute }
+
+                ephemeralKeys.forEach { key ->
+                    ephemeralScreenContainers.remove(key)?.let {
+                        Timber.d("Disposing ephemeral ScreenContainer for key: $key")
+                        it.dispose()
+                    }
                 }
 
                 // Если произошел выход из графа, удаляем все связанные постоянные контейнеры
@@ -129,10 +135,14 @@ class NavigationScopeManager(
         return when {
             route.startsWith("server_list") || route.startsWith("server_detail") -> "servers_graph"
             route.startsWith("log_list") || route.startsWith("log_detail") -> "logs_graph"
-            route.startsWith("task_list") || route.startsWith("task_detail") -> "tasks_graph"
             route.startsWith("product_list") || route.startsWith("product_detail") -> "products_graph"
             route.startsWith("taskx_list") || route.startsWith("taskx_detail") ||
-                route.startsWith("action_wizard") -> "taskx_graph"
+                    route.startsWith("action_wizard") -> "taskx_graph"
+            route.startsWith("settings") || route.startsWith("sync_history") -> "settings_graph"
+            route.startsWith("dynamic_menu") || route.startsWith("dynamic_task") ||
+                    route.startsWith("dynamic_product") -> "dynamic_nav_graph"
+            route.startsWith("main_menu") -> "main_graph"
+            route.startsWith("login") -> "auth_graph"
             else -> null
         }
     }
@@ -159,17 +169,20 @@ class NavigationScopeManager(
 @Composable
 fun rememberEphemeralScreenContainer(
     navBackStackEntry: NavBackStackEntry,
-    navigationScopeManager: NavigationScopeManager
+    navigationScopeManager: NavigationScopeManager,
+    graphRoute: String? = null
 ): ScreenContainer {
     val route = navBackStackEntry.destination.route ?: "unknown"
-    val screenContainer = remember(route) {
-        navigationScopeManager.getEphemeralScreenContainer(route)
+    val actualGraphRoute = graphRoute ?: navigationScopeManager.getGraphForRoute(route)
+
+    val screenContainer = remember(route, actualGraphRoute) {
+        navigationScopeManager.getEphemeralScreenContainer(route, actualGraphRoute)
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
 
     // Отслеживаем жизненный цикл для экрана
-    DisposableEffect(lifecycleOwner, route) {
+    DisposableEffect(lifecycleOwner, route, actualGraphRoute) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_DESTROY &&
                 !navBackStackEntry.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {

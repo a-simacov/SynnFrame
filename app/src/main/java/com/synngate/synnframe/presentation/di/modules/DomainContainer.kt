@@ -121,7 +121,7 @@ class DomainContainer(
     }
 
     // Контроллер и менеджер веб-сервера
-    private val webServerController by lazy {
+    val webServerController by lazy {
         WebServerControllerImpl(appContainer.applicationContext)
     }
 

@@ -119,7 +119,6 @@ fun NotificationBar(
 @Composable
 fun SyncStatusIndicator(
     isSyncing: Boolean,
-    lastSyncTime: String?,
     modifier: Modifier = Modifier
 ) {
     Row(

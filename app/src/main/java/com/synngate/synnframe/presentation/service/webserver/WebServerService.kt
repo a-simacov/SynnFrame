@@ -52,28 +52,32 @@ import java.util.concurrent.TimeUnit
 
 class WebServerService : BaseForegroundService() {
 
+    private val appContainer by lazy {
+        (application as SynnFrameApplication).appContainer
+    }
+
     private val webServerController: WebServerController by lazy {
-        (application as SynnFrameApplication).appContainer.webServerController
+        appContainer.getDomainContainer().webServerController
     }
 
     private val productRepository: ProductRepository by lazy {
-        (application as SynnFrameApplication).appContainer.productRepository
+        appContainer.getDataContainer().productRepository
     }
 
     private val userRepository: UserRepository by lazy {
-        (application as SynnFrameApplication).appContainer.userRepository
+        appContainer.getDataContainer().userRepository
     }
 
     private val serverRepository: ServerRepository by lazy {
-        (application as SynnFrameApplication).appContainer.serverRepository
+        appContainer.getDataContainer().serverRepository
     }
 
     private val networkMonitor: NetworkMonitor by lazy {
-        (application as SynnFrameApplication).appContainer.networkMonitor
+        appContainer.getNetworkContainer().networkMonitor
     }
 
     private val syncHistoryDao by lazy {
-        (application as SynnFrameApplication).appContainer.database.syncHistoryDao()
+        appContainer.getDataContainer().database.syncHistoryDao()
     }
 
     // Провайдер аутентификации
@@ -84,7 +88,7 @@ class WebServerService : BaseForegroundService() {
     // Интегратор для обновления информации в SynchronizationController
     private val syncIntegrator by lazy {
         WebServerSyncIntegrator(
-            (application as SynnFrameApplication).appContainer.synchronizationController
+            appContainer.getDomainContainer().synchronizationController
         )
     }
 

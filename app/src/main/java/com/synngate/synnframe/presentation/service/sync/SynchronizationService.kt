@@ -25,7 +25,7 @@ import java.time.format.DateTimeFormatter
 class SynchronizationService : BaseForegroundService() {
 
     private val synchronizationController: SynchronizationController by lazy {
-        (application as SynnFrameApplication).appContainer.synchronizationController
+        (application as SynnFrameApplication).appContainer.getDomainContainer().synchronizationController
     }
 
     private var currentProgress: SyncProgress? = null

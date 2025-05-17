@@ -72,7 +72,7 @@ fun OptimizedProductSelectionDialog(
     // Получаем репозиторий продуктов
     val repo = productRepository ?: run {
         val appContext = LocalContext.current.applicationContext as? SynnFrameApplication
-        appContext?.appContainer?.productRepository
+        appContext?.appContainer?.getDataContainer()?.productRepository
     }
 
     // Если репозиторий не доступен, показываем сообщение об ошибке

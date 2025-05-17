@@ -73,7 +73,7 @@ class SplashActivity : ComponentActivity() {
 
         setContent {
             // Получение темы из настроек
-            val themeMode by appContainer.appSettingsDataStore.themeMode
+            val themeMode by appContainer.getCoreContainer().appSettingsDataStore.themeMode
                 .collectAsState(initial = ThemeMode.SYSTEM)
 
             SynnFrameTheme(themeMode = themeMode) {
@@ -168,10 +168,10 @@ fun SplashScreen(
                 delay(300) // Небольшая задержка перед переходом
 
                 // Определяем, нужно ли показывать экран серверов при запуске
-                val showServersOnStartup = appContainer.appSettingsDataStore.showServersOnStartup.first()
+                val showServersOnStartup = appContainer.getCoreContainer().appSettingsDataStore.showServersOnStartup.first()
 
                 // Определяем, есть ли активный сервер
-                val hasActiveServer = appContainer.appSettingsDataStore.activeServerId.first() != null
+                val hasActiveServer = appContainer.getCoreContainer().appSettingsDataStore.activeServerId.first() != null
 
                 // Задержка для отображения заставки минимум 1.5 секунды
                 delay(300)

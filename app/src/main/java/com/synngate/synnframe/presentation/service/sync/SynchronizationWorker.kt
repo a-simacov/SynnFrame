@@ -20,7 +20,7 @@ class SynchronizationWorker(
 
     // Получаем зависимости через appContainer вместо Koin
     private val synchronizationController: SynchronizationController =
-        (appContext.applicationContext as SynnFrameApplication).appContainer.synchronizationController
+        (appContext.applicationContext as SynnFrameApplication).appContainer.getDomainContainer().synchronizationController
 
     override suspend fun doWork(): Result {
         Timber.d("SynchronizationWorker: starting sync")

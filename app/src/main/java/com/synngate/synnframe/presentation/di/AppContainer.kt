@@ -26,32 +26,32 @@ class AppContainer(val applicationContext: Context) : DiContainer() {
 
 
     // Хранилище для модульных контейнеров - ленивая инициализация
-    private val coreContainer by lazy {
+    private val _coreContainer by lazy {
         Timber.d("Creating CoreContainer")
         CoreContainer(this)
     }
 
-    private val networkContainer by lazy {
+    private val _networkContainer by lazy {
         Timber.d("Creating NetworkContainer")
-        NetworkContainer(this, coreContainer)
+        NetworkContainer(this, _coreContainer)
     }
 
-    private val dataContainer by lazy {
+    private val _dataContainer   by lazy {
         Timber.d("Creating DataContainer")
-        DataContainer(this, coreContainer, networkContainer)
+        DataContainer(this, _coreContainer, _networkContainer)
     }
 
-    private val domainContainer by lazy {
+    private val _domainContainer by lazy {
         Timber.d("Creating DomainContainer")
-        DomainContainer(this, coreContainer, dataContainer, networkContainer)
+        DomainContainer(this, _coreContainer, _dataContainer, _networkContainer)
     }
 
     // Хранилище для функциональных контейнеров (создаются по требованию)
-    private val featureContainers = mutableMapOf<String, FeatureContainer>()
+    private val _featureContainers = mutableMapOf<String, FeatureContainer>()
 
     // Фабрика для создания сканеров (общий компонент)
     val barcodeScannerFactory by lazy {
-        BarcodeScannerFactory(applicationContext, dataContainer.settingsRepository)
+        BarcodeScannerFactory(applicationContext, _dataContainer.settingsRepository)
     }
 
     // Сервис управления сканером (общий компонент)
@@ -65,13 +65,13 @@ class AppContainer(val applicationContext: Context) : DiContainer() {
     /**
      * Получение основных контейнеров
      */
-    fun getCoreContainer() = coreContainer
+    fun getCoreContainer() = _coreContainer
 
-    fun getNetworkContainer() = networkContainer
+    fun getNetworkContainer() = _networkContainer
 
-    fun getDataContainer() = dataContainer
+    fun getDataContainer() = _dataContainer
 
-    fun getDomainContainer() = domainContainer
+    fun getDomainContainer() = _domainContainer
 
     /**
      * Получение функционального контейнера по ключу
@@ -83,7 +83,7 @@ class AppContainer(val applicationContext: Context) : DiContainer() {
      */
     @Suppress("UNCHECKED_CAST")
     fun <T : FeatureContainer> getFeatureContainer(key: String, factory: () -> T): T {
-        return featureContainers.getOrPut(key) {
+        return _featureContainers.getOrPut(key) {
             Timber.d("Creating feature container: $key")
             factory()
         } as T
@@ -101,13 +101,13 @@ class AppContainer(val applicationContext: Context) : DiContainer() {
         Timber.d("Initializing AppContainer")
 
         // Инициализация каналов уведомлений
-        coreContainer.notificationChannelManager.createNotificationChannels()
+        _coreContainer.notificationChannelManager.createNotificationChannels()
 
         // Инициализация модулей
-        coreContainer.initialize()
-        networkContainer.initialize()
-        dataContainer.initialize()
-        domainContainer.initialize()
+        _coreContainer.initialize()
+        _networkContainer.initialize()
+        _dataContainer.initialize()
+        _domainContainer.initialize()
     }
 
     /**
@@ -117,17 +117,17 @@ class AppContainer(val applicationContext: Context) : DiContainer() {
         Timber.d("Disposing AppContainer")
 
         // Освобождение ресурсов функциональных контейнеров
-        featureContainers.values.forEach { it.dispose() }
-        featureContainers.clear()
+        _featureContainers.values.forEach { it.dispose() }
+        _featureContainers.clear()
 
         // Освобождение ресурсов сервиса сканирования
         scannerService.dispose()
 
         // Последовательно освобождаем контейнеры, если они были инициализированы
-        try { domainContainer.dispose() } catch (e: UninitializedPropertyAccessException) { /* Игнорируем */ }
-        try { dataContainer.dispose() } catch (e: UninitializedPropertyAccessException) { /* Игнорируем */ }
-        try { networkContainer.dispose() } catch (e: UninitializedPropertyAccessException) { /* Игнорируем */ }
-        try { coreContainer.dispose() } catch (e: UninitializedPropertyAccessException) { /* Игнорируем */ }
+        try { _domainContainer.dispose() } catch (e: UninitializedPropertyAccessException) { /* Игнорируем */ }
+        try { _dataContainer.dispose() } catch (e: UninitializedPropertyAccessException) { /* Игнорируем */ }
+        try { _networkContainer.dispose() } catch (e: UninitializedPropertyAccessException) { /* Игнорируем */ }
+        try { _coreContainer.dispose() } catch (e: UninitializedPropertyAccessException) { /* Игнорируем */ }
 
         super.dispose()
     }

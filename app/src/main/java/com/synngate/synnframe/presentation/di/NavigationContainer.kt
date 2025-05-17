@@ -2,6 +2,12 @@ package com.synngate.synnframe.presentation.di
 
 import com.synngate.synnframe.presentation.di.modules.FeatureContainer
 import com.synngate.synnframe.presentation.di.modules.feature.AuthFeatureContainer
+import com.synngate.synnframe.presentation.di.modules.feature.DynamicFeatureContainer
+import com.synngate.synnframe.presentation.di.modules.feature.LogsFeatureContainer
+import com.synngate.synnframe.presentation.di.modules.feature.MainFeatureContainer
+import com.synngate.synnframe.presentation.di.modules.feature.ProductsFeatureContainer
+import com.synngate.synnframe.presentation.di.modules.feature.SettingsFeatureContainer
+import com.synngate.synnframe.presentation.di.modules.feature.TasksFeatureContainer
 import timber.log.Timber
 
 /**
@@ -28,6 +34,7 @@ class NavigationContainer(private val appContainer: AppContainer) : DiContainer(
             "logs_graph" -> getLogsFeatureContainer() as T
             "settings_graph" -> getSettingsFeatureContainer() as T
             "dynamic_nav_graph" -> getDynamicFeatureContainer() as T
+            "main_graph" -> getMainFeatureContainer() as T
             else -> throw IllegalArgumentException("Unknown graph route: $graphRoute")
         }
     }
@@ -39,41 +46,103 @@ class NavigationContainer(private val appContainer: AppContainer) : DiContainer(
         return featureContainerCache.getOrPut("auth") {
             appContainer.getFeatureContainer("auth") {
                 AuthFeatureContainer(
-                    appContainer,
-                    appContainer.getCoreContainer(),
-                    appContainer.getDomainContainer()
+                    appContainer = appContainer,
+                    coreContainer = appContainer.getCoreContainer(),
+                    domainContainer = appContainer.getDomainContainer()
                 )
             }
         } as AuthFeatureContainer
     }
 
     /**
-     * Временные заглушки для остальных функциональных контейнеров
-     * Будут реализованы в следующих этапах
+     * Ленивое получение контейнера для продуктов
      */
-    private fun getProductsFeatureContainer(): FeatureContainer {
-        // В дальнейшем будет реализовано
-        throw NotImplementedError("Products feature container not implemented in this phase")
+    private fun getProductsFeatureContainer(): ProductsFeatureContainer {
+        return featureContainerCache.getOrPut("products") {
+            appContainer.getFeatureContainer("products") {
+                ProductsFeatureContainer(
+                    appContainer = appContainer,
+                    coreContainer = appContainer.getCoreContainer(),
+                    domainContainer = appContainer.getDomainContainer(),
+                    dataContainer = appContainer.getDataContainer()
+                )
+            }
+        } as ProductsFeatureContainer
     }
 
-    private fun getTasksFeatureContainer(): FeatureContainer {
-        // В дальнейшем будет реализовано
-        throw NotImplementedError("Tasks feature container not implemented in this phase")
+    /**
+     * Ленивое получение контейнера для задач
+     */
+    private fun getTasksFeatureContainer(): TasksFeatureContainer {
+        return featureContainerCache.getOrPut("tasks") {
+            appContainer.getFeatureContainer("tasks") {
+                TasksFeatureContainer(
+                    appContainer = appContainer,
+                    coreContainer = appContainer.getCoreContainer(),
+                    domainContainer = appContainer.getDomainContainer()
+                )
+            }
+        } as TasksFeatureContainer
     }
 
-    private fun getLogsFeatureContainer(): FeatureContainer {
-        // В дальнейшем будет реализовано
-        throw NotImplementedError("Logs feature container not implemented in this phase")
+    /**
+     * Ленивое получение контейнера для логов
+     */
+    private fun getLogsFeatureContainer(): LogsFeatureContainer {
+        return featureContainerCache.getOrPut("logs") {
+            appContainer.getFeatureContainer("logs") {
+                LogsFeatureContainer(
+                    appContainer = appContainer,
+                    coreContainer = appContainer.getCoreContainer(),
+                    domainContainer = appContainer.getDomainContainer()
+                )
+            }
+        } as LogsFeatureContainer
     }
 
-    private fun getSettingsFeatureContainer(): FeatureContainer {
-        // В дальнейшем будет реализовано
-        throw NotImplementedError("Settings feature container not implemented in this phase")
+    /**
+     * Ленивое получение контейнера для настроек
+     */
+    private fun getSettingsFeatureContainer(): SettingsFeatureContainer {
+        return featureContainerCache.getOrPut("settings") {
+            appContainer.getFeatureContainer("settings") {
+                SettingsFeatureContainer(
+                    appContainer = appContainer,
+                    coreContainer = appContainer.getCoreContainer(),
+                    domainContainer = appContainer.getDomainContainer()
+                )
+            }
+        } as SettingsFeatureContainer
     }
 
-    private fun getDynamicFeatureContainer(): FeatureContainer {
-        // В дальнейшем будет реализовано
-        throw NotImplementedError("Dynamic feature container not implemented in this phase")
+    /**
+     * Ленивое получение контейнера для динамического меню
+     */
+    private fun getDynamicFeatureContainer(): DynamicFeatureContainer {
+        return featureContainerCache.getOrPut("dynamic") {
+            appContainer.getFeatureContainer("dynamic") {
+                DynamicFeatureContainer(
+                    appContainer = appContainer,
+                    coreContainer = appContainer.getCoreContainer(),
+                    domainContainer = appContainer.getDomainContainer()
+                )
+            }
+        } as DynamicFeatureContainer
+    }
+
+    /**
+     * Ленивое получение контейнера для главного меню
+     */
+    private fun getMainFeatureContainer(): MainFeatureContainer {
+        return featureContainerCache.getOrPut("main") {
+            appContainer.getFeatureContainer("main") {
+                MainFeatureContainer(
+                    appContainer = appContainer,
+                    coreContainer = appContainer.getCoreContainer(),
+                    domainContainer = appContainer.getDomainContainer()
+                )
+            }
+        } as MainFeatureContainer
     }
 
     /**
