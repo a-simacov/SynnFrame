@@ -1,12 +1,19 @@
 package com.synngate.synnframe.presentation.di.modules
 
+import com.synngate.synnframe.data.service.ServerCoordinatorImpl
+import com.synngate.synnframe.data.service.SynchronizationControllerImpl
+import com.synngate.synnframe.data.service.WebServerControllerImpl
+import com.synngate.synnframe.data.service.WebServerManagerImpl
+import com.synngate.synnframe.domain.model.wizard.WizardStateMachine
 import com.synngate.synnframe.domain.service.ActionExecutionService
 import com.synngate.synnframe.domain.service.ActionSearchService
+import com.synngate.synnframe.domain.service.ActionSearchServiceImpl
 import com.synngate.synnframe.domain.service.FinalActionsValidator
 import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.service.UpdateInstaller
+import com.synngate.synnframe.domain.service.UpdateInstallerImpl
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.domain.service.WebServerManager
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
@@ -19,6 +26,9 @@ import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.di.AppContainer
 import com.synngate.synnframe.presentation.di.modules.api.DomainAPI
 import com.synngate.synnframe.presentation.di.modules.api.ModuleAPI
+import com.synngate.synnframe.presentation.ui.wizard.service.BinLookupService
+import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
+import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 import timber.log.Timber
 
 /**
@@ -31,12 +41,13 @@ import timber.log.Timber
 class DomainContainer(
     appContainer: AppContainer,
     private val coreContainer: CoreContainer,
-    private val dataContainer: DataContainer
+    private val dataContainer: DataContainer,
+    private val networkContainer: NetworkContainer
 ) : ModuleContainer(appContainer), DomainAPI, ModuleAPI {
 
     override val moduleName: String = "Domain"
 
-    // Контекст и состояние
+    // TaskContextManager - центральный компонент для управления контекстом задач
     override val taskContextManager: TaskContextManager by lazy {
         Timber.d("Creating TaskContextManager")
         TaskContextManager()
@@ -45,93 +56,131 @@ class DomainContainer(
     // Use Cases
     override val serverUseCases: ServerUseCases by lazy {
         Timber.d("Creating ServerUseCases")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        ServerUseCases(dataContainer.serverRepository, serverCoordinator)
     }
 
     override val userUseCases: UserUseCases by lazy {
         Timber.d("Creating UserUseCases")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        UserUseCases(dataContainer.userRepository)
     }
 
     override val productUseCases: ProductUseCases by lazy {
         Timber.d("Creating ProductUseCases")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        ProductUseCases(dataContainer.productRepository)
     }
 
     override val logUseCases: LogUseCases by lazy {
         Timber.d("Creating LogUseCases")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        LogUseCases(dataContainer.logRepository, coreContainer.loggingService)
     }
 
     override val settingsUseCases: SettingsUseCases by lazy {
         Timber.d("Creating SettingsUseCases")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        SettingsUseCases(
+            dataContainer.settingsRepository,
+            coreContainer.fileService,
+            appContainer.applicationContext
+        )
     }
 
     override val dynamicMenuUseCases: DynamicMenuUseCases by lazy {
         Timber.d("Creating DynamicMenuUseCases")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        DynamicMenuUseCases(dataContainer.dynamicMenuRepository)
     }
 
     override val taskXUseCases: TaskXUseCases by lazy {
         Timber.d("Creating TaskXUseCases")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        TaskXUseCases(dataContainer.taskXRepository, taskContextManager)
     }
 
-    // Сервисы бизнес-логики
+    // Бизнес-сервисы
     override val actionExecutionService: ActionExecutionService by lazy {
         Timber.d("Creating ActionExecutionService")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        ActionExecutionService(
+            taskContextManager = taskContextManager,
+            taskXRepository = dataContainer.taskXRepository
+        )
     }
 
     override val validationService: ValidationService by lazy {
         Timber.d("Creating ValidationService")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        ValidationService(networkContainer.validationApiService)
     }
 
     override val finalActionsValidator: FinalActionsValidator by lazy {
         Timber.d("Creating FinalActionsValidator")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        FinalActionsValidator()
     }
 
     override val actionSearchService: ActionSearchService by lazy {
         Timber.d("Creating ActionSearchService")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        ActionSearchServiceImpl(
+            actionSearchApi = networkContainer.actionSearchApi,
+            productRepository = dataContainer.productRepository
+        )
+    }
+
+    // Контроллер и менеджер веб-сервера
+    private val webServerController by lazy {
+        WebServerControllerImpl(appContainer.applicationContext)
     }
 
     override val webServerManager: WebServerManager by lazy {
         Timber.d("Creating WebServerManager")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        WebServerManagerImpl(webServerController)
     }
 
     override val updateInstaller: UpdateInstaller by lazy {
         Timber.d("Creating UpdateInstaller")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        UpdateInstallerImpl(appContainer.applicationContext)
     }
 
     override val synchronizationController: SynchronizationController by lazy {
         Timber.d("Creating SynchronizationController")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        SynchronizationControllerImpl(
+            appContainer.applicationContext,
+            productUseCases,
+            coreContainer.appSettingsDataStore,
+            dataContainer.database
+        )
     }
 
     override val serverCoordinator: ServerCoordinator by lazy {
         Timber.d("Creating ServerCoordinator")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        ServerCoordinatorImpl(
+            dataContainer.serverRepository,
+            coreContainer.appSettingsDataStore
+        )
+    }
+
+    // Сервисы для визарда
+    val productLookupService by lazy {
+        Timber.d("Creating ProductLookupService")
+        ProductLookupService(dataContainer.productRepository)
+    }
+
+    val binLookupService by lazy {
+        Timber.d("Creating BinLookupService")
+        BinLookupService(
+            taskContextManager = taskContextManager,
+            wizardBinRepository = dataContainer.wizardBinRepository
+        )
+    }
+
+    val palletLookupService by lazy {
+        Timber.d("Creating PalletLookupService")
+        PalletLookupService(
+            taskContextManager = taskContextManager,
+            wizardPalletRepository = dataContainer.wizardPalletRepository
+        )
+    }
+
+    val wizardStateMachine by lazy {
+        Timber.d("Creating WizardStateMachine")
+        WizardStateMachine(
+            taskContextManager = taskContextManager,
+            actionExecutionService = actionExecutionService
+        )
     }
 
     override fun initialize() {

@@ -5,6 +5,10 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.synngate.synnframe.data.datastore.AppSettingsDataStore
+import com.synngate.synnframe.data.service.ClipboardServiceImpl
+import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
+import com.synngate.synnframe.data.service.FileServiceImpl
+import com.synngate.synnframe.data.service.SoundServiceImpl
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.FileService
@@ -15,6 +19,7 @@ import com.synngate.synnframe.presentation.di.modules.api.CoreAPI
 import com.synngate.synnframe.presentation.di.modules.api.ModuleAPI
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.util.resources.ResourceProvider
+import com.synngate.synnframe.util.resources.ResourceProviderImpl
 import timber.log.Timber
 
 /**
@@ -38,47 +43,54 @@ class CoreContainer(appContainer: AppContainer) : ModuleContainer(appContainer),
 
     override val resourceProvider: ResourceProvider by lazy {
         Timber.d("Creating ResourceProvider")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        ResourceProviderImpl(appContainer.applicationContext)
     }
 
     override val loggingService: LoggingService by lazy {
         Timber.d("Creating LoggingService")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        // Для создания LoggingService нужен LogRepository,
+        // но он находится в Data слое, поэтому создаем заглушку
+        // Позже, в DataContainer, мы настроим LoggingService правильно
+        object : LoggingService {
+            override suspend fun logInfo(message: String): Long {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun logWarning(message: String): Long {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun logError(message: String): Long {
+                TODO("Not yet implemented")
+            }
+        }
     }
 
     override val notificationChannelManager: NotificationChannelManager by lazy {
         Timber.d("Creating NotificationChannelManager")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        NotificationChannelManager(appContainer.applicationContext)
     }
 
     override val deviceInfoService: DeviceInfoService by lazy {
         Timber.d("Creating DeviceInfoService")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        DeviceInfoServiceImpl(appContainer.applicationContext)
     }
 
     override val fileService: FileService by lazy {
         Timber.d("Creating FileService")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        FileServiceImpl(appContainer.applicationContext)
     }
 
     override val soundService: SoundService by lazy {
         Timber.d("Creating SoundService")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        SoundServiceImpl(appContainer.applicationContext)
     }
 
     override val clipboardService: ClipboardService by lazy {
         Timber.d("Creating ClipboardService")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        ClipboardServiceImpl(appContainer.applicationContext)
     }
 
-    // Этот метод должен быть расширен в следующих фазах
     override fun initialize() {
         super.initialize()
         Timber.d("Core module initialized")

@@ -32,15 +32,15 @@ class SynnFrameApplication : Application() {
 
         // 3. Заменяем Timber tree на полнофункциональный
         Timber.uprootAll() // Удаляем временный tree
-        val logLevelProvider = LogLevelProvider(appContainer.appSettingsDataStore)
-        Timber.plant(AppTree(appContainer.loggingService, logLevelProvider))
+        val logLevelProvider = LogLevelProvider(appContainer.getCoreContainer().appSettingsDataStore)
+        Timber.plant(AppTree(appContainer.getCoreContainer().loggingService, logLevelProvider))
 
         // Настраиваем доверие всем SSL сертификатам (только для разработки)
         TrustAllCertificates.initialize()
 
         // Устанавливаем локаль из настроек
         launchInBackground {
-            val languageCode = appContainer.appSettingsDataStore.languageCode.first()
+            val languageCode = appContainer.getCoreContainer().appSettingsDataStore.languageCode.first()
             setAppLocale(languageCode)
         }
 

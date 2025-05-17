@@ -8,7 +8,7 @@ import timber.log.Timber
  * Контейнер для уровня навигации.
  * Управляет доступом к функциональным контейнерам и создает контейнеры для экранов.
  */
-class NavigationContainerNew(private val appContainer: AppContainer) : DiContainer() {
+class NavigationContainer(private val appContainer: AppContainer) : DiContainer() {
 
     // Кэш функциональных контейнеров для графов навигации
     private val featureContainerCache = mutableMapOf<String, FeatureContainer>()
@@ -52,23 +52,28 @@ class NavigationContainerNew(private val appContainer: AppContainer) : DiContain
      * Будут реализованы в следующих этапах
      */
     private fun getProductsFeatureContainer(): FeatureContainer {
-        throw NotImplementedError("Not implemented in this phase")
+        // В дальнейшем будет реализовано
+        throw NotImplementedError("Products feature container not implemented in this phase")
     }
 
     private fun getTasksFeatureContainer(): FeatureContainer {
-        throw NotImplementedError("Not implemented in this phase")
+        // В дальнейшем будет реализовано
+        throw NotImplementedError("Tasks feature container not implemented in this phase")
     }
 
     private fun getLogsFeatureContainer(): FeatureContainer {
-        throw NotImplementedError("Not implemented in this phase")
+        // В дальнейшем будет реализовано
+        throw NotImplementedError("Logs feature container not implemented in this phase")
     }
 
     private fun getSettingsFeatureContainer(): FeatureContainer {
-        throw NotImplementedError("Not implemented in this phase")
+        // В дальнейшем будет реализовано
+        throw NotImplementedError("Settings feature container not implemented in this phase")
     }
 
     private fun getDynamicFeatureContainer(): FeatureContainer {
-        throw NotImplementedError("Not implemented in this phase")
+        // В дальнейшем будет реализовано
+        throw NotImplementedError("Dynamic feature container not implemented in this phase")
     }
 
     /**

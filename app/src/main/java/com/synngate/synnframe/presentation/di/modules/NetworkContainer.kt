@@ -1,19 +1,35 @@
 package com.synngate.synnframe.presentation.di.modules
 
 import com.synngate.synnframe.data.remote.api.ActionSearchApi
+import com.synngate.synnframe.data.remote.api.ActionSearchApiImpl
 import com.synngate.synnframe.data.remote.api.AppUpdateApi
+import com.synngate.synnframe.data.remote.api.AppUpdateApiImpl
 import com.synngate.synnframe.data.remote.api.AuthApi
+import com.synngate.synnframe.data.remote.api.AuthApiImpl
 import com.synngate.synnframe.data.remote.api.DynamicMenuApi
+import com.synngate.synnframe.data.remote.api.DynamicMenuApiImpl
 import com.synngate.synnframe.data.remote.api.ProductApi
+import com.synngate.synnframe.data.remote.api.ProductApiImpl
 import com.synngate.synnframe.data.remote.api.TaskXApi
+import com.synngate.synnframe.data.remote.api.TaskXApiImpl
 import com.synngate.synnframe.data.remote.api.ValidationApiServiceImpl
 import com.synngate.synnframe.data.remote.service.ApiService
+import com.synngate.synnframe.data.remote.service.ApiServiceImpl
 import com.synngate.synnframe.data.remote.service.ServerProvider
 import com.synngate.synnframe.presentation.di.AppContainer
 import com.synngate.synnframe.presentation.di.modules.api.ModuleAPI
 import com.synngate.synnframe.presentation.di.modules.api.NetworkAPI
 import com.synngate.synnframe.util.network.NetworkMonitor
 import io.ktor.client.HttpClient
+import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
 import timber.log.Timber
 
 /**
@@ -29,70 +45,111 @@ class NetworkContainer(
 
     override val moduleName: String = "Network"
 
+    @OptIn(ExperimentalSerializationApi::class)
     override val httpClient: HttpClient by lazy {
         Timber.d("Creating HttpClient")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
-    }
-
-    override val serverProvider: ServerProvider by lazy {
-        Timber.d("Creating ServerProvider")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        HttpClient(Android) {
+            install(ContentNegotiation) {
+                json(Json {
+                    prettyPrint = true
+                    isLenient = true
+                    ignoreUnknownKeys = true
+                    useArrayPolymorphism = true
+                    explicitNulls = false
+                    coerceInputValues = true
+                    encodeDefaults = true
+                })
+            }
+            install(HttpTimeout) {
+                connectTimeoutMillis = 10000
+            }
+            install(Logging) {
+                logger = object : Logger {
+                    override fun log(message: String) {
+                        Timber.tag("HttpClient").d(message)
+                    }
+                }
+                level = LogLevel.ALL
+            }
+        }
     }
 
     override val networkMonitor: NetworkMonitor by lazy {
         Timber.d("Creating NetworkMonitor")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        NetworkMonitor(appContainer.applicationContext)
+    }
+
+    // Этот интерфейс будет обновлен позже с реальной реализацией
+    override val serverProvider: ServerProvider by lazy {
+        Timber.d("Creating ServerProvider")
+        object : ServerProvider {
+            override suspend fun getActiveServer() = null
+            override suspend fun getCurrentUserId() = null
+        }
+    }
+
+    // Метод для обновления serverProvider с реальной реализацией
+    fun updateServerProvider(newProvider: ServerProvider) {
+        Timber.d("Updating ServerProvider with real implementation")
+        // Используем рефлексию, чтобы обновить lazy свойство
+        try {
+            val field = NetworkContainer::class.java.getDeclaredField("serverProvider")
+            field.isAccessible = true
+
+            // Получаем доступ к Lazy объекту
+            val lazyObj = field.get(this) as Lazy<*>
+
+            // Используем рефлексию для доступа к внутреннему полю Lazy.unsafe, которое хранит значение
+            val unsafeField = lazyObj.javaClass.getDeclaredField("_value")
+            unsafeField.isAccessible = true
+
+            // Устанавливаем новое значение
+            unsafeField.set(lazyObj, newProvider)
+
+            Timber.d("ServerProvider successfully updated")
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to update ServerProvider")
+        }
     }
 
     override val apiService: ApiService by lazy {
         Timber.d("Creating ApiService")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        ApiServiceImpl(httpClient, serverProvider)
     }
 
     override val authApi: AuthApi by lazy {
         Timber.d("Creating AuthApi")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        AuthApiImpl(apiService)
     }
 
     override val productApi: ProductApi by lazy {
         Timber.d("Creating ProductApi")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        ProductApiImpl(httpClient, serverProvider)
     }
 
     override val appUpdateApi: AppUpdateApi by lazy {
         Timber.d("Creating AppUpdateApi")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        AppUpdateApiImpl(httpClient, serverProvider)
     }
 
     override val dynamicMenuApi: DynamicMenuApi by lazy {
         Timber.d("Creating DynamicMenuApi")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        DynamicMenuApiImpl(httpClient, serverProvider)
     }
 
     override val validationApiService: ValidationApiServiceImpl by lazy {
         Timber.d("Creating ValidationApiService")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        ValidationApiServiceImpl(httpClient, serverProvider)
     }
 
     override val actionSearchApi: ActionSearchApi by lazy {
         Timber.d("Creating ActionSearchApi")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        ActionSearchApiImpl(httpClient, serverProvider)
     }
 
     override val taskXApi: TaskXApi by lazy {
         Timber.d("Creating TaskXApi")
-        // Будет реализовано на следующем этапе
-        throw NotImplementedError("Not implemented in this phase")
+        TaskXApiImpl(httpClient, serverProvider)
     }
 
     override fun initialize() {
