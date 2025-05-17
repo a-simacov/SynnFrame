@@ -35,6 +35,8 @@ class ActionExecutionService(
             val task = taskContextManager.lastStartedTaskX.value
                 ?: return@withContext Result.failure(IllegalArgumentException("Task not found in context: $taskId"))
 
+            Timber.d("Executing action with taskId: $taskId, found task in context: ${task.id}")
+
             if (task.id != taskId) {
                 return@withContext Result.failure(IllegalArgumentException("Task ID mismatch: expected $taskId, got ${task.id}"))
             }

@@ -80,36 +80,20 @@ class NetworkContainer(
     }
 
     // Этот интерфейс будет обновлен позже с реальной реализацией
-    override val serverProvider: ServerProvider by lazy {
-        Timber.d("Creating ServerProvider")
-        object : ServerProvider {
-            override suspend fun getActiveServer() = null
-            override suspend fun getCurrentUserId() = null
-        }
+    private var _serverProvider: ServerProvider = object : ServerProvider {
+        override suspend fun getActiveServer() = null
+        override suspend fun getCurrentUserId() = null
     }
+
+    // Property getter, который возвращает текущее значение _serverProvider
+    override val serverProvider: ServerProvider
+        get() = _serverProvider
 
     // Метод для обновления serverProvider с реальной реализацией
     fun updateServerProvider(newProvider: ServerProvider) {
         Timber.d("Updating ServerProvider with real implementation")
-        // Используем рефлексию, чтобы обновить lazy свойство
-        try {
-            val field = NetworkContainer::class.java.getDeclaredField("serverProvider")
-            field.isAccessible = true
-
-            // Получаем доступ к Lazy объекту
-            val lazyObj = field.get(this) as Lazy<*>
-
-            // Используем рефлексию для доступа к внутреннему полю Lazy.unsafe, которое хранит значение
-            val unsafeField = lazyObj.javaClass.getDeclaredField("_value")
-            unsafeField.isAccessible = true
-
-            // Устанавливаем новое значение
-            unsafeField.set(lazyObj, newProvider)
-
-            Timber.d("ServerProvider successfully updated")
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to update ServerProvider")
-        }
+        _serverProvider = newProvider
+        Timber.d("ServerProvider successfully updated")
     }
 
     override val apiService: ApiService by lazy {

@@ -628,11 +628,17 @@ class TaskXDetailViewModel(
     }
 
     fun handleBackNavigation() {
-        if (uiState.value.task?.status == TaskXStatus.IN_PROGRESS ||
-            uiState.value.task?.status == TaskXStatus.PAUSED) {
+        // Получаем текущее состояние задания
+        val taskStatus = uiState.value.task?.status
+
+        if (taskStatus == TaskXStatus.IN_PROGRESS || taskStatus == TaskXStatus.PAUSED) {
+            // Для активных заданий показываем диалог действий
             showActionsDialog()
         } else {
-            // Если задание не в активном состоянии, просто выполняем навигацию назад
+            // Убедимся, что диалог скрыт перед навигацией
+            updateState { it.copy(showActionsDialog = false) }
+
+            // Если задание не в активном состоянии, выполняем навигацию назад
             sendEvent(TaskXDetailEvent.NavigateBack)
         }
     }

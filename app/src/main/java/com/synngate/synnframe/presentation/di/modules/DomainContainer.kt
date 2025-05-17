@@ -49,8 +49,7 @@ class DomainContainer(
 
     // TaskContextManager - центральный компонент для управления контекстом задач
     override val taskContextManager: TaskContextManager by lazy {
-        Timber.d("Creating TaskContextManager")
-        TaskContextManager()
+        appContainer.taskContextManager
     }
 
     // Use Cases

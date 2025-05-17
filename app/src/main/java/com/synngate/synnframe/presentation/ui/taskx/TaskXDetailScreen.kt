@@ -97,7 +97,7 @@ fun TaskXDetailScreen(
                     navigateBack()
                 }
                 is TaskXDetailEvent.TaskActionCompleted -> {
-                    // Для комбинированного события сразу выполняем навигацию
+                    viewModel.hideActionsDialog()
                     navigateBack()
 
                     // Показываем снекбар с небольшой задержкой,
@@ -118,7 +118,11 @@ fun TaskXDetailScreen(
     if (state.showActionsDialog) {
         TaskXActionsDialog(
             onDismiss = { viewModel.hideActionsDialog() },
-            onNavigateBack = navigateBack,
+            // Модифицированный обработчик навигации назад, чтобы сначала скрыть диалог
+            onNavigateBack = {
+                viewModel.hideActionsDialog() // Сначала скрываем диалог
+                navigateBack() // Затем выполняем навигацию
+            },
             statusActions = state.statusActions,
             isProcessing = state.isProcessingDialogAction
         )

@@ -61,7 +61,7 @@ class DynamicFeatureContainer(
                 screenSettings = screenSettings,
                 dynamicMenuUseCases = domainContainer.dynamicMenuUseCases,
                 userUseCases = domainContainer.userUseCases,
-                taskContextManager = domainContainer.taskContextManager
+                taskContextManager = appContainer.taskContextManager
             )
         }
     }

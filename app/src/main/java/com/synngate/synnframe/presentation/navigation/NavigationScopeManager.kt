@@ -95,9 +95,16 @@ class NavigationScopeManager(
                     .filter { it.startsWith("$previousRoute:") || it == previousRoute }
 
                 ephemeralKeys.forEach { key ->
-                    ephemeralScreenContainers.remove(key)?.let {
-                        Timber.d("Disposing ephemeral ScreenContainer for key: $key")
+                    // Улучшенная логика очистки: сначала явно очищаем состояние ViewModel'ей
+                    val container = ephemeralScreenContainers[key]
+                    container?.let {
+                        // Логируем для отслеживания процесса удаления
+                        Timber.d("Explicitly clearing ViewModel states for key: $key")
+
+                        // Удаляем контейнер и освобождаем ресурсы
+                        ephemeralScreenContainers.remove(key)
                         it.dispose()
+                        Timber.d("Disposed ephemeral ScreenContainer for key: $key")
                     }
                 }
 

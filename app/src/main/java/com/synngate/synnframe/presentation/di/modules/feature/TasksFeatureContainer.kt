@@ -51,8 +51,8 @@ class TasksFeatureContainer(
     fun createTaskXDetailViewModel(taskId: String): TaskXDetailViewModel {
         return getViewModel("TaskXDetailViewModel_$taskId") {
             // Проверяем, есть ли данные в TaskContextManager
-            val contextTask = domainContainer.taskContextManager.lastStartedTaskX.value
-            val contextTaskType = domainContainer.taskContextManager.lastTaskTypeX.value
+            val contextTask = appContainer.taskContextManager.lastStartedTaskX.value
+            val contextTaskType = appContainer.taskContextManager.lastTaskTypeX.value
 
             // Если задача в контексте и совпадает по ID, используем её вместе с типом
             if (contextTask != null && contextTask.id == taskId && contextTaskType != null) {

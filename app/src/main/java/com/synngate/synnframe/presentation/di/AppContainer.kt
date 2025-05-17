@@ -3,6 +3,7 @@ package com.synngate.synnframe.presentation.di
 import android.content.Context
 import com.synngate.synnframe.data.barcodescanner.BarcodeScannerFactory
 import com.synngate.synnframe.data.barcodescanner.ScannerService
+import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.presentation.di.modules.CoreContainer
 import com.synngate.synnframe.presentation.di.modules.DataContainer
 import com.synngate.synnframe.presentation.di.modules.DomainContainer
@@ -60,6 +61,11 @@ class AppContainer(val applicationContext: Context) : DiContainer() {
             // Автоматически инициализируем сканер при создании сервиса
             it.initialize()
         }
+    }
+
+    val taskContextManager: TaskContextManager by lazy {
+        Timber.d("Creating global TaskContextManager in AppContainer")
+        TaskContextManager()
     }
 
     /**
