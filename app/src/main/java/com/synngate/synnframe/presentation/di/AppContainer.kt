@@ -25,7 +25,6 @@ import timber.log.Timber
 class AppContainer(val applicationContext: Context) : DiContainer() {
     // applicationContext уже публичное с модификатором val
 
-
     // Хранилище для модульных контейнеров - ленивая инициализация
     private val _coreContainer by lazy {
         Timber.d("Creating CoreContainer")
@@ -37,7 +36,7 @@ class AppContainer(val applicationContext: Context) : DiContainer() {
         NetworkContainer(this, _coreContainer)
     }
 
-    private val _dataContainer   by lazy {
+    private val _dataContainer by lazy {
         Timber.d("Creating DataContainer")
         DataContainer(this, _coreContainer, _networkContainer)
     }
@@ -122,19 +121,66 @@ class AppContainer(val applicationContext: Context) : DiContainer() {
     override fun dispose() {
         Timber.d("Disposing AppContainer")
 
-        // Освобождение ресурсов функциональных контейнеров
-        _featureContainers.values.forEach { it.dispose() }
+        // Сначала освобождаем все дочерние контейнеры (NavigationContainer и т.д.)
+        super.dispose()
+
+        // Затем освобождаем все функциональные контейнеры
+        _featureContainers.values.forEach {
+            try {
+                Timber.d("Disposing feature container: ${it.moduleName}")
+                it.dispose()
+            } catch (e: Exception) {
+                Timber.e(e, "Error disposing feature container: ${it.moduleName}")
+            }
+        }
         _featureContainers.clear()
 
-        // Освобождение ресурсов сервиса сканирования
-        scannerService.dispose()
+        // Освобождаем ресурсы общих сервисов
+        try {
+            Timber.d("Disposing scanner service")
+            scannerService.dispose()
+        } catch (e: Exception) {
+            Timber.e(e, "Error disposing scanner service")
+        }
 
-        // Последовательно освобождаем контейнеры, если они были инициализированы
-        try { _domainContainer.dispose() } catch (e: UninitializedPropertyAccessException) { /* Игнорируем */ }
-        try { _dataContainer.dispose() } catch (e: UninitializedPropertyAccessException) { /* Игнорируем */ }
-        try { _networkContainer.dispose() } catch (e: UninitializedPropertyAccessException) { /* Игнорируем */ }
-        try { _coreContainer.dispose() } catch (e: UninitializedPropertyAccessException) { /* Игнорируем */ }
+        try {
+            Timber.d("Disposing task context manager")
+            taskContextManager.dispose()
+        } catch (e: Exception) {
+            Timber.e(e, "Error disposing task context manager")
+        }
 
-        super.dispose()
+        // Освобождаем модульные контейнеры в обратном порядке их зависимостей
+        // Используем try-catch для проверки инициализации
+        disposeLazyContainer("DomainContainer") {
+            _domainContainer.dispose()
+        }
+
+        disposeLazyContainer("DataContainer") {
+            _dataContainer.dispose()
+        }
+
+        disposeLazyContainer("NetworkContainer") {
+            _networkContainer.dispose()
+        }
+
+        disposeLazyContainer("CoreContainer") {
+            _coreContainer.dispose()
+        }
+    }
+
+    /**
+     * Безопасное освобождение ресурсов lazy-контейнера
+     * Перехватывает UninitializedPropertyAccessException если контейнер не был инициализирован
+     */
+    private inline fun disposeLazyContainer(containerName: String, disposeAction: () -> Unit) {
+        try {
+            Timber.d("Disposing $containerName")
+            disposeAction()
+        } catch (e: UninitializedPropertyAccessException) {
+            Timber.d("Skipping $containerName disposal - not initialized")
+        } catch (e: Exception) {
+            Timber.e(e, "Error disposing $containerName: ${e.message}")
+        }
     }
 }

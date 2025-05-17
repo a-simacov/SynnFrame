@@ -3,11 +3,12 @@ package com.synngate.synnframe.domain.service
 import com.synngate.synnframe.data.remote.dto.TaskXStartResponseDto
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
+import com.synngate.synnframe.presentation.di.Disposable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class TaskContextManager {
+class TaskContextManager : Disposable {
 
     private val _lastStartedTaskX = MutableStateFlow<TaskX?>(null)
     val lastStartedTaskX: StateFlow<TaskX?> = _lastStartedTaskX.asStateFlow()
@@ -54,5 +55,22 @@ class TaskContextManager {
         }
 
         return task.copy(plannedActions = updatedPlannedActions)
+    }
+
+    /**
+     * Очищает все данные контекста задачи.
+     * Вызывается при освобождении ресурсов.
+     */
+    fun clear() {
+        _lastStartedTaskX.value = null
+        _lastTaskTypeX.value = null
+        _currentEndpoint.value = null
+    }
+
+    /**
+     * Освобождает ресурсы контекста задачи.
+     */
+    override fun dispose() {
+        clear()
     }
 }

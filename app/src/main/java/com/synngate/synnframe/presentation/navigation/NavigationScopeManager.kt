@@ -32,6 +32,9 @@ class NavigationScopeManager(
     // Предыдущее направление (для отслеживания выхода)
     private var previousDestination: NavDestination? = null
 
+    // Список уничтоженных графов для предотвращения утечек
+    private val destroyedGraphs = mutableSetOf<String>()
+
     init {
         // Отслеживаем изменения навигации
         navController.addOnDestinationChangedListener { _, destination, _ ->
@@ -44,6 +47,13 @@ class NavigationScopeManager(
      */
     fun getEphemeralScreenContainer(route: String, graphRoute: String? = null): ScreenContainer {
         val key = if (graphRoute != null) "$route:$graphRoute" else route
+
+        // Проверяем, если граф уже был уничтожен, очищаем перед созданием
+        if (graphRoute != null && destroyedGraphs.contains(graphRoute)) {
+            cleanupContainersForGraph(graphRoute)
+            destroyedGraphs.remove(graphRoute)
+        }
+
         return ephemeralScreenContainers.getOrPut(key) {
             Timber.d("Creating ephemeral ScreenContainer for screen: $route with graph: $graphRoute")
             onCreateScreenContainer()
@@ -57,6 +67,12 @@ class NavigationScopeManager(
         // Используем уникальный ключ, включающий и граф, и экран
         val key = if (graphRoute != null) "$graphRoute:$route" else route
 
+        // Проверяем, если граф уже был уничтожен, очищаем перед созданием
+        if (graphRoute != null && destroyedGraphs.contains(graphRoute)) {
+            cleanupContainersForGraph(graphRoute)
+            destroyedGraphs.remove(graphRoute)
+        }
+
         return persistentScreenContainers.getOrPut(key) {
             Timber.d("Creating persistent ScreenContainer for screen: $route in graph: $graphRoute")
             onCreateScreenContainer()
@@ -67,6 +83,12 @@ class NavigationScopeManager(
      * Получение контейнера для графа навигации
      */
     fun getGraphContainer(graphRoute: String): ScreenContainer {
+        // Проверяем, если граф уже был уничтожен, очищаем перед созданием
+        if (destroyedGraphs.contains(graphRoute)) {
+            cleanupContainersForGraph(graphRoute)
+            destroyedGraphs.remove(graphRoute)
+        }
+
         return graphContainers.getOrPut(graphRoute) {
             Timber.d("Creating ScreenContainer for graph: $graphRoute")
             onCreateScreenContainer()
@@ -91,46 +113,59 @@ class NavigationScopeManager(
 
             if (isBackNavigation) {
                 // Всегда удаляем временный контейнер для предыдущего экрана
-                val ephemeralKeys = ephemeralScreenContainers.keys
-                    .filter { it.startsWith("$previousRoute:") || it == previousRoute }
-
-                ephemeralKeys.forEach { key ->
-                    // Улучшенная логика очистки: сначала явно очищаем состояние ViewModel'ей
-                    val container = ephemeralScreenContainers[key]
-                    container?.let {
-                        // Логируем для отслеживания процесса удаления
-                        Timber.d("Explicitly clearing ViewModel states for key: $key")
-
-                        // Удаляем контейнер и освобождаем ресурсы
-                        ephemeralScreenContainers.remove(key)
-                        it.dispose()
-                        Timber.d("Disposed ephemeral ScreenContainer for key: $key")
-                    }
-                }
+                cleanupEphemeralContainers(previousRoute)
 
                 // Если произошел выход из графа, удаляем все связанные постоянные контейнеры
                 if (previousGraph != null && previousGraph != currentGraph) {
-                    // Удаляем постоянные контейнеры, связанные с предыдущим графом
-                    val keysToRemove = persistentScreenContainers.keys
-                        .filter { it.startsWith("$previousGraph:") }
+                    cleanupContainersForGraph(previousGraph)
 
-                    keysToRemove.forEach { key ->
-                        persistentScreenContainers.remove(key)?.let {
-                            Timber.d("Disposing persistent ScreenContainer for key: $key")
-                            it.dispose()
-                        }
-                    }
-
-                    // Удаляем контейнер графа
-                    graphContainers.remove(previousGraph)?.let {
-                        Timber.d("Disposing graph ScreenContainer for graph: $previousGraph")
-                        it.dispose()
-                    }
+                    // Добавляем граф в список уничтоженных, чтобы очистить при повторном входе
+                    destroyedGraphs.add(previousGraph)
                 }
             }
         }
 
         previousDestination = destination
+    }
+
+    /**
+     * Очистка временных контейнеров для экрана
+     */
+    private fun cleanupEphemeralContainers(route: String) {
+        val ephemeralKeys = ephemeralScreenContainers.keys
+            .filter { it.startsWith("$route:") || it == route }
+
+        ephemeralKeys.forEach { key ->
+            val container = ephemeralScreenContainers[key]
+            container?.let {
+                Timber.d("Explicitly clearing ViewModel states for key: $key")
+                ephemeralScreenContainers.remove(key)
+                it.dispose()
+                Timber.d("Disposed ephemeral ScreenContainer for key: $key")
+            }
+        }
+    }
+
+    /**
+     * Очистка контейнеров для графа навигации
+     */
+    private fun cleanupContainersForGraph(graphRoute: String) {
+        // Удаляем постоянные контейнеры, связанные с графом
+        val keysToRemove = persistentScreenContainers.keys
+            .filter { it.startsWith("$graphRoute:") }
+
+        keysToRemove.forEach { key ->
+            persistentScreenContainers.remove(key)?.let {
+                Timber.d("Disposing persistent ScreenContainer for key: $key")
+                it.dispose()
+            }
+        }
+
+        // Удаляем контейнер графа
+        graphContainers.remove(graphRoute)?.let {
+            Timber.d("Disposing graph ScreenContainer for graph: $graphRoute")
+            it.dispose()
+        }
     }
 
     /**
@@ -155,17 +190,45 @@ class NavigationScopeManager(
     }
 
     /**
-     * Очистка всех ресурсов
+     * Очистка всех ресурсов при завершении работы
      */
     fun dispose() {
-        ephemeralScreenContainers.values.forEach { it.dispose() }
+        Timber.d("Disposing NavigationScopeManager and all containers")
+
+        // Сначала освобождаем временные контейнеры
+        ephemeralScreenContainers.values.forEach {
+            try {
+                it.dispose()
+            } catch (e: Exception) {
+                Timber.e(e, "Error disposing ephemeral container")
+            }
+        }
         ephemeralScreenContainers.clear()
 
-        persistentScreenContainers.values.forEach { it.dispose() }
+        // Затем освобождаем постоянные контейнеры
+        persistentScreenContainers.values.forEach {
+            try {
+                it.dispose()
+            } catch (e: Exception) {
+                Timber.e(e, "Error disposing persistent container")
+            }
+        }
         persistentScreenContainers.clear()
 
-        graphContainers.values.forEach { it.dispose() }
+        // Наконец, освобождаем контейнеры графов
+        graphContainers.values.forEach {
+            try {
+                it.dispose()
+            } catch (e: Exception) {
+                Timber.e(e, "Error disposing graph container")
+            }
+        }
         graphContainers.clear()
+
+        // Очищаем список уничтоженных графов
+        destroyedGraphs.clear()
+
+        Timber.d("NavigationScopeManager disposed successfully")
     }
 }
 
