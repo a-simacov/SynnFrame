@@ -7,6 +7,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -21,6 +22,10 @@ import com.synngate.synnframe.presentation.ui.wizard.action.ActionWizardContent
 import kotlinx.coroutines.delay
 import timber.log.Timber
 
+/**
+ * Экран визарда действий.
+ * Обеспечивает интерфейс для выполнения шагов действия и навигацию между ними.
+ */
 @Composable
 fun ActionWizardScreen(
     viewModel: ActionWizardViewModel,
@@ -31,6 +36,16 @@ fun ActionWizardScreen(
     val wizardState by viewModel.wizardStateMachine.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val wizardContextFactory = remember { WizardContextFactory() }
+
+    // Используем DisposableEffect для гарантированного освобождения ресурсов при выходе из экрана
+    DisposableEffect(viewModel) {
+        Timber.d("ActionWizardScreen: создан")
+
+        onDispose {
+            Timber.d("ActionWizardScreen: освобождение ресурсов")
+            viewModel.onDispose()
+        }
+    }
 
     BackHandler {
         val currentState = wizardState

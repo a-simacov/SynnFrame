@@ -9,7 +9,12 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
+/**
+ * ViewModel для экрана визарда действий.
+ * Управляет состоянием визарда и интерфейсом пользователя.
+ */
 class ActionWizardViewModel(
     private val taskId: String,
     private val actionId: String,
@@ -34,6 +39,7 @@ class ActionWizardViewModel(
                 // Начинаем наблюдение за состоянием визарда после инициализации
                 startObservingState()
             } catch (e: Exception) {
+                Timber.e(e, "Ошибка инициализации визарда: ${e.message}")
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка инициализации: ${e.message}"))
                 sendEvent(ActionWizardEvent.NavigateBack)
             }
@@ -65,6 +71,7 @@ class ActionWizardViewModel(
                     sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: $errorMessage"))
                 }
             } catch (e: Exception) {
+                Timber.e(e, "Ошибка завершения визарда: ${e.message}")
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка завершения: ${e.message}"))
             }
         }
@@ -84,6 +91,7 @@ class ActionWizardViewModel(
             try {
                 wizardStateMachine.processStepResult(null)
             } catch (e: Exception) {
+                Timber.e(e, "Ошибка навигации: ${e.message}")
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка навигации: ${e.message}"))
             }
         }
@@ -98,13 +106,40 @@ class ActionWizardViewModel(
             try {
                 wizardStateMachine.processStepResult(result)
             } catch (e: Exception) {
+                Timber.e(e, "Ошибка обработки результата шага: ${e.message}")
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: ${e.message}"))
             }
         }
     }
 
+    /**
+     * Освобождает ресурсы, используемые ViewModel.
+     * Вызывает dispose() на stateMachine и actionStepFactoryRegistry.
+     */
     override fun dispose() {
+        Timber.d("$TAG: Освобождение ресурсов")
         super.dispose()
-        wizardStateMachine.dispose()
+
+        try {
+            // Сначала очищаем кэши всех фабрик
+            actionStepFactoryRegistry.clearAllCaches()
+
+            // Затем освобождаем ресурсы stateMachine
+            wizardStateMachine.dispose()
+
+            // Наконец, освобождаем ресурсы реестра фабрик
+            actionStepFactoryRegistry.dispose()
+
+            Timber.d("$TAG: Ресурсы успешно освобождены")
+        } catch (e: Exception) {
+            Timber.e(e, "$TAG: Ошибка при освобождении ресурсов")
+        }
+    }
+
+    /**
+     * Метод для явного освобождения ресурсов, который может быть вызван из UI
+     */
+    fun onDispose() {
+        dispose()
     }
 }

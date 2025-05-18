@@ -8,22 +8,29 @@ import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.domain.service.ValidationResult
 import com.synngate.synnframe.domain.service.ValidationService
+import com.synngate.synnframe.presentation.di.Disposable
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
+/**
+ * Базовый класс для всех ViewModel шагов мастера действий
+ * Реализует интерфейс Disposable для корректного управления ресурсами
+ */
 abstract class BaseStepViewModel<T>(
     protected val step: ActionStep,
     protected val action: PlannedAction,
     protected val context: ActionContext,
     protected val validationService: ValidationService,
     protected val stepFactory: ActionStepFactory? = null
-) : ViewModel() {
+) : ViewModel(), Disposable {
 
     private val _state = MutableStateFlow(StepViewState<T>())
     val state: StateFlow<StepViewState<T>> = _state.asStateFlow()
@@ -33,6 +40,9 @@ abstract class BaseStepViewModel<T>(
 
     // Флаг, указывающий, был ли активирован автопереход
     private var autoTransitionActivated = false
+
+    // Список активных задач для возможности их отмены при dispose
+    private val activeJobs = mutableListOf<Job>()
 
     init {
         initStateFromContext()
@@ -89,6 +99,7 @@ abstract class BaseStepViewModel<T>(
         setLoading(false)
 
         resetAutoTransition()
+        Timber.e(e, "Ошибка в ViewModel ${this.javaClass.simpleName}: $operation")
     }
 
     protected fun executeWithErrorHandling(
@@ -96,7 +107,7 @@ abstract class BaseStepViewModel<T>(
         showLoading: Boolean = true,
         block: suspend () -> Unit
     ) {
-        viewModelScope.launch {
+        val job = viewModelScope.launch {
             try {
                 if (showLoading) setLoading(true)
                 setError(null)
@@ -106,6 +117,16 @@ abstract class BaseStepViewModel<T>(
                 if (showLoading) setLoading(false)
             } catch (e: Exception) {
                 handleException(e, operation)
+            }
+        }
+
+        // Сохраняем ссылку на задачу для возможности ее отмены при dispose
+        synchronized(activeJobs) {
+            activeJobs.add(job)
+            job.invokeOnCompletion {
+                synchronized(activeJobs) {
+                    activeJobs.remove(job)
+                }
             }
         }
     }
@@ -268,5 +289,34 @@ abstract class BaseStepViewModel<T>(
                 setError("Некорректные данные для завершения шага")
             }
         }
+    }
+
+    /**
+     * Освобождает ресурсы, используемые ViewModel
+     * Отменяет все активные задачи в coroutine scope
+     */
+    override fun dispose() {
+        Timber.d("Disposing ViewModel ${this.javaClass.simpleName}")
+
+        // Отменяем все активные задачи
+        synchronized(activeJobs) {
+            activeJobs.forEach { job ->
+                if (job.isActive) {
+                    job.cancel()
+                    Timber.d("Cancelled active job in ${this.javaClass.simpleName}")
+                }
+            }
+            activeJobs.clear()
+        }
+
+        // При необходимости освобождаем дополнительные ресурсы
+        onDispose()
+    }
+
+    /**
+     * Метод для освобождения дополнительных ресурсов в наследниках
+     */
+    protected open fun onDispose() {
+        // Пустая реализация для переопределения в наследниках
     }
 }

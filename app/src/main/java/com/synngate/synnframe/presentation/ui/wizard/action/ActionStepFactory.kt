@@ -1,13 +1,13 @@
-// Обновление интерфейса AutoCompleteCapableFactory
 package com.synngate.synnframe.presentation.ui.wizard.action
 
 import androidx.compose.runtime.Composable
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.presentation.di.Disposable
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 
-interface ActionStepFactory {
+interface ActionStepFactory : Disposable {
 
     @Composable
     fun createComponent(
@@ -22,9 +22,25 @@ interface ActionStepFactory {
         context: ActionContext
     ): BaseStepViewModel<*>?
 
+    /**
+     * Проверяет соответствие результата шага ожидаемому типу
+     */
     fun validateStepResult(step: ActionStep, value: Any?): Boolean = true
+
+    /**
+     * Очищает кэш ViewModels
+     */
+    fun clearCache()
+
+    /**
+     * Освобождает ресурсы для конкретной ViewModel
+     */
+    fun releaseViewModel(step: ActionStep, action: PlannedAction)
 }
 
+/**
+ * Интерфейс для фабрик, поддерживающих автоматическое завершение шага
+ */
 interface AutoCompleteCapableFactory {
 
     /**
@@ -32,6 +48,9 @@ interface AutoCompleteCapableFactory {
      */
     fun getAutoCompleteFieldName(step: ActionStep): String?
 
+    /**
+     * Проверяет, включено ли автозавершение шага
+     */
     fun isAutoCompleteEnabled(step: ActionStep): Boolean
 
     /**
