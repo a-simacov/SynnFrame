@@ -2,13 +2,14 @@ package com.synngate.synnframe.domain.model.wizard
 
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
-import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
-import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
-import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardUtils
+import timber.log.Timber
 
 class WizardContextFactory {
     private val TAG = "WizardContextFactory"
+
+    // Храним контекст-холдер в качестве поля класса для переиспользования между вызовами
+    private var contextHolder: ActionContextHolder? = null
 
     fun createContext(
         state: ActionWizardState,
@@ -24,103 +25,38 @@ class WizardContextFactory {
         val hasResult = state.results.containsKey(stepId)
         val validationError = state.errors[stepId]
 
+        // Проверяем, нужно ли создать новый холдер (изменились ключевые параметры)
+        if (contextHolder == null ||
+            contextHolder?.taskId != state.taskId ||
+            contextHolder?.actionId != state.actionId) {
+
+            Timber.d("$TAG: Creating new ActionContextHolder for task=${state.taskId}, action=${state.actionId}")
+
+            val callbacks = WizardCallbacks(
+                onUpdate = { /* Не используется в текущей реализации */ },
+                onComplete = { result -> if (result != null) onStepComplete(result) }, // Адаптер для совместимости типов
+                onBack = onBack,
+                onForward = onForward,
+                onSkip = onSkip,
+                onCancel = onCancel
+            )
+
+            contextHolder = ActionContextHolder(state.taskId, state.actionId, callbacks)
+        }
+
         val enrichedResults = enrichResultsContext(state)
 
-        return ActionContext(
-            taskId = state.taskId,
-            actionId = state.actionId,
+        // Получаем контекст для текущего шага через холдер
+        return contextHolder!!.getContextForStep(
             stepId = stepId,
             results = enrichedResults,
             hasStepResult = hasResult,
-            onUpdate = { /* Не используется в текущей реализации */ },
-            onComplete = { result ->
-                if (result != null) {
-                    onStepComplete(result)
-                } else {
-                    onBack()
-                }
-            },
-            onBack = { onBack() },
-            onForward = {
-                val currentData = findBestResultForCurrentStep(state, stepId, enrichedResults)
-
-                if (currentData != null) {
-                    onStepComplete(currentData)
-                }
-            },
-            onSkip = { result -> onSkip(result) },
-            onCancel = { onCancel() },
-            lastScannedBarcode = lastScannedBarcode,
             validationError = validationError,
+            lastScannedBarcode = lastScannedBarcode,
             isProcessingStep = state.isProcessingStep,
             isFirstStep = state.currentStepIndex == 0
         )
     }
-
-    private fun findBestResultForCurrentStep(
-        state: ActionWizardState,
-        stepId: String,
-        enrichedResults: Map<String, Any>
-    ): Any? {
-        // 1. Сначала ищем по ключу степа напрямую
-        enrichedResults[stepId]?.let { return it }
-
-        // 2. Ищем по типу объекта в зависимости от типа шага
-        val step = state.steps.find { it.id == stepId }
-        val action = state.action
-
-        if (step != null && action != null) {
-            // Находим ActionStep для данного шага
-            val actionStep = findActionStep(action, stepId)
-
-            if (actionStep != null) {
-                // В зависимости от типа объекта в шаге, ищем подходящий объект
-                when (actionStep.objectType) {
-                    ActionObjectType.TASK_PRODUCT, ActionObjectType.CLASSIFIER_PRODUCT -> {
-                        // Для шагов выбора продукта используем последний выбранный TaskProduct/Product
-                        return WizardUtils.findTaskProduct(enrichedResults)
-                            ?: WizardUtils.findProduct(enrichedResults)
-                    }
-                    ActionObjectType.PALLET -> {
-                        // Для шагов выбора паллеты используем последнюю выбранную паллету
-                        return WizardUtils.findPallet(enrichedResults)
-                    }
-                    ActionObjectType.BIN -> {
-                        // Для шагов выбора ячейки используем последнюю выбранную ячейку
-                        return WizardUtils.findBin(enrichedResults)
-                    }
-                    ActionObjectType.PRODUCT_QUANTITY -> {
-                        // Для шагов ввода количества используем TaskProduct с последним введенным количеством
-                        val taskProduct = WizardUtils.findTaskProduct(enrichedResults)
-                        if (taskProduct != null) {
-                            return taskProduct
-                        }
-
-                        // Если не нашли TaskProduct, попробуем создать из Product с минимальным количеством
-                        val product = WizardUtils.findProduct(enrichedResults)
-                        if (product != null) {
-                            return WizardUtils.createTaskProductFromProduct(product, 1f)
-                        }
-                    }
-                }
-            }
-        }
-
-        return null
-    }
-
-    private fun findActionStep(action: PlannedAction, stepId: String): ActionStep? {
-        action.actionTemplate.storageSteps.find { it.id == stepId }?.let {
-            return it
-        }
-
-        action.actionTemplate.placementSteps.find { it.id == stepId }?.let {
-            return it
-        }
-
-        return null
-    }
-
 
     private fun createEmptyContext(
         state: ActionWizardState,
@@ -134,7 +70,7 @@ class WizardContextFactory {
             results = state.results,
             hasStepResult = false,
             onUpdate = { },
-            onComplete = { onBack() },
+            onComplete = { _ -> onBack() }, // Игнорируем параметр и вызываем onBack
             onBack = onBack,
             onForward = { },
             onSkip = { },
