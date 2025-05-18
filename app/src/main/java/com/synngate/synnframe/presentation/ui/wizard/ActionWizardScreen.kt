@@ -12,14 +12,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import com.synngate.synnframe.domain.model.wizard.WizardContextFactory
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
+import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.taskx.utils.getWmsActionDescription
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionWizardContent
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
@@ -36,10 +39,11 @@ fun ActionWizardScreen(
     val wizardState by viewModel.wizardStateMachine.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val wizardContextFactory = remember { WizardContextFactory() }
+    val coroutineScope = rememberCoroutineScope()
 
     // Используем DisposableEffect для гарантированного освобождения ресурсов при выходе из экрана
     DisposableEffect(viewModel) {
-        Timber.d("ActionWizardScreen: создан")
+        Timber.d("ActionWizardScreen: создан (taskId=${viewModel.taskId}, actionId=${viewModel.actionId})")
 
         onDispose {
             Timber.d("ActionWizardScreen: освобождение ресурсов")
@@ -63,17 +67,49 @@ fun ActionWizardScreen(
         }
     }
 
+    // Управление сканером штрихкодов
     val scannerService = LocalScannerService.current
 
+    // Добавляем логику повторной инициализации сканера с задержкой
+    // для уверенности, что сканер корректно настроится на новом экране
     LaunchedEffect(scannerService) {
+        Timber.d("ActionWizardScreen: Инициализация сканера")
+
         scannerService?.let {
             if (it.hasRealScanner()) {
                 if (!it.isEnabled()) {
                     it.enable()
+                    Timber.d("ActionWizardScreen: Сканер включен")
+                } else {
+                    Timber.d("ActionWizardScreen: Сканер уже был включен")
                 }
+
+                // Добавляем небольшую задержку и повторную инициализацию для надежности
+                delay(300)
+                it.disable()
+                delay(100)
+                it.enable()
+                Timber.d("ActionWizardScreen: Сканер переинициализирован")
+            } else {
+                Timber.d("ActionWizardScreen: Реальный сканер не обнаружен")
             }
         }
     }
+
+    // Устанавливаем обработчик сканирования с корутиной для предотвращения дублирования
+    ScannerListener(onBarcodeScanned = { barcode ->
+        Timber.d("ActionWizardScreen: Получен штрихкод: $barcode")
+        coroutineScope.launch {
+            try {
+                // Добавляем задержку перед обработкой штрихкода для избежания дублирования
+                delay(50)
+                viewModel.processBarcodeFromScanner(barcode)
+                Timber.d("ActionWizardScreen: Штрихкод отправлен в визард: $barcode")
+            } catch (e: Exception) {
+                Timber.e(e, "ActionWizardScreen: Ошибка при обработке штрихкода")
+            }
+        }
+    })
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -119,7 +155,10 @@ fun ActionWizardScreen(
                 },
                 onCancel = { viewModel.cancelWizard() },
                 onRetryComplete = { viewModel.retryCompleteWizard() },
-                onBarcodeScanned = { viewModel.processBarcodeFromScanner(it) },
+                onBarcodeScanned = { barcode ->
+                    Timber.d("ActionWizardContent: Штрихкод передан из контента: $barcode")
+                    viewModel.processBarcodeFromScanner(barcode)
+                },
                 actionStepFactoryRegistry = viewModel.actionStepFactoryRegistry,
                 wizardContextFactory = wizardContextFactory,
                 modifier = Modifier
