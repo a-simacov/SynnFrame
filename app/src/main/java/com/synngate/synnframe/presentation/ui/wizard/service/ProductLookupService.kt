@@ -2,34 +2,23 @@ package com.synngate.synnframe.presentation.ui.wizard.service
 
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.repository.ProductRepository
+import com.synngate.synnframe.domain.service.TaskContextManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
+/**
+ * Сервис для поиска продуктов с использованием унифицированного интерфейса.
+ * Обеспечивает поиск по штрихкоду и строковому запросу.
+ */
 class ProductLookupService(
-    private val productRepository: ProductRepository
-) : BaseBarcodeScanningService() {
+    private val productRepository: ProductRepository,
+    private val taskContextManager: TaskContextManager? = null
+) : BaseLookupService<Product>() {
 
-    override suspend fun findItemByBarcode(
-        barcode: String,
-        onResult: (found: Boolean, data: Any?) -> Unit,
-        onError: (message: String) -> Unit
-    ) {
-        try {
-            withContext(Dispatchers.IO) {
-                val product = productRepository.findProductByBarcode(barcode)
-                if (product != null) {
-                    onResult(true, product)
-                } else {
-                    onResult(false, null)
-                }
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Ошибка при поиске продукта по штрихкоду: $barcode")
-            onError("Ошибка при поиске продукта: ${e.message}")
-        }
-    }
-
+    /**
+     * Получает продукт по ID.
+     */
     suspend fun getProductById(id: String): Product? {
         return withContext(Dispatchers.IO) {
             try {
@@ -41,6 +30,9 @@ class ProductLookupService(
         }
     }
 
+    /**
+     * Получает продукты по списку ID.
+     */
     suspend fun getProductsByIds(ids: Set<String>): List<Product> {
         return withContext(Dispatchers.IO) {
             try {
@@ -53,5 +45,77 @@ class ProductLookupService(
                 emptyList()
             }
         }
+    }
+
+    override suspend fun findEntityInContext(barcode: String): Product? {
+        val currentTask = taskContextManager?.lastStartedTaskX?.value
+
+        // Если задача найдена в контексте, ищем продукт в списке запланированных действий
+        if (currentTask != null) {
+            return currentTask.plannedActions
+                .flatMap { action ->
+                    listOfNotNull(action.storageProduct?.product)
+                }
+                .distinct()
+                .firstOrNull { product ->
+                    product.getAllBarcodes().any { it == barcode }
+                }
+        }
+        return null
+    }
+
+    override suspend fun findEntityInRepository(barcode: String): Product? {
+        return productRepository.findProductByBarcode(barcode)
+    }
+
+    override suspend fun createLocalEntity(barcode: String): Product? {
+        // Для продуктов не создаем локальные сущности
+        return null
+    }
+
+    override suspend fun searchEntitiesInContext(
+        query: String,
+        additionalParams: Map<String, Any>
+    ): List<Product> {
+        val currentTask = taskContextManager?.lastStartedTaskX?.value ?: return emptyList()
+
+        val taskProducts = currentTask.plannedActions
+            .flatMap { action ->
+                listOfNotNull(action.storageProduct?.product)
+            }
+            .distinct()
+
+        return if (query.isEmpty()) {
+            taskProducts
+        } else {
+            taskProducts.filter { product ->
+                product.name.contains(query, ignoreCase = true) ||
+                        product.articleNumber.contains(query, ignoreCase = true) ||
+                        product.getAllBarcodes().any { it.contains(query, ignoreCase = true) }
+            }
+        }
+    }
+
+    override suspend fun searchEntitiesInRepository(
+        query: String,
+        additionalParams: Map<String, Any>
+    ): List<Product> {
+        try {
+            // Извлекаем ограничения по id продуктов, если они есть
+            val planProductIds = additionalParams["planProductIds"] as? Set<String>
+
+            return if (query.isEmpty() && planProductIds != null && planProductIds.isNotEmpty()) {
+                productRepository.getProductsByIds(planProductIds)
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при поиске продуктов: query=$query")
+            return emptyList()
+        }
+    }
+
+    override fun getEntityId(entity: Product): String? {
+        return entity.id
     }
 }

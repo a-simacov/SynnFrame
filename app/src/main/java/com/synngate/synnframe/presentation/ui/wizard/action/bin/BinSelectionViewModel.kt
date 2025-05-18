@@ -9,6 +9,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.service.BinLookupService
+import timber.log.Timber
 
 class BinSelectionViewModel(
     step: ActionStep,
@@ -54,18 +55,23 @@ class BinSelectionViewModel(
 
     override fun processBarcode(barcode: String) {
         executeWithErrorHandling("обработки кода ячейки") {
+            Timber.d("BinSelectionViewModel: начинаем обработку штрихкода: $barcode")
             binLookupService.processBarcode(
                 barcode = barcode,
                 expectedBarcode = plannedBin?.code,
                 onResult = { found, data ->
+                    Timber.d("BinSelectionViewModel: штрихкод $barcode обработан, found=$found, data=$data")
                     if (found && data is BinX) {
+                        Timber.d("BinSelectionViewModel: найдена ячейка ${data.code}")
                         selectBin(data)
                         updateBinCodeInput("")
                     } else {
+                        Timber.d("BinSelectionViewModel: ячейка не найдена")
                         setError("Ячейка с кодом '$barcode' не найдена")
                     }
                 },
                 onError = { message ->
+                    Timber.e("BinSelectionViewModel: ошибка при поиске ячейки: $message")
                     setError(message)
                 }
             )
@@ -101,11 +107,12 @@ class BinSelectionViewModel(
 
     fun filterBins() {
         executeWithErrorHandling("поиска ячеек") {
-            val bins = if (searchQuery.isEmpty() && plannedBin != null) {
-                listOf(plannedBin)
-            } else {
-                binLookupService.searchBins(searchQuery, zoneFilter)
+            val additionalParams = mutableMapOf<String, Any>()
+            if (zoneFilter != null) {
+                additionalParams["zoneFilter"] = zoneFilter
             }
+
+            val bins = binLookupService.searchEntities(searchQuery, additionalParams)
             filteredBins = bins
             updateAdditionalData("filteredBins", filteredBins)
         }

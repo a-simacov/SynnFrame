@@ -3,110 +3,110 @@ package com.synngate.synnframe.presentation.ui.wizard.service
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.repository.WizardPalletRepository
 import com.synngate.synnframe.domain.service.TaskContextManager
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 
+/**
+ * Сервис для поиска паллет с использованием унифицированного интерфейса.
+ * Обеспечивает поиск по штрихкоду и строковому запросу.
+ */
 class PalletLookupService(
     private val taskContextManager: TaskContextManager,
     private val wizardPalletRepository: WizardPalletRepository? = null
-) : BaseBarcodeScanningService() {
+) : BaseLookupService<Pallet>() {
 
-    override suspend fun findItemByBarcode(
-        barcode: String,
-        onResult: (found: Boolean, data: Any?) -> Unit,
-        onError: (message: String) -> Unit
-    ) {
-        try {
-            withContext(Dispatchers.IO) {
-                val currentTask = taskContextManager.lastStartedTaskX.value
-                if (currentTask != null) {
-                    val taskPallets = currentTask.plannedActions.mapNotNull {
-                        listOfNotNull(it.storagePallet, it.placementPallet)
-                    }.flatten().distinctBy { it.code }
-
-                    val matchingPallet = taskPallets.firstOrNull { it.code == barcode }
-                    if (matchingPallet != null) {
-                        onResult(true, matchingPallet)
-                        return@withContext
-                    }
-                }
-
-                if (wizardPalletRepository != null) {
-                    val pallet = wizardPalletRepository.getPalletByCode(barcode)
-                    if (pallet != null) {
-                        onResult(true, pallet)
-                        return@withContext
-                    }
-                }
-
-                val temporaryPallet = createLocalPallet(barcode)
-                onResult(true, temporaryPallet)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Ошибка при поиске паллеты по коду: $barcode")
-            onError("Ошибка при поиске паллеты: ${e.message}")
-        }
-    }
-
-    suspend fun searchPallets(query: String): List<Pallet> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val results = mutableListOf<Pallet>()
-
-                val currentTask = taskContextManager.lastStartedTaskX.value
-                if (currentTask != null) {
-                    val taskPallets = currentTask.plannedActions.mapNotNull {
-                        listOfNotNull(it.storagePallet, it.placementPallet)
-                    }.flatten().distinctBy { it.code }
-
-                    val filteredTaskPallets = if (query.isNotEmpty()) {
-                        taskPallets.filter { it.code.contains(query, ignoreCase = true) }
-                    } else {
-                        taskPallets
-                    }
-
-                    results.addAll(filteredTaskPallets)
-                }
-
-                if (wizardPalletRepository != null && results.size < 10) {
-                    val repoResults = wizardPalletRepository.getPallets(query)
-
-                    val existingCodes = results.map { it.code }.toSet()
-                    val newPallets = repoResults.filter { it.code !in existingCodes }
-
-                    results.addAll(newPallets)
-                }
-
-                results
-            } catch (e: Exception) {
-                Timber.e(e, "Ошибка при поиске паллет: query=$query")
-                emptyList()
-            }
-        }
-    }
-
+    /**
+     * Создает новую паллету через репозиторий или генерирует временную.
+     */
     suspend fun createNewPallet(): Result<Pallet> {
-        return withContext(Dispatchers.IO) {
-            try {
-                if (wizardPalletRepository == null) {
-                    val newCode = "PAL${System.currentTimeMillis()}"
-                    val pallet = createLocalPallet(newCode)
-                    return@withContext Result.success(pallet)
-                }
-
-                wizardPalletRepository.createPallet()
-            } catch (e: Exception) {
-                Timber.e(e, "Ошибка при создании новой паллеты")
-                Result.failure(e)
+        try {
+            if (wizardPalletRepository == null) {
+                val newCode = "PAL${System.currentTimeMillis()}"
+                val pallet = createLocalEntity(newCode)
+                return Result.success(pallet)
             }
+
+            return wizardPalletRepository.createPallet()
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при создании новой паллеты")
+            return Result.failure(e)
         }
     }
 
-    private fun createLocalPallet(code: String): Pallet {
+    override suspend fun findEntityInContext(barcode: String): Pallet? {
+        val currentTask = taskContextManager.lastStartedTaskX.value
+        if (currentTask == null) {
+            Timber.d("PalletLookupService: задача не найдена в контексте")
+            return null
+        }
+
+        // Собираем все паллеты из задачи
+        val pallets = currentTask.plannedActions
+            .flatMap {
+                listOfNotNull(it.storagePallet, it.placementPallet)
+            }
+            .distinctBy { it.code }
+
+        Timber.d("PalletLookupService: найдено ${pallets.size} паллет в контексте")
+
+        // Ищем паллету с соответствующим кодом
+        val result = pallets.firstOrNull { it.code == barcode }
+        if (result != null) {
+            Timber.d("PalletLookupService: найдена паллета в контексте с кодом ${result.code}")
+        } else {
+            Timber.d("PalletLookupService: паллета с кодом $barcode не найдена в контексте")
+        }
+
+        return result
+    }
+
+    override suspend fun findEntityInRepository(barcode: String): Pallet? {
+        return wizardPalletRepository?.getPalletByCode(barcode)
+    }
+
+    override suspend fun createLocalEntity(barcode: String): Pallet {
+        // Создаем временную локальную паллету
         return Pallet(
-            code = code,
+            code = barcode,
             isClosed = false
         )
+    }
+
+    override suspend fun searchEntitiesInContext(
+        query: String,
+        additionalParams: Map<String, Any>
+    ): List<Pallet> {
+        val currentTask = taskContextManager.lastStartedTaskX.value ?: return emptyList()
+
+        // Собираем все паллеты из задачи
+        val taskPallets = currentTask.plannedActions
+            .flatMap {
+                listOfNotNull(it.storagePallet, it.placementPallet)
+            }
+            .distinctBy { it.code }
+
+        // Фильтруем по запросу
+        return if (query.isEmpty()) {
+            taskPallets
+        } else {
+            taskPallets.filter { it.code.contains(query, ignoreCase = true) }
+        }
+    }
+
+    override suspend fun searchEntitiesInRepository(
+        query: String,
+        additionalParams: Map<String, Any>
+    ): List<Pallet> {
+        if (wizardPalletRepository == null) return emptyList()
+
+        try {
+            return wizardPalletRepository.getPallets(query)
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при поиске паллет: query=$query")
+            return emptyList()
+        }
+    }
+
+    override fun getEntityId(entity: Pallet): String? {
+        return entity.code
     }
 }

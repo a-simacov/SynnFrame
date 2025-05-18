@@ -9,6 +9,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
+import timber.log.Timber
 
 class PalletSelectionViewModel(
     step: ActionStep,
@@ -57,18 +58,23 @@ class PalletSelectionViewModel(
 
     override fun processBarcode(barcode: String) {
         executeWithErrorHandling("обработки кода паллеты") {
+            Timber.d("PalletSelectionViewModel: начинаем обработку штрихкода: $barcode")
             palletLookupService.processBarcode(
                 barcode = barcode,
                 expectedBarcode = plannedPallet?.code,
                 onResult = { found, data ->
+                    Timber.d("PalletSelectionViewModel: штрихкод $barcode обработан, found=$found, data=$data")
                     if (found && data is Pallet) {
+                        Timber.d("PalletSelectionViewModel: найдена паллета ${data.code}")
                         selectPallet(data)
                         updatePalletCodeInput("")
                     } else {
+                        Timber.d("PalletSelectionViewModel: паллета не найдена")
                         setError("Паллета с кодом '$barcode' не найдена")
                     }
                 },
                 onError = { message ->
+                    Timber.e("PalletSelectionViewModel: ошибка при поиске паллеты: $message")
                     setError(message)
                 }
             )
@@ -115,11 +121,7 @@ class PalletSelectionViewModel(
 
     fun filterPallets() {
         executeWithErrorHandling("поиска паллет") {
-            val pallets = if (searchQuery.isEmpty() && plannedPallet != null) {
-                listOf(plannedPallet)
-            } else {
-                palletLookupService.searchPallets(searchQuery)
-            }
+            val pallets = palletLookupService.searchEntities(searchQuery)
             filteredPallets = pallets
             updateAdditionalData("filteredPallets", filteredPallets)
         }

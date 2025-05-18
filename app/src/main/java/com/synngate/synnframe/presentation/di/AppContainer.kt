@@ -355,11 +355,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         )
     }
 
-    val productLookupService by lazy {
-        Timber.d("Creating ProductLookupService")
-        ProductLookupService(productRepository)
-    }
-
     val wizardBinRepository by lazy {
         Timber.d("Creating WizardBinRepository")
         // Здесь используем WizardBinRepository, как показано в импортированных файлах
@@ -373,6 +368,14 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     // Сервисы для поиска объектов (lookup services)
+    val productLookupService by lazy {
+        Timber.d("Creating ProductLookupService")
+        ProductLookupService(
+            productRepository = productRepository,
+            taskContextManager = taskContextManager
+        )
+    }
+
     val binLookupService by lazy {
         Timber.d("Creating BinLookupService")
         BinLookupService(
