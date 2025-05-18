@@ -7,45 +7,52 @@ import timber.log.Timber
 /**
  * Реестр фабрик для шагов действий.
  * Обеспечивает поиск подходящей фабрики по типу объекта и управление жизненным циклом фабрик.
+ * Использует ленивую инициализацию фабрик для экономии памяти.
  */
-class ActionStepFactoryRegistry : Disposable {
+class ActionStepFactoryRegistry(
+    private val factoryProviders: Map<ActionObjectType, () -> ActionStepFactory>
+) : Disposable {
+    // Хранит только фактически созданные фабрики
     private val factories = mutableMapOf<ActionObjectType, ActionStepFactory>()
 
     /**
-     * Регистрирует фабрику для указанного типа объекта
-     */
-    fun registerFactory(objectType: ActionObjectType, factory: ActionStepFactory) {
-        factories[objectType] = factory
-        Timber.d("Зарегистрирована фабрика для типа объекта: $objectType")
-    }
-
-    /**
-     * Возвращает фабрику для указанного типа объекта или null, если фабрика не найдена
+     * Возвращает фабрику для указанного типа объекта или null, если провайдер не найден.
+     * Если фабрика еще не была создана, создает ее при первом запросе.
      */
     fun getFactory(objectType: ActionObjectType): ActionStepFactory? {
-        val factory = factories[objectType]
-        if (factory == null) {
-            Timber.w("Фабрика не найдена для типа объекта: $objectType")
+        return factories.getOrPut(objectType) {
+            factoryProviders[objectType]?.invoke()?.also {
+                Timber.d("Создана фабрика для типа объекта: $objectType")
+            } ?: run {
+                Timber.w("Провайдер фабрики не найден для типа объекта: $objectType")
+                return null
+            }
         }
-        return factory
     }
 
     /**
-     * Проверяет наличие фабрики для указанного типа объекта
+     * Проверяет наличие провайдера фабрики для указанного типа объекта
      */
     fun hasFactory(objectType: ActionObjectType): Boolean {
-        return factories.containsKey(objectType)
+        return factoryProviders.containsKey(objectType)
     }
 
     /**
      * Возвращает список всех зарегистрированных типов объектов
      */
     fun getRegisteredObjectTypes(): List<ActionObjectType> {
-        return factories.keys.toList()
+        return factoryProviders.keys.toList()
     }
 
     /**
-     * Очищает кэши всех зарегистрированных фабрик
+     * Возвращает все уже созданные фабрики
+     */
+    fun getAllFactories(): Collection<ActionStepFactory> {
+        return factories.values
+    }
+
+    /**
+     * Очищает кэши всех созданных фабрик
      */
     fun clearAllCaches() {
         factories.values.forEach { factory ->
@@ -55,7 +62,7 @@ class ActionStepFactoryRegistry : Disposable {
     }
 
     /**
-     * Освобождает ресурсы всех зарегистрированных фабрик
+     * Освобождает ресурсы всех созданных фабрик
      */
     override fun dispose() {
         Timber.d("Освобождение ресурсов всех фабрик в реестре")

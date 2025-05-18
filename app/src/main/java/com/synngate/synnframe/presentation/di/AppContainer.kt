@@ -94,6 +94,7 @@ import com.synngate.synnframe.presentation.ui.sync.SyncHistoryViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXListViewModel
 import com.synngate.synnframe.presentation.ui.wizard.ActionWizardViewModel
+import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
 import com.synngate.synnframe.presentation.ui.wizard.action.bin.BinSelectionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.pallet.PalletSelectionStepFactory
@@ -638,50 +639,41 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
     }
 
     fun createActionStepFactoryRegistry(): ActionStepFactoryRegistry {
-        // Создаем реестр напрямую
-        val registry = ActionStepFactoryRegistry()
-
-        // Регистрируем фабрики для различных типов объектов с доступом к репозиторию
-        registry.registerFactory(
-            ActionObjectType.CLASSIFIER_PRODUCT,
-            ProductSelectionStepFactory(
-                productLookupService = appContainer.productLookupService,
-                validationService = appContainer.validationService
-            )
+        // Создаем Map с провайдерами фабрик
+        val factoryProviders = mapOf<ActionObjectType, () -> ActionStepFactory>(
+            ActionObjectType.CLASSIFIER_PRODUCT to {
+                ProductSelectionStepFactory(
+                    productLookupService = appContainer.productLookupService,
+                    validationService = appContainer.validationService
+                )
+            },
+            ActionObjectType.TASK_PRODUCT to {
+                TaskProductSelectionStepFactory(
+                    productLookupService = appContainer.productLookupService,
+                    validationService = appContainer.validationService
+                )
+            },
+            ActionObjectType.PRODUCT_QUANTITY to {
+                ProductQuantityStepFactory(
+                    validationService = appContainer.validationService
+                )
+            },
+            ActionObjectType.PALLET to {
+                PalletSelectionStepFactory(
+                    palletLookupService = appContainer.palletLookupService,
+                    validationService = appContainer.validationService
+                )
+            },
+            ActionObjectType.BIN to {
+                BinSelectionStepFactory(
+                    binLookupService = appContainer.binLookupService,
+                    validationService = appContainer.validationService
+                )
+            }
         )
 
-        registry.registerFactory(
-            ActionObjectType.TASK_PRODUCT,
-            TaskProductSelectionStepFactory(
-                productLookupService = appContainer.productLookupService,
-                validationService = appContainer.validationService
-            )
-        )
-
-        registry.registerFactory(
-            ActionObjectType.PRODUCT_QUANTITY,
-            ProductQuantityStepFactory(
-                validationService = appContainer.validationService
-            )
-        )
-
-        registry.registerFactory(
-            ActionObjectType.PALLET,
-            PalletSelectionStepFactory(
-                palletLookupService = appContainer.palletLookupService,
-                validationService = appContainer.validationService
-            )
-        )
-
-        registry.registerFactory(
-            ActionObjectType.BIN,
-            BinSelectionStepFactory(
-                binLookupService = appContainer.binLookupService,
-                validationService = appContainer.validationService
-            )
-        )
-
-        return registry
+        // Создаем реестр с провайдерами фабрик
+        return ActionStepFactoryRegistry(factoryProviders)
     }
 
     fun createDynamicMenuViewModel(): DynamicMenuViewModel {
