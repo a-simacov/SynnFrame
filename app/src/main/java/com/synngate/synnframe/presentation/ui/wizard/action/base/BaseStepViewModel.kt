@@ -20,10 +20,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * Базовый класс для всех ViewModel шагов мастера действий
- * Реализует интерфейс Disposable для корректного управления ресурсами
- */
 abstract class BaseStepViewModel<T>(
     protected val step: ActionStep,
     protected val action: PlannedAction,
@@ -35,13 +31,10 @@ abstract class BaseStepViewModel<T>(
     private val _state = MutableStateFlow(StepViewState<T>())
     val state: StateFlow<StepViewState<T>> = _state.asStateFlow()
 
-    // Флаг для предотвращения повторного автоперехода при инициализации
     private var isInitializing = true
 
-    // Флаг, указывающий, был ли активирован автопереход
     private var autoTransitionActivated = false
 
-    // Список активных задач для возможности их отмены при dispose
     private val activeJobs = mutableListOf<Job>()
 
     init {
@@ -120,7 +113,6 @@ abstract class BaseStepViewModel<T>(
             }
         }
 
-        // Сохраняем ссылку на задачу для возможности ее отмены при dispose
         synchronized(activeJobs) {
             activeJobs.add(job)
             job.invokeOnCompletion {
@@ -291,31 +283,21 @@ abstract class BaseStepViewModel<T>(
         }
     }
 
-    /**
-     * Освобождает ресурсы, используемые ViewModel
-     * Отменяет все активные задачи в coroutine scope
-     */
     override fun dispose() {
         Timber.d("Disposing ViewModel ${this.javaClass.simpleName}")
 
-        // Отменяем все активные задачи
         synchronized(activeJobs) {
             activeJobs.forEach { job ->
                 if (job.isActive) {
                     job.cancel()
-                    Timber.d("Cancelled active job in ${this.javaClass.simpleName}")
                 }
             }
             activeJobs.clear()
         }
 
-        // При необходимости освобождаем дополнительные ресурсы
         onDispose()
     }
 
-    /**
-     * Метод для освобождения дополнительных ресурсов в наследниках
-     */
     protected open fun onDispose() {
         // Пустая реализация для переопределения в наследниках
     }

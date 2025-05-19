@@ -52,9 +52,6 @@ import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardUtils
 import com.synngate.synnframe.presentation.util.formatDate
 import timber.log.Timber
 
-/**
- * Упрощенный основной компонент визарда действий
- */
 @Composable
 fun ActionWizardContent(
     wizardState: ActionWizardState?,

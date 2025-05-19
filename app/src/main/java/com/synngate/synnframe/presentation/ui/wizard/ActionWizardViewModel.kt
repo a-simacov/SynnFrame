@@ -14,10 +14,6 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.concurrent.atomic.AtomicBoolean
 
-/**
- * ViewModel для экрана визарда действий.
- * Управляет состоянием визарда и интерфейсом пользователя.
- */
 class ActionWizardViewModel(
     val taskId: String,
     val actionId: String,
@@ -27,30 +23,23 @@ class ActionWizardViewModel(
     private val TAG = "ActionWizardViewModel"
     private var observingJob: Job? = null
 
-    // Флаг для предотвращения ложных срабатываний в начале работы визарда
     private val safeToNavigateBack = AtomicBoolean(false)
 
     init {
-        Timber.d("$TAG: Инициализация, taskId=$taskId, actionId=$actionId")
         viewModelScope.launch {
             try {
-                // Запускаем инициализацию
                 val initResult = wizardStateMachine.initialize(taskId, actionId)
 
                 if (!initResult.isSuccess) {
-                    // Если инициализация не удалась, обрабатываем ошибку и навигируем назад
                     val error = initResult.exceptionOrNull()?.message ?: "Неизвестная ошибка"
                     Timber.e("$TAG: Ошибка инициализации: $error")
                     sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: $error"))
                     sendEvent(ActionWizardEvent.NavigateBack)
                 } else {
-                    Timber.d("$TAG: Инициализация успешно завершена")
-
                     // Добавляем значительную задержку (2 секунды) перед активацией
                     // механизма автоматической навигации назад
                     viewModelScope.launch {
                         delay(2000) // 2 секунды
-                        Timber.d("$TAG: Активация безопасного режима навигации назад")
                         safeToNavigateBack.set(true)
                         startObservingState()
                     }
@@ -67,7 +56,6 @@ class ActionWizardViewModel(
         // Отменяем предыдущую задачу, если она существует
         observingJob?.cancel()
 
-        Timber.d("$TAG: Запуск наблюдения за состоянием")
         observingJob = viewModelScope.launch {
             try {
                 wizardStateMachine.state
@@ -75,7 +63,6 @@ class ActionWizardViewModel(
                     .distinctUntilChanged()
                     .collectLatest { isReset ->
                         if (isReset) {
-                            Timber.d("$TAG: Обнаружен сброс состояния, выполняем навигацию назад")
                             sendEvent(ActionWizardEvent.NavigateBack)
                         }
                     }
@@ -138,37 +125,24 @@ class ActionWizardViewModel(
         }
     }
 
-    /**
-     * Освобождает ресурсы, используемые ViewModel.
-     * Вызывает dispose() на stateMachine и actionStepFactoryRegistry.
-     */
     override fun dispose() {
         Timber.d("$TAG: Освобождение ресурсов")
         super.dispose()
 
         try {
-            // Отменяем задачу наблюдения
             observingJob?.cancel()
             observingJob = null
 
-            // Сначала очищаем кэши всех фабрик
             actionStepFactoryRegistry.clearAllCaches()
 
-            // Затем освобождаем ресурсы stateMachine
             wizardStateMachine.dispose()
 
-            // Наконец, освобождаем ресурсы реестра фабрик
             actionStepFactoryRegistry.dispose()
-
-            Timber.d("$TAG: Ресурсы успешно освобождены")
         } catch (e: Exception) {
             Timber.e(e, "$TAG: Ошибка при освобождении ресурсов")
         }
     }
 
-    /**
-     * Метод для явного освобождения ресурсов, который может быть вызван из UI
-     */
     fun onDispose() {
         dispose()
     }

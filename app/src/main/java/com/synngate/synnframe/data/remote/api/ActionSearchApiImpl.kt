@@ -5,9 +5,6 @@ import com.synngate.synnframe.data.remote.service.ServerProvider
 import io.ktor.client.HttpClient
 import timber.log.Timber
 
-/**
- * Реализация API для поиска действий
- */
 class ActionSearchApiImpl(
     httpClient: HttpClient,
     serverProvider: ServerProvider
@@ -18,9 +15,6 @@ class ActionSearchApiImpl(
         searchValue: String
     ): ApiResult<ActionSearchResponseDto> {
         return try {
-            Timber.d("Searching action with value: $searchValue at endpoint: $endpoint")
-
-            // Используем executeApiRequest из BaseApiImpl, который корректно обработает endpoint
             executeApiRequest<ActionSearchResponseDto>(
                 endpoint = endpoint,
                 params = mapOf("searchValue" to searchValue)

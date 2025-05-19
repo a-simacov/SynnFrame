@@ -51,22 +51,17 @@ class ProductSelectionViewModel(
 
     override fun processBarcode(barcode: String) {
         executeWithErrorHandling("обработки штрих-кода") {
-            Timber.d("ProductSelectionViewModel: начинаем обработку штрихкода: $barcode")
             productLookupService.processBarcode(
                 barcode = barcode,
                 onResult = { found, data ->
-                    Timber.d("ProductSelectionViewModel: штрихкод $barcode обработан, found=$found, data=$data")
                     if (found && data is Product) {
                         if (planProductIds.isEmpty() || planProductIds.contains(data.id)) {
-                            Timber.d("ProductSelectionViewModel: найден продукт ${data.id}")
                             selectProduct(data)
                             updateBarcodeInput("")
                         } else {
-                            Timber.d("ProductSelectionViewModel: продукт не соответствует плану")
                             setError("Продукт не соответствует плану")
                         }
                     } else {
-                        Timber.d("ProductSelectionViewModel: продукт не найден")
                         setError("Продукт со штрихкодом '$barcode' не найден")
                     }
                 },

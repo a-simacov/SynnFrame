@@ -27,10 +27,8 @@ class WizardStateMachine(
     private val _state = MutableStateFlow(ActionWizardState())
     val state: StateFlow<ActionWizardState> = _state.asStateFlow()
 
-    // Флаг, указывающий, что инициализация была запущена
     private val initializationStarted = AtomicBoolean(false)
 
-    // Флаг, указывающий, что инициализация завершена успешно
     private val initializationCompleted = AtomicBoolean(false)
 
     private var _lastSavedState: ActionWizardState? = null
@@ -38,43 +36,34 @@ class WizardStateMachine(
     private var isExplicitlyCancelled = false
 
     fun initialize(taskId: String, actionId: String): Result<Boolean> {
-        Timber.d("$TAG: Начало инициализации визарда, taskId=$taskId, actionId=$actionId")
         isExplicitlyCancelled = false
 
-        // Устанавливаем флаг начала инициализации
         initializationStarted.set(true)
 
         try {
             val task = taskContextManager.lastStartedTaskX.value
             if (task == null) {
-                Timber.e("$TAG: Задача не найдена в контексте")
                 return Result.failure(IllegalStateException("Task not found in context"))
             }
 
             if (task.id != taskId) {
-                Timber.e("$TAG: Несоответствие ID задачи: ожидался $taskId, получен ${task.id}")
                 return Result.failure(IllegalStateException("Task ID mismatch: expected $taskId, got ${task.id}"))
             }
 
             val action = task.plannedActions.find { it.id == actionId }
             if (action == null) {
-                Timber.e("$TAG: Действие не найдено: $actionId")
                 return Result.failure(IllegalStateException("Action not found: $actionId"))
             }
 
             val taskType = taskContextManager.lastTaskTypeX.value
             if (taskType == null) {
-                Timber.e("$TAG: Тип задачи не найден в контексте")
                 return Result.failure(IllegalStateException("Task type not found in context"))
             }
 
             val steps = createStepsFromAction(action)
             if (steps.isEmpty()) {
-                Timber.e("$TAG: Для действия не найдено шагов")
                 return Result.failure(IllegalStateException("No steps found for action"))
             }
-
-            Timber.d("$TAG: Найдено ${steps.size} шагов для действия")
 
             val factActionsMap = task.factActions
                 .groupBy { it.plannedActionId }
@@ -108,9 +97,7 @@ class WizardStateMachine(
 
             _state.update { initialState }
 
-            // Устанавливаем флаг завершения инициализации
             initializationCompleted.set(true)
-            Timber.d("$TAG: Инициализация визарда успешно завершена")
 
             return Result.success(true)
         } catch (e: Exception) {
@@ -175,12 +162,7 @@ class WizardStateMachine(
         }
     }
 
-    /**
-     * Отменяет визард
-     */
     fun cancel() {
-        Timber.d("$TAG: Wizard cancelled explicitly")
-        // Устанавливаем флаг явной отмены
         isExplicitlyCancelled = true
         reset()
     }

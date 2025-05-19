@@ -22,39 +22,18 @@ interface ActionStepFactory : Disposable {
         context: ActionContext
     ): BaseStepViewModel<*>?
 
-    /**
-     * Проверяет соответствие результата шага ожидаемому типу
-     */
     fun validateStepResult(step: ActionStep, value: Any?): Boolean = true
 
-    /**
-     * Очищает кэш ViewModels
-     */
     fun clearCache()
 
-    /**
-     * Освобождает ресурсы для конкретной ViewModel
-     */
     fun releaseViewModel(step: ActionStep, action: PlannedAction)
 }
 
-/**
- * Интерфейс для фабрик, поддерживающих автоматическое завершение шага
- */
 interface AutoCompleteCapableFactory {
 
-    /**
-     * Возвращает имя поля, при заполнении которого происходит автопереход
-     */
     fun getAutoCompleteFieldName(step: ActionStep): String?
 
-    /**
-     * Проверяет, включено ли автозавершение шага
-     */
     fun isAutoCompleteEnabled(step: ActionStep): Boolean
 
-    /**
-     * Проверяет, требует ли поле подтверждения перед автопереходом
-     */
     fun requiresConfirmation(step: ActionStep, fieldName: String): Boolean
 }

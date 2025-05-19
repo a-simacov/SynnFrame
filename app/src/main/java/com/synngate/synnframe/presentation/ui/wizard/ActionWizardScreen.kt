@@ -25,10 +25,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * Экран визарда действий.
- * Обеспечивает интерфейс для выполнения шагов действия и навигацию между ними.
- */
 @Composable
 fun ActionWizardScreen(
     viewModel: ActionWizardViewModel,
@@ -41,12 +37,8 @@ fun ActionWizardScreen(
     val wizardContextFactory = remember { WizardContextFactory() }
     val coroutineScope = rememberCoroutineScope()
 
-    // Используем DisposableEffect для гарантированного освобождения ресурсов при выходе из экрана
     DisposableEffect(viewModel) {
-        Timber.d("ActionWizardScreen: создан (taskId=${viewModel.taskId}, actionId=${viewModel.actionId})")
-
         onDispose {
-            Timber.d("ActionWizardScreen: освобождение ресурсов")
             viewModel.onDispose()
         }
     }
@@ -67,21 +59,13 @@ fun ActionWizardScreen(
         }
     }
 
-    // Управление сканером штрихкодов
     val scannerService = LocalScannerService.current
 
-    // Добавляем логику повторной инициализации сканера с задержкой
-    // для уверенности, что сканер корректно настроится на новом экране
     LaunchedEffect(scannerService) {
-        Timber.d("ActionWizardScreen: Инициализация сканера")
-
         scannerService?.let {
             if (it.hasRealScanner()) {
                 if (!it.isEnabled()) {
                     it.enable()
-                    Timber.d("ActionWizardScreen: Сканер включен")
-                } else {
-                    Timber.d("ActionWizardScreen: Сканер уже был включен")
                 }
 
                 // Добавляем небольшую задержку и повторную инициализацию для надежности
@@ -89,22 +73,17 @@ fun ActionWizardScreen(
                 it.disable()
                 delay(100)
                 it.enable()
-                Timber.d("ActionWizardScreen: Сканер переинициализирован")
-            } else {
-                Timber.d("ActionWizardScreen: Реальный сканер не обнаружен")
             }
         }
     }
 
     // Устанавливаем обработчик сканирования с корутиной для предотвращения дублирования
     ScannerListener(onBarcodeScanned = { barcode ->
-        Timber.d("ActionWizardScreen: Получен штрихкод: $barcode")
         coroutineScope.launch {
             try {
                 // Добавляем задержку перед обработкой штрихкода для избежания дублирования
                 delay(50)
                 viewModel.processBarcodeFromScanner(barcode)
-                Timber.d("ActionWizardScreen: Штрихкод отправлен в визард: $barcode")
             } catch (e: Exception) {
                 Timber.e(e, "ActionWizardScreen: Ошибка при обработке штрихкода")
             }
@@ -115,11 +94,9 @@ fun ActionWizardScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is ActionWizardEvent.NavigateBack -> {
-                    Timber.d("Выполняем navigateBack")
                     navigateBack()
                 }
                 is ActionWizardEvent.NavigateBackWithSuccess -> {
-                    Timber.d("Выполняем navigateBackWithSuccess с actionId=${event.actionId}")
                     delay(100)
                     navigateBackWithSuccess(event.actionId)
                 }
@@ -156,7 +133,6 @@ fun ActionWizardScreen(
                 onCancel = { viewModel.cancelWizard() },
                 onRetryComplete = { viewModel.retryCompleteWizard() },
                 onBarcodeScanned = { barcode ->
-                    Timber.d("ActionWizardContent: Штрихкод передан из контента: $barcode")
                     viewModel.processBarcodeFromScanner(barcode)
                 },
                 actionStepFactoryRegistry = viewModel.actionStepFactoryRegistry,

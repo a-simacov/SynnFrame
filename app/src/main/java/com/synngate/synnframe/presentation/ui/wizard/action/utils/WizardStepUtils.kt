@@ -19,7 +19,6 @@ import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
-import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.base.StepViewState
@@ -33,16 +32,9 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.
 import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.PalletCard
 import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.TaskProductCard
 import com.synngate.synnframe.presentation.ui.wizard.action.quantity.ProductQuantityViewModel
-import timber.log.Timber
 
-/**
- * Утилитный класс для помощи фабрикам шагов в использовании стандартных компонентов
- */
 object WizardStepUtils {
 
-    /**
-     * Создает стандартный контейнер для шага
-     */
     @Composable
     fun <T> StandardStepContainer(
         state: StepViewState<T>,
@@ -59,14 +51,10 @@ object WizardStepUtils {
             action = action,
             viewModel = viewModel,
             onBack = { context.onBack() },
-            // КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: используем специальный обработчик для шага ввода количества
             onForward = {
-                // Если это шаг ввода количества, вызываем saveResult()
                 if (viewModel is ProductQuantityViewModel && state.data != null) {
-                    Timber.d("StandardStepContainer: detected quantity step, using direct saveResult()")
                     viewModel.saveResult()
                 } else {
-                    // Иначе используем стандартный onForward
                     context.onForward()
                 }
             },
@@ -78,9 +66,6 @@ object WizardStepUtils {
         )
     }
 
-    /**
-     * Отображает список планируемых продуктов с выбором
-     */
     @Composable
     fun ProductSelectionList(
         products: List<TaskProduct>,
@@ -113,9 +98,6 @@ object WizardStepUtils {
         }
     }
 
-    /**
-     * Отображает список паллет для выбора
-     */
     @Composable
     fun PalletList(
         pallets: List<Pallet>,
@@ -148,9 +130,6 @@ object WizardStepUtils {
         }
     }
 
-    /**
-     * Отображает список ячеек для выбора
-     */
     @Composable
     fun BinList(
         bins: List<BinX>,
@@ -183,9 +162,6 @@ object WizardStepUtils {
         }
     }
 
-    /**
-     * Отображает стандартное поле для сканирования штрих-кода
-     */
     @Composable
     fun StandardBarcodeField(
         value: String,
@@ -213,9 +189,6 @@ object WizardStepUtils {
         )
     }
 
-    /**
-     * Отображает экран ошибки, если ViewModel не удалось создать или привести к нужному типу
-     */
     @Composable
     fun ViewModelErrorScreen(
         message: String = "Ошибка инициализации шага. Пожалуйста, вернитесь назад и попробуйте снова."
@@ -241,12 +214,6 @@ object WizardStepUtils {
                     textAlign = TextAlign.Center
                 )
             }
-        }
-    }
-
-    fun hasApiValidation(step: ActionStep): Boolean {
-        return step.validationRules.rules.any {
-            it.type == ValidationType.API_REQUEST && it.apiEndpoint != null
         }
     }
 }

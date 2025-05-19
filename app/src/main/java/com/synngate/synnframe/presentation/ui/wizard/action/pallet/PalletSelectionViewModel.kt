@@ -58,18 +58,14 @@ class PalletSelectionViewModel(
 
     override fun processBarcode(barcode: String) {
         executeWithErrorHandling("обработки кода паллеты") {
-            Timber.d("PalletSelectionViewModel: начинаем обработку штрихкода: $barcode")
             palletLookupService.processBarcode(
                 barcode = barcode,
                 expectedBarcode = plannedPallet?.code,
                 onResult = { found, data ->
-                    Timber.d("PalletSelectionViewModel: штрихкод $barcode обработан, found=$found, data=$data")
                     if (found && data is Pallet) {
-                        Timber.d("PalletSelectionViewModel: найдена паллета ${data.code}")
                         selectPallet(data)
                         updatePalletCodeInput("")
                     } else {
-                        Timber.d("PalletSelectionViewModel: паллета не найдена")
                         setError("Паллета с кодом '$barcode' не найдена")
                     }
                 },

@@ -14,17 +14,8 @@ sealed class ValidationResult {
     data class Error(val message: String) : ValidationResult()
 }
 
-/**
- * Интерфейс сервиса валидации данных для шагов
- */
 interface ValidationService {
-    /**
-     * Валидирует данные согласно правилу
-     * @param value значение для валидации
-     * @param rule правило валидации
-     * @param context дополнительный контекст для валидации
-     * @return результат валидации
-     */
+
     fun validate(
         value: Any?,
         rule: ValidationRule,
@@ -32,9 +23,6 @@ interface ValidationService {
     ): ValidationResult
 }
 
-/**
- * Реализация сервиса валидации
- */
 class ValidationServiceImpl : ValidationService {
     override fun validate(
         value: Any?,
@@ -53,7 +41,6 @@ class ValidationServiceImpl : ValidationService {
                 is String -> validateString(value, rule, context)
                 is Number -> validateNumber(value, rule, context)
                 else -> {
-                    Timber.w("Неизвестный тип данных для валидации: ${value::class.java.simpleName}")
                     ValidationResult.Error("Неподдерживаемый тип данных")
                 }
             }

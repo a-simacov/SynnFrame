@@ -44,13 +44,6 @@ object WizardUtils {
         )
     }
 
-    fun isValidStepResult(result: Any?): Boolean {
-        return when (result) {
-            is Product, is TaskProduct, is Pallet, is BinX -> true
-            else -> false
-        }
-    }
-
     fun parseQuantityInput(input: String): Float {
         return try {
             input.replace(",", ".").toFloatOrNull() ?: 0f

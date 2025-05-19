@@ -8,7 +8,6 @@ import timber.log.Timber
 class WizardContextFactory {
     private val TAG = "WizardContextFactory"
 
-    // Храним контекст-холдер в качестве поля класса для переиспользования между вызовами
     private var contextHolder: ActionContextHolder? = null
 
     fun createContext(
@@ -25,16 +24,13 @@ class WizardContextFactory {
         val hasResult = state.results.containsKey(stepId)
         val validationError = state.errors[stepId]
 
-        // Проверяем, нужно ли создать новый холдер (изменились ключевые параметры)
         if (contextHolder == null ||
             contextHolder?.taskId != state.taskId ||
             contextHolder?.actionId != state.actionId) {
 
-            Timber.d("$TAG: Creating new ActionContextHolder for task=${state.taskId}, action=${state.actionId}")
-
             val callbacks = WizardCallbacks(
                 onUpdate = { /* Не используется в текущей реализации */ },
-                onComplete = { result -> if (result != null) onStepComplete(result) }, // Адаптер для совместимости типов
+                onComplete = { result -> if (result != null) onStepComplete(result) },
                 onBack = onBack,
                 onForward = onForward,
                 onSkip = onSkip,
@@ -46,7 +42,6 @@ class WizardContextFactory {
 
         val enrichedResults = enrichResultsContext(state)
 
-        // Получаем контекст для текущего шага через холдер
         return contextHolder!!.getContextForStep(
             stepId = stepId,
             results = enrichedResults,
@@ -80,17 +75,13 @@ class WizardContextFactory {
         )
     }
 
-    /**
-     * Обогащает контекст результатов специальными ключами для облегчения доступа к данным
-     */
+     // Обогащает контекст результатов специальными ключами для облегчения доступа к данным
     private fun enrichResultsContext(
         state: ActionWizardState
     ): Map<String, Any> {
         val results = state.results.toMutableMap()
 
-        // Если отсутствуют специальные ключи, ищем нужные данные в предыдущих шагах
         if (!results.containsKey("lastTaskProduct") || !results.containsKey("lastProduct")) {
-            // Пытаемся найти данные в предыдущих шагах
             findObjectsInPreviousSteps(state)?.let { (taskProduct, product) ->
                 if (taskProduct != null && !results.containsKey("lastTaskProduct")) {
                     results["lastTaskProduct"] = taskProduct
@@ -102,7 +93,6 @@ class WizardContextFactory {
             }
         }
 
-        // Проверяем наличие необходимых данных после обогащения
         if (state.currentStepIndex > 0 &&
             !results.containsKey("lastProduct") &&
             !results.containsKey("lastTaskProduct")) {

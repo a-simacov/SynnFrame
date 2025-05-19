@@ -297,10 +297,6 @@ class TaskProductSelectionViewModel(
         return !(product.accountingModel == AccountingModel.BATCH && expirationDate == null)
     }
 
-    fun isExpirationDateExpired(): Boolean {
-        return expirationDate != null && expirationDate!!.isBefore(LocalDateTime.now())
-    }
-
     fun hasPlanProducts(): Boolean {
         return _planProducts.isNotEmpty()
     }

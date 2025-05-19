@@ -5,18 +5,11 @@ import com.synngate.synnframe.domain.repository.WizardPalletRepository
 import com.synngate.synnframe.domain.service.TaskContextManager
 import timber.log.Timber
 
-/**
- * Сервис для поиска паллет с использованием унифицированного интерфейса.
- * Обеспечивает поиск по штрихкоду и строковому запросу.
- */
 class PalletLookupService(
     private val taskContextManager: TaskContextManager,
     private val wizardPalletRepository: WizardPalletRepository? = null
 ) : BaseLookupService<Pallet>() {
 
-    /**
-     * Создает новую паллету через репозиторий или генерирует временную.
-     */
     suspend fun createNewPallet(): Result<Pallet> {
         try {
             if (wizardPalletRepository == null) {
@@ -35,26 +28,17 @@ class PalletLookupService(
     override suspend fun findEntityInContext(barcode: String): Pallet? {
         val currentTask = taskContextManager.lastStartedTaskX.value
         if (currentTask == null) {
-            Timber.d("PalletLookupService: задача не найдена в контексте")
             return null
         }
 
-        // Собираем все паллеты из задачи
         val pallets = currentTask.plannedActions
             .flatMap {
                 listOfNotNull(it.storagePallet, it.placementPallet)
             }
             .distinctBy { it.code }
 
-        Timber.d("PalletLookupService: найдено ${pallets.size} паллет в контексте")
 
-        // Ищем паллету с соответствующим кодом
         val result = pallets.firstOrNull { it.code == barcode }
-        if (result != null) {
-            Timber.d("PalletLookupService: найдена паллета в контексте с кодом ${result.code}")
-        } else {
-            Timber.d("PalletLookupService: паллета с кодом $barcode не найдена в контексте")
-        }
 
         return result
     }
@@ -64,7 +48,6 @@ class PalletLookupService(
     }
 
     override suspend fun createLocalEntity(barcode: String): Pallet {
-        // Создаем временную локальную паллету
         return Pallet(
             code = barcode,
             isClosed = false
@@ -77,14 +60,12 @@ class PalletLookupService(
     ): List<Pallet> {
         val currentTask = taskContextManager.lastStartedTaskX.value ?: return emptyList()
 
-        // Собираем все паллеты из задачи
         val taskPallets = currentTask.plannedActions
             .flatMap {
                 listOfNotNull(it.storagePallet, it.placementPallet)
             }
             .distinctBy { it.code }
 
-        // Фильтруем по запросу
         return if (query.isEmpty()) {
             taskPallets
         } else {

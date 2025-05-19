@@ -55,18 +55,14 @@ class BinSelectionViewModel(
 
     override fun processBarcode(barcode: String) {
         executeWithErrorHandling("обработки кода ячейки") {
-            Timber.d("BinSelectionViewModel: начинаем обработку штрихкода: $barcode")
             binLookupService.processBarcode(
                 barcode = barcode,
                 expectedBarcode = plannedBin?.code,
                 onResult = { found, data ->
-                    Timber.d("BinSelectionViewModel: штрихкод $barcode обработан, found=$found, data=$data")
                     if (found && data is BinX) {
-                        Timber.d("BinSelectionViewModel: найдена ячейка ${data.code}")
                         selectBin(data)
                         updateBinCodeInput("")
                     } else {
-                        Timber.d("BinSelectionViewModel: ячейка не найдена")
                         setError("Ячейка с кодом '$barcode' не найдена")
                     }
                 },

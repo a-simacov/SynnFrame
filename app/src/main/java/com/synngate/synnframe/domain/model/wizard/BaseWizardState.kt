@@ -13,22 +13,16 @@ abstract class BaseWizardState(
 
     override fun handleEvent(event: WizardEvent): WizardState? {
         return when (event) {
-            // Обрабатываем общие события для всех состояний
             is WizardEvent.Cancel -> context.createCancelledState()
-            else -> null // Для других событий возвращаем null, что означает "нет перехода"
+            else -> null
         }
     }
 
     protected fun logUnsupportedEvent(event: WizardEvent): WizardState? {
-        Timber.w("Event $event is not supported in state $id")
         return null
     }
 }
 
-/**
- * Контекст визарда, содержащий общие данные для всех состояний.
- * Также отвечает за создание новых состояний.
- */
 data class WizardContext(
     val taskId: String = "",
     val actionId: String = "",
@@ -39,7 +33,6 @@ data class WizardContext(
     val errors: Map<String, String> = emptyMap(),
     val lastScannedBarcode: String? = null
 ) {
-    // Фабричные методы для создания состояний
 
     fun createInitializingState(): InitializingState {
         return InitializingState(this)

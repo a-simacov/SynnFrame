@@ -7,18 +7,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-/**
- * Сервис для поиска продуктов с использованием унифицированного интерфейса.
- * Обеспечивает поиск по штрихкоду и строковому запросу.
- */
 class ProductLookupService(
     private val productRepository: ProductRepository,
     private val taskContextManager: TaskContextManager? = null
 ) : BaseLookupService<Product>() {
 
-    /**
-     * Получает продукт по ID.
-     */
     suspend fun getProductById(id: String): Product? {
         return withContext(Dispatchers.IO) {
             try {
@@ -30,9 +23,6 @@ class ProductLookupService(
         }
     }
 
-    /**
-     * Получает продукты по списку ID.
-     */
     suspend fun getProductsByIds(ids: Set<String>): List<Product> {
         return withContext(Dispatchers.IO) {
             try {
@@ -50,7 +40,6 @@ class ProductLookupService(
     override suspend fun findEntityInContext(barcode: String): Product? {
         val currentTask = taskContextManager?.lastStartedTaskX?.value
 
-        // Если задача найдена в контексте, ищем продукт в списке запланированных действий
         if (currentTask != null) {
             return currentTask.plannedActions
                 .flatMap { action ->
@@ -69,7 +58,6 @@ class ProductLookupService(
     }
 
     override suspend fun createLocalEntity(barcode: String): Product? {
-        // Для продуктов не создаем локальные сущности
         return null
     }
 
@@ -101,7 +89,6 @@ class ProductLookupService(
         additionalParams: Map<String, Any>
     ): List<Product> {
         try {
-            // Извлекаем ограничения по id продуктов, если они есть
             val planProductIds = additionalParams["planProductIds"] as? Set<String>
 
             return if (query.isEmpty() && planProductIds != null && planProductIds.isNotEmpty()) {
