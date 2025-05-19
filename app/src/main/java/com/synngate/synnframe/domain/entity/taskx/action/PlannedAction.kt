@@ -21,6 +21,7 @@ data class PlannedAction(
     val isCompleted: Boolean = false,
     val isSkipped: Boolean = false,
     val isFinalAction: Boolean = false,
+    val isInitialAction: Boolean = false,
 
     val manuallyCompleted: Boolean = false,
     @Serializable(with = LocalDateTimeSerializer::class)
@@ -30,6 +31,10 @@ data class PlannedAction(
     // это поле задано как опциональное, так как используется только для расчетов в приложении
     private val progressType: ProgressType? = null
 ) {
+
+    fun isValid(): Boolean {
+        return !(isInitialAction && isFinalAction)
+    }
 
     fun getProgressType(): ProgressType {
         return if (storageProduct != null && storageProduct.quantity > 0f) {

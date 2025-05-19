@@ -58,6 +58,7 @@ import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.FileService
 import com.synngate.synnframe.domain.service.FinalActionsValidator
+import com.synngate.synnframe.domain.service.InitialActionsValidator
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.service.SoundService
@@ -132,13 +133,11 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
 
     // DataStore для хранения настроек приложения
     val appSettingsDataStore by lazy {
-        Timber.d("Creating AppSettingsDataStore")
         AppSettingsDataStore(applicationContext.dataStore)
     }
 
     // Database
     val database by lazy {
-        Timber.d("Creating AppDatabase")
         AppDatabase.getInstance(applicationContext)
     }
 
@@ -151,7 +150,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     // HTTP Client
     @OptIn(ExperimentalSerializationApi::class)
     val httpClient by lazy {
-        Timber.d("Creating HttpClient")
         HttpClient(Android) {
             install(ContentNegotiation) {
                 json(Json {
@@ -179,25 +177,21 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     val networkMonitor: NetworkMonitor by lazy {
-        Timber.d("Creating NetworkMonitor")
         NetworkMonitor(applicationContext)
     }
 
     // Добавляем ResourceProvider
     val resourceProvider: ResourceProvider by lazy {
-        Timber.d("Creating ResourceProvider")
         ResourceProviderImpl(applicationContext)
     }
 
     // Добавляем UI-мапперы
     val productUiMapper: ProductUiMapper by lazy {
-        Timber.d("Creating ProductUiMapper")
         ProductUiMapper(resourceProvider)
     }
 
     // Сервисы
     val serverProvider by lazy {
-        Timber.d("Creating ServerProvider")
         object : ServerProvider {
             override suspend fun getActiveServer() = serverRepository.getActiveServer().first()
             override suspend fun getCurrentUserId() = userRepository.getCurrentUser().first()?.id
@@ -206,27 +200,22 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
 
     // Репозитории
     val logRepository: LogRepository by lazy {
-        Timber.d("Creating LogRepository")
         LogRepositoryImpl(logDao)
     }
 
     val serverRepository: ServerRepository by lazy {
-        Timber.d("Creating ServerRepository")
         ServerRepositoryImpl(serverDao, apiService)
     }
 
     val userRepository: UserRepository by lazy {
-        Timber.d("Creating UserRepository")
         UserRepositoryImpl(userDao, authApi, appSettingsDataStore)
     }
 
     val productRepository: ProductRepository by lazy {
-        Timber.d("Creating ProductRepository")
         ProductRepositoryImpl(productDao, productApi, database)
     }
 
     val settingsRepository: SettingsRepository by lazy {
-        Timber.d("Creating SettingsRepository")
         SettingsRepositoryImpl(
             appSettingsDataStore,
             appUpdateApi
@@ -234,39 +223,32 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     val dynamicMenuRepository: DynamicMenuRepository by lazy {
-        Timber.d("Creating OperationMenuRepository")
         DynamicMenuRepositoryImpl(dynamicMenuApi)
     }
 
     // API сервисы
     val apiService: ApiService by lazy {
-        Timber.d("Creating ApiService")
         ApiServiceImpl(httpClient, serverProvider)
     }
 
     val authApi: AuthApi by lazy {
-        Timber.d("Creating AuthApi")
         AuthApiImpl(apiService)
     }
 
     val productApi: ProductApi by lazy {
-        Timber.d("Creating ProductApi")
         ProductApiImpl(httpClient, serverProvider)
     }
 
     val appUpdateApi: AppUpdateApi by lazy {
-        Timber.d("Creating AppUpdateApi")
         AppUpdateApiImpl(httpClient, serverProvider)
     }
 
     val dynamicMenuApi: DynamicMenuApi by lazy {
-        Timber.d("Creating OperationMenuApi")
         DynamicMenuApiImpl(httpClient, serverProvider)
     }
 
     // Добавляем ValidationApiService
     val validationApiService by lazy {
-        Timber.d("Creating ValidationApiService")
         ValidationApiServiceImpl(httpClient, serverProvider)
     }
 
@@ -276,17 +258,14 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
 
     // Сервисы
     val loggingService: LoggingService by lazy {
-        Timber.d("Creating LoggingService")
         LoggingServiceImpl(logRepository)
     }
 
     val clipboardService: ClipboardService by lazy {
-        Timber.d("Creating ClipboardService")
         ClipboardServiceImpl(applicationContext)
     }
 
     val serverCoordinator: ServerCoordinator by lazy {
-        Timber.d("Creating ServerCoordinator")
         ServerCoordinatorImpl(
             serverRepository,
             appSettingsDataStore
@@ -294,7 +273,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     val deviceInfoService: DeviceInfoService by lazy {
-        Timber.d("Creating DeviceInfoService")
         DeviceInfoServiceImpl(applicationContext)
     }
 
@@ -303,12 +281,10 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     val webServerManager: WebServerManager by lazy {
-        Timber.d("Creating WebServerManager")
         WebServerManagerImpl(webServerController)
     }
 
     val updateInstaller: UpdateInstaller by lazy {
-        Timber.d("Creating UpdateInstaller")
         UpdateInstallerImpl(applicationContext)
     }
 
@@ -335,12 +311,10 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
 
     // Сервисы для работы с визардом действий
     val validationService by lazy {
-        Timber.d("Creating ValidationService")
         ValidationService(validationApiService)
     }
 
     val actionExecutionService by lazy {
-        Timber.d("Creating ActionExecutionService")
         ActionExecutionService(
             taskContextManager = taskContextManager,
             taskXRepository = taskXRepository // Добавляем TaskXRepository
@@ -348,7 +322,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     val actionSearchService by lazy {
-        Timber.d("Creating ActionExecutionService")
         ActionSearchServiceImpl(
             actionSearchApi = actionSearchApi,
             productRepository = productRepository
@@ -356,20 +329,15 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     val wizardBinRepository by lazy {
-        Timber.d("Creating WizardBinRepository")
-        // Здесь используем WizardBinRepository, как показано в импортированных файлах
         WizardBinRepositoryImpl(httpClient, serverProvider)
     }
 
     val wizardPalletRepository by lazy {
-        Timber.d("Creating WizardPalletRepository")
-        // Здесь используем WizardPalletRepository, как показано в импортированных файлах
         WizardPalletRepositoryImpl(httpClient, serverProvider)
     }
 
     // Сервисы для поиска объектов (lookup services)
     val productLookupService by lazy {
-        Timber.d("Creating ProductLookupService")
         ProductLookupService(
             productRepository = productRepository,
             taskContextManager = taskContextManager
@@ -377,7 +345,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     val binLookupService by lazy {
-        Timber.d("Creating BinLookupService")
         BinLookupService(
             taskContextManager = taskContextManager,
             wizardBinRepository = wizardBinRepository
@@ -385,7 +352,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     val palletLookupService by lazy {
-        Timber.d("Creating PalletLookupService")
         PalletLookupService(
             taskContextManager = taskContextManager,
             wizardPalletRepository = wizardPalletRepository
@@ -393,7 +359,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     val wizardStateMachine by lazy {
-        Timber.d("Creating WizardStateMachine")
         WizardStateMachine(
             taskContextManager = taskContextManager,
             actionExecutionService = actionExecutionService
@@ -401,12 +366,10 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     val taskXApi: TaskXApi by lazy {
-        Timber.d("Creating TaskXApi")
         TaskXApiImpl(httpClient, serverProvider)
     }
 
     val taskXRepository: TaskXRepository by lazy {
-        Timber.d("Creating TaskXRepository")
         TaskXRepositoryImpl(taskXApi, taskContextManager)
     }
 
@@ -432,23 +395,23 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     val dynamicMenuUseCases: DynamicMenuUseCases by lazy {
-        Timber.d("Creating OperationMenuUseCases")
         DynamicMenuUseCases(dynamicMenuRepository)
     }
 
     val taskXUseCases: TaskXUseCases by lazy {
-        Timber.d("Creating TaskXUseCases")
         TaskXUseCases(taskXRepository, taskContextManager)
     }
 
     val taskContextManager: TaskContextManager by lazy {
-        Timber.d("Creating TaskContextManager")
         TaskContextManager()
     }
 
+    val initialActionsValidator by lazy {
+        InitialActionsValidator()
+    }
+
     val finalActionsValidator by lazy {
-        Timber.d("Creating FinalActionsValidator")
-        FinalActionsValidator()
+        FinalActionsValidator(initialActionsValidator)
     }
 
     // Создание контейнера для уровня навигации
