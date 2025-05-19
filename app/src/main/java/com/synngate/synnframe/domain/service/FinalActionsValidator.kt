@@ -53,14 +53,6 @@ class FinalActionsValidator(
         val action = task.plannedActions.find { it.id == actionId } ?: return ActionBlockReason.None
 
         if (action.isInitialAction) {
-            val earlierInitialActions = task.plannedActions
-                .filter { it.isInitialAction && it.order < action.order }
-                .sortedBy { it.order }
-
-            if (earlierInitialActions.any { !it.isCompleted && !it.isSkipped }) {
-                return ActionBlockReason.OutOfOrder
-            }
-
             return ActionBlockReason.None
         }
 
@@ -101,5 +93,21 @@ class FinalActionsValidator(
                     otherAction.isCompleted ||
                     otherAction.isSkipped
         }
+    }
+
+    fun isInitialActionOutOfOrder(task: TaskX, actionId: String): Boolean {
+        val action = task.plannedActions.find { it.id == actionId } ?: return false
+        if (!action.isInitialAction) return false
+
+        // Находим первое не выполненное начальное действие
+        val firstIncompleteInitialAction = task.plannedActions
+            .filter { it.isInitialAction && !it.isCompleted && !it.isSkipped }
+            .minByOrNull { it.order }
+
+        // Если это не текущее действие, и у текущего действия order больше,
+        // значит порядок нарушен
+        return firstIncompleteInitialAction != null &&
+                firstIncompleteInitialAction.id != actionId &&
+                action.order > firstIncompleteInitialAction.order
     }
 }

@@ -166,7 +166,19 @@ class TaskXDetailViewModel(
 
     fun tryExecuteAction(actionId: String) {
         val task = uiState.value.task ?: return
+        val action = task.plannedActions.find { it.id == actionId }
 
+        if (action?.isInitialAction == true) {
+            if (finalActionsValidator.isInitialActionOutOfOrder(task, actionId)) {
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Сначала выполните предыдущие начальные действия"))
+                return
+            }
+
+            startActionExecution(actionId)
+            return
+        }
+
+        // Обычная обработка для не начальных действий
         val blockReason = finalActionsValidator.getActionBlockReason(task, actionId)
 
         when (blockReason) {
