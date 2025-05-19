@@ -64,7 +64,7 @@ class TaskXDetailViewModel(
         }
     }
 
-    fun startActionExecution(actionId: String) {
+    fun startActionExecution(actionId: String, skipOrderCheck: Boolean = false) {
         launchIO {
             try {
                 val task = uiState.value.task ?: return@launchIO
@@ -85,7 +85,8 @@ class TaskXDetailViewModel(
                     }
                 }
 
-                if (isStrictOrder && action != null) {
+                // Проверка строгого порядка выполнения только если не пропускаем эту проверку
+                if (!skipOrderCheck && isStrictOrder && action != null) {
                     val nextActionId = finalActionsValidator.getNextActionIdInStrictOrder(task)
                     if (nextActionId != actionId) {
                         showOrderRequiredMessage()
@@ -166,6 +167,7 @@ class TaskXDetailViewModel(
 
     fun tryExecuteAction(actionId: String) {
         val task = uiState.value.task ?: return
+        val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
         val action = task.plannedActions.find { it.id == actionId }
 
         if (action?.isInitialAction == true) {
@@ -189,10 +191,16 @@ class TaskXDetailViewModel(
                 showFinalActionNotAvailableMessage()
             }
             is FinalActionsValidator.ActionBlockReason.OutOfOrder -> {
-                showOrderRequiredMessage()
+                // Показываем диалог "Соблюдение порядка" только если включен строгий порядок
+                if (isStrictOrder) {
+                    showOrderRequiredMessage()
+                } else {
+                    // Если строгий порядок не включен, игнорируем нарушение порядка
+                    startActionExecution(actionId, skipOrderCheck = true)
+                }
             }
             is FinalActionsValidator.ActionBlockReason.None -> {
-                startActionExecution(actionId)
+                startActionExecution(actionId, skipOrderCheck = true)
             }
         }
     }
