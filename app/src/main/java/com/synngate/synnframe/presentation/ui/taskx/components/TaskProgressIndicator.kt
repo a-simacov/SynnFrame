@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
@@ -16,7 +15,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 
@@ -79,36 +77,6 @@ fun TaskProgressIndicator(
                     progress = { totalProgress },
                     modifier = Modifier.fillMaxWidth()
                 )
-            }
-
-            // Отдельный индикатор прогресса для начальных действий, если они есть
-            if (initialActions.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-
-                val initialProgress = if (initialActions.isNotEmpty()) {
-                    completedInitialActions.toFloat() / initialActions.size
-                } else 0f
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Начальные:",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        textAlign = TextAlign.Right,
-                        modifier = Modifier.width(80.dp)
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    LinearProgressIndicator(
-                        progress = { initialProgress },
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
-                }
             }
         }
     }
