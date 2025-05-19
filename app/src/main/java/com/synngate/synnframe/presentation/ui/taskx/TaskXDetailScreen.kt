@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PendingActions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -143,10 +144,23 @@ fun TaskXDetailScreen(
     }
 
     if (state.showOrderRequiredMessage) {
+        AlertDialog(
+            onDismissRequest = { viewModel.hideOrderRequiredMessage() },
+            title = { Text("Соблюдение порядка") },
+            text = { Text("Действия необходимо выполнять в указанном порядке. Пожалуйста, выполните первое не завершенное действие.") },
+            confirmButton = {
+                Button(onClick = { viewModel.hideOrderRequiredMessage() }) {
+                    Text("ОК")
+                }
+            }
+        )
+    }
+
+    if (state.showInitialActionsRequiredDialog) {
         InitialActionsRequiredDialog(
-            onDismiss = { viewModel.hideOrderRequiredMessage() },
+            onDismiss = { viewModel.hideInitialActionsRequiredDialog() },
             onGoToInitialActions = {
-                viewModel.hideOrderRequiredMessage()
+                viewModel.hideInitialActionsRequiredDialog()
                 viewModel.setActionsDisplayMode(ActionDisplayMode.INITIALS)
             },
             completedCount = state.completedInitialActionsCount,

@@ -39,7 +39,8 @@ data class TaskXDetailState(
     val areInitialActionsCompleted: Boolean = false,
     val completedInitialActionsCount: Int = 0,
     val totalInitialActionsCount: Int = 0,
-    val initialActionsIds: List<String> = emptyList()
+    val initialActionsIds: List<String> = emptyList(),
+    val showInitialActionsRequiredDialog: Boolean = false,
 )
 
 sealed class TaskXDetailEvent {

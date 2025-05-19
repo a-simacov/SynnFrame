@@ -120,7 +120,10 @@ class TaskXDetailViewModel(
         val task = uiState.value.task ?: return false
         val action = task.plannedActions.find { it.id == actionId } ?: return false
 
-        // Проверка на начальные действия
+        if (action.isInitialAction && !action.isCompleted && !action.isSkipped) {
+            return true
+        }
+
         if (!action.isInitialAction && !initialActionsValidator.canExecuteRegularAction(task, actionId)) {
             return false
         }
@@ -147,16 +150,26 @@ class TaskXDetailViewModel(
 
     fun showInitialActionsRequiredMessage() {
         updateState { it.copy(showOrderRequiredMessage = true) }
-        sendEvent(TaskXDetailEvent.ShowSnackbar("Необходимо выполнить все начальные действия"))
+
+        // Получаем текущую информацию о прогрессе
+        val completedCount = uiState.value.completedInitialActionsCount
+        val totalCount = uiState.value.totalInitialActionsCount
+
+        val message = if (completedCount > 0) {
+            "Выполнено $completedCount из $totalCount начальных действий"
+        } else {
+            "Необходимо выполнить все начальные действия"
+        }
+
+        sendEvent(TaskXDetailEvent.ShowSnackbar(message))
     }
 
     fun tryExecuteAction(actionId: String) {
         val task = uiState.value.task ?: return
         val action = task.plannedActions.find { it.id == actionId } ?: return
 
-        // Проверка на возможность выполнения обычного действия
         if (!action.isInitialAction && !initialActionsValidator.canExecuteRegularAction(task, actionId)) {
-            showInitialActionsRequiredMessage()
+            showInitialActionsRequiredDialog()
             return
         }
 
@@ -462,10 +475,14 @@ class TaskXDetailViewModel(
                 !areInitialActionsCompleted &&
                 uiState.value.actionsDisplayMode == ActionDisplayMode.CURRENT
 
-        val newDisplayMode = if (autoSwitchToInitials) {
-            ActionDisplayMode.INITIALS
-        } else {
-            uiState.value.actionsDisplayMode
+        val autoSwitchToCurrent = hasInitialActions &&
+                areInitialActionsCompleted &&
+                uiState.value.actionsDisplayMode == ActionDisplayMode.INITIALS
+
+        val newDisplayMode = when {
+            autoSwitchToInitials -> ActionDisplayMode.INITIALS
+            autoSwitchToCurrent -> ActionDisplayMode.CURRENT
+            else -> uiState.value.actionsDisplayMode
         }
 
         updateState { currentState ->
@@ -543,6 +560,27 @@ class TaskXDetailViewModel(
 
     fun hideCompletionDialog() {
         updateState { it.copy(showCompletionDialog = false) }
+    }
+
+    fun showInitialActionsRequiredDialog() {
+        updateState { it.copy(showInitialActionsRequiredDialog = true) }
+
+        // Получаем текущую информацию о прогрессе
+        val completedCount = uiState.value.completedInitialActionsCount
+        val totalCount = uiState.value.totalInitialActionsCount
+
+        val message = if (completedCount > 0) {
+            "Выполнено $completedCount из $totalCount начальных действий"
+        } else {
+            "Необходимо выполнить все начальные действия"
+        }
+
+        sendEvent(TaskXDetailEvent.ShowSnackbar(message))
+    }
+
+    // Метод для скрытия диалога начальных действий
+    fun hideInitialActionsRequiredDialog() {
+        updateState { it.copy(showInitialActionsRequiredDialog = false) }
     }
 
     fun hideVerificationDialog() {
