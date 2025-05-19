@@ -166,22 +166,22 @@ class TaskXDetailViewModel(
 
     fun tryExecuteAction(actionId: String) {
         val task = uiState.value.task ?: return
-        val action = task.plannedActions.find { it.id == actionId } ?: return
 
-        if (!action.isInitialAction && !initialActionsValidator.canExecuteRegularAction(task, actionId)) {
-            showInitialActionsRequiredDialog()
-            return
-        }
+        val blockReason = finalActionsValidator.getActionBlockReason(task, actionId)
 
-        if (action.isFinalAction && !finalActionsValidator.canExecuteFinalActions(task)) {
-            showFinalActionNotAvailableMessage()
-            return
-        }
-
-        if (canExecuteAction(actionId)) {
-            startActionExecution(actionId)
-        } else {
-            showOrderRequiredMessage()
+        when (blockReason) {
+            is FinalActionsValidator.ActionBlockReason.InitialActionsNotCompleted -> {
+                showInitialActionsRequiredDialog()
+            }
+            is FinalActionsValidator.ActionBlockReason.RegularActionsNotCompleted -> {
+                showFinalActionNotAvailableMessage()
+            }
+            is FinalActionsValidator.ActionBlockReason.OutOfOrder -> {
+                showOrderRequiredMessage()
+            }
+            is FinalActionsValidator.ActionBlockReason.None -> {
+                startActionExecution(actionId)
+            }
         }
     }
 
@@ -218,6 +218,8 @@ class TaskXDetailViewModel(
                 if (task != null) {
                     val taskType = taskXUseCases.getTaskType()
                     val currentUser = userUseCases.getCurrentUser().first()
+
+                    initialActionsValidator.clearCache()
 
                     updateState {
                         it.copy(
@@ -749,6 +751,7 @@ class TaskXDetailViewModel(
                     val updatedTask = result.getOrNull()
 
                     if (updatedTask != null) {
+                        initialActionsValidator.clearCache()
                         updateState { it.copy(task = updatedTask) }
                         updateDependentState(updatedTask, uiState.value.taskType)
 
@@ -923,6 +926,19 @@ class TaskXDetailViewModel(
 
     fun hideCameraScannerForSearch() {
         updateState { it.copy(showCameraScannerForSearch = false) }
+    }
+
+    fun goToInitialActions() {
+        val task = uiState.value.task ?: return
+
+        if (!uiState.value.areInitialActionsCompleted) {
+            setActionsDisplayMode(ActionDisplayMode.INITIALS)
+
+            val nextInitialActionId = initialActionsValidator.getNextInitialActionId(task)
+            if (nextInitialActionId != null) {
+                tryExecuteAction(nextInitialActionId)
+            }
+        }
     }
 
     override fun dispose() {

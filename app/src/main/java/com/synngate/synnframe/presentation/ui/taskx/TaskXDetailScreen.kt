@@ -161,7 +161,7 @@ fun TaskXDetailScreen(
             onDismiss = { viewModel.hideInitialActionsRequiredDialog() },
             onGoToInitialActions = {
                 viewModel.hideInitialActionsRequiredDialog()
-                viewModel.setActionsDisplayMode(ActionDisplayMode.INITIALS)
+                viewModel.goToInitialActions()
             },
             completedCount = state.completedInitialActionsCount,
             totalCount = state.totalInitialActionsCount
@@ -294,7 +294,7 @@ fun TaskXDetailScreen(
                 completedCount = state.completedInitialActionsCount,
                 totalCount = state.totalInitialActionsCount,
                 visible = state.hasInitialActions && !state.areInitialActionsCompleted && state.actionsDisplayMode != ActionDisplayMode.INITIALS,
-                onClick = { viewModel.setActionsDisplayMode(ActionDisplayMode.INITIALS) },
+                onClick = { viewModel.goToInitialActions() },
                 modifier = Modifier.fillMaxWidth()
             )
 

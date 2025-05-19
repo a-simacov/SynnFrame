@@ -32,6 +32,8 @@ data class PlannedAction(
     private val progressType: ProgressType? = null
 ) {
 
+    enum class ActionType { INITIAL, REGULAR, FINAL }
+
     fun isValid(): Boolean {
         return !(isInitialAction && isFinalAction)
     }
@@ -124,5 +126,30 @@ data class PlannedAction(
         val completedQuantity = getCompletedQuantity(factActions)
 
         return completedQuantity >= plannedQuantity
+    }
+
+    fun getActionType(): ActionType {
+        return when {
+            isInitialAction -> ActionType.INITIAL
+            isFinalAction -> ActionType.FINAL
+            else -> ActionType.REGULAR
+        }
+    }
+
+    fun canBeExecutedAfter(other: PlannedAction): Boolean {
+        return when (getActionType()) {
+            ActionType.INITIAL -> {
+                other.getActionType() == ActionType.INITIAL && order > other.order
+            }
+            ActionType.REGULAR -> {
+                other.getActionType() == ActionType.INITIAL ||
+                        (other.getActionType() == ActionType.REGULAR && order > other.order)
+            }
+            ActionType.FINAL -> {
+                other.getActionType() == ActionType.INITIAL ||
+                        other.getActionType() == ActionType.REGULAR ||
+                        (other.getActionType() == ActionType.FINAL && order > other.order)
+            }
+        }
     }
 }
