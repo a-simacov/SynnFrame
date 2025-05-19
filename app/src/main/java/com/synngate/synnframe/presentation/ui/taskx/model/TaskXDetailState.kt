@@ -32,7 +32,14 @@ data class TaskXDetailState(
     val searchError: String? = null,
     val showSearchField: Boolean = false,
     val showCameraScannerForSearch: Boolean = false,
-    val filteredActionIds: List<String> = emptyList()
+    val filteredActionIds: List<String> = emptyList(),
+
+    // Поля для поддержки начальных действий
+    val hasInitialActions: Boolean = false,
+    val areInitialActionsCompleted: Boolean = false,
+    val completedInitialActionsCount: Int = 0,
+    val totalInitialActionsCount: Int = 0,
+    val initialActionsIds: List<String> = emptyList()
 )
 
 sealed class TaskXDetailEvent {

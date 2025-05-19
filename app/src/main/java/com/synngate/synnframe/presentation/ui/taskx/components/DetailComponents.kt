@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.Announcement
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -167,6 +168,7 @@ fun PlannedActionItem(
     val backgroundColor = when {
         isCompleted -> MaterialTheme.colorScheme.secondaryContainer
         action.isSkipped -> MaterialTheme.colorScheme.tertiaryContainer
+        action.isInitialAction -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.8f)
         action.isFinalAction -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
         isNextAction -> MaterialTheme.colorScheme.primaryContainer
         else -> MaterialTheme.colorScheme.surfaceContainerLow
@@ -175,6 +177,7 @@ fun PlannedActionItem(
     // Определяем цвет прогресса
     val progressColor = when {
         isCompleted -> MaterialTheme.colorScheme.secondary
+        action.isInitialAction -> MaterialTheme.colorScheme.tertiary
         else -> MaterialTheme.colorScheme.primary
     }
 
@@ -213,6 +216,17 @@ fun PlannedActionItem(
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Отображаем иконку для начальных действий
+                        if (action.isInitialAction) {
+                            IconWithTooltip(
+                                icon = Icons.Default.PlayArrow,
+                                description = "Начальное действие",
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
+                        }
+
+                        // Отображаем иконку для финальных действий
                         if (action.isFinalAction) {
                             IconWithTooltip(
                                 icon = Icons.AutoMirrored.Outlined.Announcement,
@@ -317,6 +331,17 @@ fun PlannedActionItem(
                         )
                     }
                 }
+            }
+
+            // Добавляем бейдж "Начальное" для удобства
+            if (action.isInitialAction) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Начальное",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.padding(top = 2.dp, start = 2.dp)
+                )
             }
         }
     }

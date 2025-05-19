@@ -4,5 +4,6 @@ enum class ActionDisplayMode {
     CURRENT,
     COMPLETED,
     ALL,
-    FINALS
+    FINALS,
+    INITIALS
 }

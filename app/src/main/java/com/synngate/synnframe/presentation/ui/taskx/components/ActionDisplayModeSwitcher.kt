@@ -17,15 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.presentation.ui.taskx.model.ActionDisplayMode
 
-/**
- * Статические данные о возможных режимах отображения.
- * Определены вне компонентов Compose для предотвращения пересоздания.
- */
 private val ALL_DISPLAY_MODES = mapOf(
     ActionDisplayMode.CURRENT to "Текущие",
     ActionDisplayMode.COMPLETED to "Выполненные",
     ActionDisplayMode.ALL to "Все",
-    ActionDisplayMode.FINALS to "Финальные"
+    ActionDisplayMode.FINALS to "Финальные",
+    ActionDisplayMode.INITIALS to "Начальные"
 )
 
 @Composable
@@ -33,16 +30,21 @@ fun ActionDisplayModeSwitcher(
     currentMode: ActionDisplayMode,
     onModeChange: (ActionDisplayMode) -> Unit,
     hasFinalActions: Boolean,
+    hasInitialActions: Boolean,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
 
-    // Используем remember с ключом hasFinalActions для кэширования списка
-    val displayModes = remember(hasFinalActions) {
+    val displayModes = remember(hasFinalActions, hasInitialActions) {
         buildList {
             add(ActionDisplayMode.CURRENT)
             add(ActionDisplayMode.COMPLETED)
             add(ActionDisplayMode.ALL)
+
+            if (hasInitialActions) {
+                add(ActionDisplayMode.INITIALS)
+            }
+
             if (hasFinalActions) {
                 add(ActionDisplayMode.FINALS)
             }

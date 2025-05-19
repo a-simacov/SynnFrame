@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PendingActions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -45,10 +44,13 @@ import com.synngate.synnframe.presentation.ui.taskx.components.ActionDisplayMode
 import com.synngate.synnframe.presentation.ui.taskx.components.ActionSearchBar
 import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableTaskInfoCard
 import com.synngate.synnframe.presentation.ui.taskx.components.FactActionsView
+import com.synngate.synnframe.presentation.ui.taskx.components.InitialActionsInfoBanner
+import com.synngate.synnframe.presentation.ui.taskx.components.InitialActionsRequiredDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionsView
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskProgressIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXActionsDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXVerificationDialog
+import com.synngate.synnframe.presentation.ui.taskx.model.ActionDisplayMode
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
 import kotlinx.coroutines.delay
@@ -114,7 +116,7 @@ fun TaskXDetailScreen(
         }
     }
 
-// Отображаем диалог действий
+    // Отображаем диалог действий
     if (state.showActionsDialog) {
         TaskXActionsDialog(
             onDismiss = { viewModel.hideActionsDialog() },
@@ -141,15 +143,14 @@ fun TaskXDetailScreen(
     }
 
     if (state.showOrderRequiredMessage) {
-        AlertDialog(
-            onDismissRequest = { viewModel.hideOrderRequiredMessage() },
-            title = { Text("Соблюдение порядка") },
-            text = { Text("Действия необходимо выполнять в указанном порядке. Пожалуйста, выполните первое не завершенное действие.") },
-            confirmButton = {
-                Button(onClick = { viewModel.hideOrderRequiredMessage() }) {
-                    Text("ОК")
-                }
-            }
+        InitialActionsRequiredDialog(
+            onDismiss = { viewModel.hideOrderRequiredMessage() },
+            onGoToInitialActions = {
+                viewModel.hideOrderRequiredMessage()
+                viewModel.setActionsDisplayMode(ActionDisplayMode.INITIALS)
+            },
+            completedCount = state.completedInitialActionsCount,
+            totalCount = state.totalInitialActionsCount
         )
     }
 
@@ -274,6 +275,15 @@ fun TaskXDetailScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            // Баннер начальных действий (если они присутствуют и не все выполнены)
+            InitialActionsInfoBanner(
+                completedCount = state.completedInitialActionsCount,
+                totalCount = state.totalInitialActionsCount,
+                visible = state.hasInitialActions && !state.areInitialActionsCompleted && state.actionsDisplayMode != ActionDisplayMode.INITIALS,
+                onClick = { viewModel.setActionsDisplayMode(ActionDisplayMode.INITIALS) },
+                modifier = Modifier.fillMaxWidth()
+            )
+
             when (state.activeView) {
                 TaskXDetailView.PLANNED_ACTIONS -> {
                     ActionSearchBar(
@@ -294,6 +304,7 @@ fun TaskXDetailScreen(
                         currentMode = state.actionsDisplayMode,
                         onModeChange = { mode -> viewModel.setActionsDisplayMode(mode) },
                         hasFinalActions = task.plannedActions.any { it.isFinalAction },
+                        hasInitialActions = task.plannedActions.any { it.isInitialAction },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 4.dp)

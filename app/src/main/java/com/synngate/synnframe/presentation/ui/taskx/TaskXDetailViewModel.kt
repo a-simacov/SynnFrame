@@ -10,6 +10,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.ProgressType
 import com.synngate.synnframe.domain.service.ActionExecutionService
 import com.synngate.synnframe.domain.service.ActionSearchService
 import com.synngate.synnframe.domain.service.FinalActionsValidator
+import com.synngate.synnframe.domain.service.InitialActionsValidator
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.taskx.model.ActionDisplayMode
@@ -32,6 +33,7 @@ class TaskXDetailViewModel(
     private val taskXUseCases: TaskXUseCases,
     private val userUseCases: UserUseCases,
     private val finalActionsValidator: FinalActionsValidator,
+    private val initialActionsValidator: InitialActionsValidator,
     private val actionExecutionService: ActionExecutionService,
     private val actionSearchService: ActionSearchService? = null,
     private val preloadedTask: TaskX? = null,
@@ -75,6 +77,14 @@ class TaskXDetailViewModel(
                 val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
                 val action = task.plannedActions.find { it.id == actionId }
 
+                // Проверка на возможность выполнения обычного действия
+                if (action != null && !action.isInitialAction) {
+                    if (!initialActionsValidator.canExecuteRegularAction(task, actionId)) {
+                        showInitialActionsRequiredMessage()
+                        return@launchIO
+                    }
+                }
+
                 if (isStrictOrder && action != null) {
                     val nextActionId = finalActionsValidator.getNextActionIdInStrictOrder(task)
                     if (nextActionId != actionId) {
@@ -110,6 +120,11 @@ class TaskXDetailViewModel(
         val task = uiState.value.task ?: return false
         val action = task.plannedActions.find { it.id == actionId } ?: return false
 
+        // Проверка на начальные действия
+        if (!action.isInitialAction && !initialActionsValidator.canExecuteRegularAction(task, actionId)) {
+            return false
+        }
+
         if (action.isFinalAction && !finalActionsValidator.canExecuteFinalActions(task)) {
             return false
         }
@@ -130,9 +145,20 @@ class TaskXDetailViewModel(
         sendEvent(TaskXDetailEvent.ShowSnackbar("Сначала выполните все обычные действия"))
     }
 
+    fun showInitialActionsRequiredMessage() {
+        updateState { it.copy(showOrderRequiredMessage = true) }
+        sendEvent(TaskXDetailEvent.ShowSnackbar("Необходимо выполнить все начальные действия"))
+    }
+
     fun tryExecuteAction(actionId: String) {
         val task = uiState.value.task ?: return
         val action = task.plannedActions.find { it.id == actionId } ?: return
+
+        // Проверка на возможность выполнения обычного действия
+        if (!action.isInitialAction && !initialActionsValidator.canExecuteRegularAction(task, actionId)) {
+            showInitialActionsRequiredMessage()
+            return
+        }
 
         if (action.isFinalAction && !finalActionsValidator.canExecuteFinalActions(task)) {
             showFinalActionNotAvailableMessage()
@@ -424,6 +450,24 @@ class TaskXDetailViewModel(
 
         val shouldShowSearch = taskType?.enableActionSearch == true
 
+        // Информация о начальных действиях
+        val initialActions = task.plannedActions.filter { it.isInitialAction }
+        val hasInitialActions = initialActions.isNotEmpty()
+        val completedInitialActions = initialActions.count { it.isCompleted }
+        val areInitialActionsCompleted = initialActions.all { it.isCompleted || it.isSkipped }
+
+        // Если у нас есть начальные действия, которые еще не выполнены,
+        // и мы в режиме отображения текущих действий, переключаемся на начальные
+        val autoSwitchToInitials = hasInitialActions &&
+                !areInitialActionsCompleted &&
+                uiState.value.actionsDisplayMode == ActionDisplayMode.CURRENT
+
+        val newDisplayMode = if (autoSwitchToInitials) {
+            ActionDisplayMode.INITIALS
+        } else {
+            uiState.value.actionsDisplayMode
+        }
+
         updateState { currentState ->
             currentState.copy(
                 nextActionId = nextActionId,
@@ -433,7 +477,15 @@ class TaskXDetailViewModel(
                     true
                 } else {
                     false
-                }
+                },
+                // Обновление информации о начальных действиях
+                hasInitialActions = hasInitialActions,
+                areInitialActionsCompleted = areInitialActionsCompleted,
+                completedInitialActionsCount = completedInitialActions,
+                totalInitialActionsCount = initialActions.size,
+                initialActionsIds = initialActions.map { it.id },
+                // Автоматическое переключение на режим начальных действий
+                actionsDisplayMode = newDisplayMode
             )
         }
 
@@ -560,6 +612,10 @@ class TaskXDetailViewModel(
 
             ActionDisplayMode.FINALS -> task.plannedActions
                 .filter { it.isFinalAction }
+                .sortedBy { it.order }
+
+            ActionDisplayMode.INITIALS -> task.plannedActions
+                .filter { it.isInitialAction }
                 .sortedBy { it.order }
         }
     }

@@ -588,6 +588,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                     finalActionsValidator = appContainer.finalActionsValidator,
                     actionExecutionService = appContainer.actionExecutionService, // Добавлено
                     actionSearchService = appContainer.actionSearchService,
+                    initialActionsValidator = appContainer.initialActionsValidator,
                     preloadedTask = contextTask,
                     preloadedTaskType = contextTaskType
                 )
@@ -598,7 +599,8 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                     taskXUseCases = appContainer.taskXUseCases,
                     userUseCases = appContainer.userUseCases,
                     finalActionsValidator = appContainer.finalActionsValidator,
-                    actionExecutionService = appContainer.actionExecutionService // Добавлено
+                    actionExecutionService = appContainer.actionExecutionService,
+                    initialActionsValidator = appContainer.initialActionsValidator
                 )
             }
         }
