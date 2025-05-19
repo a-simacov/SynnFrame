@@ -953,6 +953,14 @@ class TaskXDetailViewModel(
         }
     }
 
+    fun canReopenAction(action: PlannedAction, isCompleted: Boolean): Boolean {
+        if (!isCompleted) return true
+
+        if (action.isInitialAction) return true
+
+        return supportsMultipleFactActions() && isQuantityBasedAction(action)
+    }
+
     override fun dispose() {
         super.dispose()
         stopObservingTaskChanges()

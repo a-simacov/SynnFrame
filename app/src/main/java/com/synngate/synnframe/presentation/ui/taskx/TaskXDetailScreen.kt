@@ -330,15 +330,14 @@ fun TaskXDetailScreen(
                             factActions = task.factActions,
                             nextActionId = nextActionId,
                             onActionClick = { action ->
-                                if (task.status == TaskXStatus.IN_PROGRESS &&
-                                    !action.isSkipped
-                                ) {
-                                    if (action.isActionCompleted(task.factActions) &&
-                                        viewModel.supportsMultipleFactActions() &&
-                                        viewModel.isQuantityBasedAction(action)
-                                    ) {
-                                        viewModel.startActionExecution(action.id)
-                                    } else if (!action.isActionCompleted(task.factActions)) {
+                                if (task.status == TaskXStatus.IN_PROGRESS && !action.isSkipped) {
+                                    val isCompleted = action.isActionCompleted(task.factActions)
+
+                                    if (isCompleted) {
+                                        if (viewModel.canReopenAction(action, isCompleted)) {
+                                            viewModel.startActionExecution(action.id)
+                                        }
+                                    } else {
                                         viewModel.tryExecuteAction(action.id)
                                     }
                                 }
