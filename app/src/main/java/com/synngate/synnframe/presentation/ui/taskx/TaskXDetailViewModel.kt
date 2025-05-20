@@ -77,7 +77,6 @@ class TaskXDetailViewModel(
                 val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
                 val action = task.plannedActions.find { it.id == actionId }
 
-                // Проверка на возможность выполнения обычного действия
                 if (action != null && !action.isInitialAction) {
                     if (!initialActionsValidator.canExecuteRegularAction(task, actionId)) {
                         showInitialActionsRequiredMessage()
@@ -85,7 +84,6 @@ class TaskXDetailViewModel(
                     }
                 }
 
-                // Проверка строгого порядка выполнения только если не пропускаем эту проверку
                 if (!skipOrderCheck && isStrictOrder && action != null) {
                     val nextActionId = finalActionsValidator.getNextActionIdInStrictOrder(task)
                     if (nextActionId != actionId) {
@@ -117,29 +115,6 @@ class TaskXDetailViewModel(
         return finalActionsValidator.canExecuteFinalActions(task)
     }
 
-    fun canExecuteAction(actionId: String): Boolean {
-        val task = uiState.value.task ?: return false
-        val action = task.plannedActions.find { it.id == actionId } ?: return false
-
-        if (action.isInitialAction && !action.isCompleted && !action.isSkipped) {
-            return true
-        }
-
-        if (!action.isInitialAction && !initialActionsValidator.canExecuteRegularAction(task, actionId)) {
-            return false
-        }
-
-        if (action.isFinalAction && !finalActionsValidator.canExecuteFinalActions(task)) {
-            return false
-        }
-
-        val isStrictOrder = uiState.value.taskType?.strictActionOrder == true
-        if (!isStrictOrder) return true
-
-        val nextActionId = uiState.value.nextActionId
-        return nextActionId == actionId
-    }
-
     fun setActionsDisplayMode(mode: ActionDisplayMode) {
         updateState { it.copy(actionsDisplayMode = mode) }
         updateFilteredActions()
@@ -152,7 +127,6 @@ class TaskXDetailViewModel(
     fun showInitialActionsRequiredMessage() {
         updateState { it.copy(showOrderRequiredMessage = true) }
 
-        // Получаем текущую информацию о прогрессе
         val completedCount = uiState.value.completedInitialActionsCount
         val totalCount = uiState.value.totalInitialActionsCount
 
@@ -180,7 +154,6 @@ class TaskXDetailViewModel(
             return
         }
 
-        // Обычная обработка для не начальных действий
         val blockReason = finalActionsValidator.getActionBlockReason(task, actionId)
 
         when (blockReason) {
@@ -191,11 +164,9 @@ class TaskXDetailViewModel(
                 showFinalActionNotAvailableMessage()
             }
             is FinalActionsValidator.ActionBlockReason.OutOfOrder -> {
-                // Показываем диалог "Соблюдение порядка" только если включен строгий порядок
                 if (isStrictOrder) {
                     showOrderRequiredMessage()
                 } else {
-                    // Если строгий порядок не включен, игнорируем нарушение порядка
                     startActionExecution(actionId, skipOrderCheck = true)
                 }
             }
@@ -329,7 +300,6 @@ class TaskXDetailViewModel(
                 return@launchIO
             }
 
-            // Закрываем диалог подтверждения завершения
             updateState { it.copy(
                 showCompletionDialog = false,
                 isProcessingDialogAction = true
@@ -485,14 +455,11 @@ class TaskXDetailViewModel(
 
         val shouldShowSearch = taskType?.enableActionSearch == true
 
-        // Информация о начальных действиях
         val initialActions = task.plannedActions.filter { it.isInitialAction }
         val hasInitialActions = initialActions.isNotEmpty()
         val completedInitialActions = initialActions.count { it.isCompleted }
         val areInitialActionsCompleted = initialActions.all { it.isCompleted || it.isSkipped }
 
-        // Если у нас есть начальные действия, которые еще не выполнены,
-        // и мы в режиме отображения текущих действий, переключаемся на начальные
         val autoSwitchToInitials = hasInitialActions &&
                 !areInitialActionsCompleted &&
                 uiState.value.actionsDisplayMode == ActionDisplayMode.CURRENT
@@ -517,13 +484,11 @@ class TaskXDetailViewModel(
                 } else {
                     false
                 },
-                // Обновление информации о начальных действиях
                 hasInitialActions = hasInitialActions,
                 areInitialActionsCompleted = areInitialActionsCompleted,
                 completedInitialActionsCount = completedInitialActions,
                 totalInitialActionsCount = initialActions.size,
                 initialActionsIds = initialActions.map { it.id },
-                // Автоматическое переключение на режим начальных действий
                 actionsDisplayMode = newDisplayMode
             )
         }
@@ -587,7 +552,6 @@ class TaskXDetailViewModel(
     fun showInitialActionsRequiredDialog() {
         updateState { it.copy(showInitialActionsRequiredDialog = true) }
 
-        // Получаем текущую информацию о прогрессе
         val completedCount = uiState.value.completedInitialActionsCount
         val totalCount = uiState.value.totalInitialActionsCount
 
@@ -637,7 +601,6 @@ class TaskXDetailViewModel(
 
         var filteredActions = filterActionsByMode(task, mode)
 
-        // Если есть результаты поиска, дополнительно фильтруем по ним
         if (foundActionIds.isNotEmpty()) {
             filteredActions = filteredActions.filter { it.id in foundActionIds }
         }
@@ -748,7 +711,6 @@ class TaskXDetailViewModel(
             uiState.value.task?.status == TaskXStatus.PAUSED) {
             showActionsDialog()
         } else {
-            // Если задание не в активном состоянии, просто выполняем навигацию назад
             sendEvent(TaskXDetailEvent.NavigateBack)
         }
     }
@@ -819,8 +781,6 @@ class TaskXDetailViewModel(
         }
     }
 
-    private var searchJob: Job? = null
-
     fun searchActions() {
         val state = uiState.value
         val query = state.searchQuery.trim()
@@ -835,7 +795,6 @@ class TaskXDetailViewModel(
             updateState { it.copy(isSearching = true, searchError = null) }
 
             try {
-                // Получаем ID текущего действия, если есть следующее действие
                 val currentActionId = state.nextActionId
 
                 val result = actionSearchService.searchActions(

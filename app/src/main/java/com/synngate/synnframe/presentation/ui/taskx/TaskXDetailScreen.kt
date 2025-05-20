@@ -45,13 +45,11 @@ import com.synngate.synnframe.presentation.ui.taskx.components.ActionDisplayMode
 import com.synngate.synnframe.presentation.ui.taskx.components.ActionSearchBar
 import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableTaskInfoCard
 import com.synngate.synnframe.presentation.ui.taskx.components.FactActionsView
-import com.synngate.synnframe.presentation.ui.taskx.components.InitialActionsInfoBanner
 import com.synngate.synnframe.presentation.ui.taskx.components.InitialActionsRequiredDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionsView
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskProgressIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXActionsDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXVerificationDialog
-import com.synngate.synnframe.presentation.ui.taskx.model.ActionDisplayMode
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
 import kotlinx.coroutines.delay
@@ -288,15 +286,6 @@ fun TaskXDetailScreen(
             )
 
             Spacer(modifier = Modifier.height(4.dp))
-
-            // Баннер начальных действий (если они присутствуют и не все выполнены)
-            InitialActionsInfoBanner(
-                completedCount = state.completedInitialActionsCount,
-                totalCount = state.totalInitialActionsCount,
-                visible = state.hasInitialActions && !state.areInitialActionsCompleted && state.actionsDisplayMode != ActionDisplayMode.INITIALS,
-                onClick = { viewModel.goToInitialActions() },
-                modifier = Modifier.fillMaxWidth()
-            )
 
             when (state.activeView) {
                 TaskXDetailView.PLANNED_ACTIONS -> {
