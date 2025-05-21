@@ -29,11 +29,33 @@ interface ActionStepFactory : Disposable {
     fun releaseViewModel(step: ActionStep, action: PlannedAction)
 }
 
+/**
+ * Интерфейс для фабрик шагов, поддерживающих автозаполнение и автоматический переход
+ */
 interface AutoCompleteCapableFactory {
 
+    /**
+     * Возвращает имя поля для автозаполнения
+     */
     fun getAutoCompleteFieldName(step: ActionStep): String?
 
+    /**
+     * Проверяет, включено ли автозаполнение для шага
+     */
     fun isAutoCompleteEnabled(step: ActionStep): Boolean
 
+    /**
+     * Проверяет, требуется ли подтверждение для автоматического перехода
+     */
     fun requiresConfirmation(step: ActionStep, fieldName: String): Boolean
+
+    /**
+     * Проверяет, должен ли шаг быть автоматически завершен после автозаполнения
+     */
+    fun shouldAutoComplete(step: ActionStep): Boolean = true
+
+    /**
+     * Возвращает список типов объектов, которые могут быть автоматически заполнены
+     */
+    fun getSupportedAutoFillTypes(step: ActionStep): List<String> = emptyList()
 }

@@ -2,9 +2,13 @@ package com.synngate.synnframe.presentation.ui.wizard.action.utils
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +26,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.base.StepViewState
+import com.synngate.synnframe.presentation.ui.wizard.action.components.AutoFillIndicator
 import com.synngate.synnframe.presentation.ui.wizard.action.components.FormSpacer
 import com.synngate.synnframe.presentation.ui.wizard.action.components.StateType
 import com.synngate.synnframe.presentation.ui.wizard.action.components.WizardBarcodeField
@@ -36,7 +41,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.quantity.ProductQuan
 object WizardStepUtils {
 
     @Composable
-    fun <T> StandardStepContainer(
+    fun <T:Any> StandardStepContainer(
         state: StepViewState<T>,
         step: ActionStep,
         action: PlannedAction,
@@ -173,20 +178,31 @@ object WizardStepUtils {
         isError: Boolean = false,
         errorText: String? = null,
         onSelectFromList: (() -> Unit)? = null,
-        placeholder: String? = null
+        placeholder: String? = null,
+        isAutoFilled: Boolean = false
     ) {
-        WizardBarcodeField(
-            value = value,
-            onValueChange = onValueChange,
-            onSearch = onSearch,
-            onScannerClick = onScannerClick,
-            modifier = modifier,
-            label = label,
-            isError = isError,
-            errorText = errorText,
-            onSelectFromList = onSelectFromList,
-            placeholder = placeholder
-        )
+        Column(modifier = modifier) {
+            WizardBarcodeField(
+                value = value,
+                onValueChange = onValueChange,
+                onSearch = onSearch,
+                onScannerClick = onScannerClick,
+                modifier = Modifier.fillMaxWidth(),
+                label = label,
+                isError = isError,
+                errorText = errorText,
+                onSelectFromList = onSelectFromList,
+                placeholder = placeholder
+            )
+
+            if (isAutoFilled) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    AutoFillIndicator()
+                }
+            }
+        }
     }
 
     @Composable
@@ -213,6 +229,35 @@ object WizardStepUtils {
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center
                 )
+            }
+        }
+    }
+
+    @Composable
+    fun AutoFilledField(
+        label: String,
+        value: String,
+        source: String? = null,
+        modifier: Modifier = Modifier
+    ) {
+        Column(modifier = modifier) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                AutoFillIndicator(source = source)
             }
         }
     }

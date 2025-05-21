@@ -724,7 +724,8 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 taskId = taskId,
                 actionId = actionId,
                 wizardStateMachine = appContainer.wizardStateMachine,
-                actionStepFactoryRegistry = createActionStepFactoryRegistry()
+                actionStepFactoryRegistry = createActionStepFactoryRegistry(),
+                taskContextManager = appContainer.taskContextManager
             )
         }
     }

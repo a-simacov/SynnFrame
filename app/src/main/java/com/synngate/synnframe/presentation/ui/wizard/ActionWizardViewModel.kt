@@ -1,7 +1,10 @@
 package com.synngate.synnframe.presentation.ui.wizard
 
 import androidx.lifecycle.viewModelScope
+import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.model.wizard.WizardStateMachine
+import com.synngate.synnframe.domain.service.AutoFillManager
+import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.presentation.di.Disposable
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
@@ -18,12 +21,16 @@ class ActionWizardViewModel(
     val taskId: String,
     val actionId: String,
     val wizardStateMachine: WizardStateMachine,
-    val actionStepFactoryRegistry: ActionStepFactoryRegistry
+    val actionStepFactoryRegistry: ActionStepFactoryRegistry,
+    private val taskContextManager: TaskContextManager
 ) : BaseViewModel<Unit, ActionWizardEvent>(Unit), Disposable {
     private val TAG = "ActionWizardViewModel"
     private var observingJob: Job? = null
 
     private val safeToNavigateBack = AtomicBoolean(false)
+
+    // Создаем AutoFillManager для управления автозаполнением
+    private val autoFillManager = AutoFillManager(taskContextManager)
 
     init {
         viewModelScope.launch {
@@ -43,6 +50,9 @@ class ActionWizardViewModel(
                         safeToNavigateBack.set(true)
                         startObservingState()
                     }
+
+                    // Проверяем наличие сохраняемых объектов для текущего действия
+                    checkSavableObjects()
                 }
             } catch (e: Exception) {
                 Timber.e(e, "$TAG: Ошибка инициализации визарда: ${e.message}")
@@ -75,6 +85,9 @@ class ActionWizardViewModel(
     fun completeWizard() {
         launchIO {
             try {
+                // Сохраняем объекты перед завершением
+                processSavableObjectsFromWizard()
+
                 val result = wizardStateMachine.complete()
 
                 if (result.isSuccess) {
@@ -122,6 +135,55 @@ class ActionWizardViewModel(
                 Timber.e(e, "$TAG: Ошибка обработки результата шага: ${e.message}")
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: ${e.message}"))
             }
+        }
+    }
+
+    private fun checkSavableObjects() {
+        val currentState = wizardStateMachine.state.value
+        if (!currentState.isInitialized) return
+
+        val taskType = taskContextManager.lastTaskTypeX.value
+        if (taskType == null || taskType.savableObjectTypes.isEmpty()) return
+
+        Timber.d("$TAG: Checking savable objects for steps")
+
+        val availableObjects = taskContextManager.savableObjects.value
+        if (availableObjects.isNotEmpty()) {
+            Timber.d("$TAG: Available savable objects: ${availableObjects.size}")
+            availableObjects.forEach { obj ->
+                Timber.d("$TAG: Savable object: ${obj.objectType} - ${obj.getShortDescription()}")
+            }
+        }
+    }
+
+    private fun processSavableObjectsFromWizard() {
+        val currentState = wizardStateMachine.state.value
+        if (!currentState.isInitialized) return
+
+        val results = currentState.results
+
+        val markedObjects = results.entries
+            .filter { it.key.startsWith("savableObject_") }
+            .mapNotNull { entry ->
+                val typeStr = entry.key.removePrefix("savableObject_")
+                val type = try {
+                    ActionObjectType.valueOf(typeStr)
+                } catch (e: Exception) {
+                    null
+                }
+
+                if (type != null) {
+                    type to entry.value
+                } else null
+            }
+            .toMap()
+
+        if (markedObjects.isNotEmpty()) {
+            markedObjects.forEach { (type, data) ->
+                taskContextManager.addSavableObject(type, data, "action:$actionId")
+            }
+
+            Timber.d("$TAG: Saved ${markedObjects.size} objects from wizard")
         }
     }
 

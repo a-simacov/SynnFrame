@@ -1,6 +1,7 @@
 package com.synngate.synnframe.presentation.ui.wizard.action.pallet
 
 import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
@@ -54,6 +55,20 @@ class PalletSelectionViewModel(
 
     override fun onResultLoadedFromContext(result: Pallet) {
         selectedPallet = result
+    }
+
+    override fun applyAutoFill(data: Any): Boolean {
+        if (data is Pallet) {
+            try {
+                Timber.d("Автозаполнение паллеты: ${data.code}")
+                selectPallet(data)
+                return true
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при автозаполнении паллеты: ${e.message}")
+                return false
+            }
+        }
+        return super.applyAutoFill(data)
     }
 
     override fun processBarcode(barcode: String) {
@@ -147,6 +162,8 @@ class PalletSelectionViewModel(
 
     fun selectPallet(pallet: Pallet) {
         selectedPallet = pallet
+
+        markObjectForSaving(ActionObjectType.PALLET, pallet)
 
         if (stepFactory is AutoCompleteCapableFactory) {
             handleFieldUpdate("selectedPallet", pallet)

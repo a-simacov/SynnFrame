@@ -4,6 +4,7 @@ import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.ProductStatus
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
+import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
@@ -12,6 +13,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableF
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardUtils
 import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
+import timber.log.Timber
 import java.time.LocalDateTime
 
 class TaskProductSelectionViewModel(
@@ -60,6 +62,25 @@ class TaskProductSelectionViewModel(
 
     override fun isValidType(result: Any): Boolean {
         return result is TaskProduct
+    }
+
+    // Переопределяем метод для поддержки автозаполнения
+    override fun applyAutoFill(data: Any): Boolean {
+        if (data is TaskProduct) {
+            try {
+                Timber.d("Автозаполнение товара задания: ${data.product.name}")
+                selectedProduct = data.product
+                selectedTaskProduct = data
+                selectedStatus = data.status
+                expirationDate = if (data.hasExpirationDate()) data.expirationDate else null
+                updateStateFromSelectedProduct(true)
+                return true
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при автозаполнении товара задания: ${e.message}")
+                return false
+            }
+        }
+        return super.applyAutoFill(data)
     }
 
     private fun updateProductsFromLocalDb() {
@@ -254,6 +275,8 @@ class TaskProductSelectionViewModel(
     private fun updateStateFromSelectedProduct(checkAutoTransition: Boolean = false) {
         val taskProduct = createTaskProductFromState()
         if (taskProduct != null) {
+            markObjectForSaving(ActionObjectType.TASK_PRODUCT, taskProduct)
+
             if (checkAutoTransition && stepFactory is AutoCompleteCapableFactory) {
                 handleFieldUpdate("selectedTaskProduct", taskProduct)
             } else {

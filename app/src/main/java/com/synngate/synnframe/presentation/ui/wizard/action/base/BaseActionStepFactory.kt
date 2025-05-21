@@ -9,11 +9,10 @@ import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
 import com.synngate.synnframe.presentation.di.Disposable
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
-import timber.log.Timber
 import java.util.Collections
 import java.util.WeakHashMap
 
-abstract class BaseActionStepFactory<T> : ActionStepFactory {
+abstract class BaseActionStepFactory<T: Any> : ActionStepFactory {
 
     private val viewModelCache = Collections.synchronizedMap(
         WeakHashMap<String, BaseStepViewModel<T>>()

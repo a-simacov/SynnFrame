@@ -45,7 +45,7 @@ import kotlinx.coroutines.delay
 import timber.log.Timber
 
 @Composable
-fun <T> WizardStepContainer(
+fun <T: Any> WizardStepContainer(
     state: StepViewState<T>,
     step: ActionStep,
     action: PlannedAction,

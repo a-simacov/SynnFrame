@@ -2,6 +2,7 @@ package com.synngate.synnframe.presentation.ui.wizard.action.product
 
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
+import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
@@ -47,6 +48,21 @@ class ProductSelectionViewModel(
 
     override fun onResultLoadedFromContext(result: Product) {
         selectedProduct = result
+    }
+
+    // Переопределяем метод для поддержки автозаполнения
+    override fun applyAutoFill(data: Any): Boolean {
+        if (data is Product) {
+            try {
+                Timber.d("Автозаполнение товара: ${data.name}")
+                selectProduct(data)
+                return true
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при автозаполнении товара: ${e.message}")
+                return false
+            }
+        }
+        return super.applyAutoFill(data)
     }
 
     override fun processBarcode(barcode: String) {
@@ -109,6 +125,8 @@ class ProductSelectionViewModel(
 
     fun selectProduct(product: Product) {
         selectedProduct = product
+
+        markObjectForSaving(ActionObjectType.CLASSIFIER_PRODUCT, product)
 
         if (stepFactory is AutoCompleteCapableFactory) {
             handleFieldUpdate("selectedProduct", product)

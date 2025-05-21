@@ -2,10 +2,12 @@ package com.synngate.synnframe.presentation.ui.wizard.action.base
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.service.ValidationResult
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.di.Disposable
@@ -20,7 +22,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-abstract class BaseStepViewModel<T>(
+abstract class BaseStepViewModel<T: Any>(
     protected val step: ActionStep,
     protected val action: PlannedAction,
     protected val context: ActionContext,
@@ -35,7 +37,11 @@ abstract class BaseStepViewModel<T>(
 
     private var autoTransitionActivated = false
 
+    private var autoFilledApplied = false
+
     private val activeJobs = mutableListOf<Job>()
+
+    private val objectsMarkedForSaving = mutableMapOf<ActionObjectType, Any>()
 
     init {
         initStateFromContext()
@@ -43,6 +49,8 @@ abstract class BaseStepViewModel<T>(
         context.lastScannedBarcode?.let { barcode ->
             processBarcode(barcode)
         }
+
+        checkAndApplyAutoFill()
 
         isInitializing = false
     }
@@ -179,6 +187,8 @@ abstract class BaseStepViewModel<T>(
                     it.type == ValidationType.API_REQUEST && it.apiEndpoint != null
                 }
 
+                markObjectsForSaving(result)
+
                 if (!hasApiValidation) {
                     setData(result)
                     delay(50)
@@ -186,6 +196,71 @@ abstract class BaseStepViewModel<T>(
                 }
             } else {
                 setError("Некорректные данные для завершения шага")
+            }
+        }
+    }
+
+    private fun checkAndApplyAutoFill() {
+        if (autoFilledApplied || isInitializing) return
+
+        val taskContextManager = getTaskContextManager()
+        if (taskContextManager == null) {
+            Timber.w("Не удалось получить TaskContextManager для автозаполнения")
+            return
+        }
+
+        val objectType = step.objectType
+        if (!taskContextManager.hasSavableObjectOfType(objectType)) {
+            return
+        }
+
+        if (stepFactory !is AutoCompleteCapableFactory || !stepFactory.isAutoCompleteEnabled(step)) {
+            return
+        }
+
+        val autoFillData = taskContextManager.getSavableObjectData<Any>(objectType)
+        if (autoFillData != null) {
+            executeWithErrorHandling("применения автозаполнения", showLoading = false) {
+                applyAutoFill(autoFillData)
+            }
+        }
+    }
+
+    protected open fun applyAutoFill(data: Any): Boolean {
+        try {
+            if (isValidType(data)) {
+                @Suppress("UNCHECKED_CAST")
+                val typedData = data as T
+
+                setData(typedData)
+                autoFilledApplied = true
+
+                updateAdditionalData("autoFilled", true)
+
+                handleAutoFillCompletion(typedData)
+
+                return true
+            }
+            return false
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при применении автозаполнения: ${e.message}")
+            return false
+        }
+    }
+
+    private fun handleAutoFillCompletion(data: T) {
+        if (stepFactory !is AutoCompleteCapableFactory) return
+
+        val shouldAutoComplete = (stepFactory as AutoCompleteCapableFactory).shouldAutoComplete(step)
+
+        if (shouldAutoComplete) {
+            viewModelScope.launch {
+                // Небольшая задержка для отображения автозаполнения
+                delay(300)
+
+                if (validateData(data)) {
+                    completeStep(data)
+                }
             }
         }
     }
@@ -280,6 +355,51 @@ abstract class BaseStepViewModel<T>(
             } else {
                 setError("Некорректные данные для завершения шага")
             }
+        }
+    }
+
+    fun markObjectForSaving(objectType: ActionObjectType, data: Any) {
+        objectsMarkedForSaving[objectType] = data
+        updateAdditionalData("markedForSaving_$objectType", true)
+        Timber.d("Объект типа $objectType помечен для сохранения")
+    }
+
+    private fun markObjectsForSaving(result: Any) {
+        if (objectsMarkedForSaving.isEmpty()) {
+            autoMarkObjectForSaving(result)
+        }
+
+        for ((type, data) in objectsMarkedForSaving) {
+            updateAdditionalData("savableObject_$type", data)
+
+            context.onUpdate(mapOf("savableObject_$type" to data))
+        }
+    }
+
+    private fun autoMarkObjectForSaving(result: Any) {
+        val taskContextManager = getTaskContextManager() ?: return
+        val taskType = taskContextManager.lastTaskTypeX.value ?: return
+
+        val objectType = step.objectType
+        if (objectType in taskType.savableObjectTypes) {
+            objectsMarkedForSaving[objectType] = result
+        }
+    }
+
+    protected fun getTaskContextManager(): TaskContextManager? {
+        return try {
+            val taskContextManagerField = context.javaClass.declaredFields
+                .firstOrNull { it.name.contains("taskContextManager", ignoreCase = true) }
+
+            if (taskContextManagerField != null) {
+                taskContextManagerField.isAccessible = true
+                taskContextManagerField.get(context) as? TaskContextManager
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при получении TaskContextManager: ${e.message}")
+            null
         }
     }
 

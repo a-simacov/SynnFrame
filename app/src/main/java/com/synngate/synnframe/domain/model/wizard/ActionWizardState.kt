@@ -16,7 +16,13 @@ data class ActionWizardState(
     val lastScannedBarcode: String? = null,
     val isProcessingStep: Boolean = false,
     val isSending: Boolean = false,
-    val sendError: String? = null
+    val sendError: String? = null,
+
+    // Флаг для отслеживания возможности автозаполнения
+    val autoFillEnabled: Boolean = false,
+
+    // Информация о шагах, которые могут быть автозаполнены
+    val autoFillableSteps: Set<String> = emptySet()
 ) {
     val currentStep: WizardStep?
         get() = if (currentStepIndex < steps.size) steps[currentStepIndex] else null
@@ -32,4 +38,10 @@ data class ActionWizardState(
 
     val isUninitialized: Boolean
         get() = !isInitialized && action == null
+
+    // Проверяет, может ли текущий шаг быть автозаполнен
+    fun isCurrentStepAutoFillable(): Boolean {
+        val step = currentStep ?: return false
+        return autoFillEnabled && step.id in autoFillableSteps
+    }
 }

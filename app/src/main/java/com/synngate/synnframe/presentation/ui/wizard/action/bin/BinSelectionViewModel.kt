@@ -1,6 +1,7 @@
 package com.synngate.synnframe.presentation.ui.wizard.action.bin
 
 import com.synngate.synnframe.domain.entity.taskx.BinX
+import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
@@ -51,6 +52,20 @@ class BinSelectionViewModel(
 
     override fun onResultLoadedFromContext(result: BinX) {
         selectedBin = result
+    }
+
+    override fun applyAutoFill(data: Any): Boolean {
+        if (data is BinX) {
+            try {
+                Timber.d("Автозаполнение ячейки: ${data.code}")
+                selectBin(data)
+                return true
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при автозаполнении ячейки: ${e.message}")
+                return false
+            }
+        }
+        return super.applyAutoFill(data)
     }
 
     override fun processBarcode(barcode: String) {
@@ -116,6 +131,8 @@ class BinSelectionViewModel(
 
     fun selectBin(bin: BinX) {
         selectedBin = bin
+
+        markObjectForSaving(ActionObjectType.BIN, bin)
 
         if (stepFactory is AutoCompleteCapableFactory) {
             handleFieldUpdate("selectedBin", bin)

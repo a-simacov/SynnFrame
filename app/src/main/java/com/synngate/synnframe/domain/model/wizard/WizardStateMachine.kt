@@ -7,6 +7,7 @@ import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.service.ActionExecutionService
+import com.synngate.synnframe.domain.service.AutoFillManager
 import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.presentation.di.Disposable
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardUtils
@@ -28,16 +29,15 @@ class WizardStateMachine(
     val state: StateFlow<ActionWizardState> = _state.asStateFlow()
 
     private val initializationStarted = AtomicBoolean(false)
-
     private val initializationCompleted = AtomicBoolean(false)
-
     private var _lastSavedState: ActionWizardState? = null
-
     private var isExplicitlyCancelled = false
+
+    // Создаем AutoFillManager для управления автозаполнением
+    private val autoFillManager = AutoFillManager(taskContextManager)
 
     fun initialize(taskId: String, actionId: String): Result<Boolean> {
         isExplicitlyCancelled = false
-
         initializationStarted.set(true)
 
         try {
@@ -93,6 +93,9 @@ class WizardStateMachine(
                 isInitialized = true
             )
 
+            // Добавляем предварительную проверку наличия сохраняемых объектов для автозаполнения
+            checkSavableObjectsForAutoFill(initialState)
+
             saveStateForRecovery(initialState)
 
             _state.update { initialState }
@@ -113,6 +116,29 @@ class WizardStateMachine(
             }
 
             return Result.failure(e)
+        }
+    }
+
+    // Новый метод для проверки наличия сохраняемых объектов
+    private fun checkSavableObjectsForAutoFill(wizardState: ActionWizardState) {
+        // Проверяем активное состояние и наличие шагов
+        if (!wizardState.isInitialized || wizardState.steps.isEmpty()) {
+            return
+        }
+
+        // Тип задания необходим для определения сохраняемых типов объектов
+        val taskType = taskContextManager.lastTaskTypeX.value
+        if (taskType == null || taskType.savableObjectTypes.isEmpty()) {
+            return
+        }
+
+        Timber.d("$TAG: Checking savable objects for auto-fill")
+
+        // Добавляем метку в результаты для использования автозаполнения
+        _state.update { state ->
+            state.copy(
+                autoFillEnabled = true
+            )
         }
     }
 
@@ -184,6 +210,12 @@ class WizardStateMachine(
 
             val enrichedResults = WizardUtils.enrichResultsData(currentState.results)
 
+            // Сохраняем объекты после выполнения действия в TaskContextManager
+            autoFillManager.saveSavableObjectsFromResults(
+                enrichedResults,
+                currentState.steps.map { it.id }
+            )
+
             val result = actionExecutionService.executeAction(
                 taskId = currentState.taskId,
                 actionId = currentState.actionId,
@@ -228,6 +260,11 @@ class WizardStateMachine(
 
     fun isInitialized(): Boolean {
         return _state.value.isInitialized
+    }
+
+    // Возвращает текущее состояние для использования в AutoFillManager
+    fun getCurrentState(): ActionWizardState {
+        return _state.value
     }
 
     private fun saveStateForRecovery(state: ActionWizardState) {
