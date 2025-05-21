@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
+import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
@@ -133,14 +134,11 @@ fun PlannedActionItem(
     modifier: Modifier = Modifier
 ) {
     // Определяем цвет фона и информацию о статусе действия
-    // Кэшируем результат isActionCompleted и пересчитываем только
-    // когда меняются данные, влияющие на результат
     val isCompleted = remember(
         action.id,
         action.isCompleted,
         action.manuallyCompleted,
         factActions.size,
-        // Хэш-сумма для отслеживания изменений в количестве
         factActions.filter { it.plannedActionId == action.id }
             .sumOf { it.storageProduct?.quantity?.toDouble() ?: 0.0 }
     ) {
@@ -159,6 +157,10 @@ fun PlannedActionItem(
     }
 
     val hasMultipleFactActions = action.canHaveMultipleFactActions()
+
+    // Получаем типы объектов на основе шагов
+    val storageObjectTypes = action.getStorageObjectTypes()
+    val placementObjectTypes = action.getPlacementObjectTypes()
 
     // Рассчитываем плановое и фактическое количество для отображения
     val plannedQuantity = action.getPlannedQuantity()
@@ -256,52 +258,61 @@ fun PlannedActionItem(
                 }
 
             // Дополнительная информация о товаре, если есть
-            action.storageProduct?.let { product ->
-                Text(
-                    text = product.product.name,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = modifier
-                        .padding(top = 4.dp)
-                        .heightIn(min = lineHeight * 2)
-                )
-
-                // Показываем количество для действий с учетом количества
-                if (hasMultipleFactActions && plannedQuantity > 0) {
+            if (ActionObjectType.TASK_PRODUCT in storageObjectTypes ||
+                ActionObjectType.CLASSIFIER_PRODUCT in storageObjectTypes) {
+                action.storageProduct?.let { product ->
                     Text(
-                        text = "Количество: $completedQuantity / $plannedQuantity",
+                        text = product.product.name,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = modifier
+                            .padding(top = 4.dp)
+                            .heightIn(min = lineHeight * 2)
+                    )
+
+                    // Показываем количество для действий с учетом количества
+                    if (hasMultipleFactActions && plannedQuantity > 0) {
+                        Text(
+                            text = "Количество: $completedQuantity / $plannedQuantity",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            // Отображение паллеты хранения, если есть
+            if (ActionObjectType.PALLET in storageObjectTypes) {
+                action.storagePallet?.let { pallet ->
+                    Text(
+                        text = "Паллета хранения: ${pallet.code}",
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
             }
 
-            // Отображение паллеты хранения, если есть
-            action.storagePallet?.let { pallet ->
-                Text(
-                    text = "Паллета хранения: ${pallet.code}",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-            }
-
             // Отображение ячейки размещения, если есть
-            action.placementBin?.let { bin ->
-                Text(
-                    text = "Ячейка размещения: ${bin.code}",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
+            if (ActionObjectType.BIN in placementObjectTypes) {
+                action.placementBin?.let { bin ->
+                    Text(
+                        text = "Ячейка размещения: ${bin.code}",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
             }
 
             // Отображение паллеты размещения, если есть
-            action.placementPallet?.let { pallet ->
-                Text(
-                    text = "Паллета размещения: ${pallet.code}",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
+            if (ActionObjectType.PALLET in placementObjectTypes) {
+                action.placementPallet?.let { pallet ->
+                    Text(
+                        text = "Паллета размещения: ${pallet.code}",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
             }
 
             // Индикатор прогресса для действий с учетом количества

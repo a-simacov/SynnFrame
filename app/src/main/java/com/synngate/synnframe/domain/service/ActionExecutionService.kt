@@ -227,6 +227,14 @@ class ActionExecutionService(
         action: PlannedAction,
         stepResults: Map<String, Any>
     ): TaskProduct? {
+        val hasStorageProductStep = action.actionTemplate.storageSteps.any {
+            it.objectType == ActionObjectType.TASK_PRODUCT || it.objectType == ActionObjectType.CLASSIFIER_PRODUCT
+        }
+
+        if (!hasStorageProductStep) {
+            return action.storageProduct
+        }
+
         val lastTaskProduct = stepResults["lastTaskProduct"] as? TaskProduct
         if (lastTaskProduct != null && lastTaskProduct.quantity > 0f) {
             return lastTaskProduct
@@ -300,15 +308,24 @@ class ActionExecutionService(
         action: PlannedAction,
         stepResults: Map<String, Any>
     ): Pallet? {
-        if (action.actionTemplate.storageObjectType == ActionObjectType.PALLET) {
-            for ((key, value) in stepResults) {
-                if (value is Pallet && key.contains("storage", ignoreCase = true)) {
-                    return value
-                }
-            }
+        val hasStoragePalletStep = action.actionTemplate.storageSteps.any {
+            it.objectType == ActionObjectType.PALLET
+        }
 
-            for ((_, value) in stepResults) {
-                if (value is Pallet) {
+        if (!hasStoragePalletStep) {
+            return action.storagePallet
+        }
+
+        for ((key, value) in stepResults) {
+            if (value is Pallet && key.contains("storage", ignoreCase = true)) {
+                return value
+            }
+        }
+
+        for ((_, value) in stepResults) {
+            if (value is Pallet) {
+                val placementPallet = extractPlacementPallet(action, stepResults)
+                if (placementPallet == null || value.code != placementPallet.code) {
                     return value
                 }
             }
@@ -321,18 +338,24 @@ class ActionExecutionService(
         action: PlannedAction,
         stepResults: Map<String, Any>
     ): Pallet? {
-        if (action.actionTemplate.placementObjectType == ActionObjectType.PALLET) {
-            for ((key, value) in stepResults) {
-                if (value is Pallet && key.contains("placement", ignoreCase = true)) {
-                    return value
-                }
-            }
+        val hasPlacementPalletStep = action.actionTemplate.placementSteps.any {
+            it.objectType == ActionObjectType.PALLET
+        }
 
-            val storagePallet = extractStoragePallet(action, stepResults)
-            for ((_, value) in stepResults) {
-                if (value is Pallet && value != storagePallet) {
-                    return value
-                }
+        if (!hasPlacementPalletStep) {
+            return action.placementPallet
+        }
+
+        for ((key, value) in stepResults) {
+            if (value is Pallet && key.contains("placement", ignoreCase = true)) {
+                return value
+            }
+        }
+
+        val storagePallet = extractStoragePallet(action, stepResults)
+        for ((_, value) in stepResults) {
+            if (value is Pallet && (storagePallet == null || value.code != storagePallet.code)) {
+                return value
             }
         }
 
@@ -343,11 +366,17 @@ class ActionExecutionService(
         action: PlannedAction,
         stepResults: Map<String, Any>
     ): BinX? {
-        if (action.actionTemplate.placementObjectType == ActionObjectType.BIN) {
-            for ((_, value) in stepResults) {
-                if (value is BinX) {
-                    return value
-                }
+        val hasPlacementBinStep = action.actionTemplate.placementSteps.any {
+            it.objectType == ActionObjectType.BIN
+        }
+
+        if (!hasPlacementBinStep) {
+            return action.placementBin
+        }
+
+        for ((_, value) in stepResults) {
+            if (value is BinX) {
+                return value
             }
         }
 

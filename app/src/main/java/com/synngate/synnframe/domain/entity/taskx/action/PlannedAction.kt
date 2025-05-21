@@ -152,4 +152,46 @@ data class PlannedAction(
             }
         }
     }
+
+    fun getStorageObjectTypes(): List<ActionObjectType> {
+        return actionTemplate.storageSteps.map { it.objectType }.distinct()
+    }
+
+    fun getPlacementObjectTypes(): List<ActionObjectType> {
+        return actionTemplate.placementSteps.map { it.objectType }.distinct()
+    }
+
+    fun hasStorageObjectType(objectType: ActionObjectType): Boolean {
+        return actionTemplate.storageSteps.any { it.objectType == objectType }
+    }
+
+    fun hasPlacementObjectType(objectType: ActionObjectType): Boolean {
+        return actionTemplate.placementSteps.any { it.objectType == objectType }
+    }
+
+    fun getPrimaryStorageObjectType(): ActionObjectType? {
+        val storageObjectTypes = getStorageObjectTypes()
+
+        val priorityOrder = listOf(
+            ActionObjectType.TASK_PRODUCT,
+            ActionObjectType.CLASSIFIER_PRODUCT,
+            ActionObjectType.PALLET,
+            ActionObjectType.BIN
+        )
+
+        return priorityOrder.firstOrNull { it in storageObjectTypes }
+    }
+
+    fun getPrimaryPlacementObjectType(): ActionObjectType? {
+        val placementObjectTypes = getPlacementObjectTypes()
+
+        val priorityOrder = listOf(
+            ActionObjectType.BIN,
+            ActionObjectType.PALLET,
+            ActionObjectType.TASK_PRODUCT,
+            ActionObjectType.CLASSIFIER_PRODUCT
+        )
+
+        return priorityOrder.firstOrNull { it in placementObjectTypes }
+    }
 }

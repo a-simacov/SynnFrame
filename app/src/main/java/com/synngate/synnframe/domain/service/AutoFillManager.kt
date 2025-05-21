@@ -6,6 +6,7 @@ import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
+import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import timber.log.Timber
 
@@ -22,11 +23,20 @@ class AutoFillManager(
      * @return true, если шаг может быть автоматически заполнен
      */
     fun canAutoFillStep(
+        action: PlannedAction,
         step: ActionStep,
         factory: Any?
     ): Boolean {
         // Базовые проверки
         if (factory !is AutoCompleteCapableFactory || !factory.isAutoCompleteEnabled(step)) {
+            return false
+        }
+
+        // Проверяем, входит ли шаг в шаги хранения или размещения
+        val isStorageStep = action.actionTemplate.storageSteps.any { it.id == step.id }
+        val isPlacementStep = action.actionTemplate.placementSteps.any { it.id == step.id }
+
+        if (!isStorageStep && !isPlacementStep) {
             return false
         }
 
@@ -108,5 +118,37 @@ class AutoFillManager(
      */
     fun clearSavableObjects() {
         taskContextManager.clearSavableObjects()
+    }
+
+    /**
+     * Получает подходящие шаги для автозаполнения в контексте действия
+     */
+    fun getAutoFillableStepsForAction(action: PlannedAction): Set<String> {
+        val taskType = taskContextManager.lastTaskTypeX.value ?: return emptySet()
+        val savableObjectTypes = taskType.savableObjectTypes
+
+        if (savableObjectTypes.isEmpty()) {
+            return emptySet()
+        }
+
+        val autoFillableSteps = mutableSetOf<String>()
+
+        // Проверяем шаги хранения
+        for (step in action.actionTemplate.storageSteps) {
+            if (step.objectType in savableObjectTypes &&
+                taskContextManager.hasSavableObjectOfType(step.objectType)) {
+                autoFillableSteps.add(step.id)
+            }
+        }
+
+        // Проверяем шаги размещения
+        for (step in action.actionTemplate.placementSteps) {
+            if (step.objectType in savableObjectTypes &&
+                taskContextManager.hasSavableObjectOfType(step.objectType)) {
+                autoFillableSteps.add(step.id)
+            }
+        }
+
+        return autoFillableSteps
     }
 }

@@ -57,34 +57,55 @@ class ActionSearchServiceImpl(
         for (action in plannedActions) {
             val found = when (searchObject.objectType) {
                 ActionObjectType.BIN -> {
-                    action.placementBin?.code?.lowercase() == searchLower
+                    // Проверяем, имеет ли действие шаги с типом BIN
+                    if (action.hasPlacementObjectType(ActionObjectType.BIN)) {
+                        action.placementBin?.code?.lowercase() == searchLower
+                    } else false
                 }
                 ActionObjectType.PALLET -> {
-                    action.storagePallet?.code?.lowercase() == searchLower ||
-                            action.placementPallet?.code?.lowercase() == searchLower
-                }
-                ActionObjectType.CLASSIFIER_PRODUCT -> {
-                    if (action.storageProduct?.product?.id == searchValue) {
+                    // Проверяем паллеты в шагах хранения и размещения
+                    if (action.hasStorageObjectType(ActionObjectType.PALLET) &&
+                        action.storagePallet?.code?.lowercase() == searchLower) {
+                        true
+                    } else if (action.hasPlacementObjectType(ActionObjectType.PALLET) &&
+                        action.placementPallet?.code?.lowercase() == searchLower) {
                         true
                     } else {
-                        val productFromBarcode = productRepository.findProductByBarcode(searchValue)
-                        if (productFromBarcode != null) {
-                            action.storageProduct?.product?.id == productFromBarcode.id
-                        } else {
-                            action.storageProduct?.product?.getAllBarcodes()?.any {
-                                it.lowercase() == searchLower
-                            } == true
-                        }
+                        false
                     }
                 }
+                ActionObjectType.CLASSIFIER_PRODUCT -> {
+                    // Проверяем товары в шагах хранения
+                    if (action.hasStorageObjectType(ActionObjectType.CLASSIFIER_PRODUCT) ||
+                        action.hasStorageObjectType(ActionObjectType.TASK_PRODUCT)) {
+
+                        if (action.storageProduct?.product?.id == searchValue) {
+                            true
+                        } else {
+                            val productFromBarcode = productRepository.findProductByBarcode(searchValue)
+                            if (productFromBarcode != null) {
+                                action.storageProduct?.product?.id == productFromBarcode.id
+                            } else {
+                                action.storageProduct?.product?.getAllBarcodes()?.any {
+                                    it.lowercase() == searchLower
+                                } == true
+                            }
+                        }
+                    } else false
+                }
                 ActionObjectType.TASK_PRODUCT -> {
-                    action.storageProduct?.product?.id == searchValue ||
-                            productRepository.findProductByBarcode(searchValue)?.let { foundProduct ->
-                                action.storageProduct?.product?.id == foundProduct.id
-                            } == true
+                    // Проверяем товары в шагах хранения
+                    if (action.hasStorageObjectType(ActionObjectType.TASK_PRODUCT) ||
+                        action.hasStorageObjectType(ActionObjectType.CLASSIFIER_PRODUCT)) {
+
+                        action.storageProduct?.product?.id == searchValue ||
+                                productRepository.findProductByBarcode(searchValue)?.let { foundProduct ->
+                                    action.storageProduct?.product?.id == foundProduct.id
+                                } == true
+                    } else false
                 }
                 ActionObjectType.PRODUCT_QUANTITY -> {
-                    false
+                    false // Для количества товара поиск не применяется
                 }
             }
 
