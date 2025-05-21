@@ -1,5 +1,6 @@
 package com.synngate.synnframe.domain.entity.taskx
 
+import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.SearchableActionObject
 import kotlinx.serialization.Serializable
 
@@ -15,5 +16,6 @@ data class TaskTypeX(
     val availableActions: List<AvailableTaskAction> = emptyList(),
     val allowMultipleFactActions: Boolean = false,
     val enableActionSearch: Boolean = false,
-    val searchableActionObjects: List<SearchableActionObject> = emptyList()
+    val searchableActionObjects: List<SearchableActionObject> = emptyList(),
+    val savableObjectTypes: List<ActionObjectType> = emptyList()
 )

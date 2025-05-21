@@ -3,9 +3,13 @@ package com.synngate.synnframe.domain.service
 import com.synngate.synnframe.data.remote.dto.TaskXStartResponseDto
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
+import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
+import com.synngate.synnframe.domain.service.savable.SavableObjectService
+import com.synngate.synnframe.domain.service.savable.SavableObjectsManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import timber.log.Timber
 
 class TaskContextManager {
 
@@ -18,12 +22,17 @@ class TaskContextManager {
     private val _currentEndpoint = MutableStateFlow<String?>(null)
     val currentEndpoint: StateFlow<String?> = _currentEndpoint.asStateFlow()
 
+    private val savableObjectsManager: SavableObjectService = SavableObjectsManager()
+    val savableObjects = savableObjectsManager.objects
+
     fun saveStartedTask(response: TaskXStartResponseDto, endpoint: String) {
         val processedTask = processTaskActions(response.task)
 
         _lastStartedTaskX.value = processedTask
         _lastTaskTypeX.value = response.taskType
         _currentEndpoint.value = endpoint
+
+        savableObjectsManager.clear()
     }
 
     fun updateTask(updatedTask: TaskX, skipStatusProcessing: Boolean = false) {
@@ -54,5 +63,36 @@ class TaskContextManager {
         }
 
         return task.copy(plannedActions = updatedPlannedActions)
+    }
+
+    fun addSavableObject(objectType: ActionObjectType, data: Any, source: String): Boolean {
+        val taskType = _lastTaskTypeX.value
+        if (taskType == null) {
+            Timber.w("Невозможно добавить сохраняемый объект: тип задания не определен")
+            return false
+        }
+
+        if (!taskType.savableObjectTypes.contains(objectType)) {
+            Timber.w("Тип объекта $objectType не входит в список разрешенных для сохранения")
+            return false
+        }
+
+        return savableObjectsManager.addObject(objectType, data, source)
+    }
+
+    fun removeSavableObject(id: String): Boolean {
+        return savableObjectsManager.removeObject(id)
+    }
+
+    fun clearSavableObjects() {
+        savableObjectsManager.clear()
+    }
+
+    fun <T : Any> getSavableObjectData(type: ActionObjectType): T? {
+        return savableObjectsManager.getDataByType(type)
+    }
+
+    fun hasSavableObjectOfType(type: ActionObjectType): Boolean {
+        return savableObjectsManager.hasObjectOfType(type)
     }
 }
