@@ -91,6 +91,8 @@ class TaskContextManager {
     }
 
     fun hasSavableObjectOfType(type: ActionObjectType): Boolean {
-        return savableObjectsManager.hasObjectOfType(type)
+        val taskType = _lastTaskTypeX.value
+        return taskType?.savableObjectTypes?.contains(type) == true &&
+                savableObjectsManager.hasObjectOfType(type)
     }
 }

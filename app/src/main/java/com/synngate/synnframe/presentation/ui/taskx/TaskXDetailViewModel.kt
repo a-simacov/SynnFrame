@@ -430,25 +430,62 @@ class TaskXDetailViewModel(
         }
     }
 
+    private fun updateSavableObjects() {
+        if (taskContextManager != null) {
+            val taskType = uiState.value.taskType
+            val supportsSavableObjects = taskType?.savableObjectTypes?.isNotEmpty() == true
+
+            if (supportsSavableObjects) {
+                val objects = taskContextManager.savableObjects.value
+                updateState { state ->
+                    state.copy(
+                        savableObjects = objects,
+                        showSavableObjectsPanel = objects.isNotEmpty() && supportsSavableObjects
+                    )
+                }
+            }
+        }
+    }
+
     private fun startObservingTaskChanges() {
         taskObserverJob?.cancel()
 
         taskObserverJob = viewModelScope.launch {
-            uiState
-                .map { it.task }
-                .distinctUntilChanged { old, new ->
-                    if (old == null || new == null) false
-                    else old.id == new.id &&
-                            old.status == new.status &&
-                            old.factActions.size == new.factActions.size &&
-                            old.plannedActions.count { it.isCompleted } == new.plannedActions.count { it.isCompleted }
-                }
-                .collect { task ->
-                    if (task != null) {
-                        val taskType = uiState.value.taskType
-                        updateDependentState(task, taskType)
+            // Подписка на изменения задания
+            launch {
+                uiState
+                    .map { it.task }
+                    .distinctUntilChanged { old, new ->
+                        if (old == null || new == null) false
+                        else old.id == new.id &&
+                                old.status == new.status &&
+                                old.factActions.size == new.factActions.size &&
+                                old.plannedActions.count { it.isCompleted } == new.plannedActions.count { it.isCompleted }
+                    }
+                    .collect { task ->
+                        if (task != null) {
+                            val taskType = uiState.value.taskType
+                            updateDependentState(task, taskType)
+                        }
+                    }
+            }
+
+            // Подписка на изменения сохраняемых объектов
+            if (taskContextManager != null) {
+                launch {
+                    taskContextManager.savableObjects.collect { objects ->
+                        updateState { state ->
+                            val taskType = state.taskType
+                            val supportsSavableObjects = taskType?.savableObjectTypes?.isNotEmpty() == true
+
+                            state.copy(
+                                savableObjects = objects,
+                                showSavableObjectsPanel = objects.isNotEmpty() && supportsSavableObjects
+                            )
+                        }
                     }
                 }
+            }
         }
     }
 
@@ -795,6 +832,7 @@ class TaskXDetailViewModel(
         launchIO {
             try {
                 updateSingleAction(actionId)
+                updateSavableObjects()
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
 
                 if (uiState.value.filteredActionIds.contains(actionId)) {
