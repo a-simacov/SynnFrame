@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -45,9 +46,11 @@ import com.synngate.synnframe.presentation.ui.taskx.components.ActionDisplayMode
 import com.synngate.synnframe.presentation.ui.taskx.components.ActionSearchBar
 import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableTaskInfoCard
 import com.synngate.synnframe.presentation.ui.taskx.components.FactActionsView
+import com.synngate.synnframe.presentation.ui.taskx.components.FilterIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.InitialActionsRequiredDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionsView
 import com.synngate.synnframe.presentation.ui.taskx.components.SavableObjectsPanel
+import com.synngate.synnframe.presentation.ui.taskx.components.SearchResultsIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskProgressIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXActionsDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXVerificationDialog
@@ -294,6 +297,47 @@ fun TaskXDetailScreen(
                 visible = state.showSavableObjectsPanel && state.supportsSavableObjects,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            if (state.activeView == TaskXDetailView.PLANNED_ACTIONS) {
+                FilterIndicator(
+                    message = state.filterMessage,
+                    onClearFilter = viewModel::clearAllFilters,
+                    visible = state.isFilteredBySavableObjects && state.filterMessage.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                SearchResultsIndicator(
+                    resultsCount = state.filteredActions.size,
+                    visible = state.searchInfo.isNotEmpty() && !state.isFilteredBySavableObjects,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+
+            if (state.showSavableObjectsPanel && state.supportsSavableObjects && state.savableObjects.isNotEmpty() &&
+                !state.isFilteredBySavableObjects && state.activeView == TaskXDetailView.PLANNED_ACTIONS) {
+
+                Button(
+                    onClick = viewModel::enableSavableObjectsFiltering,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FilterAlt,
+                        contentDescription = "Фильтровать по объектам",
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text("Фильтровать действия по объектам")
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+            }
 
             when (state.activeView) {
                 TaskXDetailView.PLANNED_ACTIONS -> {

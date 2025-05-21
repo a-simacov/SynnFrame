@@ -46,7 +46,13 @@ data class TaskXDetailState(
     // Поля для поддержки сохраняемых объектов
     val savableObjects: List<SavableObject> = emptyList(),
     val showSavableObjectsPanel: Boolean = false,
-    val supportsSavableObjects: Boolean = false
+    val supportsSavableObjects: Boolean = false,
+
+    // Новые поля для улучшения UX при фильтрации
+    val searchInfo: String = "",                         // Информация о результатах поиска
+    val isFilteredBySavableObjects: Boolean = false,     // Признак фильтрации по сохраняемым объектам
+    val activeFiltersCount: Int = 0,                     // Количество активных фильтров
+    val filterMessage: String = ""                       // Сообщение о применяемых фильтрах
 )
 
 sealed class TaskXDetailEvent {

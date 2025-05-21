@@ -1,10 +1,17 @@
 package com.synngate.synnframe.presentation.ui.taskx
 
 import androidx.lifecycle.viewModelScope
+import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.AvailableTaskAction
+import com.synngate.synnframe.domain.entity.taskx.BinX
+import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.SavableObject
+import com.synngate.synnframe.domain.entity.taskx.SavableObjectData
+import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
+import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.entity.taskx.action.ProgressType
 import com.synngate.synnframe.domain.service.ActionExecutionService
@@ -611,11 +618,25 @@ class TaskXDetailViewModel(
         val task = uiState.value.task ?: return
         val mode = uiState.value.actionsDisplayMode
         val foundActionIds = uiState.value.filteredActionIds
+        val savableObjects = uiState.value.savableObjects
 
         var filteredActions = filterActionsByMode(task, mode)
 
         if (foundActionIds.isNotEmpty()) {
             filteredActions = filteredActions.filter { it.id in foundActionIds }
+        }
+
+        else if (savableObjects.isNotEmpty() && uiState.value.supportsSavableObjects && uiState.value.showSavableObjectsPanel) {
+            val savableObjectsActionIds = mutableSetOf<String>()
+
+            savableObjects.forEach { savableObject ->
+                val matchingIds = findActionsForSavableObject(task, savableObject)
+                savableObjectsActionIds.addAll(matchingIds)
+            }
+
+            if (savableObjectsActionIds.isNotEmpty()) {
+                filteredActions = filteredActions.filter { it.id in savableObjectsActionIds }
+            }
         }
 
         updateState { it.copy(filteredActions = filteredActions) }
@@ -846,15 +867,125 @@ class TaskXDetailViewModel(
             it.copy(
                 searchQuery = "",
                 filteredActionIds = emptyList(),
-                searchError = null
+                searchError = null,
+                searchInfo = "",
+                isFilteredBySavableObjects = false,
+                filterMessage = ""
             )
         }
         updateFilteredActions()
     }
 
+    fun clearAllFilters() {
+        clearSearch()
+
+        updateState {
+            it.copy(
+                isFilteredBySavableObjects = false,
+                activeFiltersCount = 0,
+                filterMessage = ""
+            )
+        }
+
+        updateFilteredActions()
+    }
+
+    fun enableSavableObjectsFiltering() {
+        val savableObjects = uiState.value.savableObjects
+        if (savableObjects.isEmpty()) return
+
+        // Формируем сообщение о фильтрации
+        val objectTypesCount = savableObjects.map { it.objectType }.distinct().size
+        val message = when {
+            objectTypesCount == 1 -> "Фильтр по объекту: ${savableObjects.first().getShortDescription()}"
+            else -> "Фильтр по ${savableObjects.size} объектам"
+        }
+
+        updateState {
+            it.copy(
+                isFilteredBySavableObjects = true,
+                activeFiltersCount = savableObjects.size,
+                filterMessage = message
+            )
+        }
+
+        // Применяем фильтрацию
+        filterActionsBySavableObjects()
+    }
+
     fun searchByScanner(barcode: String) {
         updateState { it.copy(searchQuery = barcode) }
+        tryIdentifyAndSaveObject(barcode)
         searchActions()
+    }
+
+    private fun tryIdentifyAndSaveObject(barcode: String) {
+        val task = uiState.value.task ?: return
+        val taskType = uiState.value.taskType ?: return
+
+        if (!uiState.value.supportsSavableObjects || taskContextManager == null) {
+            return
+        }
+
+        // Проверяем паллеты
+        if (ActionObjectType.PALLET in taskType.savableObjectTypes) {
+            task.plannedActions.forEach { action ->
+                if (action.storagePallet?.code == barcode || action.placementPallet?.code == barcode) {
+                    val pallet = action.storagePallet ?: action.placementPallet
+                    if (pallet != null) {
+                        taskContextManager.addSavableObject(
+                            ActionObjectType.PALLET,
+                            pallet,
+                            "scan:pallet:$barcode"
+                        )
+                        return
+                    }
+                }
+            }
+        }
+
+        // Проверяем ячейки
+        if (ActionObjectType.BIN in taskType.savableObjectTypes) {
+            task.plannedActions.forEach { action ->
+                if (action.placementBin?.code == barcode) {
+                    val bin = action.placementBin
+                    taskContextManager.addSavableObject(
+                        ActionObjectType.BIN,
+                        bin,
+                        "scan:bin:$barcode"
+                    )
+                    return
+                }
+            }
+        }
+
+        // Проверяем товары
+        if (ActionObjectType.TASK_PRODUCT in taskType.savableObjectTypes ||
+            ActionObjectType.CLASSIFIER_PRODUCT in taskType.savableObjectTypes) {
+
+            // Здесь можно было бы использовать productRepository.findProductByBarcode
+            // Но эта реализация выходит за рамки данного этапа
+
+            task.plannedActions.forEach { action ->
+                val product = action.storageProduct?.product
+                if (product != null && product.getAllBarcodes().contains(barcode)) {
+                    if (ActionObjectType.TASK_PRODUCT in taskType.savableObjectTypes) {
+                        taskContextManager.addSavableObject(
+                            ActionObjectType.TASK_PRODUCT,
+                            action.storageProduct,
+                            "scan:taskproduct:$barcode"
+                        )
+                    } else {
+                        taskContextManager.addSavableObject(
+                            ActionObjectType.CLASSIFIER_PRODUCT,
+                            product,
+                            "scan:product:$barcode"
+                        )
+                    }
+                    return
+                }
+            }
+        }
     }
 
     private fun processSearchResults(foundActionIds: List<String>) {
@@ -883,6 +1014,15 @@ class TaskXDetailViewModel(
             }
         } else {
             updateFilteredActionsBySearch()
+
+            val foundCount = foundActionIds.size
+            val message = when {
+                foundCount == 1 -> "Найдено 1 действие"
+                foundCount in 2..4 -> "Найдено $foundCount действия"
+                else -> "Найдено $foundCount действий"
+            }
+
+            updateState { it.copy(searchInfo = message) }
 
             if (foundActionIds.size == 1) {
                 val actionId = foundActionIds.first()
@@ -998,6 +1138,97 @@ class TaskXDetailViewModel(
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при очистке объектов"))
             }
         }
+    }
+
+    fun filterActionsBySavableObjects() {
+        val task = uiState.value.task ?: return
+        val savableObjects = uiState.value.savableObjects
+
+        if (savableObjects.isEmpty()) {
+            updateFilteredActions()
+            return
+        }
+
+        val matchingActionIds = mutableSetOf<String>()
+
+        savableObjects.forEach { savableObject ->
+            val ids = findActionsForSavableObject(task, savableObject)
+            matchingActionIds.addAll(ids)
+        }
+
+        if (matchingActionIds.isNotEmpty()) {
+            updateState { state ->
+                state.copy(
+                    filteredActionIds = matchingActionIds.toList(),
+                    searchQuery = "Фильтр по объектам"
+                )
+            }
+        }
+
+        updateFilteredActions()
+    }
+
+    private fun findActionsForSavableObject(task: TaskX, savableObject: SavableObject): List<String> {
+        return when (savableObject.objectType) {
+            ActionObjectType.PALLET -> {
+                val palletData = (savableObject.objectData as? SavableObjectData.PalletData)?.pallet
+                if (palletData != null) {
+                    findActionsByPallet(task, palletData)
+                } else emptyList()
+            }
+            ActionObjectType.BIN -> {
+                val binData = (savableObject.objectData as? SavableObjectData.BinData)?.bin
+                if (binData != null) {
+                    findActionsByBin(task, binData)
+                } else emptyList()
+            }
+            ActionObjectType.TASK_PRODUCT -> {
+                val productData = (savableObject.objectData as? SavableObjectData.TaskProductData)?.taskProduct
+                if (productData != null) {
+                    findActionsByTaskProduct(task, productData)
+                } else emptyList()
+            }
+            ActionObjectType.CLASSIFIER_PRODUCT -> {
+                val productData = (savableObject.objectData as? SavableObjectData.ProductData)?.product
+                if (productData != null) {
+                    findActionsByProduct(task, productData)
+                } else emptyList()
+            }
+            else -> emptyList()
+        }
+    }
+
+    private fun findActionsByPallet(task: TaskX, pallet: Pallet): List<String> {
+        return task.plannedActions
+            .filter { action ->
+                action.storagePallet?.code == pallet.code ||
+                        action.placementPallet?.code == pallet.code
+            }
+            .map { it.id }
+    }
+
+    private fun findActionsByBin(task: TaskX, bin: BinX): List<String> {
+        return task.plannedActions
+            .filter { action ->
+                action.placementBin?.code == bin.code
+            }
+            .map { it.id }
+    }
+
+    private fun findActionsByTaskProduct(task: TaskX, taskProduct: TaskProduct): List<String> {
+        return task.plannedActions
+            .filter { action ->
+                action.storageProduct?.product?.id == taskProduct.product.id
+            }
+            .map { it.id }
+    }
+
+    private fun findActionsByProduct(task: TaskX, product: Product): List<String> {
+        return task.plannedActions
+            .filter { action ->
+                action.storageProduct?.product?.id == product.id
+            }
+            .map { it.id }
     }
 
     override fun dispose() {
