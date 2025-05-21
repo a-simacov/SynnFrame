@@ -589,6 +589,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                     actionExecutionService = appContainer.actionExecutionService, // Добавлено
                     actionSearchService = appContainer.actionSearchService,
                     initialActionsValidator = appContainer.initialActionsValidator,
+                    taskContextManager = appContainer.taskContextManager,
                     preloadedTask = contextTask,
                     preloadedTaskType = contextTaskType
                 )
@@ -612,36 +613,41 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
             ActionObjectType.CLASSIFIER_PRODUCT to {
                 ProductSelectionStepFactory(
                     productLookupService = appContainer.productLookupService,
-                    validationService = appContainer.validationService
+                    validationService = appContainer.validationService,
+                    taskContextManager = appContainer.taskContextManager
                 )
             },
             ActionObjectType.TASK_PRODUCT to {
                 TaskProductSelectionStepFactory(
                     productLookupService = appContainer.productLookupService,
-                    validationService = appContainer.validationService
+                    validationService = appContainer.validationService,
+                    taskContextManager = appContainer.taskContextManager
                 )
             },
             ActionObjectType.PRODUCT_QUANTITY to {
                 ProductQuantityStepFactory(
-                    validationService = appContainer.validationService
+                    validationService = appContainer.validationService,
+                    taskContextManager = appContainer.taskContextManager
                 )
             },
             ActionObjectType.PALLET to {
                 PalletSelectionStepFactory(
                     palletLookupService = appContainer.palletLookupService,
-                    validationService = appContainer.validationService
+                    validationService = appContainer.validationService,
+                    taskContextManager = appContainer.taskContextManager
                 )
             },
             ActionObjectType.BIN to {
                 BinSelectionStepFactory(
                     binLookupService = appContainer.binLookupService,
-                    validationService = appContainer.validationService
+                    validationService = appContainer.validationService,
+                    taskContextManager = appContainer.taskContextManager
                 )
             }
         )
 
         // Создаем реестр с провайдерами фабрик
-        return ActionStepFactoryRegistry(factoryProviders)
+        return ActionStepFactoryRegistry(factoryProviders, appContainer.taskContextManager)
     }
 
     fun createDynamicMenuViewModel(): DynamicMenuViewModel {

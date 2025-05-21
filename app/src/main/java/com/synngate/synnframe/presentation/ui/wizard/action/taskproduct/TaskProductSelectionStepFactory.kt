@@ -12,6 +12,7 @@ import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.common.dialog.OptimizedProductSelectionDialog
 import com.synngate.synnframe.presentation.common.inputs.ExpirationDatePicker
@@ -29,8 +30,9 @@ import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupServic
 
 class TaskProductSelectionStepFactory(
     private val productLookupService: ProductLookupService,
-    private val validationService: ValidationService
-) : BaseActionStepFactory<TaskProduct>(), AutoCompleteCapableFactory {
+    private val validationService: ValidationService,
+    taskContextManager: TaskContextManager?
+) : BaseActionStepFactory<TaskProduct>(taskContextManager), AutoCompleteCapableFactory {
 
     override fun getStepViewModel(
         step: ActionStep,
@@ -44,6 +46,7 @@ class TaskProductSelectionStepFactory(
             context = context,
             productLookupService = productLookupService,
             validationService = validationService,
+            taskContextManager = taskContextManager
         )
     }
 

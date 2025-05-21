@@ -49,13 +49,13 @@ import com.synngate.synnframe.presentation.ui.taskx.components.FactActionsView
 import com.synngate.synnframe.presentation.ui.taskx.components.FilterIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.InitialActionsRequiredDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionsView
-import com.synngate.synnframe.presentation.ui.taskx.components.SavableObjectsPanel
 import com.synngate.synnframe.presentation.ui.taskx.components.SearchResultsIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskProgressIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXActionsDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXVerificationDialog
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
+import com.synngate.synnframe.presentation.ui.wizard.action.components.SavableObjectsPanel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -333,7 +333,6 @@ fun TaskXDetailScreen(
                         contentDescription = "Фильтровать по объектам",
                         modifier = Modifier.padding(end = 8.dp)
                     )
-                    Text("Фильтровать действия по объектам")
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))

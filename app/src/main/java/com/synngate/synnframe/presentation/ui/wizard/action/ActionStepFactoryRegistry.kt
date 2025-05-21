@@ -1,11 +1,12 @@
 package com.synngate.synnframe.presentation.ui.wizard.action
 
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
+import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.presentation.di.Disposable
-import timber.log.Timber
 
 class ActionStepFactoryRegistry(
-    private val factoryProviders: Map<ActionObjectType, () -> ActionStepFactory>
+    private val factoryProviders: Map<ActionObjectType, () -> ActionStepFactory>,
+    private val taskContextManager: TaskContextManager?
 ) : Disposable {
     // Хранит только фактически созданные фабрики
     private val factories = mutableMapOf<ActionObjectType, ActionStepFactory>()
@@ -13,6 +14,7 @@ class ActionStepFactoryRegistry(
     fun getFactory(objectType: ActionObjectType): ActionStepFactory? {
         return factories.getOrPut(objectType) {
             factoryProviders[objectType]?.invoke()?.also {
+
             } ?: run {
                 return null
             }

@@ -7,6 +7,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
@@ -17,8 +18,9 @@ class ProductQuantityViewModel(
     action: PlannedAction,
     context: ActionContext,
     validationService: ValidationService,
+    taskContextManager: TaskContextManager?,
     stepFactory: ActionStepFactory? = null
-) : BaseStepViewModel<TaskProduct>(step, action, context, validationService, stepFactory) {
+) : BaseStepViewModel<TaskProduct>(step, action, context, validationService, taskContextManager, stepFactory) {
 
     private var selectedProduct: Product? = null
     private var selectedTaskProduct: TaskProduct? = null

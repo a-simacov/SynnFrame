@@ -15,6 +15,7 @@ import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.common.dialog.OptimizedProductSelectionDialog
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
@@ -30,8 +31,9 @@ import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupServic
 
 class ProductSelectionStepFactory(
     private val productLookupService: ProductLookupService,
-    private val validationService: ValidationService
-) : BaseActionStepFactory<Product>(), AutoCompleteCapableFactory {
+    private val validationService: ValidationService,
+    taskContextManager: TaskContextManager?
+) : BaseActionStepFactory<Product>(taskContextManager), AutoCompleteCapableFactory {
 
     override fun getStepViewModel(
         step: ActionStep,
@@ -44,7 +46,8 @@ class ProductSelectionStepFactory(
             action = action,
             context = context,
             productLookupService = productLookupService,
-            validationService = validationService
+            validationService = validationService,
+            taskContextManager = taskContextManager
         )
     }
 

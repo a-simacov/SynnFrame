@@ -16,6 +16,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
@@ -30,8 +31,9 @@ import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
 
 class PalletSelectionStepFactory(
     private val palletLookupService: PalletLookupService,
-    private val validationService: ValidationService
-) : BaseActionStepFactory<Pallet>(), AutoCompleteCapableFactory {
+    private val validationService: ValidationService,
+    taskContextManager: TaskContextManager?
+) : BaseActionStepFactory<Pallet>(taskContextManager), AutoCompleteCapableFactory {
 
     override fun getStepViewModel(
         step: ActionStep,
@@ -45,6 +47,7 @@ class PalletSelectionStepFactory(
             context = context,
             palletLookupService = palletLookupService,
             validationService = validationService,
+            taskContextManager = taskContextManager,
             stepFactory = factory
         )
     }

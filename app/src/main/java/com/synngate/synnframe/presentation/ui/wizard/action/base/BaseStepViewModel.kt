@@ -27,6 +27,7 @@ abstract class BaseStepViewModel<T: Any>(
     protected val action: PlannedAction,
     protected val context: ActionContext,
     protected val validationService: ValidationService,
+    private val taskContextManager: TaskContextManager?,
     protected val stepFactory: ActionStepFactory? = null
 ) : ViewModel(), Disposable {
 
@@ -34,13 +35,9 @@ abstract class BaseStepViewModel<T: Any>(
     val state: StateFlow<StepViewState<T>> = _state.asStateFlow()
 
     private var isInitializing = true
-
     private var autoTransitionActivated = false
-
     private var autoFilledApplied = false
-
     private val activeJobs = mutableListOf<Job>()
-
     private val objectsMarkedForSaving = mutableMapOf<ActionObjectType, Any>()
 
     init {
@@ -50,9 +47,8 @@ abstract class BaseStepViewModel<T: Any>(
             processBarcode(barcode)
         }
 
-        checkAndApplyAutoFill()
-
         isInitializing = false
+        checkAndApplyAutoFill()
     }
 
     protected open fun initStateFromContext() {
@@ -201,9 +197,8 @@ abstract class BaseStepViewModel<T: Any>(
     }
 
     private fun checkAndApplyAutoFill() {
-        if (autoFilledApplied || isInitializing) return
+        if (autoFilledApplied) return
 
-        val taskContextManager = getTaskContextManager()
         if (taskContextManager == null) {
             Timber.w("Не удалось получить TaskContextManager для автозаполнения")
             return
@@ -369,7 +364,6 @@ abstract class BaseStepViewModel<T: Any>(
             autoMarkObjectForSaving(result)
         }
 
-        val taskContextManager = getTaskContextManager()
         val taskType = taskContextManager?.lastTaskTypeX?.value
         val savableObjectTypes = taskType?.savableObjectTypes ?: emptyList()
 
@@ -385,29 +379,12 @@ abstract class BaseStepViewModel<T: Any>(
     }
 
     private fun autoMarkObjectForSaving(result: Any) {
-        val taskContextManager = getTaskContextManager() ?: return
+        if (taskContextManager == null) return
         val taskType = taskContextManager.lastTaskTypeX.value ?: return
 
         val objectType = step.objectType
         if (objectType in taskType.savableObjectTypes) {
             objectsMarkedForSaving[objectType] = result
-        }
-    }
-
-    protected fun getTaskContextManager(): TaskContextManager? {
-        return try {
-            val taskContextManagerField = context.javaClass.declaredFields
-                .firstOrNull { it.name.contains("taskContextManager", ignoreCase = true) }
-
-            if (taskContextManagerField != null) {
-                taskContextManagerField.isAccessible = true
-                taskContextManagerField.get(context) as? TaskContextManager
-            } else {
-                null
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Ошибка при получении TaskContextManager: ${e.message}")
-            null
         }
     }
 
@@ -423,6 +400,7 @@ abstract class BaseStepViewModel<T: Any>(
             activeJobs.clear()
         }
 
+        objectsMarkedForSaving.clear()
         onDispose()
     }
 

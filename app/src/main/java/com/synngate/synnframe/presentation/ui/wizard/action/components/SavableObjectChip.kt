@@ -1,5 +1,6 @@
-package com.synngate.synnframe.presentation.ui.taskx.components
+package com.synngate.synnframe.presentation.ui.wizard.action.components
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
@@ -9,7 +10,6 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -24,10 +24,6 @@ import com.synngate.synnframe.domain.entity.taskx.SavableObject
 import com.synngate.synnframe.domain.entity.taskx.SavableObjectData
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 
-/**
- * Чип для отображения сохраняемого объекта
- */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SavableObjectChip(
     savableObject: SavableObject,
@@ -74,14 +70,10 @@ fun SavableObjectChip(
             enabled = true,
             borderColor = chipColor.copy(alpha = 0.5f)
         ),
-        modifier = modifier
+        modifier = modifier.fillMaxWidth()
     )
 }
 
-/**
- * Возвращает визуальные данные для сохраняемого объекта
- * @return Четверка (иконка, описание, текст, цвет)
- */
 @Composable
 fun getObjectVisualData(savableObject: SavableObject): Quadruple<ImageVector, String, String, Color> {
     return when (savableObject.objectType) {
@@ -136,7 +128,4 @@ fun getObjectVisualData(savableObject: SavableObject): Quadruple<ImageVector, St
     }
 }
 
-/**
- * Вспомогательный класс для возврата четырех значений
- */
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)

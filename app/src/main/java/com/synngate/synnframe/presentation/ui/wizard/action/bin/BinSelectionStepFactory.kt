@@ -11,6 +11,7 @@ import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
@@ -25,8 +26,9 @@ import com.synngate.synnframe.presentation.ui.wizard.service.BinLookupService
 
 class BinSelectionStepFactory(
     private val binLookupService: BinLookupService,
-    private val validationService: ValidationService
-) : BaseActionStepFactory<BinX>(), AutoCompleteCapableFactory {
+    private val validationService: ValidationService,
+    taskContextManager: TaskContextManager?
+) : BaseActionStepFactory<BinX>(taskContextManager), AutoCompleteCapableFactory {
 
     override fun getStepViewModel(
         step: ActionStep,
@@ -40,6 +42,7 @@ class BinSelectionStepFactory(
             context = context,
             binLookupService = binLookupService,
             validationService = validationService,
+            taskContextManager = taskContextManager,
             stepFactory = factory
         )
     }

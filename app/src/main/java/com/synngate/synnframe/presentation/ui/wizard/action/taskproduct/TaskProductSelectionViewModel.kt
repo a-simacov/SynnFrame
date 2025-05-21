@@ -8,6 +8,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.wizard.action.AutoCompleteCapableFactory
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
@@ -22,7 +23,8 @@ class TaskProductSelectionViewModel(
     context: ActionContext,
     private val productLookupService: ProductLookupService,
     validationService: ValidationService,
-) : BaseStepViewModel<TaskProduct>(step, action, context, validationService) {
+    taskContextManager: TaskContextManager?,
+) : BaseStepViewModel<TaskProduct>(step, action, context, validationService, taskContextManager) {
 
     private val plannedTaskProduct = action.storageProduct
 
