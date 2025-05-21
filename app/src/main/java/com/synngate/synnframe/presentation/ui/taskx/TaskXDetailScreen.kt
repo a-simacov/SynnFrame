@@ -47,6 +47,7 @@ import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableTaskInf
 import com.synngate.synnframe.presentation.ui.taskx.components.FactActionsView
 import com.synngate.synnframe.presentation.ui.taskx.components.InitialActionsRequiredDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionsView
+import com.synngate.synnframe.presentation.ui.taskx.components.SavableObjectsPanel
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskProgressIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXActionsDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXVerificationDialog
@@ -286,6 +287,13 @@ fun TaskXDetailScreen(
             )
 
             Spacer(modifier = Modifier.height(4.dp))
+
+            SavableObjectsPanel(
+                savableObjects = state.savableObjects,
+                onRemoveObject = viewModel::removeSavableObject,
+                visible = state.showSavableObjectsPanel && state.supportsSavableObjects,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             when (state.activeView) {
                 TaskXDetailView.PLANNED_ACTIONS -> {

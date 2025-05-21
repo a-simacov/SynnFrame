@@ -11,6 +11,7 @@ import com.synngate.synnframe.domain.service.ActionExecutionService
 import com.synngate.synnframe.domain.service.ActionSearchService
 import com.synngate.synnframe.domain.service.FinalActionsValidator
 import com.synngate.synnframe.domain.service.InitialActionsValidator
+import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.taskx.model.ActionDisplayMode
@@ -36,6 +37,7 @@ class TaskXDetailViewModel(
     private val initialActionsValidator: InitialActionsValidator,
     private val actionExecutionService: ActionExecutionService,
     private val actionSearchService: ActionSearchService? = null,
+    private val taskContextManager: TaskContextManager? = null,
     private val preloadedTask: TaskX? = null,
     private val preloadedTaskType: TaskTypeX? = null
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
@@ -454,6 +456,14 @@ class TaskXDetailViewModel(
         val statusActions = createStatusActions(task)
 
         val shouldShowSearch = taskType?.enableActionSearch == true
+        val supportsSavableObjects = taskType?.savableObjectTypes?.isNotEmpty() == true
+
+        // Получаем сохраняемые объекты, если функционал поддерживается
+        val savableObjects = if (supportsSavableObjects && taskContextManager != null) {
+            taskContextManager.savableObjects.value
+        } else {
+            emptyList()
+        }
 
         val initialActions = task.plannedActions.filter { it.isInitialAction }
         val hasInitialActions = initialActions.isNotEmpty()
@@ -489,7 +499,10 @@ class TaskXDetailViewModel(
                 completedInitialActionsCount = completedInitialActions,
                 totalInitialActionsCount = initialActions.size,
                 initialActionsIds = initialActions.map { it.id },
-                actionsDisplayMode = newDisplayMode
+                actionsDisplayMode = newDisplayMode,
+                savableObjects = savableObjects,
+                showSavableObjectsPanel = savableObjects.isNotEmpty(),
+                supportsSavableObjects = supportsSavableObjects
             )
         }
 
@@ -926,6 +939,65 @@ class TaskXDetailViewModel(
         if (action.isInitialAction) return true
 
         return supportsMultipleFactActions() && isQuantityBasedAction(action)
+    }
+
+    fun removeSavableObject(id: String) {
+        if (taskContextManager == null) return
+
+        launchIO {
+            try {
+                val result = taskContextManager.removeSavableObject(id)
+
+                if (result) {
+                    // Если объект удален успешно, обновляем состояние
+                    val newObjects = taskContextManager.savableObjects.value
+
+                    updateState { currentState ->
+                        currentState.copy(
+                            savableObjects = newObjects,
+                            showSavableObjectsPanel = newObjects.isNotEmpty()
+                        )
+                    }
+
+                    // Обновляем фильтрацию действий
+                    if (uiState.value.filteredActionIds.isNotEmpty()) {
+                        clearSearch()
+                    }
+
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Объект удален"))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при удалении сохраняемого объекта: ${e.message}")
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при удалении объекта"))
+            }
+        }
+    }
+
+    fun clearAllSavableObjects() {
+        if (taskContextManager == null) return
+
+        launchIO {
+            try {
+                taskContextManager.clearSavableObjects()
+
+                updateState { currentState ->
+                    currentState.copy(
+                        savableObjects = emptyList(),
+                        showSavableObjectsPanel = false
+                    )
+                }
+
+                // Обновляем фильтрацию действий
+                if (uiState.value.filteredActionIds.isNotEmpty()) {
+                    clearSearch()
+                }
+
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Все объекты очищены"))
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при очистке сохраняемых объектов: ${e.message}")
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при очистке объектов"))
+            }
+        }
     }
 
     override fun dispose() {

@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.taskx.model
 
+import com.synngate.synnframe.domain.entity.taskx.SavableObject
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
@@ -41,6 +42,11 @@ data class TaskXDetailState(
     val totalInitialActionsCount: Int = 0,
     val initialActionsIds: List<String> = emptyList(),
     val showInitialActionsRequiredDialog: Boolean = false,
+
+    // Поля для поддержки сохраняемых объектов
+    val savableObjects: List<SavableObject> = emptyList(),
+    val showSavableObjectsPanel: Boolean = false,
+    val supportsSavableObjects: Boolean = false
 )
 
 sealed class TaskXDetailEvent {

@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.wizard.action.utils
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,9 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
+import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
@@ -28,6 +31,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewMod
 import com.synngate.synnframe.presentation.ui.wizard.action.base.StepViewState
 import com.synngate.synnframe.presentation.ui.wizard.action.components.AutoFillIndicator
 import com.synngate.synnframe.presentation.ui.wizard.action.components.FormSpacer
+import com.synngate.synnframe.presentation.ui.wizard.action.components.SavableObjectBadge
 import com.synngate.synnframe.presentation.ui.wizard.action.components.StateType
 import com.synngate.synnframe.presentation.ui.wizard.action.components.WizardBarcodeField
 import com.synngate.synnframe.presentation.ui.wizard.action.components.WizardEmptyState
@@ -67,8 +71,65 @@ object WizardStepUtils {
             forwardEnabled = forwardEnabled,
             isProcessingGlobal = context.isProcessingStep,
             isFirstStep = context.isFirstStep,
-            content = content
+            content = {
+                // Отображаем информацию о сохраняемых объектах, если они есть
+                val savableObjects = extractSavableObjects(context.results)
+                if (savableObjects.isNotEmpty()) {
+                    SavableObjectsRow(
+                        objects = savableObjects,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+
+                // Если поле автозаполнено, показываем индикатор
+                if (state.isAutoFilled()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        AutoFillIndicator(
+                            source = state.additionalData["autoFillSource"] as? String
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                content()
+            }
         )
+    }
+
+    /**
+     * Извлекает сохраняемые объекты из результатов шагов
+     */
+    private fun extractSavableObjects(results: Map<String, Any>): Map<ActionObjectType, Any> {
+        val objects = mutableMapOf<ActionObjectType, Any>()
+
+        results["lastPallet"]?.let { pallet ->
+            if (pallet is Pallet) {
+                objects[ActionObjectType.PALLET] = pallet
+            }
+        }
+
+        results["lastBin"]?.let { bin ->
+            if (bin is BinX) {
+                objects[ActionObjectType.BIN] = bin
+            }
+        }
+
+        results["lastTaskProduct"]?.let { product ->
+            if (product is TaskProduct) {
+                objects[ActionObjectType.TASK_PRODUCT] = product
+            }
+        }
+
+        results["lastProduct"]?.let { product ->
+            if (product is Product && objects[ActionObjectType.TASK_PRODUCT] == null) {
+                objects[ActionObjectType.CLASSIFIER_PRODUCT] = product
+            }
+        }
+
+        return objects
     }
 
     @Composable
@@ -179,7 +240,8 @@ object WizardStepUtils {
         errorText: String? = null,
         onSelectFromList: (() -> Unit)? = null,
         placeholder: String? = null,
-        isAutoFilled: Boolean = false
+        isAutoFilled: Boolean = false,
+        autoFillSource: String? = null
     ) {
         Column(modifier = modifier) {
             WizardBarcodeField(
@@ -199,7 +261,7 @@ object WizardStepUtils {
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Spacer(modifier = Modifier.weight(1f))
-                    AutoFillIndicator()
+                    AutoFillIndicator(source = autoFillSource)
                 }
             }
         }
@@ -258,6 +320,38 @@ object WizardStepUtils {
                 Spacer(modifier = Modifier.width(8.dp))
 
                 AutoFillIndicator(source = source)
+            }
+        }
+    }
+
+    @Composable
+    fun SavableObjectsRow(
+        objects: Map<ActionObjectType, Any>,
+        modifier: Modifier = Modifier
+    ) {
+        if (objects.isEmpty()) return
+
+        Row(
+            modifier = modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Сохраненные объекты:",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                objects.forEach { (type, data) ->
+                    SavableObjectBadge(
+                        data = data,
+                        objectType = type
+                    )
+                }
             }
         }
     }
