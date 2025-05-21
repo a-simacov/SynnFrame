@@ -437,6 +437,13 @@ class TaskXDetailViewModel(
 
             if (supportsSavableObjects) {
                 val objects = taskContextManager.savableObjects.value
+
+                // Добавляем немедленное логирование для отладки
+                Timber.d("Обновление сохраняемых объектов: найдено ${objects.size} объектов")
+                objects.forEach { obj ->
+                    Timber.d("Сохраняемый объект: ${obj.objectType} - ${obj.getShortDescription()}")
+                }
+
                 updateState { state ->
                     state.copy(
                         savableObjects = objects,
@@ -509,6 +516,8 @@ class TaskXDetailViewModel(
             emptyList()
         }
 
+        Timber.d("updateDependentState: найдено ${savableObjects.size} сохраняемых объектов")
+
         val initialActions = task.plannedActions.filter { it.isInitialAction }
         val hasInitialActions = initialActions.isNotEmpty()
         val completedInitialActions = initialActions.count { it.isCompleted }
@@ -545,7 +554,7 @@ class TaskXDetailViewModel(
                 initialActionsIds = initialActions.map { it.id },
                 actionsDisplayMode = newDisplayMode,
                 savableObjects = savableObjects,
-                showSavableObjectsPanel = savableObjects.isNotEmpty(),
+                showSavableObjectsPanel = savableObjects.isNotEmpty() && supportsSavableObjects,
                 supportsSavableObjects = supportsSavableObjects
             )
         }
@@ -832,12 +841,18 @@ class TaskXDetailViewModel(
         launchIO {
             try {
                 updateSingleAction(actionId)
+                // Явно вызываем обновление сохраняемых объектов
                 updateSavableObjects()
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Действие успешно выполнено"))
 
                 if (uiState.value.filteredActionIds.contains(actionId)) {
                     clearSearch()
                 }
+
+                // Для отладки - проверяем текущее состояние объектов
+                Timber.d("После onActionCompleted: имеем ${uiState.value.savableObjects.size} сохраняемых объектов")
+                Timber.d("showSavableObjectsPanel = ${uiState.value.showSavableObjectsPanel}")
+                Timber.d("supportsSavableObjects = ${uiState.value.supportsSavableObjects}")
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при обработке завершения действия: ${e.message}")
                 loadTask()

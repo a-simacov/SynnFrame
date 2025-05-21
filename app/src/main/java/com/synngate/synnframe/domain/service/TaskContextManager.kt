@@ -1,6 +1,10 @@
 package com.synngate.synnframe.domain.service
 
 import com.synngate.synnframe.data.remote.dto.TaskXStartResponseDto
+import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.taskx.BinX
+import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
@@ -75,7 +79,25 @@ class TaskContextManager {
             return false
         }
 
-        return savableObjectsManager.addObject(objectType, data, source)
+        // Проверяем, что объект соответствует указанному типу
+        val isValidType = when (objectType) {
+            ActionObjectType.PALLET -> data is Pallet
+            ActionObjectType.BIN -> data is BinX
+            ActionObjectType.TASK_PRODUCT -> data is TaskProduct
+            ActionObjectType.CLASSIFIER_PRODUCT -> data is Product
+            else -> false
+        }
+
+        if (!isValidType) {
+            Timber.w("Объект типа ${data.javaClass.simpleName} не соответствует типу $objectType")
+            return false
+        }
+
+        val result = savableObjectsManager.addObject(objectType, data, source)
+        if (result) {
+            Timber.d("Объект типа $objectType добавлен в список сохраняемых (источник: $source)")
+        }
+        return result
     }
 
     fun removeSavableObject(id: String): Boolean {

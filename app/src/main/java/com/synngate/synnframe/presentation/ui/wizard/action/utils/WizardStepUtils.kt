@@ -27,6 +27,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.presentation.ui.wizard.action.base.BaseStepViewModel
 import com.synngate.synnframe.presentation.ui.wizard.action.base.StepViewState
 import com.synngate.synnframe.presentation.ui.wizard.action.components.AutoFillIndicator
@@ -41,6 +42,7 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.
 import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.PalletCard
 import com.synngate.synnframe.presentation.ui.wizard.action.components.adapters.TaskProductCard
 import com.synngate.synnframe.presentation.ui.wizard.action.quantity.ProductQuantityViewModel
+import timber.log.Timber
 
 object WizardStepUtils {
 
@@ -73,7 +75,7 @@ object WizardStepUtils {
             isFirstStep = context.isFirstStep,
             content = {
                 // Отображаем информацию о сохраняемых объектах, если они есть
-                val savableObjects = extractSavableObjects(context.results)
+                val savableObjects = extractSavableObjects(context.results, context)
                 if (savableObjects.isNotEmpty()) {
                     SavableObjectsRow(
                         objects = savableObjects,
@@ -102,34 +104,64 @@ object WizardStepUtils {
     /**
      * Извлекает сохраняемые объекты из результатов шагов
      */
-    private fun extractSavableObjects(results: Map<String, Any>): Map<ActionObjectType, Any> {
+    private fun extractSavableObjects(
+        results: Map<String, Any>,
+        context: ActionContext
+    ): Map<ActionObjectType, Any> {
         val objects = mutableMapOf<ActionObjectType, Any>()
 
+        // Получаем TaskContextManager, чтобы узнать доступные типы объектов
+        val taskContextManager = getTaskContextManagerFromContext(context)
+        val taskType = taskContextManager?.lastTaskTypeX?.value
+        val savableObjectTypes = taskType?.savableObjectTypes ?: emptyList()
+
+        if (savableObjectTypes.isEmpty()) {
+            return emptyMap() // Если нет доступных типов объектов, возвращаем пустую карту
+        }
+
         results["lastPallet"]?.let { pallet ->
-            if (pallet is Pallet) {
+            if (pallet is Pallet && ActionObjectType.PALLET in savableObjectTypes) {
                 objects[ActionObjectType.PALLET] = pallet
             }
         }
 
         results["lastBin"]?.let { bin ->
-            if (bin is BinX) {
+            if (bin is BinX && ActionObjectType.BIN in savableObjectTypes) {
                 objects[ActionObjectType.BIN] = bin
             }
         }
 
         results["lastTaskProduct"]?.let { product ->
-            if (product is TaskProduct) {
+            if (product is TaskProduct && ActionObjectType.TASK_PRODUCT in savableObjectTypes) {
                 objects[ActionObjectType.TASK_PRODUCT] = product
             }
         }
 
         results["lastProduct"]?.let { product ->
-            if (product is Product && objects[ActionObjectType.TASK_PRODUCT] == null) {
+            if (product is Product && ActionObjectType.CLASSIFIER_PRODUCT in savableObjectTypes &&
+                objects[ActionObjectType.TASK_PRODUCT] == null) {
                 objects[ActionObjectType.CLASSIFIER_PRODUCT] = product
             }
         }
 
         return objects
+    }
+
+    private fun getTaskContextManagerFromContext(context: ActionContext): TaskContextManager? {
+        return try {
+            val taskContextManagerField = context.javaClass.declaredFields
+                .firstOrNull { it.name.contains("taskContextManager", ignoreCase = true) }
+
+            if (taskContextManagerField != null) {
+                taskContextManagerField.isAccessible = true
+                taskContextManagerField.get(context) as? TaskContextManager
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при получении TaskContextManager: ${e.message}")
+            null
+        }
     }
 
     @Composable

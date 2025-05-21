@@ -369,10 +369,18 @@ abstract class BaseStepViewModel<T: Any>(
             autoMarkObjectForSaving(result)
         }
 
-        for ((type, data) in objectsMarkedForSaving) {
-            updateAdditionalData("savableObject_$type", data)
+        val taskContextManager = getTaskContextManager()
+        val taskType = taskContextManager?.lastTaskTypeX?.value
+        val savableObjectTypes = taskType?.savableObjectTypes ?: emptyList()
 
-            context.onUpdate(mapOf("savableObject_$type" to data))
+        for ((type, data) in objectsMarkedForSaving) {
+            if (type in savableObjectTypes) {
+                updateAdditionalData("savableObject_$type", data)
+                context.onUpdate(mapOf("savableObject_$type" to data))
+
+                // Добавляем логирование для отладки
+                Timber.d("Объект типа $type помечен для сохранения и добавлен в additionalData")
+            }
         }
     }
 

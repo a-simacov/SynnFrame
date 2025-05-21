@@ -1,6 +1,10 @@
 package com.synngate.synnframe.presentation.ui.wizard
 
 import androidx.lifecycle.viewModelScope
+import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.taskx.BinX
+import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.domain.model.wizard.WizardStateMachine
 import com.synngate.synnframe.domain.service.AutoFillManager
@@ -161,29 +165,82 @@ class ActionWizardViewModel(
         if (!currentState.isInitialized) return
 
         val results = currentState.results
+        val markedObjects = mutableMapOf<ActionObjectType, Any>()
 
-        val markedObjects = results.entries
+        // Получаем список доступных типов сохраняемых объектов
+        val taskType = taskContextManager.lastTaskTypeX.value ?: return
+        val savableTypes = taskType.savableObjectTypes
+
+        if (savableTypes.isEmpty()) {
+            return // Если нет типов для сохранения, прекращаем выполнение
+        }
+
+        // Ищем объекты в результатах с префиксом "savableObject_"
+        results.entries
             .filter { it.key.startsWith("savableObject_") }
-            .mapNotNull { entry ->
+            .forEach { entry ->
                 val typeStr = entry.key.removePrefix("savableObject_")
-                val type = try {
-                    ActionObjectType.valueOf(typeStr)
+                try {
+                    val type = ActionObjectType.valueOf(typeStr)
+                    if (type in savableTypes) {
+                        markedObjects[type] = entry.value
+                    }
                 } catch (e: Exception) {
-                    null
+                    Timber.e(e, "Ошибка при определении типа объекта: $typeStr")
                 }
-
-                if (type != null) {
-                    type to entry.value
-                } else null
             }
-            .toMap()
 
-        if (markedObjects.isNotEmpty()) {
-            markedObjects.forEach { (type, data) ->
+        // Извлекаем известные типы объектов напрямую из результатов
+        if (ActionObjectType.PALLET in savableTypes) {
+            results["lastPallet"]?.let { pallet ->
+                if (pallet is Pallet) {
+                    markedObjects[ActionObjectType.PALLET] = pallet
+                }
+            }
+        }
+
+        if (ActionObjectType.BIN in savableTypes) {
+            results["lastBin"]?.let { bin ->
+                if (bin is BinX) {
+                    markedObjects[ActionObjectType.BIN] = bin
+                }
+            }
+        }
+
+        if (ActionObjectType.TASK_PRODUCT in savableTypes) {
+            results["lastTaskProduct"]?.let { product ->
+                if (product is TaskProduct) {
+                    markedObjects[ActionObjectType.TASK_PRODUCT] = product
+                }
+            }
+        }
+
+        if (ActionObjectType.CLASSIFIER_PRODUCT in savableTypes) {
+            results["lastProduct"]?.let { product ->
+                if (product is Product && markedObjects[ActionObjectType.TASK_PRODUCT] == null) {
+                    markedObjects[ActionObjectType.CLASSIFIER_PRODUCT] = product
+                }
+            }
+        }
+
+        // Проверяем каждое сохраненное значение на соответствие указанному типу
+        val validObjects = markedObjects.entries.filter { (type, value) ->
+            when (type) {
+                ActionObjectType.PALLET -> value is Pallet
+                ActionObjectType.BIN -> value is BinX
+                ActionObjectType.TASK_PRODUCT -> value is TaskProduct
+                ActionObjectType.CLASSIFIER_PRODUCT -> value is Product
+                else -> false
+            }
+        }//.toMap()
+
+        // Сохраняем найденные объекты
+        if (validObjects.isNotEmpty()) {
+            validObjects.forEach { (type, data) ->
                 taskContextManager.addSavableObject(type, data, "action:$actionId")
             }
 
-            Timber.d("$TAG: Saved ${markedObjects.size} objects from wizard")
+            Timber.d("$TAG: Saved ${validObjects.size} objects from wizard")
         }
     }
 
