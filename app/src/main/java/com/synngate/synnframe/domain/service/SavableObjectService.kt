@@ -1,7 +1,7 @@
-package com.synngate.synnframe.domain.service.savable
+package com.synngate.synnframe.domain.service
 
+import com.synngate.synnframe.domain.entity.taskx.SavableObject
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
-import com.synngate.synnframe.domain.entity.taskx.savable.SavableObject
 import kotlinx.coroutines.flow.StateFlow
 
 interface SavableObjectService {

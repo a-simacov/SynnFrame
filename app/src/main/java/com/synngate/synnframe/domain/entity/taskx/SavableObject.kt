@@ -1,9 +1,6 @@
-package com.synngate.synnframe.domain.entity.taskx.savable
+package com.synngate.synnframe.domain.entity.taskx
 
 import com.synngate.synnframe.domain.entity.Product
-import com.synngate.synnframe.domain.entity.taskx.BinX
-import com.synngate.synnframe.domain.entity.taskx.Pallet
-import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
 import com.synngate.synnframe.util.serialization.LocalDateTimeSerializer
 import kotlinx.serialization.Serializable
