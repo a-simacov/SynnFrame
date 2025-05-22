@@ -1,7 +1,6 @@
 package com.synngate.synnframe.presentation.ui.taskx
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,16 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FilterAlt
-import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -30,9 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
@@ -41,21 +30,21 @@ import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.common.status.StatusType
-import com.synngate.synnframe.presentation.common.status.TaskXStatusIndicator
-import com.synngate.synnframe.presentation.ui.taskx.components.ActionDisplayModeSwitcher
-import com.synngate.synnframe.presentation.ui.taskx.components.ActionSearchBar
-import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableTaskInfoCard
+import com.synngate.synnframe.presentation.ui.taskx.components.CompactActionDisplayModeSwitcher
+import com.synngate.synnframe.presentation.ui.taskx.components.CompactActionSearchBar
+import com.synngate.synnframe.presentation.ui.taskx.components.CompactNextActionButton
+import com.synngate.synnframe.presentation.ui.taskx.components.CompactSavableObjectsPanel
+import com.synngate.synnframe.presentation.ui.taskx.components.CompactTaskInfoCard
 import com.synngate.synnframe.presentation.ui.taskx.components.FactActionsView
 import com.synngate.synnframe.presentation.ui.taskx.components.FilterIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.InitialActionsRequiredDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionsView
 import com.synngate.synnframe.presentation.ui.taskx.components.SearchResultsIndicator
-import com.synngate.synnframe.presentation.ui.taskx.components.TaskProgressIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXActionsDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXVerificationDialog
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
+import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
-import com.synngate.synnframe.presentation.ui.wizard.action.components.SavableObjectsPanel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -69,11 +58,10 @@ fun TaskXDetailScreen(
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val task = state.task
-
     val nextActionId = state.nextActionId
-
     val coroutineScope = rememberCoroutineScope()
 
+    // Scanner listener setup
     val scannerService = LocalScannerService.current
     if (state.showSearchField && scannerService?.hasRealScanner() == true) {
         ScannerListener(onBarcodeScanned = { barcode ->
@@ -81,11 +69,12 @@ fun TaskXDetailScreen(
         })
     }
 
-    // Перехватываем нажатие кнопки Назад
+    // Back button handling
     BackHandler(enabled = !state.showActionsDialog) {
         viewModel.handleBackNavigation()
     }
 
+    // Events handling
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
@@ -102,13 +91,9 @@ fun TaskXDetailScreen(
                     navigateBack()
                 }
                 is TaskXDetailEvent.TaskActionCompleted -> {
-                    // Для комбинированного события сразу выполняем навигацию
                     navigateBack()
-
-                    // Показываем снекбар с небольшой задержкой,
-                    // чтобы он появился уже на экране списка
                     coroutineScope.launch {
-                        delay(100) // Небольшая задержка
+                        delay(100)
                         snackbarHostState.showSnackbar(
                             message = event.message,
                             duration = SnackbarDuration.Short
@@ -119,83 +104,35 @@ fun TaskXDetailScreen(
         }
     }
 
-    // Отображаем диалог действий
-    if (state.showActionsDialog) {
-        TaskXActionsDialog(
-            onDismiss = { viewModel.hideActionsDialog() },
-            onNavigateBack = navigateBack,
-            statusActions = state.statusActions,
-            isProcessing = state.isProcessingDialogAction
-        )
-    }
+    // Dialogs
+    HandleDialogs(state, viewModel, navigateBack)
 
-    if (state.showCompletionDialog) {
-        ConfirmationDialog(
-            title = stringResource(R.string.complete_task_confirmation),
-            message = stringResource(R.string.complete_task_confirmation),
-            onConfirm = { viewModel.completeTask() },
-            onDismiss = { viewModel.hideCompletionDialog() }
-        )
-    }
-
-    if (state.showVerificationDialog) {
-        TaskXVerificationDialog(
-            onBarcodeScan = { barcode -> viewModel.verifyTask(barcode) },
-            onDismiss = { viewModel.hideVerificationDialog() }
-        )
-    }
-
-    if (state.showOrderRequiredMessage) {
-        AlertDialog(
-            onDismissRequest = { viewModel.hideOrderRequiredMessage() },
-            title = { Text("Соблюдение порядка") },
-            text = { Text("Действия необходимо выполнять в указанном порядке. Пожалуйста, выполните первое не завершенное действие.") },
-            confirmButton = {
-                Button(onClick = { viewModel.hideOrderRequiredMessage() }) {
-                    Text("ОК")
-                }
-            }
-        )
-    }
-
-    if (state.showInitialActionsRequiredDialog) {
-        InitialActionsRequiredDialog(
-            onDismiss = { viewModel.hideInitialActionsRequiredDialog() },
-            onGoToInitialActions = {
-                viewModel.hideInitialActionsRequiredDialog()
-                viewModel.goToInitialActions()
-            },
-            completedCount = state.completedInitialActionsCount,
-            totalCount = state.totalInitialActionsCount
-        )
-    }
-
-    if (state.showCameraScannerForSearch) {
-        UniversalScannerDialog(
-            onBarcodeScanned = { barcode ->
-                viewModel.searchByScanner(barcode)
-                viewModel.hideCameraScannerForSearch()
-            },
-            onClose = {
-                viewModel.hideCameraScannerForSearch()
-            },
-            instructionText = "Отсканируйте штрихкод для поиска действия"
-        )
-    }
-
+    // Main screen content
     AppScaffold(
         showTopBar = false,
         title = task?.taskTypeId?.let { viewModel.formatTaskType() } ?: "Unknown",
         onNavigateBack = { viewModel.handleBackNavigation() },
         snackbarHostState = snackbarHostState,
-        notification = state.error?.let {
-            Pair(it, StatusType.ERROR)
-        },
-        isLoading = state.isLoading
+        notification = state.error?.let { Pair(it, StatusType.ERROR) },
+        isLoading = state.isLoading,
+        floatingActionButton = {
+            // Compact Next Action button as FAB (only shows when applicable)
+            if (task?.status == TaskXStatus.IN_PROGRESS &&
+                state.taskType?.strictActionOrder != true &&
+                state.activeView == TaskXDetailView.PLANNED_ACTIONS) {
+                CompactNextActionButton(
+                    onClick = {
+                        task.getNextAction()?.let { action ->
+                            viewModel.startActionExecution(action.id)
+                        }
+                    }
+                )
+            }
+        }
     ) { paddingValues ->
         if (task == null) {
             EmptyScreenContent(
-                message = stringResource(R.string.loading_task),
+                message = "Загрузка задания...",
                 modifier = Modifier.padding(paddingValues)
             )
             return@AppScaffold
@@ -205,166 +142,81 @@ fun TaskXDetailScreen(
             modifier = modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(4.dp)
+                .padding(horizontal = 2.dp, vertical = 2.dp)
         ) {
-            ExpandableTaskInfoCard(
-                title = stringResource(R.string.task_details),
-                initiallyExpanded = false, // По умолчанию свернуто
-                modifier = Modifier.fillMaxWidth()
+            // Header area with compact task info
+            CompactTaskInfoCard(
+                task = task,
+                taskTypeName = viewModel.formatTaskType(),
+                formatDate = viewModel::formatDate,
+                initiallyExpanded = false,
+                onShowPlannedActions = viewModel::showPlannedActions,
+                onShowFactActions = viewModel::showFactActions,
+                activeView = state.activeView
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            // Compact filters and search area
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp)
             ) {
-                Text(
-                    text = "Имя: ${task.name}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                // Display mode switcher (occupies most of the width)
+                CompactActionDisplayModeSwitcher(
+                    currentMode = state.actionsDisplayMode,
+                    onModeChange = { mode -> viewModel.setActionsDisplayMode(mode) },
+                    hasFinalActions = task.plannedActions.any { it.isFinalAction },
+                    hasInitialActions = task.plannedActions.any { it.isInitialAction },
+                    modifier = Modifier.weight(1f)
                 )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "Штрихкод: ${task.barcode}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                TaskXStatusIndicator(
-                    status = task.status,
-                )
-
-                task.startedAt?.let {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Начато: ${viewModel.formatDate(it)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                task.lastModifiedAt?.let {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Изменено: ${viewModel.formatDate(it)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    FilledTonalButton(
-                        onClick = { viewModel.showPlannedActions() },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (state.activeView == TaskXDetailView.PLANNED_ACTIONS)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Text("План")
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    FilledTonalButton(
-                        onClick = { viewModel.showFactActions() },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (state.activeView == TaskXDetailView.FACT_ACTIONS)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Text("Факт")
-                    }
-                }
             }
 
-            TaskProgressIndicator(
-                task = task,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            SavableObjectsPanel(
-                savableObjects = state.savableObjects,
-                onRemoveObject = viewModel::removeSavableObject,
-                visible = state.showSavableObjectsPanel && state.supportsSavableObjects,
-                modifier = Modifier.fillMaxWidth()
-            )
-
+            // Compact search bar
             if (state.activeView == TaskXDetailView.PLANNED_ACTIONS) {
-                FilterIndicator(
-                    message = state.filterMessage,
-                    onClearFilter = viewModel::clearAllFilters,
-                    visible = state.isFilteredBySavableObjects && state.filterMessage.isNotEmpty(),
+                CompactActionSearchBar(
+                    query = state.searchQuery,
+                    onQueryChange = viewModel::updateSearchQuery,
+                    onSearch = viewModel::searchActions,
+                    onClear = viewModel::clearSearch,
+                    onScannerClick = viewModel::toggleCameraScannerForSearch,
+                    isSearching = state.isSearching,
+                    error = state.searchError,
+                    visible = state.showSearchField,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // Compact savable objects panel
+            if (state.activeView == TaskXDetailView.PLANNED_ACTIONS) {
+                CompactSavableObjectsPanel(
+                    savableObjects = state.savableObjects,
+                    onRemoveObject = viewModel::removeSavableObject,
+                    onFilterByObjects = viewModel::enableSavableObjectsFiltering,
+                    visible = state.showSavableObjectsPanel && state.supportsSavableObjects,
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // Filter indicators and search results
                 SearchResultsIndicator(
                     resultsCount = state.filteredActions.size,
                     visible = state.searchInfo.isNotEmpty() && !state.isFilteredBySavableObjects,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                FilterIndicator(
+                    message = state.filterMessage,
+                    onClearFilter = viewModel::clearAllFilters,
+                    visible = state.isFilteredBySavableObjects && state.filterMessage.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
-            if (state.showSavableObjectsPanel && state.supportsSavableObjects && state.savableObjects.isNotEmpty() &&
-                !state.isFilteredBySavableObjects && state.activeView == TaskXDetailView.PLANNED_ACTIONS) {
-
-                Button(
-                    onClick = viewModel::enableSavableObjectsFiltering,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FilterAlt,
-                        contentDescription = "Фильтровать по объектам",
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-
-            when (state.activeView) {
-                TaskXDetailView.PLANNED_ACTIONS -> {
-                    ActionSearchBar(
-                        query = state.searchQuery,
-                        onQueryChange = viewModel::updateSearchQuery,
-                        onSearch = viewModel::searchActions,
-                        onClear = viewModel::clearSearch,
-                        onScannerClick = viewModel::toggleCameraScannerForSearch,
-                        isSearching = state.isSearching,
-                        error = state.searchError,
-                        visible = state.showSearchField,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp)
-                    )
-
-                    ActionDisplayModeSwitcher(
-                        currentMode = state.actionsDisplayMode,
-                        onModeChange = { mode -> viewModel.setActionsDisplayMode(mode) },
-                        hasFinalActions = task.plannedActions.any { it.isFinalAction },
-                        hasInitialActions = task.plannedActions.any { it.isInitialAction },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp)
-                    )
-
-                    Box(modifier = Modifier.weight(1f)) {
+            // Main content area - action lists
+            Box(modifier = Modifier.weight(1f)) {
+                when (state.activeView) {
+                    TaskXDetailView.PLANNED_ACTIONS -> {
                         PlannedActionsView(
                             plannedActions = state.filteredActions,
                             factActions = task.factActions,
@@ -372,7 +224,6 @@ fun TaskXDetailScreen(
                             onActionClick = { action ->
                                 if (task.status == TaskXStatus.IN_PROGRESS && !action.isSkipped) {
                                     val isCompleted = action.isActionCompleted(task.factActions)
-
                                     if (isCompleted) {
                                         if (viewModel.canReopenAction(action, isCompleted)) {
                                             viewModel.startActionExecution(action.id)
@@ -389,43 +240,90 @@ fun TaskXDetailScreen(
                             }
                         )
                     }
-
-                    if (task.status == TaskXStatus.IN_PROGRESS &&
-                        state.taskType?.strictActionOrder != true
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Button(
-                                onClick = {
-                                    task.getNextAction()?.let { action ->
-                                        viewModel.startActionExecution(action.id)
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary
-                                )
-                            ) {
-                                Icon(
-                                    Icons.Default.PendingActions,
-                                    contentDescription = "Выполнить следующее действие",
-                                    modifier = Modifier.padding(end = 8.dp)
-                                )
-                                Text("Выполнить следующее")
-                            }
-                        }
+                    TaskXDetailView.FACT_ACTIONS -> {
+                        FactActionsView(
+                            factActions = task.factActions,
+                            formatDate = viewModel::formatDate
+                        )
                     }
-                }
-
-                TaskXDetailView.FACT_ACTIONS -> {
-                    FactActionsView(
-                        factActions = task.factActions,
-                        formatDate = viewModel::formatDate,
-                        modifier = Modifier.weight(1f)
-                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HandleDialogs(
+    state: TaskXDetailState,
+    viewModel: TaskXDetailViewModel,
+    navigateBack: () -> Unit
+) {
+    // Task actions dialog
+    if (state.showActionsDialog) {
+        TaskXActionsDialog(
+            onDismiss = { viewModel.hideActionsDialog() },
+            onNavigateBack = { navigateBack() },
+            statusActions = state.statusActions,
+            isProcessing = state.isProcessingDialogAction
+        )
+    }
+
+    // Completion confirmation dialog
+    if (state.showCompletionDialog) {
+        ConfirmationDialog(
+            title = "Завершить задание?",
+            message = "Вы уверены, что хотите завершить задание?",
+            onConfirm = { viewModel.completeTask() },
+            onDismiss = { viewModel.hideCompletionDialog() }
+        )
+    }
+
+    // Verification dialog
+    if (state.showVerificationDialog) {
+        TaskXVerificationDialog(
+            onBarcodeScan = { barcode -> viewModel.verifyTask(barcode) },
+            onDismiss = { viewModel.hideVerificationDialog() }
+        )
+    }
+
+    // Order required message dialog
+    if (state.showOrderRequiredMessage) {
+        AlertDialog(
+            onDismissRequest = { viewModel.hideOrderRequiredMessage() },
+            title = { Text("Соблюдение порядка") },
+            text = { Text("Действия необходимо выполнять в указанном порядке. Пожалуйста, выполните первое не завершенное действие.") },
+            confirmButton = {
+                Button(onClick = { viewModel.hideOrderRequiredMessage() }) {
+                    Text("ОК")
+                }
+            }
+        )
+    }
+
+    // Initial actions required dialog
+    if (state.showInitialActionsRequiredDialog) {
+        InitialActionsRequiredDialog(
+            onDismiss = { viewModel.hideInitialActionsRequiredDialog() },
+            onGoToInitialActions = {
+                viewModel.hideInitialActionsRequiredDialog()
+                viewModel.goToInitialActions()
+            },
+            completedCount = state.completedInitialActionsCount,
+            totalCount = state.totalInitialActionsCount
+        )
+    }
+
+    // Camera scanner dialog
+    if (state.showCameraScannerForSearch) {
+        UniversalScannerDialog(
+            onBarcodeScanned = { barcode ->
+                viewModel.searchByScanner(barcode)
+                viewModel.hideCameraScannerForSearch()
+            },
+            onClose = {
+                viewModel.hideCameraScannerForSearch()
+            },
+            instructionText = "Отсканируйте штрихкод для поиска действия"
+        )
     }
 }

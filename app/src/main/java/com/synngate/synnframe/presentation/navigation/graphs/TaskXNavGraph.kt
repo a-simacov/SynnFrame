@@ -11,7 +11,7 @@ import com.synngate.synnframe.presentation.navigation.NavigationScopeManager
 import com.synngate.synnframe.presentation.navigation.rememberEphemeralScreenContainer
 import com.synngate.synnframe.presentation.navigation.rememberPersistentScreenContainer
 import com.synngate.synnframe.presentation.navigation.routes.TaskXRoutes
-import com.synngate.synnframe.presentation.ui.taskx.CompactTaskXDetailScreen
+import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailScreen
 import com.synngate.synnframe.presentation.ui.taskx.TaskXListScreen
 import com.synngate.synnframe.presentation.ui.wizard.ActionWizardScreen
 import timber.log.Timber
@@ -71,7 +71,7 @@ fun NavGraphBuilder.taskXNavGraph(
                 entry.savedStateHandle.remove<String>("completedActionId")
             }
 
-            CompactTaskXDetailScreen(
+            TaskXDetailScreen(
                 viewModel = viewModel,
                 navigateBack = {
                     navController.popBackStack()

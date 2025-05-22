@@ -2,7 +2,6 @@ package com.synngate.synnframe.presentation.ui.taskx.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -55,7 +54,6 @@ fun PlannedActionsView(
     nextActionId: String? = null,
     modifier: Modifier = Modifier
 ) {
-    // Состояние для отображения диалога подтверждения
     var showConfirmationDialog by remember { mutableStateOf(false) }
     var selectedAction by remember { mutableStateOf<PlannedAction?>(null) }
     var isActionCompleted by remember { mutableStateOf(false) }
@@ -71,9 +69,9 @@ fun PlannedActionsView(
                         factActions = factActions,
                         onClick = { onActionClick(action) },
                         onLongClick = { completed ->
-                            // Показываем диалог только если есть возможность изменить статус
                             if (onToggleCompletion != null && action.canHaveMultipleFactActions() &&
-                                !action.isQuantityFulfilled(factActions)) {
+                                !action.isQuantityFulfilled(factActions)
+                            ) {
                                 selectedAction = action
                                 isActionCompleted = completed
                                 showConfirmationDialog = true
@@ -394,8 +392,8 @@ fun FactActionItem(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            Spacer(modifier = Modifier.height(4.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
             Spacer(modifier = Modifier.height(4.dp))
 
             action.storageProduct?.let { ShowStorageProduct(it) }
@@ -403,22 +401,17 @@ fun FactActionItem(
             action.placementBin?.let { ShowBin(it) }
             action.placementPallet?.let { ShowPallet("Паллета размещения", it) }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Начато: ${formatDate(action.startedAt)}",
-                    style = MaterialTheme.typography.bodySmall
-                )
+            Text(
+                text = "Начато: ${formatDate(action.startedAt)}",
+                style = MaterialTheme.typography.bodySmall
+            )
 
-                Text(
-                    text = "Завершено: ${formatDate(action.completedAt)}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
+            Text(
+                text = "Завершено: ${formatDate(action.completedAt)}",
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }
