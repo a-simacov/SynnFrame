@@ -3,7 +3,6 @@ package com.synngate.synnframe.domain.model.wizard
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.presentation.ui.wizard.action.utils.WizardUtils
-import timber.log.Timber
 
 class WizardContextFactory {
     private val TAG = "WizardContextFactory"
@@ -42,9 +41,16 @@ class WizardContextFactory {
 
         val enrichedResults = enrichResultsContext(state)
 
+        // НОВОЕ: добавляем информацию о навигации в результаты
+        val resultsWithNavigation = enrichedResults.toMutableMap()
+        resultsWithNavigation["wizardState"] = mapOf(
+            "isNavigatingBack" to state.isNavigatingBack,
+            "currentStepAutoFilled" to state.currentStepAutoFilled
+        )
+
         return contextHolder!!.getContextForStep(
             stepId = stepId,
-            results = enrichedResults,
+            results = resultsWithNavigation,
             hasStepResult = hasResult,
             validationError = validationError,
             lastScannedBarcode = lastScannedBarcode,

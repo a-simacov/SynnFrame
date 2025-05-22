@@ -7,6 +7,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.ActionStep
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 import com.synngate.synnframe.domain.entity.taskx.validation.ValidationType
 import com.synngate.synnframe.domain.model.wizard.ActionContext
+import com.synngate.synnframe.domain.service.AutoFillManager
 import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.service.ValidationResult
 import com.synngate.synnframe.domain.service.ValidationService
@@ -37,10 +38,19 @@ abstract class BaseStepViewModel<T: Any>(
     private var isInitializing = true
     private var autoTransitionActivated = false
     private var autoFilledApplied = false
+    private var wasAutoFilledInThisSession = false
+    private var userModifiedData = false
+    private var isNavigatingBackToThisStep = false
     private val activeJobs = mutableListOf<Job>()
     private val objectsMarkedForSaving = mutableMapOf<ActionObjectType, Any>()
 
+    // Создаем AutoFillManager для работы с автозаполнением
+    private val autoFillManager = taskContextManager?.let { AutoFillManager(it) }
+
     init {
+        // Проверяем, вернулись ли мы на этот шаг
+        isNavigatingBackToThisStep = checkIfNavigatingBack()
+
         initStateFromContext()
 
         context.lastScannedBarcode?.let { barcode ->
@@ -49,6 +59,16 @@ abstract class BaseStepViewModel<T: Any>(
 
         isInitializing = false
         checkAndApplyAutoFill()
+    }
+
+    // Проверяем, произошел ли возврат на этот шаг
+    private fun checkIfNavigatingBack(): Boolean {
+        return try {
+            val wizardState = context.results["wizardState"] as? Map<*, *>
+            wizardState?.get("isNavigatingBack") as? Boolean ?: false
+        } catch (e: Exception) {
+            false
+        }
     }
 
     protected open fun initStateFromContext() {
@@ -197,26 +217,21 @@ abstract class BaseStepViewModel<T: Any>(
     }
 
     private fun checkAndApplyAutoFill() {
-        if (autoFilledApplied) return
+        if (autoFilledApplied || autoFillManager == null) return
 
-        if (taskContextManager == null) {
-            Timber.w("Не удалось получить TaskContextManager для автозаполнения")
+        // Используем AutoFillManager для проверки возможности автозаполнения
+        if (!autoFillManager.canAutoFillStep(action, step, stepFactory)) {
             return
         }
 
-        val objectType = step.objectType
-        if (!taskContextManager.hasSavableObjectOfType(objectType)) {
-            return
-        }
-
-        if (stepFactory !is AutoCompleteCapableFactory || !stepFactory.isAutoCompleteEnabled(step)) {
-            return
-        }
-
-        val autoFillData = taskContextManager.getSavableObjectData<Any>(objectType)
+        val autoFillData = autoFillManager.getAutoFillData<Any>(step)
         if (autoFillData != null) {
             executeWithErrorHandling("применения автозаполнения", showLoading = false) {
-                applyAutoFill(autoFillData)
+                val success = applyAutoFill(autoFillData)
+                if (success) {
+                    wasAutoFilledInThisSession = true
+                    Timber.d("Автозаполнение применено, isNavigatingBack = $isNavigatingBackToThisStep")
+                }
             }
         }
     }
@@ -229,6 +244,10 @@ abstract class BaseStepViewModel<T: Any>(
 
                 setData(typedData)
                 autoFilledApplied = true
+
+                // Сбрасываем флаг пользовательских изменений при успешном автозаполнении
+                userModifiedData = false
+                Timber.d("Автозаполнение выполнено, флаг userModifiedData сброшен")
 
                 updateAdditionalData("autoFilled", true)
 
@@ -248,15 +267,18 @@ abstract class BaseStepViewModel<T: Any>(
 
         val shouldAutoComplete = (stepFactory as AutoCompleteCapableFactory).shouldAutoComplete(step)
 
-        if (shouldAutoComplete) {
+        // Если мы вернулись на этот шаг назад, не выполняем автозавершение
+        if (shouldAutoComplete && !isNavigatingBackToThisStep) {
+            Timber.d("Выполняем автозавершение шага: ${step.id}")
             viewModelScope.launch {
-                // Небольшая задержка для отображения автозаполнения
                 delay(300)
 
                 if (validateData(data)) {
                     completeStep(data)
                 }
             }
+        } else {
+            Timber.d("Автозавершение пропущено: shouldAutoComplete=$shouldAutoComplete, isNavigatingBack=$isNavigatingBackToThisStep")
         }
     }
 
@@ -283,12 +305,45 @@ abstract class BaseStepViewModel<T: Any>(
             it.copy(additionalData = newAdditionalData)
         }
 
-        resetAutoTransition()
+        // Помечаем как пользовательские изменения только определенные ключи
+        if (key != "autoFilled" &&
+            !key.startsWith("markedForSaving_") &&
+            !key.startsWith("savableObject_") &&
+            !key.startsWith("showCameraScannerDialog") &&
+            !key.startsWith("showProductSelectionDialog") &&
+            !key.startsWith("filteredBins") &&
+            !key.startsWith("filteredPallets")) {
+
+            // Устанавливаем флаг пользовательских изменений только если уже было автозаполнение
+            if (wasAutoFilledInThisSession) {
+                userModifiedData = true
+                Timber.d("Пользователь изменил автозаполненные данные: ключ = $key")
+            } else {
+                Timber.d("Пользовательский ввод для поиска: ключ = $key")
+            }
+        }
+
+        // Вызываем resetAutoTransition только если это не обновление флага autoFilled
+        if (key != "autoFilled") {
+            resetAutoTransition()
+        }
     }
 
     protected fun resetAutoTransition() {
         if (autoTransitionActivated) {
             autoTransitionActivated = false
+        }
+
+        // Сбрасываем флаг автозаполнения только если пользователь действительно изменил данные
+        if (userModifiedData && wasAutoFilledInThisSession) {
+            wasAutoFilledInThisSession = false
+            Timber.d("Сброс флага автозаполнения из-за пользовательских изменений")
+            // Напрямую обновляем состояние без вызова updateAdditionalData
+            _state.update {
+                val newAdditionalData = it.additionalData.toMutableMap()
+                newAdditionalData["autoFilled"] = false
+                it.copy(additionalData = newAdditionalData)
+            }
         }
     }
 
@@ -307,7 +362,20 @@ abstract class BaseStepViewModel<T: Any>(
             return
         }
 
+        // Если данные были изменены пользователем после автозаполнения, не выполняем автопереход
+        if (userModifiedData && !forceAutoTransition) {
+            Timber.d("Данные изменены пользователем, автопереход отключен")
+            return
+        }
+
+        // Если мы вернулись на этот шаг, не выполняем автопереход (только если не принудительный)
+        if (isNavigatingBackToThisStep && !forceAutoTransition) {
+            Timber.d("Возврат на шаг, автопереход отключен")
+            return
+        }
+
         autoTransitionActivated = true
+        Timber.d("Выполняем автопереход для поля: $fieldName, wasAutoFilled: $wasAutoFilledInThisSession, userModified: $userModifiedData")
 
         if (requiresConfirmationForAutoTransition(fieldName)) {
             showConfirmationDialog(value)
@@ -356,7 +424,7 @@ abstract class BaseStepViewModel<T: Any>(
     fun markObjectForSaving(objectType: ActionObjectType, data: Any) {
         objectsMarkedForSaving[objectType] = data
         updateAdditionalData("markedForSaving_$objectType", true)
-        Timber.d("Объект типа $objectType помечен для сохранения")
+        Timber.d("Объект типа $objectType помечен для сохранения, userModifiedData = $userModifiedData")
     }
 
     private fun markObjectsForSaving(result: Any) {
@@ -372,7 +440,6 @@ abstract class BaseStepViewModel<T: Any>(
                 updateAdditionalData("savableObject_$type", data)
                 context.onUpdate(mapOf("savableObject_$type" to data))
 
-                // Добавляем логирование для отладки
                 Timber.d("Объект типа $type помечен для сохранения и добавлен в additionalData")
             }
         }

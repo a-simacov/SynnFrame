@@ -22,7 +22,13 @@ data class ActionWizardState(
     val autoFillEnabled: Boolean = false,
 
     // Информация о шагах, которые могут быть автозаполнены
-    val autoFillableSteps: Set<String> = emptySet()
+    val autoFillableSteps: Set<String> = emptySet(),
+
+    // Флаг для отслеживания навигации назад (НОВОЕ)
+    val isNavigatingBack: Boolean = false,
+
+    // Флаг для отслеживания того, что текущий шаг был автозаполнен в этой сессии (НОВОЕ)
+    val currentStepAutoFilled: Boolean = false
 ) {
     val currentStep: WizardStep?
         get() = if (currentStepIndex < steps.size) steps[currentStepIndex] else null
@@ -38,10 +44,4 @@ data class ActionWizardState(
 
     val isUninitialized: Boolean
         get() = !isInitialized && action == null
-
-    // Проверяет, может ли текущий шаг быть автозаполнен
-    fun isCurrentStepAutoFillable(): Boolean {
-        val step = currentStep ?: return false
-        return autoFillEnabled && step.id in autoFillableSteps
-    }
 }

@@ -90,7 +90,9 @@ class WizardStateMachine(
                 currentStepIndex = 0,
                 results = initialData,
                 startedAt = LocalDateTime.now(),
-                isInitialized = true
+                isInitialized = true,
+                isNavigatingBack = false,  // НОВОЕ: инициализируем флаг навигации
+                currentStepAutoFilled = false  // НОВОЕ: инициализируем флаг автозаполнения
             )
 
             // Добавляем предварительную проверку наличия сохраняемых объектов для автозаполнения
@@ -132,12 +134,18 @@ class WizardStateMachine(
             return
         }
 
+        val action = wizardState.action ?: return
+
         Timber.d("$TAG: Checking savable objects for auto-fill")
+
+        // Получаем автозаполняемые шаги с помощью AutoFillManager
+        val autoFillableSteps = autoFillManager.getAutoFillableStepsForAction(action)
 
         // Добавляем метку в результаты для использования автозаполнения
         _state.update { state ->
             state.copy(
-                autoFillEnabled = true
+                autoFillEnabled = autoFillableSteps.isNotEmpty(),
+                autoFillableSteps = autoFillableSteps
             )
         }
     }
@@ -284,12 +292,16 @@ class WizardStateMachine(
         if (currentState.currentStepIndex > 0) {
             _state.update { it.copy(
                 currentStepIndex = currentState.currentStepIndex - 1,
-                lastScannedBarcode = null
+                lastScannedBarcode = null,
+                isNavigatingBack = true,
+                currentStepAutoFilled = false
             ) }
         } else if (currentState.isCompleted) {
             _state.update { it.copy(
                 currentStepIndex = currentState.steps.size - 1,
-                lastScannedBarcode = null
+                lastScannedBarcode = null,
+                isNavigatingBack = true,
+                currentStepAutoFilled = false
             ) }
         }
     }
@@ -333,7 +345,9 @@ class WizardStateMachine(
             state.copy(
                 currentStepIndex = nextStepIndex,
                 results = updatedResults,
-                lastScannedBarcode = null
+                lastScannedBarcode = null,
+                isNavigatingBack = false,
+                currentStepAutoFilled = false
             )
         }
     }
