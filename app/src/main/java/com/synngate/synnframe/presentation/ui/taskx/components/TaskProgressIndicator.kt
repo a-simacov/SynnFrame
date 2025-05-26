@@ -17,15 +17,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.TaskX
+import com.synngate.synnframe.presentation.ui.taskx.enums.CompletionOrderType
 
 @Composable
 fun TaskProgressIndicator(
     task: TaskX,
     modifier: Modifier = Modifier
 ) {
-    val regularActions = task.plannedActions.filter { !it.isFinalAction && !it.isInitialAction }
-    val finalActions = task.plannedActions.filter { it.isFinalAction }
-    val initialActions = task.plannedActions.filter { it.isInitialAction }
+    val regularActions =
+        task.plannedActions.filter { it.completionOrderType != CompletionOrderType.FINAL && it.completionOrderType != CompletionOrderType.INITIAL }
+    val finalActions = task.plannedActions.filter { it.completionOrderType == CompletionOrderType.FINAL }
+    val initialActions = task.plannedActions.filter { it.completionOrderType == CompletionOrderType.INITIAL }
 
     val completedRegularActions = regularActions.count { it.isCompleted }
     val completedFinalActions = finalActions.count { it.isCompleted }

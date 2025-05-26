@@ -21,9 +21,9 @@ fun ActionStatusConfirmationDialog(
     }
 
     val dialogText = if (isCompleted) {
-        "Действие \"${action.actionTemplate.name}\" будет отмечено как невыполненное."
+        "Действие \"${action.actionTemplate?.name}\" будет отмечено как невыполненное."
     } else {
-        "Действие \"${action.actionTemplate.name}\" будет отмечено как выполненное."
+        "Действие \"${action.actionTemplate?.name}\" будет отмечено как выполненное."
     }
 
     val confirmButtonText = if (isCompleted) {

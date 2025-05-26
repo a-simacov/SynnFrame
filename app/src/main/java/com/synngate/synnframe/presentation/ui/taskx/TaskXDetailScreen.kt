@@ -3,20 +3,13 @@ package com.synngate.synnframe.presentation.ui.taskx
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FilterAlt
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -29,25 +22,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
+import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.presentation.common.LocalScannerService
-import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.common.status.TaskXStatusIndicator
+import com.synngate.synnframe.presentation.ui.taskx.components.ActionFilterChips
 import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableTaskInfoCard
-import com.synngate.synnframe.presentation.ui.taskx.components.FilterIndicator
-import com.synngate.synnframe.presentation.ui.taskx.components.InitialActionsRequiredDialog
-import com.synngate.synnframe.presentation.ui.taskx.components.SearchResultsIndicator
+import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionCard
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskProgressIndicator
-import com.synngate.synnframe.presentation.ui.taskx.components.TaskXActionsDialog
+import com.synngate.synnframe.presentation.ui.taskx.components.TaskXExitDialog
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
-import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailView
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -59,22 +50,19 @@ fun TaskXDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val task = state.task
-
-    val nextActionId = state.nextActionId
-
     val coroutineScope = rememberCoroutineScope()
 
+    val task = state.task
+
     val scannerService = LocalScannerService.current
-    if (state.showSearchField && scannerService?.hasRealScanner() == true) {
+    if (scannerService?.hasRealScanner() == true) {
         ScannerListener(onBarcodeScanned = { barcode ->
             viewModel.searchByScanner(barcode)
         })
     }
 
-    // Перехватываем нажатие кнопки Назад
-    BackHandler(enabled = !state.showActionsDialog) {
-        viewModel.handleBackNavigation()
+    BackHandler {
+        viewModel.onBackPressed()
     }
 
     LaunchedEffect(viewModel) {
@@ -92,14 +80,10 @@ fun TaskXDetailScreen(
                 is TaskXDetailEvent.NavigateBack -> {
                     navigateBack()
                 }
-                is TaskXDetailEvent.TaskActionCompleted -> {
-                    // Для комбинированного события сразу выполняем навигацию
+                is TaskXDetailEvent.NavigateBackWithMessage -> {
                     navigateBack()
-
-                    // Показываем снекбар с небольшой задержкой,
-                    // чтобы он появился уже на экране списка
+                    // Показываем снекбар после навигации
                     coroutineScope.launch {
-                        delay(100) // Небольшая задержка
                         snackbarHostState.showSnackbar(
                             message = event.message,
                             duration = SnackbarDuration.Short
@@ -110,46 +94,15 @@ fun TaskXDetailScreen(
         }
     }
 
-    // Отображаем диалог действий
-    if (state.showActionsDialog) {
-        TaskXActionsDialog(
-            onDismiss = { viewModel.hideActionsDialog() },
-            onNavigateBack = navigateBack,
-            statusActions = state.statusActions,
-            isProcessing = state.isProcessingDialogAction
-        )
-    }
-
-    if (state.showCompletionDialog) {
-        ConfirmationDialog(
-            title = stringResource(R.string.complete_task_confirmation),
-            message = stringResource(R.string.complete_task_confirmation),
-            onConfirm = { viewModel.completeTask() },
-            onDismiss = { viewModel.hideCompletionDialog() }
-        )
-    }
-
-    if (state.showOrderRequiredMessage) {
-        AlertDialog(
-            onDismissRequest = {  },
-            title = { Text("Соблюдение порядка") },
-            text = { Text("Действия необходимо выполнять в указанном порядке. Пожалуйста, выполните первое не завершенное действие.") },
-            confirmButton = {
-                Button(onClick = {  }) {
-                    Text("ОК")
-                }
-            }
-        )
-    }
-
-    if (state.showInitialActionsRequiredDialog) {
-        InitialActionsRequiredDialog(
-            onDismiss = {  },
-            onGoToInitialActions = {
-
-            },
-            completedCount = state.completedInitialActionsCount,
-            totalCount = state.totalInitialActionsCount
+    if (state.showExitDialog) {
+        TaskXExitDialog(
+            onDismiss = viewModel::dismissExitDialog,
+            onContinue = viewModel::continueWork,
+            onPause = viewModel::pauseTask,
+            onComplete = viewModel::completeTask,
+            onExitWithoutSaving = viewModel::exitWithoutSaving,
+            canComplete = state.getPendingActionsCount() == 0,
+            isProcessing = state.isProcessingAction
         )
     }
 
@@ -167,9 +120,8 @@ fun TaskXDetailScreen(
     }
 
     AppScaffold(
-        showTopBar = false,
-        title = task?.taskTypeId ?: "Unknown",
-        onNavigateBack = { viewModel.handleBackNavigation() },
+        title = task?.name ?: stringResource(R.string.loading_task),
+        onNavigateBack = viewModel::onBackPressed,
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {
             Pair(it, StatusType.ERROR)
@@ -232,39 +184,6 @@ fun TaskXDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    FilledTonalButton(
-                        onClick = {  },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (state.activeView == TaskXDetailView.PLANNED_ACTIONS)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Text("План")
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    FilledTonalButton(
-                        onClick = {  },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (state.activeView == TaskXDetailView.FACT_ACTIONS)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Text("Факт")
-                    }
-                }
             }
 
             TaskProgressIndicator(
@@ -274,45 +193,52 @@ fun TaskXDetailScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            if (state.activeView == TaskXDetailView.PLANNED_ACTIONS) {
-                FilterIndicator(
-                    message = state.filterMessage,
-                    onClearFilter = {  },
-                    visible = state.isFilteredBySavableObjects && state.filterMessage.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth()
-                )
+            // Фильтры действий
+            ActionFilterChips(
+                currentFilter = state.actionFilter,
+                onFilterChange = viewModel::onFilterChange,
+                hasInitialActions = state.hasInitialActions(),
+                hasFinalActions = state.hasFinalActions()
+            )
 
-                SearchResultsIndicator(
-                    resultsCount = state.filteredActions.size,
-                    visible = state.searchInfo.isNotEmpty() && !state.isFilteredBySavableObjects,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            // Список действий
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val displayActions = state.getDisplayActions()
 
-                Spacer(modifier = Modifier.height(4.dp))
-            }
+                if (displayActions.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Нет действий для отображения",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp)
+                        )
+                    }
+                } else {
+                    items(
+                        items = displayActions,
+                        key = { it.id }
+                    ) { action ->
+                        PlannedActionCard(
+                            action = action,
+                            onClick = { viewModel.onActionClick(action.id) },
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            enabled = task.status == TaskXStatus.IN_PROGRESS
+                        )
+                    }
 
-            if (state.showSavableObjectsPanel && state.supportsSavableObjects && state.savableObjects.isNotEmpty() &&
-                !state.isFilteredBySavableObjects && state.activeView == TaskXDetailView.PLANNED_ACTIONS) {
-
-                Button(
-                    onClick = {  },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FilterAlt,
-                        contentDescription = "Фильтровать по объектам",
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                    Text("Фильтровать действия по объектам")
+                    // Отступ снизу
+                    item {
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(4.dp))
             }
         }
     }

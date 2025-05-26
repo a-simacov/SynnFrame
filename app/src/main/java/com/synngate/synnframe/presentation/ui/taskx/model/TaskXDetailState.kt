@@ -3,91 +3,70 @@ package com.synngate.synnframe.presentation.ui.taskx.model
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
-import com.synngate.synnframe.presentation.ui.taskx.buffer.BufferItem
 
-enum class TaskXDetailView {
-    PLANNED_ACTIONS,
-    FACT_ACTIONS
-}
-
+/**
+ * Состояние экрана детального просмотра задания
+ */
 data class TaskXDetailState(
+    // Основные данные
     val task: TaskX? = null,
     val taskType: TaskTypeX? = null,
+
+    // Состояние загрузки
     val isLoading: Boolean = false,
-    val isProcessing: Boolean = false,
-    val isProcessingDialogAction: Boolean = false,
     val error: String? = null,
-    val activeView: TaskXDetailView = TaskXDetailView.PLANNED_ACTIONS,
-    val showVerificationDialog: Boolean = false,
-    val currentUserId: String? = null,
-    val showCompletionDialog: Boolean = false,
-    val showOrderRequiredMessage: Boolean = false,
-    val nextActionId: String? = null,
-    val hasAdditionalActions: Boolean = false,
-    val statusActions: List<StatusActionData> = emptyList(),
-    val actionsDisplayMode: ActionDisplayMode = ActionDisplayMode.CURRENT,
+
+    // Фильтрация действий
+    val actionFilter: ActionFilter = ActionFilter.ALL,
     val filteredActions: List<PlannedAction> = emptyList(),
-    val showActionsDialog: Boolean = false,
-    val searchQuery: String = "",
-    val isSearching: Boolean = false,
-    val searchError: String? = null,
-    val showSearchField: Boolean = false,
+
+    // Диалоги
+    val showExitDialog: Boolean = false,
+    val isProcessingAction: Boolean = false,
     val showCameraScannerForSearch: Boolean = false,
-    val filteredActionIds: List<String> = emptyList(),
+    val showCompletionDialog: Boolean = false,
 
-    // Поля для поддержки начальных действий
-    val hasInitialActions: Boolean = false,
-    val areInitialActionsCompleted: Boolean = false,
-    val completedInitialActionsCount: Int = 0,
-    val totalInitialActionsCount: Int = 0,
-    val initialActionsIds: List<String> = emptyList(),
-    val showInitialActionsRequiredDialog: Boolean = false,
-
-    // Поля для поддержки буфера задания
-    val bufferItems: List<BufferItem> = emptyList(),
-    val showBufferPanel: Boolean = false,
-    val supportsTaskBuffer: Boolean = false,
-
-    // Новые поля для улучшения UX при фильтрации
-    val searchInfo: String = "",
-    val isFilteredByBuffer: Boolean = false,
-    val activeFiltersCount: Int = 0,
-    val filterMessage: String = "",
-
-    // Признак, что задание с ручным завершением действий
-    val supportsManualActionCompletion: Boolean = false
+    // Информация о пользователе
+    val currentUserId: String? = null
 ) {
+    /**
+     * Получить отображаемые действия с учетом фильтра
+     */
     fun getDisplayActions(): List<PlannedAction> {
-        return when {
-            filteredActionIds.isNotEmpty() -> {
-                task?.plannedActions?.filter { it.id in filteredActionIds } ?: emptyList()
-            }
-            isFilteredByBuffer -> filteredActions
-            else -> {
-                when (actionsDisplayMode) {
-                    ActionDisplayMode.CURRENT -> {
-                        task?.plannedActions?.filter {
-                            !it.isCompleted && !it.manuallyCompleted && !it.isSkipped
-                        } ?: emptyList()
-                    }
-                    ActionDisplayMode.COMPLETED -> {
-                        task?.plannedActions?.filter {
-                            it.isCompleted || it.manuallyCompleted
-                        } ?: emptyList()
-                    }
-                    ActionDisplayMode.ALL -> task?.plannedActions ?: emptyList()
-                    ActionDisplayMode.INITIALS -> task?.getInitialActions() ?: emptyList()
-                    ActionDisplayMode.FINALS -> task?.getFinalActions() ?: emptyList()
-                }
-            }
+        val actions = task?.plannedActions ?: return emptyList()
+
+        return when (actionFilter) {
+            ActionFilter.ALL -> actions
+            ActionFilter.PENDING -> actions.filter { !it.isCompleted && !it.manuallyCompleted }
+            ActionFilter.COMPLETED -> actions.filter { it.isCompleted || it.manuallyCompleted }
+            ActionFilter.INITIAL -> actions.filter { it.isInitialAction() }
+            ActionFilter.REGULAR -> actions.filter { it.isRegularAction() }
+            ActionFilter.FINAL -> actions.filter { it.isFinalAction() }
         }
     }
+
+    /**
+     * Проверка наличия действий определенного типа
+     */
+    fun hasInitialActions(): Boolean = task?.getInitialActions()?.isNotEmpty() == true
+    fun hasFinalActions(): Boolean = task?.getFinalActions()?.isNotEmpty() == true
+
+    /**
+     * Подсчет действий
+     */
+    fun getTotalActionsCount(): Int = task?.plannedActions?.size ?: 0
+    fun getCompletedActionsCount(): Int = task?.plannedActions?.count { it.isCompleted || it.manuallyCompleted } ?: 0
+    fun getPendingActionsCount(): Int = getTotalActionsCount() - getCompletedActionsCount()
 }
 
-data class StatusActionData(
-    val id: String,
-    val iconName: String,
-    val text: String,
-    val description: String,
-    val onClick: () -> Unit
-)
+/**
+ * Фильтры для отображения действий
+ */
+enum class ActionFilter(val displayName: String) {
+    ALL("Все"),
+    PENDING("К выполнению"),
+    COMPLETED("Выполненные"),
+    INITIAL("Начальные"),
+    REGULAR("Обычные"),
+    FINAL("Завершающие")
+}

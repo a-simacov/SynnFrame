@@ -107,7 +107,7 @@ class DynamicTaskDetailViewModel(
                 if (result.isSuccess()) {
                     val startResponse = result.getOrNull()
                     if (startResponse != null) {
-                        navigateToTaskXDetail(startResponse.task.id)
+                        navigateToTaskXDetail(startResponse.id)
                     } else {
                         sendEvent(DynamicTaskDetailEvent.ShowSnackbar("Не удалось получить данные для запуска задания"))
                     }

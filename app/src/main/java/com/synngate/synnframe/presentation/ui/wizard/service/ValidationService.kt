@@ -72,13 +72,6 @@ class ValidationServiceImpl : ValidationService {
             }
         }
 
-        // Дополнительные проверки для TaskProduct
-        if (value is TaskProduct) {
-            if (value.quantity <= 0f) {
-                return ValidationResult.Error("Количество должно быть больше нуля")
-            }
-        }
-
         return ValidationResult.Success
     }
 
