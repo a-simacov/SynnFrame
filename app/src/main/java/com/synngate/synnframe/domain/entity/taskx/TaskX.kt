@@ -13,7 +13,6 @@ data class TaskX(
     val name: String,
     val taskTypeId: String,
     val executorId: String? = null,
-    val isVerified: Boolean = false,
     val status: TaskXStatus = TaskXStatus.TO_DO,
     @Serializable(with = LocalDateTimeSerializer::class)
     val createdAt: LocalDateTime,
@@ -24,11 +23,5 @@ data class TaskX(
     @Serializable(with = LocalDateTimeSerializer::class)
     val completedAt: LocalDateTime? = null,
     val plannedActions: List<PlannedAction> = emptyList(),
-    val factActions: List<FactAction> = emptyList(),
-    val allowCompletionWithoutFactActions: Boolean = false
-) {
-
-    fun getNextAction(): PlannedAction? {
-        return plannedActions.firstOrNull { !it.isCompleted && !it.isSkipped }
-    }
-}
+    val factActions: List<FactAction> = emptyList()
+)

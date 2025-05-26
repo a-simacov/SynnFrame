@@ -1,5 +1,6 @@
 package com.synngate.synnframe.domain.entity.taskx.action
 
+import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
@@ -13,9 +14,12 @@ data class PlannedAction(
     val id: String,
     val order: Int,
     val actionTemplate: ActionTemplate,
+    val storageProductClassifier: Product? = null,
     val storageProduct: TaskProduct? = null,
     val storagePallet: Pallet? = null,
+    val storageBin: BinX? = null,
     val wmsAction: WmsAction,
+    val quantity: Float = 0f,
     val placementPallet: Pallet? = null,
     val placementBin: BinX? = null,
     val isCompleted: Boolean = false,
@@ -34,10 +38,6 @@ data class PlannedAction(
 
     enum class ActionType { INITIAL, REGULAR, FINAL }
 
-    fun isValid(): Boolean {
-        return !(isInitialAction && isFinalAction)
-    }
-
     fun getProgressType(): ProgressType {
         return if (storageProduct != null && storageProduct.quantity > 0f) {
             ProgressType.QUANTITY
@@ -45,8 +45,6 @@ data class PlannedAction(
             ProgressType.SIMPLE
         }
     }
-
-    fun isClickable(): Boolean = !isSkipped
 
     fun calculateProgress(factActions: List<FactAction>): Float {
         if (getProgressType() == ProgressType.SIMPLE) {
