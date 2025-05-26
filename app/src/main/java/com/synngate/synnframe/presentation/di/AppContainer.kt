@@ -341,6 +341,8 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         TaskXUseCases(taskXRepository = taskXRepository)
     }
 
+    val taskXDataHolder by lazy { TaskXDataHolder() }
+
     // Создание контейнера для уровня навигации
     fun createNavigationContainer(): NavigationContainer {
         return createChildContainer { NavigationContainer(this) }
@@ -367,6 +369,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     override fun dispose() {
         super.dispose()
         scannerService.dispose()
+        taskXDataHolder.clear()
     }
 }
 
@@ -563,7 +566,8 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         }
     }
 
-    private val taskXDataHolder by lazy { TaskXDataHolder() }
+    private val taskXDataHolder: TaskXDataHolder
+        get() = appContainer.taskXDataHolder
 
     fun createTaskXDetailViewModel(): TaskXDetailViewModel {
         return getOrCreateViewModel("TaskXDetailViewModel") {
