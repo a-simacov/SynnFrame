@@ -7,14 +7,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 
-/**
- * Диалог подтверждения изменения статуса действия
- *
- * @param action Действие, статус которого меняется
- * @param isCompleted Текущий статус выполнения
- * @param onConfirm Обработчик подтверждения изменения
- * @param onDismiss Обработчик отмены
- */
 @Composable
 fun ActionStatusConfirmationDialog(
     action: PlannedAction,

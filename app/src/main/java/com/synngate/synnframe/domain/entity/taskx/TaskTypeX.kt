@@ -13,7 +13,6 @@ data class TaskTypeX(
     val allowCompletionWithoutFactActions: Boolean = false,
     val allowExceedPlanQuantity: Boolean = false,
     val strictActionOrder: Boolean = true,
-    val availableActions: List<AvailableTaskAction> = emptyList(),
     val allowMultipleFactActions: Boolean = false,
     val enableActionSearch: Boolean = false,
     val searchableActionObjects: List<SearchableActionObject> = emptyList(),

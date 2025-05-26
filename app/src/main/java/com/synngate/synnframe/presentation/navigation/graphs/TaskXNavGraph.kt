@@ -1,6 +1,5 @@
 package com.synngate.synnframe.presentation.navigation.graphs
 
-import androidx.compose.runtime.remember
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -11,9 +10,6 @@ import com.synngate.synnframe.presentation.navigation.NavigationScopeManager
 import com.synngate.synnframe.presentation.navigation.rememberEphemeralScreenContainer
 import com.synngate.synnframe.presentation.navigation.rememberPersistentScreenContainer
 import com.synngate.synnframe.presentation.navigation.routes.TaskXRoutes
-import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailScreen
-import com.synngate.synnframe.presentation.ui.taskx.TaskXListScreen
-import com.synngate.synnframe.presentation.ui.wizard.ActionWizardScreen
 import timber.log.Timber
 
 /**
@@ -33,17 +29,6 @@ fun NavGraphBuilder.taskXNavGraph(
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )
-            val viewModel = remember { screenContainer.createTaskXListViewModel() }
-
-            TaskXListScreen(
-                viewModel = viewModel,
-                navigateToTaskDetail = { taskId ->
-                    navController.navigate(TaskXRoutes.TaskXDetail.createRoute(taskId))
-                },
-                navigateBack = {
-                    navController.popBackStack()
-                }
-            )
         }
 
         // Экран детальной информации о задании X
@@ -59,42 +44,6 @@ fun NavGraphBuilder.taskXNavGraph(
             val screenContainer = rememberEphemeralScreenContainer(
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
-            )
-            val viewModel = remember(taskId) { screenContainer.createTaskXDetailViewModel(taskId) }
-
-            // Проверяем наличие результата от экрана визарда
-            val completedActionId = entry.savedStateHandle.get<String>("completedActionId")
-            if (completedActionId != null) {
-                // Если есть результат, обрабатываем его и очищаем
-                Timber.d("TaskXDetail: Получен результат completedActionId=$completedActionId")
-                viewModel.onActionCompleted(completedActionId)
-                entry.savedStateHandle.remove<String>("completedActionId")
-            }
-
-            TaskXDetailScreen(
-                viewModel = viewModel,
-                navigateBack = {
-                    navController.popBackStack()
-                },
-                // Добавляем функцию навигации к экрану визарда
-                navigateToActionWizard = { taskIdLambda, actionId ->
-                    // Добавляем логирование для отладки
-                    Timber.d("Выполняем навигацию к визарду с taskId=$taskIdLambda, actionId=$actionId")
-
-                    // ИСПРАВЛЕНО: Изменяем параметры навигации
-                    navController.navigate(TaskXRoutes.ActionWizardScreen.createRoute(taskIdLambda, actionId)) {
-                        // Убираем директиву popUpTo, чтобы экран детальной информации
-                        // о задании оставался в стеке
-
-                        // Устанавливаем launchSingleTop в true для предотвращения
-                        // создания дублирующихся экземпляров экрана визарда
-                        launchSingleTop = true
-
-                        // Добавляем restoreState чтобы сохранить и восстановить состояние
-                        // при навигации назад
-                        restoreState = true
-                    }
-                }
             )
         }
 
@@ -119,33 +68,6 @@ fun NavGraphBuilder.taskXNavGraph(
             val screenContainer = rememberEphemeralScreenContainer(
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
-            )
-
-            val viewModel = remember(taskId, actionId) {
-                screenContainer.createActionWizardViewModel(taskId, actionId)
-            }
-
-            ActionWizardScreen(
-                viewModel = viewModel,
-                navigateBack = {
-                    // Логируем процесс возврата
-                    Timber.d("Выполняем navigateBack из ActionWizardScreen")
-
-                    // ИСПРАВЛЕНО: Простой popBackStack вместо явного указания экрана
-                    navController.popBackStack()
-                },
-                navigateBackWithSuccess = { completedActionId ->
-                    // Логируем процесс возврата с успехом
-                    Timber.d("Выполняем navigateBackWithSuccess с completedActionId=$completedActionId")
-
-                    // Сохраняем результат в savedStateHandle предыдущего экрана
-                    navController.previousBackStackEntry?.let { previousEntry ->
-                        previousEntry.savedStateHandle["completedActionId"] = completedActionId
-                    }
-
-                    // ИСПРАВЛЕНО: Простой popBackStack вместо явного указания экрана
-                    navController.popBackStack()
-                }
             )
         }
     }

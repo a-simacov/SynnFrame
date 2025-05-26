@@ -3,7 +3,6 @@ package com.synngate.synnframe.presentation.ui.dynamicmenu.task
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
-import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTaskDetailEvent
@@ -17,7 +16,6 @@ class DynamicTaskDetailViewModel(
     private val endpoint: String,
     private val dynamicMenuUseCases: DynamicMenuUseCases,
     private val userUseCases: UserUseCases,
-    private val taskContextManager: TaskContextManager
 ) : BaseViewModel<DynamicTaskDetailState, DynamicTaskDetailEvent>(
     DynamicTaskDetailState() // Начинаем с пустого состояния
 ) {
@@ -109,7 +107,6 @@ class DynamicTaskDetailViewModel(
                 if (result.isSuccess()) {
                     val startResponse = result.getOrNull()
                     if (startResponse != null) {
-                        taskContextManager.saveStartedTask(startResponse, endpoint)
                         navigateToTaskXDetail(startResponse.task.id)
                     } else {
                         sendEvent(DynamicTaskDetailEvent.ShowSnackbar("Не удалось получить данные для запуска задания"))

@@ -28,10 +28,7 @@ import com.synngate.synnframe.data.repository.LogRepositoryImpl
 import com.synngate.synnframe.data.repository.ProductRepositoryImpl
 import com.synngate.synnframe.data.repository.ServerRepositoryImpl
 import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
-import com.synngate.synnframe.data.repository.TaskXRepositoryImpl
 import com.synngate.synnframe.data.repository.UserRepositoryImpl
-import com.synngate.synnframe.data.repository.WizardBinRepositoryImpl
-import com.synngate.synnframe.data.repository.WizardPalletRepositoryImpl
 import com.synngate.synnframe.data.service.ClipboardServiceImpl
 import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
 import com.synngate.synnframe.data.service.FileServiceImpl
@@ -43,27 +40,20 @@ import com.synngate.synnframe.data.service.WebServerControllerImpl
 import com.synngate.synnframe.data.service.WebServerManagerImpl
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.ScreenSettings
-import com.synngate.synnframe.domain.entity.taskx.action.ActionObjectType
-import com.synngate.synnframe.domain.model.wizard.WizardStateMachine
 import com.synngate.synnframe.domain.repository.DynamicMenuRepository
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
 import com.synngate.synnframe.domain.repository.SettingsRepository
-import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.repository.UserRepository
-import com.synngate.synnframe.domain.service.ActionExecutionService
 import com.synngate.synnframe.domain.service.ActionSearchServiceImpl
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.FileService
-import com.synngate.synnframe.domain.service.FinalActionsValidator
-import com.synngate.synnframe.domain.service.InitialActionsValidator
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.service.SoundService
 import com.synngate.synnframe.domain.service.SynchronizationController
-import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.UpdateInstallerImpl
 import com.synngate.synnframe.domain.service.ValidationService
@@ -73,7 +63,6 @@ import com.synngate.synnframe.domain.usecase.log.LogUseCases
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
-import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.ui.dynamicmenu.menu.DynamicMenuViewModel
@@ -92,19 +81,6 @@ import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerListViewModel
 import com.synngate.synnframe.presentation.ui.settings.SettingsViewModel
 import com.synngate.synnframe.presentation.ui.sync.SyncHistoryViewModel
-import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailViewModel
-import com.synngate.synnframe.presentation.ui.taskx.TaskXListViewModel
-import com.synngate.synnframe.presentation.ui.wizard.ActionWizardViewModel
-import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactory
-import com.synngate.synnframe.presentation.ui.wizard.action.ActionStepFactoryRegistry
-import com.synngate.synnframe.presentation.ui.wizard.action.bin.BinSelectionStepFactory
-import com.synngate.synnframe.presentation.ui.wizard.action.pallet.PalletSelectionStepFactory
-import com.synngate.synnframe.presentation.ui.wizard.action.product.ProductSelectionStepFactory
-import com.synngate.synnframe.presentation.ui.wizard.action.quantity.ProductQuantityStepFactory
-import com.synngate.synnframe.presentation.ui.wizard.action.taskproduct.TaskProductSelectionStepFactory
-import com.synngate.synnframe.presentation.ui.wizard.service.BinLookupService
-import com.synngate.synnframe.presentation.ui.wizard.service.PalletLookupService
-import com.synngate.synnframe.presentation.ui.wizard.service.ProductLookupService
 import com.synngate.synnframe.util.network.NetworkMonitor
 import com.synngate.synnframe.util.resources.ResourceProvider
 import com.synngate.synnframe.util.resources.ResourceProviderImpl
@@ -314,13 +290,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         ValidationService(validationApiService)
     }
 
-    val actionExecutionService by lazy {
-        ActionExecutionService(
-            taskContextManager = taskContextManager,
-            taskXRepository = taskXRepository // Добавляем TaskXRepository
-        )
-    }
-
     val actionSearchService by lazy {
         ActionSearchServiceImpl(
             actionSearchApi = actionSearchApi,
@@ -328,49 +297,8 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         )
     }
 
-    val wizardBinRepository by lazy {
-        WizardBinRepositoryImpl(httpClient, serverProvider)
-    }
-
-    val wizardPalletRepository by lazy {
-        WizardPalletRepositoryImpl(httpClient, serverProvider)
-    }
-
-    // Сервисы для поиска объектов (lookup services)
-    val productLookupService by lazy {
-        ProductLookupService(
-            productRepository = productRepository,
-            taskContextManager = taskContextManager
-        )
-    }
-
-    val binLookupService by lazy {
-        BinLookupService(
-            taskContextManager = taskContextManager,
-            wizardBinRepository = wizardBinRepository
-        )
-    }
-
-    val palletLookupService by lazy {
-        PalletLookupService(
-            taskContextManager = taskContextManager,
-            wizardPalletRepository = wizardPalletRepository
-        )
-    }
-
-    val wizardStateMachine by lazy {
-        WizardStateMachine(
-            taskContextManager = taskContextManager,
-            actionExecutionService = actionExecutionService
-        )
-    }
-
     val taskXApi: TaskXApi by lazy {
         TaskXApiImpl(httpClient, serverProvider)
-    }
-
-    val taskXRepository: TaskXRepository by lazy {
-        TaskXRepositoryImpl(taskXApi, taskContextManager)
     }
 
     // Use Cases
@@ -396,22 +324,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
 
     val dynamicMenuUseCases: DynamicMenuUseCases by lazy {
         DynamicMenuUseCases(dynamicMenuRepository)
-    }
-
-    val taskXUseCases: TaskXUseCases by lazy {
-        TaskXUseCases(taskXRepository, taskContextManager)
-    }
-
-    val taskContextManager: TaskContextManager by lazy {
-        TaskContextManager()
-    }
-
-    val initialActionsValidator by lazy {
-        InitialActionsValidator()
-    }
-
-    val finalActionsValidator by lazy {
-        FinalActionsValidator(initialActionsValidator)
     }
 
     // Создание контейнера для уровня навигации
@@ -564,86 +476,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         }
     }
 
-    fun createTaskXListViewModel(): TaskXListViewModel {
-        return getOrCreateViewModel("TaskXListViewModel") {
-            TaskXListViewModel(
-                taskXUseCases = appContainer.taskXUseCases,
-                userUseCases = appContainer.userUseCases
-            )
-        }
-    }
-
-    fun createTaskXDetailViewModel(taskId: String): TaskXDetailViewModel {
-        return getOrCreateViewModel("TaskXDetailViewModel_$taskId") {
-            // Проверяем, есть ли данные в TaskContextManager
-            val contextTask = appContainer.taskContextManager.lastStartedTaskX.value
-            val contextTaskType = appContainer.taskContextManager.lastTaskTypeX.value
-
-            // Если задача в контексте и совпадает по ID, используем её вместе с типом
-            if (contextTask != null && contextTask.id == taskId && contextTaskType != null) {
-                TaskXDetailViewModel(
-                    taskId = taskId,
-                    taskXUseCases = appContainer.taskXUseCases,
-                    userUseCases = appContainer.userUseCases,
-                    finalActionsValidator = appContainer.finalActionsValidator,
-                    actionExecutionService = appContainer.actionExecutionService, // Добавлено
-                    actionSearchService = appContainer.actionSearchService,
-                    initialActionsValidator = appContainer.initialActionsValidator,
-                    preloadedTask = contextTask,
-                    preloadedTaskType = contextTaskType
-                )
-            } else {
-                // Иначе создаём обычный ViewModel, который загрузит данные
-                TaskXDetailViewModel(
-                    taskId = taskId,
-                    taskXUseCases = appContainer.taskXUseCases,
-                    userUseCases = appContainer.userUseCases,
-                    finalActionsValidator = appContainer.finalActionsValidator,
-                    actionExecutionService = appContainer.actionExecutionService,
-                    initialActionsValidator = appContainer.initialActionsValidator
-                )
-            }
-        }
-    }
-
-    fun createActionStepFactoryRegistry(): ActionStepFactoryRegistry {
-        // Создаем Map с провайдерами фабрик
-        val factoryProviders = mapOf<ActionObjectType, () -> ActionStepFactory>(
-            ActionObjectType.CLASSIFIER_PRODUCT to {
-                ProductSelectionStepFactory(
-                    productLookupService = appContainer.productLookupService,
-                    validationService = appContainer.validationService
-                )
-            },
-            ActionObjectType.TASK_PRODUCT to {
-                TaskProductSelectionStepFactory(
-                    productLookupService = appContainer.productLookupService,
-                    validationService = appContainer.validationService
-                )
-            },
-            ActionObjectType.PRODUCT_QUANTITY to {
-                ProductQuantityStepFactory(
-                    validationService = appContainer.validationService
-                )
-            },
-            ActionObjectType.PALLET to {
-                PalletSelectionStepFactory(
-                    palletLookupService = appContainer.palletLookupService,
-                    validationService = appContainer.validationService
-                )
-            },
-            ActionObjectType.BIN to {
-                BinSelectionStepFactory(
-                    binLookupService = appContainer.binLookupService,
-                    validationService = appContainer.validationService
-                )
-            }
-        )
-
-        // Создаем реестр с провайдерами фабрик
-        return ActionStepFactoryRegistry(factoryProviders)
-    }
-
     fun createDynamicMenuViewModel(): DynamicMenuViewModel {
         return getOrCreateViewModel("DynamicMenuViewModel") {
             DynamicMenuViewModel(
@@ -665,8 +497,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 endpoint = endpoint,
                 screenSettings = screenSettings,
                 dynamicMenuUseCases = appContainer.dynamicMenuUseCases,
-                userUseCases = appContainer.userUseCases,
-                taskContextManager = appContainer.taskContextManager // Передаем TaskContextManager
+                userUseCases = appContainer.userUseCases
             )
         }
     }
@@ -680,8 +511,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 taskId = taskId,
                 endpoint = endpoint,
                 dynamicMenuUseCases = appContainer.dynamicMenuUseCases,
-                userUseCases = appContainer.userUseCases,
-                taskContextManager = appContainer.taskContextManager // Передаем TaskContextManager
+                userUseCases = appContainer.userUseCases
             )
         }
     }
@@ -714,18 +544,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 soundService = appContainer.soundService,
                 productUiMapper = appContainer.productUiMapper,
                 isSelectionMode = isSelectionMode
-            )
-        }
-    }
-
-    fun createActionWizardViewModel(taskId: String, actionId: String): ActionWizardViewModel {
-        return getOrCreateViewModel("ActionWizardViewModel_${taskId}_${actionId}") {
-            ActionWizardViewModel(
-                taskId = taskId,
-                actionId = actionId,
-                wizardStateMachine = appContainer.wizardStateMachine,
-                actionStepFactoryRegistry = createActionStepFactoryRegistry(),
-                taskContextManager = appContainer.taskContextManager
             )
         }
     }

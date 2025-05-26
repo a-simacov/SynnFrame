@@ -4,7 +4,6 @@ import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
-import com.synngate.synnframe.domain.service.TaskContextManager
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTasksEvent
@@ -19,8 +18,7 @@ class DynamicTasksViewModel(
     val endpoint: String,
     screenSettings: ScreenSettings,
     private val dynamicMenuUseCases: DynamicMenuUseCases,
-    private val userUseCases: UserUseCases,
-    private val taskContextManager: TaskContextManager // Добавляем TaskContextManager
+    private val userUseCases: UserUseCases
 ) : BaseViewModel<DynamicTasksState, DynamicTasksEvent>(
     DynamicTasksState(
         menuItemId = menuItemId,
@@ -96,17 +94,12 @@ class DynamicTasksViewModel(
             updateState { it.copy(isLoading = true) }
 
             try {
-                Timber.d("Запуск задания: $taskId через endpoint: $endpoint")
                 val startEndpoint = "$endpoint/$taskId/take"
                 val result = dynamicMenuUseCases.startDynamicTask(startEndpoint, taskId)
 
                 if (result.isSuccess()) {
                     val startResponse = result.getOrNull()
                     if (startResponse != null) {
-                        // Сохраняем данные в TaskContextManager
-                        taskContextManager.saveStartedTask(startResponse, endpoint)
-
-                        Timber.d("Задание успешно запущено, переходим к TaskXDetail: ${startResponse.task.id}")
                         sendEvent(DynamicTasksEvent.NavigateToTaskXDetail(startResponse.task.id))
                     } else {
                         sendEvent(DynamicTasksEvent.ShowSnackbar("Не удалось получить данные для запуска задания"))
@@ -200,10 +193,6 @@ class DynamicTasksViewModel(
 
     private fun navigateToTaskXDetail(taskId: String) {
         sendEvent(DynamicTasksEvent.NavigateToTaskXDetail(taskId))
-    }
-
-    fun onRefresh() {
-        loadDynamicTasks()
     }
 
     fun clearError() {

@@ -8,7 +8,6 @@ import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.repository.TaskXRepository
-import com.synngate.synnframe.domain.service.TaskContextManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import timber.log.Timber
@@ -16,26 +15,25 @@ import java.time.LocalDateTime
 
 class TaskXRepositoryImpl(
     private val taskXApi: TaskXApi,
-    private val taskContextManager: TaskContextManager
 ) : TaskXRepository {
 
     override fun getTasks(): Flow<List<TaskX>> {
         return flow {
-            val task = taskContextManager.lastStartedTaskX.value
-            if (task != null) {
-                emit(listOf(task))
-            } else {
-                emit(emptyList())
-            }
+//            val task = taskContextManager.lastStartedTaskX.value
+//            if (task != null) {
+//                emit(listOf(task))
+//            } else {
+//                emit(emptyList())
+//            }
         }
     }
 
     override suspend fun getTaskById(id: String): TaskX? {
-        return taskContextManager.lastStartedTaskX.value?.takeIf { it.id == id }
+        return null
     }
 
     override suspend fun updateTask(task: TaskX) {
-        taskContextManager.updateTask(task)
+
     }
 
     override suspend fun startTask(id: String, executorId: String, endpoint: String): Result<TaskX> {
@@ -43,7 +41,7 @@ class TaskXRepositoryImpl(
             val result = taskXApi.startTask(id, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    val task = taskContextManager.lastStartedTaskX.value
+                    val task: TaskX? = null
                     if (task != null && task.id == id) {
                         val updatedTask = task.copy(
                             status = TaskXStatus.IN_PROGRESS,
@@ -51,7 +49,6 @@ class TaskXRepositoryImpl(
                             startedAt = LocalDateTime.now(),
                             lastModifiedAt = LocalDateTime.now()
                         )
-                        taskContextManager.updateTask(updatedTask)
                         Result.success(updatedTask)
                     } else {
                         Result.failure(Exception("Task not found in context"))
@@ -72,13 +69,12 @@ class TaskXRepositoryImpl(
             val result = taskXApi.pauseTask(id, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    val task = taskContextManager.lastStartedTaskX.value
+                    val task: TaskX? = null
                     if (task != null && task.id == id) {
                         val updatedTask = task.copy(
                             status = TaskXStatus.PAUSED,
                             lastModifiedAt = LocalDateTime.now()
                         )
-                        taskContextManager.updateTask(updatedTask)
                         Result.success(updatedTask)
                     } else {
                         Result.failure(Exception("Task not found in context"))
@@ -99,14 +95,13 @@ class TaskXRepositoryImpl(
             val result = taskXApi.finishTask(id, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    val task = taskContextManager.lastStartedTaskX.value
+                    val task: TaskX? = null
                     if (task != null && task.id == id) {
                         val updatedTask = task.copy(
                             status = TaskXStatus.COMPLETED,
                             completedAt = LocalDateTime.now(),
                             lastModifiedAt = LocalDateTime.now()
                         )
-                        taskContextManager.updateTask(updatedTask)
                         Result.success(updatedTask)
                     } else {
                         Result.failure(Exception("Task not found in context"))
@@ -130,7 +125,7 @@ class TaskXRepositoryImpl(
             val result = taskXApi.addFactAction(factAction.taskId, factAction, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    val task = taskContextManager.lastStartedTaskX.value
+                    val task: TaskX? = null
                     if (task != null && task.id == factAction.taskId) {
                         val updatedFactActions = task.factActions.toMutableList()
                         updatedFactActions.add(factAction)
@@ -155,7 +150,6 @@ class TaskXRepositoryImpl(
                             lastModifiedAt = LocalDateTime.now()
                         )
 
-                        taskContextManager.updateTask(updatedTask)
                         Result.success(updatedTask)
                     } else {
                         Result.failure(Exception("Task not found in context"))
