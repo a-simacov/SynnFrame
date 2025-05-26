@@ -2,9 +2,6 @@ package com.synngate.synnframe.presentation.navigation
 
 import androidx.navigation.NavController
 import androidx.navigation.NavOptionsBuilder
-import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
-import com.synngate.synnframe.domain.entity.taskx.TaskX
-import com.synngate.synnframe.presentation.di.ScreenContainer
 import com.synngate.synnframe.presentation.navigation.routes.AuthRoutes
 import com.synngate.synnframe.presentation.navigation.routes.DynamicRoutes
 import com.synngate.synnframe.presentation.navigation.routes.LogRoutes
@@ -58,17 +55,4 @@ fun NavController.navigateToDynamicMenu(builder: NavOptionsBuilder.() -> Unit = 
         popUpTo(MainRoutes.MainMenu.route) { inclusive = false }
         builder()
     }
-}
-
-fun NavController.navigateToTaskXDetailWithData(
-    task: TaskX,
-    taskType: TaskTypeX,
-    endpoint: String,
-    screenContainer: ScreenContainer
-) {
-    // Сохраняем данные в холдер
-    screenContainer.setTaskXData(task, taskType, endpoint)
-
-    // Навигируемся к экрану
-    navigate(TaskXRoutes.TaskXDetail.createRoute(task.id))
 }

@@ -566,7 +566,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
     private val taskXDataHolder by lazy { TaskXDataHolder() }
 
     fun createTaskXDetailViewModel(): TaskXDetailViewModel {
-        return getOrCreateViewModel("TaskXDetailViewModel_") {
+        return getOrCreateViewModel("TaskXDetailViewModel") {
             TaskXDetailViewModel(
                 taskXUseCases = appContainer.taskXUseCases,
                 userUseCases = appContainer.userUseCases,

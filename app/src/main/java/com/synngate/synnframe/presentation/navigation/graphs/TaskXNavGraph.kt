@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.navigation.graphs
 
+import androidx.compose.runtime.remember
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -10,6 +11,7 @@ import com.synngate.synnframe.presentation.navigation.NavigationScopeManager
 import com.synngate.synnframe.presentation.navigation.rememberEphemeralScreenContainer
 import com.synngate.synnframe.presentation.navigation.rememberPersistentScreenContainer
 import com.synngate.synnframe.presentation.navigation.routes.TaskXRoutes
+import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailScreen
 import timber.log.Timber
 
 /**
@@ -44,6 +46,23 @@ fun NavGraphBuilder.taskXNavGraph(
             val screenContainer = rememberEphemeralScreenContainer(
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
+            )
+
+            // Создаем ViewModel через контейнер
+            val viewModel = remember(taskId) {
+                screenContainer.createTaskXDetailViewModel()
+            }
+
+            TaskXDetailScreen(
+                viewModel = viewModel,
+                navigateBack = {
+                    navController.popBackStack()
+                },
+                navigateToActionWizard = { taskId, actionId ->
+                    navController.navigate(
+                        TaskXRoutes.ActionWizardScreen.createRoute(taskId, actionId)
+                    )
+                }
             )
         }
 

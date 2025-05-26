@@ -27,7 +27,6 @@ class TaskXDataHolder {
     val endpoint: String? get() = _endpoint
 
     fun setTaskData(task: TaskX, taskType: TaskTypeX, endpoint: String) {
-        // Устанавливаем taskType в task, если он еще не установлен
         val taskWithType = if (task.taskType == null) {
             task.copy(taskType = taskType)
         } else {
