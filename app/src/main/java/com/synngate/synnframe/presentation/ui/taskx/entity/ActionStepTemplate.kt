@@ -15,7 +15,7 @@ data class ActionStepTemplate(
     val isRequired: Boolean = true,
     val serverSelectionEndpoint: String = "",
     val inputAdditionalProps: Boolean = false,
-    val bufferUsage: BufferUsage = BufferUsage.NONE,
+    val bufferUsage: BufferUsage = BufferUsage.NEVER,
     val saveToTaskBuffer: Boolean = false,
     val validationRules: ValidationRule? = null
 )

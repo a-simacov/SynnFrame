@@ -1,13 +1,14 @@
 package com.synngate.synnframe.domain.usecase.dynamicmenu
 
 import com.synngate.synnframe.data.remote.api.ApiResult
-import com.synngate.synnframe.data.remote.dto.TaskXStartResponseDto
 import com.synngate.synnframe.domain.entity.DynamicMenuItemType
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
+import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.repository.DynamicMenuRepository
 import com.synngate.synnframe.domain.usecase.BaseUseCase
+import com.synngate.synnframe.presentation.ui.taskx.mapper.TaskXMapper
 import timber.log.Timber
 
 class DynamicMenuUseCases(
@@ -77,9 +78,18 @@ class DynamicMenuUseCases(
         }
     }
 
-    suspend fun startDynamicTask(endpoint: String, taskId: String): ApiResult<TaskXStartResponseDto> {
+    suspend fun startDynamicTask(endpoint: String, taskId: String): ApiResult<TaskX> {
         return try {
-            dynamicMenuRepository.startDynamicTask(endpoint, taskId)
+            val result = dynamicMenuRepository.startDynamicTask(endpoint, taskId)
+
+            when (result) {
+                is ApiResult.Success -> {
+                    // Используем TaskXMapper для преобразования
+                    val taskX = TaskXMapper.mapTaskXResponse(result.data)
+                    ApiResult.Success(taskX)
+                }
+                is ApiResult.Error -> result
+            }
         } catch (e: Exception) {
             Timber.e(e, "Error in startDynamicTask use case")
             ApiResult.Error(500, e.message ?: "Unknown error")

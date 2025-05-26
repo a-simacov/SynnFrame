@@ -1,11 +1,11 @@
 package com.synngate.synnframe.data.remote.api
 
 import com.synngate.synnframe.data.remote.dto.TaskStartRequestDto
-import com.synngate.synnframe.data.remote.dto.TaskXStartResponseDto
 import com.synngate.synnframe.data.remote.service.ServerProvider
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
+import com.synngate.synnframe.presentation.ui.taskx.dto.TaskXResponseDto
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpStatusCode
 
@@ -57,7 +57,7 @@ class DynamicMenuApiImpl(
     override suspend fun startDynamicTask(
         endpoint: String,
         taskId: String
-    ): ApiResult<TaskXStartResponseDto> {
+    ): ApiResult<TaskXResponseDto> {
         val requestBody = TaskStartRequestDto(taskId = taskId, start = true)
 
         return executeApiRequest(
