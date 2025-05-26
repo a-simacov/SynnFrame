@@ -11,7 +11,7 @@ data class TaskX(
     val id: String,
     val barcode: String,
     val name: String,
-    val taskTypeId: String,
+    val taskType: TaskTypeX? = null, // Заполняется из ответа сервера
     val executorId: String? = null,
     val status: TaskXStatus = TaskXStatus.TO_DO,
     @Serializable(with = LocalDateTimeSerializer::class)
@@ -24,4 +24,22 @@ data class TaskX(
     val completedAt: LocalDateTime? = null,
     val plannedActions: List<PlannedAction> = emptyList(),
     val factActions: List<FactAction> = emptyList()
-)
+) {
+    fun getInitialActions(): List<PlannedAction> =
+        plannedActions.filter { it.isInitialAction() }
+
+    fun getRegularActions(): List<PlannedAction> =
+        plannedActions.filter { it.isRegularAction() }
+
+    fun getFinalActions(): List<PlannedAction> =
+        plannedActions.filter { it.isFinalAction() }
+
+    fun areInitialActionsCompleted(): Boolean =
+        getInitialActions().all { it.isCompleted || it.manuallyCompleted }
+
+    fun getCompletedInitialActionsCount(): Int =
+        getInitialActions().count { it.isCompleted || it.manuallyCompleted }
+
+    fun getTotalInitialActionsCount(): Int =
+        getInitialActions().size
+}

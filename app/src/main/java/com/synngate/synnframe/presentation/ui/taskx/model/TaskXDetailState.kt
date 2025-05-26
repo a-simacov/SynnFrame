@@ -1,9 +1,9 @@
 package com.synngate.synnframe.presentation.ui.taskx.model
 
-import com.synngate.synnframe.domain.entity.taskx.SavableObject
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
+import com.synngate.synnframe.presentation.ui.taskx.buffer.BufferItem
 
 enum class TaskXDetailView {
     PLANNED_ACTIONS,
@@ -43,25 +43,45 @@ data class TaskXDetailState(
     val initialActionsIds: List<String> = emptyList(),
     val showInitialActionsRequiredDialog: Boolean = false,
 
-    // Поля для поддержки сохраняемых объектов
-    val savableObjects: List<SavableObject> = emptyList(),
-    val showSavableObjectsPanel: Boolean = false,
-    val supportsSavableObjects: Boolean = false,
+    // Поля для поддержки буфера задания
+    val bufferItems: List<BufferItem> = emptyList(),
+    val showBufferPanel: Boolean = false,
+    val supportsTaskBuffer: Boolean = false,
 
     // Новые поля для улучшения UX при фильтрации
-    val searchInfo: String = "",                         // Информация о результатах поиска
-    val isFilteredBySavableObjects: Boolean = false,     // Признак фильтрации по сохраняемым объектам
-    val activeFiltersCount: Int = 0,                     // Количество активных фильтров
-    val filterMessage: String = ""                       // Сообщение о применяемых фильтрах
-)
+    val searchInfo: String = "",
+    val isFilteredByBuffer: Boolean = false,
+    val activeFiltersCount: Int = 0,
+    val filterMessage: String = "",
 
-sealed class TaskXDetailEvent {
-    data class ShowSnackbar(val message: String) : TaskXDetailEvent()
-    data class NavigateToActionWizard(val taskId: String, val actionId: String) : TaskXDetailEvent()
-    object NavigateBack : TaskXDetailEvent()
-
-    // Новое событие, которое сразу включает и сообщение, и навигацию назад
-    data class TaskActionCompleted(val message: String) : TaskXDetailEvent()
+    // Признак, что задание с ручным завершением действий
+    val supportsManualActionCompletion: Boolean = false
+) {
+    fun getDisplayActions(): List<PlannedAction> {
+        return when {
+            filteredActionIds.isNotEmpty() -> {
+                task?.plannedActions?.filter { it.id in filteredActionIds } ?: emptyList()
+            }
+            isFilteredByBuffer -> filteredActions
+            else -> {
+                when (actionsDisplayMode) {
+                    ActionDisplayMode.CURRENT -> {
+                        task?.plannedActions?.filter {
+                            !it.isCompleted && !it.manuallyCompleted && !it.isSkipped
+                        } ?: emptyList()
+                    }
+                    ActionDisplayMode.COMPLETED -> {
+                        task?.plannedActions?.filter {
+                            it.isCompleted || it.manuallyCompleted
+                        } ?: emptyList()
+                    }
+                    ActionDisplayMode.ALL -> task?.plannedActions ?: emptyList()
+                    ActionDisplayMode.INITIALS -> task?.getInitialActions() ?: emptyList()
+                    ActionDisplayMode.FINALS -> task?.getFinalActions() ?: emptyList()
+                }
+            }
+        }
+    }
 }
 
 data class StatusActionData(
