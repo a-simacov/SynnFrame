@@ -98,9 +98,13 @@ class DynamicTasksViewModel(
                 val result = dynamicMenuUseCases.startDynamicTask(startEndpoint, taskId)
 
                 if (result.isSuccess()) {
-                    val startResponse = result.getOrNull()
-                    if (startResponse != null) {
-                        sendEvent(DynamicTasksEvent.NavigateToTaskXDetail(startResponse.task.id))
+                    val taskX = result.getOrNull()
+                    if (taskX != null && taskX.taskType != null) {
+                        sendEvent(DynamicTasksEvent.SetTaskDataAndNavigate(
+                            task = taskX,
+                            taskType = taskX.taskType,
+                            endpoint = endpoint
+                        ))
                     } else {
                         sendEvent(DynamicTasksEvent.ShowSnackbar("Не удалось получить данные для запуска задания"))
                     }

@@ -6,7 +6,7 @@ import com.synngate.synnframe.presentation.ui.taskx.entity.SearchActionFieldType
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 
 class ActionSearchManager(
-    private val taskXService: TaskXService
+    //private val taskXService: TaskXService
 ) {
 
     /**
@@ -89,13 +89,13 @@ class ActionSearchManager(
     ): List<String> {
         if (field.endpoint.isBlank()) return emptyList()
 
-        val result = taskXService.searchActions(
-            taskId = task.id,
-            searchValue = searchValue,
-            fieldType = field.actionField.name
-        )
+//        val result = taskXService.searchActions(
+//            taskId = task.id,
+//            searchValue = searchValue,
+//            fieldType = field.actionField.name
+//        )
 
-        return result.getOrNull() ?: emptyList()
+        return emptyList()
     }
 
     /**

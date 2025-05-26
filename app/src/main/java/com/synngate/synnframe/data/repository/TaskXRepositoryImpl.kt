@@ -134,8 +134,7 @@ class TaskXRepositoryImpl(
                             if (it.id == factAction.plannedActionId) {
                                 it.copy(isCompleted = true)
                             } else if (factAction.plannedActionId == null &&
-                                it.storageProduct?.product?.id == factAction.storageProduct?.product?.id &&
-                                it.wmsAction == factAction.wmsAction) {
+                                it.storageProduct?.product?.id == factAction.storageProduct?.product?.id) {
                                 // Дополнительно проверяем соответствие по продукту и действию,
                                 // если plannedActionId не указан
                                 it.copy(isCompleted = true)

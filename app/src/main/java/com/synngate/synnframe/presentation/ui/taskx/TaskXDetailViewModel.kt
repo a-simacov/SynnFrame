@@ -1,59 +1,153 @@
 package com.synngate.synnframe.presentation.ui.taskx
 
-import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
-import com.synngate.synnframe.domain.entity.taskx.TaskX
+import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
+import com.synngate.synnframe.presentation.navigation.TaskXDataHolder
+import com.synngate.synnframe.presentation.ui.taskx.model.StatusActionData
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import timber.log.Timber
 
 class TaskXDetailViewModel(
     private val taskXUseCases: TaskXUseCases,
     private val userUseCases: UserUseCases,
-    private val preloadedTask: TaskX? = null,
-    private val preloadedTaskType: TaskTypeX? = null
+    private val taskXDataHolder: TaskXDataHolder
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
+
+    init {
+        // Инициализация состояния из холдера или переданных данных
+        val task = taskXDataHolder.currentTask.value
+        val taskType = taskXDataHolder.currentTaskType.value
+
+        if (task != null && taskType != null) {
+            updateState {
+                it.copy(
+                    task = task,
+                    taskType = taskType
+                )
+            }
+
+            // Подписываемся на изменения в холдере
+            observeTaskChanges()
+
+            // Загружаем текущего пользователя
+            loadCurrentUser()
+
+            // Обновляем доступные действия
+            updateAvailableActions()
+        } else {
+            Timber.e("Task or TaskType not found in TaskXDataHolder")
+            sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка загрузки данных задания"))
+            sendEvent(TaskXDetailEvent.NavigateBack)
+        }
+    }
+
+    private fun observeTaskChanges() {
+        // Подписываемся на изменения задания в холдере
+        taskXDataHolder.currentTask
+            .onEach { task ->
+                task?.let {
+                    updateState { state ->
+                        state.copy(
+                            task = it,
+                            // Обновляем другие связанные поля
+                            hasInitialActions = it.getInitialActions().isNotEmpty(),
+                            areInitialActionsCompleted = it.areInitialActionsCompleted(),
+                            completedInitialActionsCount = it.getCompletedInitialActionsCount(),
+                            totalInitialActionsCount = it.getTotalInitialActionsCount()
+                        )
+                    }
+                    updateAvailableActions()
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun loadCurrentUser() {
+        launchIO {
+            userUseCases.getCurrentUser().collect { user ->
+                updateState { it.copy(currentUserId = user?.id) }
+            }
+        }
+    }
+
+    private fun updateAvailableActions() {
+        val task = uiState.value.task ?: return
+        val taskType = uiState.value.taskType ?: return
+
+        // Определяем доступные действия со статусом задания
+        val statusActions = when (task.status) {
+            TaskXStatus.TO_DO -> listOf(
+                StatusActionData(
+                    id = "start",
+                    iconName = "play_arrow",
+                    text = "Начать выполнение",
+                    description = "Начать выполнение задания",
+                    onClick = { startTask() }
+                )
+            )
+            TaskXStatus.IN_PROGRESS -> listOf(
+                StatusActionData(
+                    id = "pause",
+                    iconName = "pause",
+                    text = "Приостановить",
+                    description = "Приостановить выполнение",
+                    onClick = { pauseTask() }
+                ),
+                StatusActionData(
+                    id = "finish",
+                    iconName = "check_circle",
+                    text = "Завершить",
+                    description = "Завершить задание",
+                    onClick = { showCompletionDialog() }
+                )
+            )
+            TaskXStatus.PAUSED -> listOf(
+                StatusActionData(
+                    id = "resume",
+                    iconName = "play_arrow",
+                    text = "Возобновить",
+                    description = "Возобновить выполнение",
+                    onClick = { resumeTask() }
+                )
+            )
+            else -> emptyList()
+        }
+
+        updateState { it.copy(statusActions = statusActions) }
+    }
 
     fun startTask() {
         launchIO {
             val currentState = uiState.value
             val task = currentState.task ?: return@launchIO
             val currentUserId = currentState.currentUserId ?: return@launchIO
+            val endpoint = taskXDataHolder.endpoint ?: return@launchIO
 
             updateState { it.copy(isProcessing = true) }
 
             try {
-                val result = taskXUseCases.startTask(task.id, currentUserId)
+                val result = taskXUseCases.startTask(task.id, currentUserId, endpoint)
 
                 if (result.isSuccess) {
                     val updatedTask = result.getOrNull()
-                    updateState {
-                        it.copy(
-                            task = updatedTask,
-                            isProcessing = false
-                        )
+                    if (updatedTask != null) {
+                        // Обновляем задание в холдере
+                        taskXDataHolder.updateTask(updatedTask)
+                        sendEvent(TaskXDetailEvent.ShowSnackbar("Задание начато"))
                     }
-                    sendEvent(TaskXDetailEvent.ShowSnackbar("Задание начато"))
                 } else {
-                    updateState {
-                        it.copy(
-                            isProcessing = false,
-                            error = result.exceptionOrNull()?.message ?: "Error on starting task"
-                        )
-                    }
+                    updateState { it.copy(isProcessing = false) }
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при запуске задания"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error on starting task")
-                updateState {
-                    it.copy(
-                        isProcessing = false,
-                        error = "Error on starting task: ${e.message}"
-                    )
-                }
+                updateState { it.copy(isProcessing = false) }
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при запуске задания"))
             }
         }
@@ -64,6 +158,7 @@ class TaskXDetailViewModel(
             val currentState = uiState.value
             val task = currentState.task ?: return@launchIO
             val taskType = currentState.taskType ?: return@launchIO
+            val endpoint = taskXDataHolder.endpoint ?: return@launchIO
 
             val allActionsCompleted = task.plannedActions.all { it.isCompleted || it.isSkipped }
 
@@ -79,9 +174,11 @@ class TaskXDetailViewModel(
             ) }
 
             try {
-                val result = taskXUseCases.completeTask(task.id)
+                val result = taskXUseCases.completeTask(task.id, endpoint)
 
                 if (result.isSuccess) {
+                    // Очищаем данные в холдере при завершении
+                    taskXDataHolder.clear()
                     sendEvent(TaskXDetailEvent.TaskActionCompleted("Задание завершено"))
                 } else {
                     updateState { it.copy(isProcessingDialogAction = false) }
@@ -98,13 +195,18 @@ class TaskXDetailViewModel(
     fun pauseTask() {
         launchIO {
             val task = uiState.value.task ?: return@launchIO
+            val endpoint = taskXDataHolder.endpoint ?: return@launchIO
 
             updateState { it.copy(isProcessingDialogAction = true) }
 
             try {
-                val result = taskXUseCases.pauseTask(task.id)
+                val result = taskXUseCases.pauseTask(task.id, endpoint)
 
                 if (result.isSuccess) {
+                    val updatedTask = result.getOrNull()
+                    if (updatedTask != null) {
+                        taskXDataHolder.updateTask(updatedTask)
+                    }
                     sendEvent(TaskXDetailEvent.TaskActionCompleted("Задание приостановлено"))
                 } else {
                     updateState { it.copy(isProcessingDialogAction = false) }
@@ -122,38 +224,26 @@ class TaskXDetailViewModel(
         launchIO {
             val task = uiState.value.task ?: return@launchIO
             val currentUserId = uiState.value.currentUserId ?: return@launchIO
+            val endpoint = taskXDataHolder.endpoint ?: return@launchIO
 
             updateState { it.copy(isProcessing = true) }
 
             try {
-                val result = taskXUseCases.startTask(task.id, currentUserId)
+                val result = taskXUseCases.startTask(task.id, currentUserId, endpoint)
 
                 if (result.isSuccess) {
                     val updatedTask = result.getOrNull()
-                    updateState {
-                        it.copy(
-                            task = updatedTask,
-                            isProcessing = false
-                        )
+                    if (updatedTask != null) {
+                        taskXDataHolder.updateTask(updatedTask)
+                        sendEvent(TaskXDetailEvent.ShowSnackbar("Задание возобновлено"))
                     }
-                    sendEvent(TaskXDetailEvent.ShowSnackbar("Задание возобновлено"))
                 } else {
-                    updateState {
-                        it.copy(
-                            isProcessing = false,
-                            error = result.exceptionOrNull()?.message ?: "Error on resuming task"
-                        )
-                    }
+                    updateState { it.copy(isProcessing = false) }
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при возобновлении задания"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error on resuming task")
-                updateState {
-                    it.copy(
-                        isProcessing = false,
-                        error = "Error on resuming task: ${e.message}"
-                    )
-                }
+                updateState { it.copy(isProcessing = false) }
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при возобновлении задания"))
             }
         }

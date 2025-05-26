@@ -28,6 +28,7 @@ import com.synngate.synnframe.data.repository.LogRepositoryImpl
 import com.synngate.synnframe.data.repository.ProductRepositoryImpl
 import com.synngate.synnframe.data.repository.ServerRepositoryImpl
 import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
+import com.synngate.synnframe.data.repository.TaskXRepositoryImpl
 import com.synngate.synnframe.data.repository.UserRepositoryImpl
 import com.synngate.synnframe.data.service.ClipboardServiceImpl
 import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
@@ -40,11 +41,14 @@ import com.synngate.synnframe.data.service.WebServerControllerImpl
 import com.synngate.synnframe.data.service.WebServerManagerImpl
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.ScreenSettings
+import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
+import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.repository.DynamicMenuRepository
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.repository.ServerRepository
 import com.synngate.synnframe.domain.repository.SettingsRepository
+import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.repository.UserRepository
 import com.synngate.synnframe.domain.service.ActionSearchServiceImpl
 import com.synngate.synnframe.domain.service.ClipboardService
@@ -63,7 +67,9 @@ import com.synngate.synnframe.domain.usecase.log.LogUseCases
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
+import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
+import com.synngate.synnframe.presentation.navigation.TaskXDataHolder
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.ui.dynamicmenu.menu.DynamicMenuViewModel
 import com.synngate.synnframe.presentation.ui.dynamicmenu.product.DynamicProductDetailViewModel
@@ -81,6 +87,7 @@ import com.synngate.synnframe.presentation.ui.server.ServerDetailViewModel
 import com.synngate.synnframe.presentation.ui.server.ServerListViewModel
 import com.synngate.synnframe.presentation.ui.settings.SettingsViewModel
 import com.synngate.synnframe.presentation.ui.sync.SyncHistoryViewModel
+import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailViewModel
 import com.synngate.synnframe.util.network.NetworkMonitor
 import com.synngate.synnframe.util.resources.ResourceProvider
 import com.synngate.synnframe.util.resources.ResourceProviderImpl
@@ -326,6 +333,14 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         DynamicMenuUseCases(dynamicMenuRepository)
     }
 
+    val taskXRepository: TaskXRepository by lazy {
+        TaskXRepositoryImpl(taskXApi)
+    }
+
+    val taskXUseCases: TaskXUseCases by lazy {
+        TaskXUseCases(taskXRepository = taskXRepository)
+    }
+
     // Создание контейнера для уровня навигации
     fun createNavigationContainer(): NavigationContainer {
         return createChildContainer { NavigationContainer(this) }
@@ -546,5 +561,27 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 isSelectionMode = isSelectionMode
             )
         }
+    }
+
+    private val taskXDataHolder by lazy { TaskXDataHolder() }
+
+    fun createTaskXDetailViewModel(): TaskXDetailViewModel {
+        return getOrCreateViewModel("TaskXDetailViewModel_") {
+            TaskXDetailViewModel(
+                taskXUseCases = appContainer.taskXUseCases,
+                userUseCases = appContainer.userUseCases,
+                taskXDataHolder = taskXDataHolder
+            )
+        }
+    }
+
+    // Метод для установки данных задания (вызывается из DynamicTasksViewModel)
+    fun setTaskXData(task: TaskX, taskType: TaskTypeX, endpoint: String) {
+        taskXDataHolder.setTaskData(task, taskType, endpoint)
+    }
+
+    override fun dispose() {
+        super.dispose()
+        taskXDataHolder.clear()
     }
 }

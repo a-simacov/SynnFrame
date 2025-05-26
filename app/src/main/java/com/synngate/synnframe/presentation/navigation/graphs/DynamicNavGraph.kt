@@ -171,6 +171,7 @@ fun NavGraphBuilder.dynamicNavGraph(
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )
+
             val viewModel = remember(menuItemId, menuItemName, endpoint, screenSettings) {
                 screenContainer.createDynamicTasksViewModel(
                     menuItemId = menuItemId,
@@ -195,7 +196,8 @@ fun NavGraphBuilder.dynamicNavGraph(
                 },
                 navigateBack = {
                     navController.popBackStack()
-                }
+                },
+                screenContainer = screenContainer
             )
         }
 

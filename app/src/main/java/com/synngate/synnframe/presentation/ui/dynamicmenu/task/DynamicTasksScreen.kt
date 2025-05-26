@@ -28,6 +28,7 @@ import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.operation.ScreenElementType
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.status.StatusType
+import com.synngate.synnframe.presentation.di.ScreenContainer
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.createComponentGroups
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.rememberGenericScreenComponentRegistry
 import com.synngate.synnframe.presentation.ui.dynamicmenu.task.component.initializeTaskComponents
@@ -41,6 +42,7 @@ fun DynamicTasksScreen(
     navigateToTaskDetail: (taskId: String, endpoint: String) -> Unit, // Обновлен параметр
     navigateToTaskXDetail: (taskId: String) -> Unit,
     navigateBack: () -> Unit,
+    screenContainer: ScreenContainer,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -66,6 +68,16 @@ fun DynamicTasksScreen(
                 }
                 is DynamicTasksEvent.NavigateToTaskXDetail -> {
                     navigateToTaskXDetail(event.taskId)
+                }
+                is DynamicTasksEvent.SetTaskDataAndNavigate -> {
+                    // Сохраняем данные в холдер
+                    screenContainer.setTaskXData(
+                        task = event.task,
+                        taskType = event.taskType,
+                        endpoint = event.endpoint
+                    )
+                    // Навигируемся к экрану задания
+                    navigateToTaskXDetail(event.task.id)
                 }
             }
         }
