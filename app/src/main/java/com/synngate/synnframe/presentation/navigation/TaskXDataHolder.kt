@@ -17,8 +17,8 @@ class TaskXDataHolder {
     private val _currentTask = MutableStateFlow<TaskX?>(null)
     val currentTask: StateFlow<TaskX?> = _currentTask.asStateFlow()
 
-    private val _currentTaskType = MutableStateFlow<TaskTypeX?>(null)
-    val currentTaskType: StateFlow<TaskTypeX?> = _currentTaskType.asStateFlow()
+    val currentTaskType: TaskTypeX?
+        get() = _currentTask.value?.taskType
 
     private val _taskBuffer = TaskBuffer()
     val taskBuffer: TaskBuffer get() = _taskBuffer
@@ -26,12 +26,15 @@ class TaskXDataHolder {
     private var _endpoint: String? = null
     val endpoint: String? get() = _endpoint
 
-    /**
-     * Устанавливает данные задания при входе в граф навигации
-     */
     fun setTaskData(task: TaskX, taskType: TaskTypeX, endpoint: String) {
-        _currentTask.value = task
-        _currentTaskType.value = taskType
+        // Устанавливаем taskType в task, если он еще не установлен
+        val taskWithType = if (task.taskType == null) {
+            task.copy(taskType = taskType)
+        } else {
+            task
+        }
+
+        _currentTask.value = taskWithType
         _endpoint = endpoint
         _taskBuffer.clear()
     }
@@ -60,24 +63,12 @@ class TaskXDataHolder {
         }
     }
 
-    fun getTaskData(): Pair<TaskX, TaskTypeX>? {
-        val task = _currentTask.value
-        val taskType = _currentTaskType.value
-
-        return if (task != null && taskType != null) {
-            Pair(task, taskType)
-        } else {
-            null
-        }
-    }
-
     fun hasData(): Boolean {
-        return _currentTask.value != null && _currentTaskType.value != null
+        return _currentTask.value != null && _endpoint != null
     }
 
     fun clear() {
         _currentTask.value = null
-        _currentTaskType.value = null
         _endpoint = null
         _taskBuffer.clear()
     }
