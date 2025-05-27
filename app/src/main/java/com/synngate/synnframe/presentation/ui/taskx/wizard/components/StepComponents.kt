@@ -1,11 +1,13 @@
 package com.synngate.synnframe.presentation.ui.taskx.wizard.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
@@ -17,18 +19,32 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.presentation.common.inputs.ExpirationDatePicker
-import com.synngate.synnframe.presentation.common.inputs.NumberTextField
 import com.synngate.synnframe.presentation.common.inputs.ProductStatusSelector
 import com.synngate.synnframe.presentation.ui.taskx.entity.ActionStepTemplate
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import com.synngate.synnframe.presentation.ui.wizard.action.components.FormSpacer
+import com.synngate.synnframe.presentation.ui.wizard.action.components.QuantityColumn
+import com.synngate.synnframe.presentation.ui.wizard.action.components.WizardQuantityInput
+import com.synngate.synnframe.presentation.ui.wizard.action.components.formatQuantityDisplay
+import kotlinx.coroutines.delay
+import timber.log.Timber
 import java.util.UUID
 
 @Composable
@@ -392,38 +408,147 @@ fun PalletStep(
 fun QuantityStep(
     step: ActionStepTemplate,
     state: ActionWizardState,
-    onQuantityChanged: (Float) -> Unit
+    onQuantityChanged: (Float) -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    // Получаем данные о количестве из состояния
     val plannedQuantity = state.plannedAction?.quantity ?: 0f
     val selectedQuantity = (state.selectedObjects[step.id] as? Number)?.toFloat() ?: 0f
 
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    // Для упрощения считаем, что в контексте этого шага ещё не было выполненных действий
+    // В реальном сценарии тут должна быть более сложная логика получения completedQuantity
+    val completedQuantity = 0f
+
+    // Рассчитываем прогнозируемое итоговое количество
+    val projectedTotalQuantity = completedQuantity + selectedQuantity
+
+    // Рассчитываем оставшееся количество после ввода (сколько осталось добрать до плана)
+    val remainingAfterInput = (plannedQuantity - projectedTotalQuantity).coerceAtLeast(0f)
+
+    // Определяем, будет ли превышен план
+    val willExceedPlan = projectedTotalQuantity > plannedQuantity
+
+    // Создаем фокусRequester для автоматического фокуса
+    val focusRequester = remember { FocusRequester() }
+
+    // Локальное состояние для отслеживания ввода
+    var inputValue by remember {
+        mutableStateOf(if (selectedQuantity > 0) selectedQuantity.toString() else "")
+    }
+
+    // Устанавливаем фокус на поле ввода при первом отображении
+    LaunchedEffect(Unit) {
+        try {
+            delay(100)
+            focusRequester.requestFocus()
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при установке фокуса на поле ввода количества")
+        }
+    }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        // Показываем плановое количество, если оно задано
         if (plannedQuantity > 0) {
-            Text(
-                text = "Плановое количество: $plannedQuantity",
-                style = MaterialTheme.typography.bodyMedium
+            QuantityIndicators(
+                plannedQuantity = plannedQuantity,
+                completedQuantity = completedQuantity,
+                projectedTotalQuantity = projectedTotalQuantity,
+                remainingAfterInput = remainingAfterInput,
+                willExceedPlan = willExceedPlan
             )
+
+            FormSpacer(8)
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Введите количество:",
-            style = MaterialTheme.typography.bodyMedium
-        )
-
-        NumberTextField(
-            value = if (selectedQuantity > 0) selectedQuantity.toString() else "",
-            onValueChange = { value ->
-                val number = value.toFloatOrNull()
-                if (number != null && number > 0) {
-                    onQuantityChanged(number)
+        // Поле ввода количества с расширенной функциональностью
+        WizardQuantityInput(
+            value = inputValue,
+            onValueChange = { newValue ->
+                inputValue = newValue
+                newValue.toFloatOrNull()?.let { onQuantityChanged(it) }
+            },
+            onIncrement = {
+                val newValue = (inputValue.toFloatOrNull() ?: 0f) + 1f
+                inputValue = newValue.toString()
+                onQuantityChanged(newValue)
+            },
+            onDecrement = {
+                val currentValue = inputValue.toFloatOrNull() ?: 0f
+                if (currentValue > 1) {
+                    val newValue = currentValue - 1f
+                    inputValue = newValue.toString()
+                    onQuantityChanged(newValue)
                 }
             },
-            label = "Количество",
-            modifier = Modifier.fillMaxWidth()
+            onImeAction = {
+                // Сохраняем результат при нажатии на кнопку клавиатуры
+                inputValue.toFloatOrNull()?.let { onQuantityChanged(it) }
+            },
+            isError = state.error != null,
+            errorText = state.error,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            fontSize = 24.sp,
+            label = step.promptText,
+            focusRequester = focusRequester
+        )
+
+        // Показываем предупреждение при превышении плана
+        if (willExceedPlan && plannedQuantity > 0) {
+            FormSpacer(8)
+            WarningMessage(message = "Внимание: превышение планового количества!")
+        }
+    }
+}
+
+@Composable
+private fun QuantityIndicators(
+    plannedQuantity: Float,
+    completedQuantity: Float,
+    projectedTotalQuantity: Float,
+    remainingAfterInput: Float,
+    willExceedPlan: Boolean
+) {
+    val color = when {
+        willExceedPlan -> MaterialTheme.colorScheme.error
+        plannedQuantity == projectedTotalQuantity -> Color(0xFF4CAF50) // Green
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        QuantityColumn(
+            label = "план",
+            valueLarge = formatQuantityDisplay(plannedQuantity),
+            valueSmall = formatQuantityDisplay(completedQuantity),
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        Spacer(modifier = Modifier.width(32.dp))
+        QuantityColumn(
+            label = "будет",
+            valueLarge = formatQuantityDisplay(projectedTotalQuantity),
+            valueSmall = formatQuantityDisplay(remainingAfterInput),
+            color = color
+        )
+    }
+}
+
+@Composable
+private fun WarningMessage(message: String) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = message,
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(8.dp)
         )
     }
 }
