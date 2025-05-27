@@ -98,7 +98,7 @@ class DynamicTasksViewModel(
 
                 // Вместо загрузки данных и сохранения в холдер просто навигируем
                 // с передачей необходимых параметров
-                sendEvent(DynamicTasksEvent.NavigateToTaskXDetail(taskId, startEndpoint))
+                sendEvent(DynamicTasksEvent.NavigateToTaskXDetail(taskId, endpoint))
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при запуске задания")
                 sendEvent(DynamicTasksEvent.ShowSnackbar("Ошибка: ${e.message}"))

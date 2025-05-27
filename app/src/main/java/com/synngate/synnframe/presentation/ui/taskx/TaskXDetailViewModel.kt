@@ -42,7 +42,8 @@ class TaskXDetailViewModel(
             try {
                 // Логируем начало загрузки
                 Timber.d("Начало загрузки задания $taskId с endpoint $endpoint")
-                val taskResult = dynamicMenuUseCases.startDynamicTask(endpoint, taskId)
+                val startEndpoint = "$endpoint/$taskId/take"
+                val taskResult = dynamicMenuUseCases.startDynamicTask(startEndpoint, taskId)
 
                 if (taskResult.isSuccess()) {
                     val task = taskResult.getOrNull()
