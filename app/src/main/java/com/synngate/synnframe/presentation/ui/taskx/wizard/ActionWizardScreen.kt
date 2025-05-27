@@ -5,7 +5,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -59,6 +63,14 @@ fun ActionWizardScreen(
         title = if (state.showSummary) "Итог" else getStepTitle(state),
         subtitle = if (!state.showSummary) "Шаг ${state.currentStepIndex + 1} из ${state.steps.size}" else null,
         onNavigateBack = { viewModel.previousStep() },
+        actions = {
+            IconButton(onClick = { viewModel.exitWizard() }) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Выйти"
+                )
+            }
+        },
         snackbarHostState = snackbarHostState,
         notification = state.error?.let { Pair(it, StatusType.ERROR) },
         onDismissNotification = { viewModel.clearError() },

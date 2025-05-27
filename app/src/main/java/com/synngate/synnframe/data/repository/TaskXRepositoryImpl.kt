@@ -8,6 +8,7 @@ import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.repository.TaskXRepository
+import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import timber.log.Timber
@@ -125,7 +126,8 @@ class TaskXRepositoryImpl(
             val result = taskXApi.addFactAction(factAction.taskId, factAction, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    val task: TaskX? = null
+                    val task = TaskXDataHolderSingleton.currentTask.value
+
                     if (task != null && task.id == factAction.taskId) {
                         val updatedFactActions = task.factActions.toMutableList()
                         updatedFactActions.add(factAction)
@@ -151,6 +153,7 @@ class TaskXRepositoryImpl(
 
                         Result.success(updatedTask)
                     } else {
+                        Timber.e("Task not found in TaskXDataHolderSingleton for factAction: ${factAction.id}")
                         Result.failure(Exception("Task not found in context"))
                     }
                 }
