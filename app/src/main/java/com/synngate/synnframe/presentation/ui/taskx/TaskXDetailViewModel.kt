@@ -5,7 +5,7 @@ import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
-import com.synngate.synnframe.presentation.navigation.TaskXDataHolder
+import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.ui.taskx.model.ActionFilter
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
@@ -21,8 +21,7 @@ class TaskXDetailViewModel(
     private val endpoint: String,
     private val dynamicMenuUseCases: DynamicMenuUseCases,
     private val taskXUseCases: TaskXUseCases,
-    private val userUseCases: UserUseCases,
-    private val taskXDataHolder: TaskXDataHolder? = null // Опциональный параметр для обратной совместимости
+    private val userUseCases: UserUseCases
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
 
     // Валидатор действий
@@ -41,13 +40,16 @@ class TaskXDetailViewModel(
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
+                // Логируем начало загрузки
+                Timber.d("Начало загрузки задания $taskId с endpoint $endpoint")
                 val taskResult = dynamicMenuUseCases.startDynamicTask(endpoint, taskId)
 
                 if (taskResult.isSuccess()) {
                     val task = taskResult.getOrNull()
                     if (task != null && task.taskType != null) {
-                        // Опционально сохраняем в холдер для использования другими компонентами
-                        taskXDataHolder?.setTaskData(task, task.taskType, endpoint)
+                        // Сохраняем в синглтон
+                        TaskXDataHolderSingleton.setTaskData(task, task.taskType, endpoint)
+                        Timber.d("Задание $taskId успешно загружено и сохранено в синглтоне")
 
                         updateState {
                             it.copy(
@@ -58,6 +60,7 @@ class TaskXDetailViewModel(
                             )
                         }
                     } else {
+                        Timber.e("Задание или его тип не определены после загрузки")
                         updateState {
                             it.copy(
                                 isLoading = false,
@@ -68,11 +71,12 @@ class TaskXDetailViewModel(
                     }
                 } else {
                     val error = (taskResult as? ApiResult.Error)?.message ?: "Неизвестная ошибка"
+                    Timber.e("Ошибка при загрузке задания: $error")
                     updateState { it.copy(isLoading = false, error = error) }
                     sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка загрузки: $error"))
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error loading task data")
+                Timber.e(e, "Исключение при загрузке задания $taskId")
                 updateState { it.copy(isLoading = false, error = e.message) }
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка: ${e.message}"))
             }
@@ -109,6 +113,22 @@ class TaskXDetailViewModel(
             showValidationError(validationResult.errorMessage ?: "Невозможно выполнить действие")
             return
         }
+
+        // Проверяем, что данные задания есть в синглтоне перед навигацией
+        if (!TaskXDataHolderSingleton.hasData()) {
+            Timber.e("Нет данных в TaskXDataHolderSingleton перед запуском визарда для действия $actionId")
+            // Если данных нет, пытаемся сохранить их снова
+            TaskXDataHolderSingleton.setTaskData(task, task.taskType!!, endpoint)
+
+            // Двойная проверка
+            if (!TaskXDataHolderSingleton.hasData()) {
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка: невозможно запустить визард. Данные недоступны."))
+                return
+            }
+        }
+
+        // Логируем переход к визарду
+        Timber.d("Переход к визарду для действия $actionId задания ${task.id}")
 
         // Переход к визарду действия
         sendEvent(TaskXDetailEvent.NavigateToActionWizard(task.id, actionId))
@@ -210,7 +230,7 @@ class TaskXDetailViewModel(
                         }
 
                         // Опционально обновляем холдер
-                        taskXDataHolder?.updateTask(updatedTask)
+                        TaskXDataHolderSingleton.updateTask(updatedTask)
                     }
                     sendEvent(TaskXDetailEvent.NavigateBackWithMessage("Задание приостановлено"))
                 } else {
@@ -248,8 +268,8 @@ class TaskXDetailViewModel(
                 val result = taskXUseCases.completeTask(task.id, endpoint)
 
                 if (result.isSuccess) {
-                    // Очищаем данные в холдере
-                    taskXDataHolder?.clear()
+                    // Принудительно очищаем данные в синглтоне при успешном завершении задания
+                    TaskXDataHolderSingleton.forceClean()
                     sendEvent(TaskXDetailEvent.NavigateBackWithMessage("Задание завершено"))
                 } else {
                     updateState { it.copy(isProcessingAction = false) }

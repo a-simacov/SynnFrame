@@ -70,17 +70,6 @@ fun DynamicTasksScreen(
                     // Используем новый подход с передачей endpoint
                     navigateToTaskXDetail(event.taskId, event.endpoint)
                 }
-                // Поддержка устаревшего метода для обратной совместимости
-                is DynamicTasksEvent.SetTaskDataAndNavigate -> {
-                    // Сохраняем данные в холдер (устаревший подход)
-                    screenContainer.setTaskXData(
-                        task = event.task,
-                        taskType = event.taskType,
-                        endpoint = event.endpoint
-                    )
-                    // Навигируемся к экрану задания
-                    navigateToTaskXDetail(event.task.id, event.endpoint)
-                }
             }
         }
     }

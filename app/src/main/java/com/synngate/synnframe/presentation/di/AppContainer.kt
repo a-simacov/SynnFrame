@@ -41,8 +41,6 @@ import com.synngate.synnframe.data.service.WebServerControllerImpl
 import com.synngate.synnframe.data.service.WebServerManagerImpl
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.ScreenSettings
-import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
-import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.repository.DynamicMenuRepository
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.repository.ProductRepository
@@ -69,7 +67,7 @@ import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
-import com.synngate.synnframe.presentation.navigation.TaskXDataHolder
+import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.ui.dynamicmenu.menu.DynamicMenuViewModel
 import com.synngate.synnframe.presentation.ui.dynamicmenu.product.DynamicProductDetailViewModel
@@ -88,6 +86,7 @@ import com.synngate.synnframe.presentation.ui.server.ServerListViewModel
 import com.synngate.synnframe.presentation.ui.settings.SettingsViewModel
 import com.synngate.synnframe.presentation.ui.sync.SyncHistoryViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailViewModel
+import com.synngate.synnframe.presentation.ui.taskx.wizard.ActionWizardViewModel
 import com.synngate.synnframe.util.network.NetworkMonitor
 import com.synngate.synnframe.util.resources.ResourceProvider
 import com.synngate.synnframe.util.resources.ResourceProviderImpl
@@ -341,7 +340,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         TaskXUseCases(taskXRepository = taskXRepository)
     }
 
-    val taskXDataHolder by lazy { TaskXDataHolder() }
+    val taskXDataHolder get() = TaskXDataHolderSingleton
 
     // Создание контейнера для уровня навигации
     fun createNavigationContainer(): NavigationContainer {
@@ -369,7 +368,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     override fun dispose() {
         super.dispose()
         scannerService.dispose()
-        taskXDataHolder.clear()
     }
 }
 
@@ -566,9 +564,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         }
     }
 
-    private val taskXDataHolder: TaskXDataHolder
-        get() = appContainer.taskXDataHolder
-
     fun createTaskXDetailViewModel(taskId: String, endpoint: String): TaskXDetailViewModel {
         return getOrCreateViewModel("TaskXDetailViewModel_$taskId") {
             TaskXDetailViewModel(
@@ -577,18 +572,19 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 dynamicMenuUseCases = appContainer.dynamicMenuUseCases,
                 taskXUseCases = appContainer.taskXUseCases,
                 userUseCases = appContainer.userUseCases,
-                taskXDataHolder = taskXDataHolder  // Опционально, для обратной совместимости
             )
         }
     }
 
-    // Метод для установки данных задания (вызывается из DynamicTasksViewModel)
-    fun setTaskXData(task: TaskX, taskType: TaskTypeX, endpoint: String) {
-        taskXDataHolder.setTaskData(task, taskType, endpoint)
-    }
-
-    override fun dispose() {
-        super.dispose()
-        taskXDataHolder.clear()
+    fun createActionWizardViewModel(taskId: String, actionId: String): ActionWizardViewModel {
+        return getOrCreateViewModel("ActionWizardViewModel_${taskId}_${actionId}") {
+            ActionWizardViewModel(
+                taskId = taskId,
+                actionId = actionId,
+                taskXRepository = appContainer.taskXRepository,
+                validationService = appContainer.validationService,
+                userUseCases = appContainer.userUseCases
+            )
+        }
     }
 }

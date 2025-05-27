@@ -11,10 +11,10 @@ import kotlinx.coroutines.flow.update
 import timber.log.Timber
 
 /**
- * Холдер для хранения данных задания в рамках навигационного графа TaskX.
- * Автоматически очищается при выходе из графа навигации.
+ * Глобальный синглтон для хранения данных задания в памяти.
+ * Данные не очищаются при переходе между экранами.
  */
-class TaskXDataHolder {
+object TaskXDataHolderSingleton {
     private val _currentTask = MutableStateFlow<TaskX?>(null)
     val currentTask: StateFlow<TaskX?> = _currentTask.asStateFlow()
 
@@ -28,8 +28,7 @@ class TaskXDataHolder {
     val endpoint: String? get() = _endpoint
 
     fun setTaskData(task: TaskX, taskType: TaskTypeX, endpoint: String) {
-        // Добавляем логирование для отслеживания
-        Timber.d("TaskXDataHolder: установка данных задания ${task.id} с типом ${taskType.id}")
+        Timber.d("TaskXDataHolderSingleton: установка данных задания ${task.id} с типом ${taskType.id}")
 
         val taskWithType = if (task.taskType == null) {
             task.copy(taskType = taskType)
@@ -41,16 +40,16 @@ class TaskXDataHolder {
         _endpoint = endpoint
         _taskBuffer.clear()
 
-        Timber.d("TaskXDataHolder: данные задания установлены, endpoint = $endpoint")
+        Timber.d("TaskXDataHolderSingleton: данные задания установлены, endpoint = $endpoint")
     }
 
     fun updateTask(task: TaskX) {
-        Timber.d("TaskXDataHolder: обновление задания ${task.id}")
+        Timber.d("TaskXDataHolderSingleton: обновление задания ${task.id}")
         _currentTask.value = task
     }
 
     fun addFactAction(factAction: FactAction) {
-        Timber.d("TaskXDataHolder: добавление фактического действия ${factAction.id} к заданию ${factAction.taskId}")
+        Timber.d("TaskXDataHolderSingleton: добавление фактического действия ${factAction.id} к заданию ${factAction.taskId}")
         _currentTask.update { task ->
             task?.let {
                 val updatedFactActions = it.factActions + factAction
@@ -73,12 +72,21 @@ class TaskXDataHolder {
     fun hasData(): Boolean {
         val hasTask = _currentTask.value != null
         val hasEndpoint = _endpoint != null
-        Timber.d("TaskXDataHolder: проверка наличия данных: hasTask=$hasTask, hasEndpoint=$hasEndpoint")
+        Timber.d("TaskXDataHolderSingleton: проверка наличия данных: hasTask=$hasTask, hasEndpoint=$hasEndpoint")
         return hasTask && hasEndpoint
     }
 
     fun clear() {
-        Timber.d("TaskXDataHolder: очистка данных")
+        Timber.d("TaskXDataHolderSingleton: очистка данных - вызов отклонен, данные сохраняются")
+        // Преднамеренно не очищаем данные при переходе между экранами
+        // Очистка должна вызываться только при завершении работы с заданием
+    }
+
+    /**
+     * Принудительная очистка данных (только для специальных случаев)
+     */
+    fun forceClean() {
+        Timber.d("TaskXDataHolderSingleton: принудительная очистка данных")
         _currentTask.value = null
         _endpoint = null
         _taskBuffer.clear()
