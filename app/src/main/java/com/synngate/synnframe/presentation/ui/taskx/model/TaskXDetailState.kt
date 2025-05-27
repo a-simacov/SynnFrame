@@ -26,6 +26,10 @@ data class TaskXDetailState(
     val showCameraScannerForSearch: Boolean = false,
     val showCompletionDialog: Boolean = false,
 
+    // Диалог ошибки порядка выполнения
+    val showValidationErrorDialog: Boolean = false,
+    val validationErrorMessage: String? = null,
+
     // Информация о пользователе
     val currentUserId: String? = null
 ) {

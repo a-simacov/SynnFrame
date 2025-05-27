@@ -9,6 +9,7 @@ import com.synngate.synnframe.presentation.navigation.TaskXDataHolder
 import com.synngate.synnframe.presentation.ui.taskx.model.ActionFilter
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
+import com.synngate.synnframe.presentation.ui.taskx.validator.ActionValidator
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import timber.log.Timber
 
@@ -23,6 +24,9 @@ class TaskXDetailViewModel(
     private val userUseCases: UserUseCases,
     private val taskXDataHolder: TaskXDataHolder? = null // Опциональный параметр для обратной совместимости
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
+
+    // Валидатор действий
+    private val actionValidator = ActionValidator()
 
     init {
         loadTask()
@@ -98,8 +102,40 @@ class TaskXDetailViewModel(
             return
         }
 
+        // Проверяем порядок выполнения действий
+        val validationResult = actionValidator.canExecuteAction(task, actionId)
+        if (!validationResult.isSuccess) {
+            // Показываем диалог с ошибкой
+            showValidationError(validationResult.errorMessage ?: "Невозможно выполнить действие")
+            return
+        }
+
         // Переход к визарду действия
         sendEvent(TaskXDetailEvent.NavigateToActionWizard(task.id, actionId))
+    }
+
+    /**
+     * Показать ошибку валидации порядка выполнения
+     */
+    private fun showValidationError(message: String) {
+        updateState {
+            it.copy(
+                showValidationErrorDialog = true,
+                validationErrorMessage = message
+            )
+        }
+    }
+
+    /**
+     * Закрыть диалог ошибки валидации
+     */
+    fun dismissValidationErrorDialog() {
+        updateState {
+            it.copy(
+                showValidationErrorDialog = false,
+                validationErrorMessage = null
+            )
+        }
     }
 
     /**
@@ -198,12 +234,11 @@ class TaskXDetailViewModel(
             val taskType = uiState.value.taskType ?: return@launchIO
 
             // Проверяем, можно ли завершить задание
-            val pendingActions = task.plannedActions.filter {
-                !it.isCompleted && !it.manuallyCompleted && !it.isSkipped
-            }
-
-            if (pendingActions.isNotEmpty() && !taskType.allowCompletionWithoutFactActions) {
-                sendEvent(TaskXDetailEvent.ShowSnackbar("Необходимо выполнить все запланированные действия"))
+            val validationResult = actionValidator.canCompleteTask(task)
+            if (!validationResult.isSuccess && !taskType.allowCompletionWithoutFactActions) {
+                sendEvent(TaskXDetailEvent.ShowSnackbar(
+                    validationResult.errorMessage ?: "Невозможно завершить задание"
+                ))
                 return@launchIO
             }
 

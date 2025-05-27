@@ -38,6 +38,7 @@ import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableTaskInf
 import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionCard
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskProgressIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXExitDialog
+import com.synngate.synnframe.presentation.ui.taskx.components.ValidationErrorDialog
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import kotlinx.coroutines.launch
 
@@ -92,6 +93,14 @@ fun TaskXDetailScreen(
                 }
             }
         }
+    }
+
+    // Диалог с ошибкой порядка выполнения
+    if (state.showValidationErrorDialog && state.validationErrorMessage != null) {
+        ValidationErrorDialog(
+            errorMessage = state.validationErrorMessage!!,
+            onDismiss = viewModel::dismissValidationErrorDialog
+        )
     }
 
     if (state.showExitDialog) {
@@ -170,7 +179,7 @@ fun TaskXDetailScreen(
                 task.startedAt?.let {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Начато: $it}",
+                        text = "Начато: $it",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -22,38 +22,76 @@ class ActionValidator {
             return ValidationResult.Error("Действие уже выполнено")
         }
 
-        // Проверка начальных действий
-        if (!task.areInitialActionsCompleted() && action.completionOrderType != CompletionOrderType.INITIAL) {
-            return ValidationResult.Error(
-                "Сначала необходимо выполнить все начальные действия"
-            )
-        }
+        // Проверка на правильный порядок выполнения для НАЧАЛЬНЫХ действий
+        if (action.completionOrderType == CompletionOrderType.INITIAL) {
+            val initialActions = task.getInitialActions()
+            val notCompletedInitial = initialActions.filter { !it.isCompleted && !it.manuallyCompleted }
 
-        // Проверка обычных действий перед финальными
-        if (action.completionOrderType == CompletionOrderType.FINAL) {
-            val regularActionsCompleted = task.getRegularActions().all {
+            // Если это не первое незавершенное начальное действие
+            if (notCompletedInitial.isNotEmpty() && notCompletedInitial.first().id != action.id) {
+                val firstAction = notCompletedInitial.first()
+                return ValidationResult.Error(
+                    "Начальные действия должны выполняться в указанном порядке. " +
+                            "Выполните сначала: ${firstAction.actionTemplate?.name ?: "Неизвестно"}"
+                )
+            }
+        }
+        // Проверка обычных действий - можно выполнять только если все начальные выполнены
+        else if (action.completionOrderType == CompletionOrderType.REGULAR) {
+            if (!task.areInitialActionsCompleted()) {
+                return ValidationResult.Error(
+                    "Сначала необходимо выполнить все начальные действия"
+                )
+            }
+
+            // Проверка строгого порядка для обычных действий
+            if (task.taskType?.regularActionsExecutionOrder == RegularActionsExecutionOrder.STRICT) {
+                val regularActions = task.getRegularActions()
+                val incompleteRegular = regularActions
+                    .filter { !it.isCompleted && !it.manuallyCompleted }
+
+                // Если это не первое незавершенное обычное действие
+                if (incompleteRegular.isNotEmpty() && incompleteRegular.first().id != action.id) {
+                    val firstAction = incompleteRegular.first()
+                    return ValidationResult.Error(
+                        "Действия должны выполняться в указанном порядке. " +
+                                "Выполните сначала: ${firstAction.actionTemplate?.name ?: "Неизвестно"}"
+                    )
+                }
+            }
+        }
+        // Проверка ФИНАЛЬНЫХ действий - можно выполнять только после всех обычных
+        else if (action.completionOrderType == CompletionOrderType.FINAL) {
+            // Проверка начальных действий
+            if (!task.areInitialActionsCompleted()) {
+                return ValidationResult.Error(
+                    "Сначала необходимо выполнить все начальные действия"
+                )
+            }
+
+            // Проверка обычных действий
+            val regularActions = task.getRegularActions()
+            val allRegularComplete = regularActions.all {
                 it.isCompleted || it.manuallyCompleted || it.isActionCompleted(task.factActions)
             }
-            if (!regularActionsCompleted) {
+
+            if (!allRegularComplete) {
                 return ValidationResult.Error(
                     "Сначала необходимо выполнить все обычные действия"
                 )
             }
-        }
 
-        // Проверка строгого порядка для обычных действий
-        if (action.completionOrderType == CompletionOrderType.REGULAR &&
-            task.taskType?.regularActionsExecutionOrder == RegularActionsExecutionOrder.STRICT) {
-
-            val regularActions = task.getRegularActions()
-            val firstIncomplete = regularActions
+            // Проверка строгого порядка для финальных действий
+            val finalActions = task.getFinalActions()
+            val incompleteFinal = finalActions
                 .filter { !it.isCompleted && !it.manuallyCompleted }
-                .minByOrNull { it.order }
 
-            if (firstIncomplete != null && firstIncomplete.id != actionId) {
+            // Если это не первое незавершенное финальное действие
+            if (incompleteFinal.isNotEmpty() && incompleteFinal.first().id != action.id) {
+                val firstAction = incompleteFinal.first()
                 return ValidationResult.Error(
-                    "Действия должны выполняться в указанном порядке. " +
-                            "Выполните действие: ${firstIncomplete.actionTemplate?.name ?: "Неизвестно"}"
+                    "Завершающие действия должны выполняться в указанном порядке. " +
+                            "Выполните сначала: ${firstAction.actionTemplate?.name ?: "Неизвестно"}"
                 )
             }
         }
