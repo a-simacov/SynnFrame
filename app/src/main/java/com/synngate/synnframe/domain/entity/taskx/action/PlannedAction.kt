@@ -58,9 +58,19 @@ data class PlannedAction(
         return completedQuantity >= quantity
     }
 
-    fun isActionCompleted(factActions: List<FactAction>): Boolean {
-        // Если действие отмечено как выполненное вручную
-        if (manuallyCompleted) return true
+    /**
+     * Проверяет, выполнено ли действие любым способом:
+     * - Отмечено как выполненное флагом isCompleted
+     * - Отмечено как выполненное вручную флагом manuallyCompleted
+     * - Имеет связанные фактические действия (для обычных действий)
+     * - Достигнуто запланированное количество (для действий с множественными фактами)
+     *
+     * @param factActions Список фактических действий для проверки
+     * @return true, если действие считается выполненным
+     */
+    fun isFullyCompleted(factActions: List<FactAction>): Boolean {
+        // Если действие отмечено как выполненное любым флагом
+        if (isCompleted || manuallyCompleted) return true
 
         // Логика в зависимости от признака множественных фактических действий
         return if (canHaveMultipleFactActions()) {

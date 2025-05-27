@@ -18,7 +18,7 @@ class ActionValidator {
             ?: return ValidationResult.Error("Действие не найдено")
 
         // Проверка завершенности действия
-        if (action.isCompleted || action.manuallyCompleted || action.isActionCompleted(task.factActions)) {
+        if (action.isFullyCompleted(task.factActions)) {
             // Разрешаем открытие уже выполненного действия только если:
             // 1. Для него установлен признак allowMultipleFactActions
             // 2. Это обычное действие (не начальное и не конечное)
@@ -35,7 +35,9 @@ class ActionValidator {
         // Проверка на правильный порядок выполнения для НАЧАЛЬНЫХ действий
         if (action.completionOrderType == CompletionOrderType.INITIAL) {
             val initialActions = task.getInitialActions()
-            val notCompletedInitial = initialActions.filter { !it.isCompleted && !it.manuallyCompleted }
+            val notCompletedInitial = initialActions.filter {
+                !it.isFullyCompleted(task.factActions)
+            }
 
             // Если это не первое незавершенное начальное действие
             if (notCompletedInitial.isNotEmpty() && notCompletedInitial.first().id != action.id) {
@@ -48,6 +50,7 @@ class ActionValidator {
         }
         // Проверка обычных действий - можно выполнять только если все начальные выполнены
         else if (action.completionOrderType == CompletionOrderType.REGULAR) {
+            // Используем метод из TaskX, который теперь использует единую логику проверки
             if (!task.areInitialActionsCompleted()) {
                 return ValidationResult.Error(
                     "Сначала необходимо выполнить все начальные действия"
@@ -58,7 +61,7 @@ class ActionValidator {
             if (task.taskType?.regularActionsExecutionOrder == RegularActionsExecutionOrder.STRICT) {
                 val regularActions = task.getRegularActions()
                 val incompleteRegular = regularActions
-                    .filter { !it.isCompleted && !it.manuallyCompleted }
+                    .filter { !it.isFullyCompleted(task.factActions) }
 
                 // Если это не первое незавершенное обычное действие
                 if (incompleteRegular.isNotEmpty() && incompleteRegular.first().id != action.id) {
@@ -72,7 +75,7 @@ class ActionValidator {
         }
         // Проверка ФИНАЛЬНЫХ действий - можно выполнять только после всех обычных
         else if (action.completionOrderType == CompletionOrderType.FINAL) {
-            // Проверка начальных действий
+            // Проверка начальных действий с использованием метода из TaskX
             if (!task.areInitialActionsCompleted()) {
                 return ValidationResult.Error(
                     "Сначала необходимо выполнить все начальные действия"
@@ -82,7 +85,7 @@ class ActionValidator {
             // Проверка обычных действий
             val regularActions = task.getRegularActions()
             val allRegularComplete = regularActions.all {
-                it.isCompleted || it.manuallyCompleted || it.isActionCompleted(task.factActions)
+                it.isFullyCompleted(task.factActions)
             }
 
             if (!allRegularComplete) {
@@ -94,7 +97,7 @@ class ActionValidator {
             // Проверка строгого порядка для финальных действий
             val finalActions = task.getFinalActions()
             val incompleteFinal = finalActions
-                .filter { !it.isCompleted && !it.manuallyCompleted }
+                .filter { !it.isFullyCompleted(task.factActions) }
 
             // Если это не первое незавершенное финальное действие
             if (incompleteFinal.isNotEmpty() && incompleteFinal.first().id != action.id) {
@@ -127,10 +130,7 @@ class ActionValidator {
 
         // Проверка выполнения всех обязательных действий
         val incompleteActions = task.plannedActions.filter { action ->
-            !action.isSkipped &&
-                    !action.isCompleted &&
-                    !action.manuallyCompleted &&
-                    !action.isActionCompleted(task.factActions)
+            !action.isSkipped && !action.isFullyCompleted(task.factActions)
         }
 
         if (incompleteActions.isNotEmpty()) {
@@ -147,15 +147,18 @@ class ActionValidator {
      */
     fun getNextAvailableAction(task: TaskX): PlannedAction? {
         // Сначала проверяем начальные действия
-        if (!task.areInitialActionsCompleted()) {
-            return task.getInitialActions()
-                .filter { !it.isCompleted && !it.manuallyCompleted }
-                .minByOrNull { it.order }
+        val initialActions = task.getInitialActions()
+        val incompleteInitialActions = initialActions.filter {
+            !it.isFullyCompleted(task.factActions)
+        }
+
+        if (incompleteInitialActions.isNotEmpty()) {
+            return incompleteInitialActions.minByOrNull { it.order }
         }
 
         // Затем обычные действия
         val regularActions = task.getRegularActions()
-            .filter { !it.isCompleted && !it.manuallyCompleted && !it.isActionCompleted(task.factActions) }
+            .filter { !it.isFullyCompleted(task.factActions) }
 
         if (regularActions.isNotEmpty()) {
             return if (task.taskType?.isStrictActionOrder() == true) {
@@ -166,13 +169,13 @@ class ActionValidator {
         }
 
         // В конце финальные действия
-        val allRegularCompleted = task.getRegularActions().all {
-            it.isCompleted || it.manuallyCompleted || it.isActionCompleted(task.factActions)
+        val regularActionsCompleted = task.getRegularActions().all {
+            it.isFullyCompleted(task.factActions)
         }
 
-        if (allRegularCompleted) {
+        if (regularActionsCompleted) {
             return task.getFinalActions()
-                .filter { !it.isCompleted && !it.manuallyCompleted }
+                .filter { !it.isFullyCompleted(task.factActions) }
                 .minByOrNull { it.order }
         }
 

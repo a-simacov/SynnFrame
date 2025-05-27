@@ -21,10 +21,8 @@ data class PlannedActionUI(
             factActions: List<FactAction>,
             isTaskInProgress: Boolean
         ): PlannedActionUI {
-            // Определяем, выполнено ли действие
-            val isCompleted = action.isCompleted ||
-                    action.manuallyCompleted ||
-                    action.isActionCompleted(factActions)
+            // Определяем, выполнено ли действие, используя единый метод проверки
+            val isCompleted = action.isFullyCompleted(factActions)
 
             // Рассчитываем количество для действий с множественными фактами
             val completedQuantity = if (action.canHaveMultipleFactActions()) {

@@ -34,11 +34,15 @@ data class TaskX(
     fun getFinalActions(): List<PlannedAction> =
         plannedActions.filter { it.isFinalAction() }
 
+    /**
+     * Проверяет, завершены ли все начальные действия
+     * Использует метод isFullyCompleted для единой логики проверки
+     */
     fun areInitialActionsCompleted(): Boolean =
-        getInitialActions().all { it.isCompleted || it.manuallyCompleted }
+        getInitialActions().all { it.isFullyCompleted(factActions) }
 
     fun getCompletedInitialActionsCount(): Int =
-        getInitialActions().count { it.isCompleted || it.manuallyCompleted }
+        getInitialActions().count { it.isFullyCompleted(factActions) }
 
     fun getTotalInitialActionsCount(): Int =
         getInitialActions().size
