@@ -27,29 +27,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
+import com.synngate.synnframe.presentation.ui.taskx.model.PlannedActionUI
 
 /**
  * Карточка для отображения планового действия
  */
 @Composable
 fun PlannedActionCard(
-    action: PlannedAction,
+    actionUI: PlannedActionUI,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    modifier: Modifier = Modifier
 ) {
-    val isCompleted = action.isCompleted || action.manuallyCompleted
+    val action = actionUI.action
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(enabled = enabled && !isCompleted) { onClick() },
+            .clickable(enabled = actionUI.isClickable) { onClick() },
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isCompleted) 1.dp else 2.dp
+            defaultElevation = if (actionUI.isCompleted) 1.dp else 2.dp
         ),
         colors = CardDefaults.cardColors(
-            containerColor = if (isCompleted) {
+            containerColor = if (actionUI.isCompleted) {
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             } else {
                 MaterialTheme.colorScheme.surface
@@ -64,9 +63,9 @@ fun PlannedActionCard(
         ) {
             // Иконка статуса
             Icon(
-                imageVector = if (isCompleted) Icons.Default.CheckCircle else Icons.Default.Circle,
+                imageVector = if (actionUI.isCompleted) Icons.Default.CheckCircle else Icons.Default.Circle,
                 contentDescription = null,
-                tint = if (isCompleted) {
+                tint = if (actionUI.isCompleted) {
                     MaterialTheme.colorScheme.primary
                 } else {
                     MaterialTheme.colorScheme.outline
@@ -82,10 +81,10 @@ fun PlannedActionCard(
             ) {
                 // Название действия
                 Text(
-                    text = action.actionTemplate?.name ?: "Действие #${action.order}",
+                    text = actionUI.name,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = if (isCompleted) FontWeight.Normal else FontWeight.Medium,
-                    color = if (isCompleted) {
+                    fontWeight = if (actionUI.isCompleted) FontWeight.Normal else FontWeight.Medium,
+                    color = if (actionUI.isCompleted) {
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     } else {
                         MaterialTheme.colorScheme.onSurface
@@ -141,17 +140,26 @@ fun PlannedActionCard(
 
                     // Количество
                     if (action.quantity > 0) {
-                        Text(
-                            text = "Количество: ${action.quantity}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        // Если действие поддерживает множественные факты, показываем прогресс
+                        if (actionUI.canHaveMultipleFactActions) {
+                            Text(
+                                text = "Количество: ${actionUI.completedQuantity} / ${actionUI.quantity}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            Text(
+                                text = "Количество: ${actionUI.quantity}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
 
                 // Тип действия (начальное/финальное)
                 when {
-                    action.isInitialAction() -> {
+                    actionUI.isInitialAction -> {
                         Spacer(modifier = Modifier.height(4.dp))
                         ActionTypeChip(
                             text = "Начальное",
@@ -159,7 +167,7 @@ fun PlannedActionCard(
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
-                    action.isFinalAction() -> {
+                    actionUI.isFinalAction -> {
                         Spacer(modifier = Modifier.height(4.dp))
                         ActionTypeChip(
                             text = "Завершающее",
@@ -172,7 +180,7 @@ fun PlannedActionCard(
 
             // Номер действия
             Text(
-                text = "#${action.order}",
+                text = "#${actionUI.order}",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

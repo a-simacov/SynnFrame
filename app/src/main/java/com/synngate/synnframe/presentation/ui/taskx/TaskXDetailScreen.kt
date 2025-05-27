@@ -25,7 +25,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
-import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
@@ -232,14 +231,13 @@ fun TaskXDetailScreen(
                     }
                 } else {
                     items(
-                        items = displayActions,
+                        items = state.getDisplayActions(),
                         key = { it.id }
-                    ) { action ->
+                    ) { actionUI ->
                         PlannedActionCard(
-                            action = action,
-                            onClick = { viewModel.onActionClick(action.id) },
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            enabled = task.status == TaskXStatus.IN_PROGRESS
+                            actionUI = actionUI,
+                            onClick = { viewModel.onActionClick(actionUI.id) },
+                            modifier = Modifier.padding(horizontal = 16.dp)
                         )
                     }
 

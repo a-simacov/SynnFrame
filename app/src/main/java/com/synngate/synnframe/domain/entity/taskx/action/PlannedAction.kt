@@ -5,7 +5,6 @@ import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.WmsAction
-import com.synngate.synnframe.presentation.ui.taskx.enums.ActionCompletionCondition
 import com.synngate.synnframe.presentation.ui.taskx.enums.CompletionOrderType
 import com.synngate.synnframe.util.serialization.LocalDateTimeSerializer
 import kotlinx.serialization.Serializable
@@ -60,13 +59,16 @@ data class PlannedAction(
     }
 
     fun isActionCompleted(factActions: List<FactAction>): Boolean {
+        // Если действие отмечено как выполненное вручную
         if (manuallyCompleted) return true
 
-        return when {
-            actionTemplate?.actionCompletionCondition == ActionCompletionCondition.PLAN_ACHIEVED && quantity > 0f -> {
-                isQuantityFulfilled(factActions)
-            }
-            else -> factActions.any { it.plannedActionId == id }
+        // Логика в зависимости от признака множественных фактических действий
+        return if (canHaveMultipleFactActions()) {
+            // Для действий с множественными фактами - проверка по достижению плана по количеству
+            isQuantityFulfilled(factActions)
+        } else {
+            // Для обычных действий - достаточно наличия хотя бы одного факта
+            factActions.any { it.plannedActionId == id }
         }
     }
 }

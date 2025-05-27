@@ -1,0 +1,57 @@
+package com.synngate.synnframe.presentation.ui.taskx.model
+
+import com.synngate.synnframe.domain.entity.taskx.action.FactAction
+import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
+
+/**
+ * UI-модель для действия, содержащая дополнительную информацию для отображения
+ */
+data class PlannedActionUI(
+    val action: PlannedAction,
+    val isCompleted: Boolean,
+    val completedQuantity: Float = 0f,
+    val isClickable: Boolean = true
+) {
+    companion object {
+        /**
+         * Создает UI-модель из доменной модели и рассчитывает статус выполненности
+         */
+        fun fromDomain(
+            action: PlannedAction,
+            factActions: List<FactAction>,
+            isTaskInProgress: Boolean
+        ): PlannedActionUI {
+            // Определяем, выполнено ли действие
+            val isCompleted = action.isCompleted ||
+                    action.manuallyCompleted ||
+                    action.isActionCompleted(factActions)
+
+            // Рассчитываем количество для действий с множественными фактами
+            val completedQuantity = if (action.canHaveMultipleFactActions()) {
+                action.getCompletedQuantity(factActions)
+            } else {
+                0f
+            }
+
+            // Определяем, можно ли нажать на действие
+            val isClickable = isTaskInProgress && (!isCompleted ||
+                    (action.canHaveMultipleFactActions() && action.isRegularAction()))
+
+            return PlannedActionUI(
+                action = action,
+                isCompleted = isCompleted,
+                completedQuantity = completedQuantity,
+                isClickable = isClickable
+            )
+        }
+    }
+
+    // Методы-прокси для удобного доступа к свойствам оригинального действия
+    val id get() = action.id
+    val name get() = action.actionTemplate?.name ?: "Действие #${action.order}"
+    val order get() = action.order
+    val isInitialAction get() = action.isInitialAction()
+    val isFinalAction get() = action.isFinalAction()
+    val canHaveMultipleFactActions get() = action.canHaveMultipleFactActions()
+    val quantity get() = action.quantity
+}

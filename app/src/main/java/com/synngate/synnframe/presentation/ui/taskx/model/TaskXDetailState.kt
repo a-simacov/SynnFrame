@@ -2,7 +2,6 @@ package com.synngate.synnframe.presentation.ui.taskx.model
 
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
-import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
 
 /**
  * Состояние экрана детального просмотра задания
@@ -18,7 +17,7 @@ data class TaskXDetailState(
 
     // Фильтрация действий
     val actionFilter: ActionFilter = ActionFilter.ALL,
-    val filteredActions: List<PlannedAction> = emptyList(),
+    val actionUiModels: List<PlannedActionUI> = emptyList(),
 
     // Диалоги
     val showExitDialog: Boolean = false,
@@ -36,30 +35,28 @@ data class TaskXDetailState(
     /**
      * Получить отображаемые действия с учетом фильтра
      */
-    fun getDisplayActions(): List<PlannedAction> {
-        val actions = task?.plannedActions ?: return emptyList()
-
+    fun getDisplayActions(): List<PlannedActionUI> {
         return when (actionFilter) {
-            ActionFilter.ALL -> actions
-            ActionFilter.PENDING -> actions.filter { !it.isCompleted && !it.manuallyCompleted }
-            ActionFilter.COMPLETED -> actions.filter { it.isCompleted || it.manuallyCompleted }
-            ActionFilter.INITIAL -> actions.filter { it.isInitialAction() }
-            ActionFilter.REGULAR -> actions.filter { it.isRegularAction() }
-            ActionFilter.FINAL -> actions.filter { it.isFinalAction() }
+            ActionFilter.ALL -> actionUiModels
+            ActionFilter.PENDING -> actionUiModels.filter { !it.isCompleted }
+            ActionFilter.COMPLETED -> actionUiModels.filter { it.isCompleted }
+            ActionFilter.INITIAL -> actionUiModels.filter { it.isInitialAction }
+            ActionFilter.REGULAR -> actionUiModels.filter { !it.isInitialAction && !it.isFinalAction }
+            ActionFilter.FINAL -> actionUiModels.filter { it.isFinalAction }
         }
     }
 
     /**
      * Проверка наличия действий определенного типа
      */
-    fun hasInitialActions(): Boolean = task?.getInitialActions()?.isNotEmpty() == true
-    fun hasFinalActions(): Boolean = task?.getFinalActions()?.isNotEmpty() == true
+    fun hasInitialActions(): Boolean = actionUiModels.any { it.isInitialAction }
+    fun hasFinalActions(): Boolean = actionUiModels.any { it.isFinalAction }
 
     /**
      * Подсчет действий
      */
-    fun getTotalActionsCount(): Int = task?.plannedActions?.size ?: 0
-    fun getCompletedActionsCount(): Int = task?.plannedActions?.count { it.isCompleted || it.manuallyCompleted } ?: 0
+    fun getTotalActionsCount(): Int = actionUiModels.size
+    fun getCompletedActionsCount(): Int = actionUiModels.count { it.isCompleted }
     fun getPendingActionsCount(): Int = getTotalActionsCount() - getCompletedActionsCount()
 }
 

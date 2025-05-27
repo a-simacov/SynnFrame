@@ -18,8 +18,18 @@ class ActionValidator {
             ?: return ValidationResult.Error("Действие не найдено")
 
         // Проверка завершенности действия
-        if (action.isCompleted || action.manuallyCompleted) {
-            return ValidationResult.Error("Действие уже выполнено")
+        if (action.isCompleted || action.manuallyCompleted || action.isActionCompleted(task.factActions)) {
+            // Разрешаем открытие уже выполненного действия только если:
+            // 1. Для него установлен признак allowMultipleFactActions
+            // 2. Это обычное действие (не начальное и не конечное)
+            // 3. Порядок выполнения обычных действий произвольный
+            val canOpenCompletedAction = action.canHaveMultipleFactActions() &&
+                    action.isRegularAction() &&
+                    task.taskType?.regularActionsExecutionOrder == RegularActionsExecutionOrder.ARBITRARY
+
+            if (!canOpenCompletedAction) {
+                return ValidationResult.Error("Действие уже выполнено")
+            }
         }
 
         // Проверка на правильный порядок выполнения для НАЧАЛЬНЫХ действий

@@ -1,12 +1,14 @@
 package com.synngate.synnframe.presentation.ui.taskx
 
 import com.synngate.synnframe.data.remote.api.ApiResult
+import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.ui.taskx.model.ActionFilter
+import com.synngate.synnframe.presentation.ui.taskx.model.PlannedActionUI
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
 import com.synngate.synnframe.presentation.ui.taskx.validator.ActionValidator
@@ -52,12 +54,14 @@ class TaskXDetailViewModel(
                         TaskXDataHolderSingleton.setTaskData(task, task.taskType, endpoint)
                         Timber.d("Задание $taskId успешно загружено и сохранено в синглтоне")
 
+                        val actionUiModels = createActionUiModels(task)
+
                         updateState {
                             it.copy(
                                 task = task,
                                 taskType = task.taskType,
-                                isLoading = false,
-                                filteredActions = it.copy(task = task).getDisplayActions()
+                                actionUiModels = actionUiModels,
+                                isLoading = false
                             )
                         }
                     } else {
@@ -84,6 +88,18 @@ class TaskXDetailViewModel(
         }
     }
 
+    private fun createActionUiModels(task: TaskX): List<PlannedActionUI> {
+        val isTaskInProgress = task.status == TaskXStatus.IN_PROGRESS
+
+        return task.plannedActions.map { action ->
+            PlannedActionUI.fromDomain(
+                action = action,
+                factActions = task.factActions,
+                isTaskInProgress = isTaskInProgress
+            )
+        }
+    }
+
     /**
      * Загрузка текущего пользователя
      */
@@ -100,6 +116,12 @@ class TaskXDetailViewModel(
      */
     fun onActionClick(actionId: String) {
         val task = uiState.value.task ?: return
+        val actionUiModel = uiState.value.actionUiModels.find { it.id == actionId } ?: return
+
+        if (!actionUiModel.isClickable) {
+            sendEvent(TaskXDetailEvent.ShowSnackbar("Действие уже выполнено"))
+            return
+        }
 
         // Проверяем, может ли пользователь выполнять действие
         if (task.status != TaskXStatus.IN_PROGRESS) {
@@ -164,10 +186,7 @@ class TaskXDetailViewModel(
      */
     fun onFilterChange(filter: ActionFilter) {
         updateState {
-            it.copy(
-                actionFilter = filter,
-                filteredActions = it.copy(actionFilter = filter).getDisplayActions()
-            )
+            it.copy(actionFilter = filter)
         }
     }
 
@@ -224,10 +243,7 @@ class TaskXDetailViewModel(
                     if (updatedTask != null) {
                         // Обновляем состояние
                         updateState {
-                            it.copy(
-                                task = updatedTask,
-                                filteredActions = it.copy(task = updatedTask).getDisplayActions()
-                            )
+                            it.copy(task = updatedTask)
                         }
 
                         // Опционально обновляем холдер
