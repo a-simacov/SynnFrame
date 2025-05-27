@@ -4,5 +4,7 @@ sealed class DynamicTaskDetailEvent {
     data object NavigateBack : DynamicTaskDetailEvent()
     data class ShowSnackbar(val message: String) : DynamicTaskDetailEvent()
     data object StartTaskExecution : DynamicTaskDetailEvent()
-    data class NavigateToTaskXDetail(val taskId: String) : DynamicTaskDetailEvent()
+
+    // Обновленное событие с параметром endpoint
+    data class NavigateToTaskXDetail(val taskId: String, val endpoint: String) : DynamicTaskDetailEvent()
 }

@@ -1,7 +1,8 @@
 package com.synngate.synnframe.presentation.ui.taskx
 
-import androidx.lifecycle.viewModelScope
+import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
+import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolder
@@ -9,63 +10,69 @@ import com.synngate.synnframe.presentation.ui.taskx.model.ActionFilter
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import timber.log.Timber
 
 /**
  * ViewModel для экрана детального просмотра задания
  */
 class TaskXDetailViewModel(
+    private val taskId: String,
+    private val endpoint: String,
+    private val dynamicMenuUseCases: DynamicMenuUseCases,
     private val taskXUseCases: TaskXUseCases,
     private val userUseCases: UserUseCases,
-    private val taskXDataHolder: TaskXDataHolder
+    private val taskXDataHolder: TaskXDataHolder? = null // Опциональный параметр для обратной совместимости
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
 
     init {
-        initializeFromDataHolder()
-        observeTaskChanges()
+        loadTask()
         loadCurrentUser()
     }
 
     /**
-     * Инициализация из холдера данных
+     * Загрузка данных задания с сервера
      */
-    private fun initializeFromDataHolder() {
-        val task = taskXDataHolder.currentTask.value
-        val taskType = taskXDataHolder.currentTaskType
+    private fun loadTask() {
+        launchIO {
+            updateState { it.copy(isLoading = true, error = null) }
 
-        if (task != null && taskType != null) {
-            updateState {
-                it.copy(
-                    task = task,
-                    taskType = taskType,
-                    filteredActions = it.getDisplayActions()
-                )
-            }
-        } else {
-            Timber.e("Task or TaskType not found in TaskXDataHolder")
-            sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка загрузки данных задания"))
-            sendEvent(TaskXDetailEvent.NavigateBack)
-        }
-    }
+            try {
+                val taskResult = dynamicMenuUseCases.startDynamicTask(endpoint, taskId)
 
-    /**
-     * Наблюдение за изменениями задания
-     */
-    private fun observeTaskChanges() {
-        taskXDataHolder.currentTask
-            .onEach { task ->
-                task?.let {
-                    updateState { state ->
-                        state.copy(
-                            task = it,
-                            filteredActions = state.getDisplayActions()
-                        )
+                if (taskResult.isSuccess()) {
+                    val task = taskResult.getOrNull()
+                    if (task != null && task.taskType != null) {
+                        // Опционально сохраняем в холдер для использования другими компонентами
+                        taskXDataHolder?.setTaskData(task, task.taskType, endpoint)
+
+                        updateState {
+                            it.copy(
+                                task = task,
+                                taskType = task.taskType,
+                                isLoading = false,
+                                filteredActions = it.copy(task = task).getDisplayActions()
+                            )
+                        }
+                    } else {
+                        updateState {
+                            it.copy(
+                                isLoading = false,
+                                error = "Не удалось загрузить данные задания"
+                            )
+                        }
+                        sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка загрузки данных задания"))
                     }
+                } else {
+                    val error = (taskResult as? ApiResult.Error)?.message ?: "Неизвестная ошибка"
+                    updateState { it.copy(isLoading = false, error = error) }
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка загрузки: $error"))
                 }
+            } catch (e: Exception) {
+                Timber.e(e, "Error loading task data")
+                updateState { it.copy(isLoading = false, error = e.message) }
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка: ${e.message}"))
             }
-            .launchIn(viewModelScope)
+        }
     }
 
     /**
@@ -149,7 +156,6 @@ class TaskXDetailViewModel(
     fun pauseTask() {
         launchIO {
             val task = uiState.value.task ?: return@launchIO
-            val endpoint = taskXDataHolder.endpoint ?: return@launchIO
 
             updateState { it.copy(isProcessingAction = true, showExitDialog = false) }
 
@@ -159,7 +165,16 @@ class TaskXDetailViewModel(
                 if (result.isSuccess) {
                     val updatedTask = result.getOrNull()
                     if (updatedTask != null) {
-                        taskXDataHolder.updateTask(updatedTask)
+                        // Обновляем состояние
+                        updateState {
+                            it.copy(
+                                task = updatedTask,
+                                filteredActions = it.copy(task = updatedTask).getDisplayActions()
+                            )
+                        }
+
+                        // Опционально обновляем холдер
+                        taskXDataHolder?.updateTask(updatedTask)
                     }
                     sendEvent(TaskXDetailEvent.NavigateBackWithMessage("Задание приостановлено"))
                 } else {
@@ -181,7 +196,6 @@ class TaskXDetailViewModel(
         launchIO {
             val task = uiState.value.task ?: return@launchIO
             val taskType = uiState.value.taskType ?: return@launchIO
-            val endpoint = taskXDataHolder.endpoint ?: return@launchIO
 
             // Проверяем, можно ли завершить задание
             val pendingActions = task.plannedActions.filter {
@@ -200,7 +214,7 @@ class TaskXDetailViewModel(
 
                 if (result.isSuccess) {
                     // Очищаем данные в холдере
-                    taskXDataHolder.clear()
+                    taskXDataHolder?.clear()
                     sendEvent(TaskXDetailEvent.NavigateBackWithMessage("Задание завершено"))
                 } else {
                     updateState { it.copy(isProcessingAction = false) }
@@ -215,10 +229,10 @@ class TaskXDetailViewModel(
     }
 
     fun searchByScanner(barcode: String) {
-
+        // Реализация поиска по штрих-коду
     }
 
     fun hideCameraScannerForSearch() {
-
+        updateState { it.copy(showCameraScannerForSearch = false) }
     }
 }

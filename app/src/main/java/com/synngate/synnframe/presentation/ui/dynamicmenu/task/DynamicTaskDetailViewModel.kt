@@ -12,12 +12,12 @@ import kotlinx.coroutines.flow.first
 import timber.log.Timber
 
 class DynamicTaskDetailViewModel(
-    private val taskId: String, // Теперь принимаем ID задания вместо объекта
+    private val taskId: String,
     private val endpoint: String,
     private val dynamicMenuUseCases: DynamicMenuUseCases,
     private val userUseCases: UserUseCases,
 ) : BaseViewModel<DynamicTaskDetailState, DynamicTaskDetailEvent>(
-    DynamicTaskDetailState() // Начинаем с пустого состояния
+    DynamicTaskDetailState()
 ) {
 
     init {
@@ -102,20 +102,9 @@ class DynamicTaskDetailViewModel(
             try {
                 val startEndpoint = "$endpoint/$taskId/take"
 
-                val result = dynamicMenuUseCases.startDynamicTask(startEndpoint, taskId)
-
-                if (result.isSuccess()) {
-                    val startResponse = result.getOrNull()
-                    if (startResponse != null) {
-                        navigateToTaskXDetail(startResponse.id)
-                    } else {
-                        sendEvent(DynamicTaskDetailEvent.ShowSnackbar("Не удалось получить данные для запуска задания"))
-                    }
-                } else {
-                    val error = (result as? ApiResult.Error)?.message ?: "Неизвестная ошибка"
-                    Timber.e("Ошибка запуска задания: $error")
-                    sendEvent(DynamicTaskDetailEvent.ShowSnackbar("Ошибка запуска задания: $error"))
-                }
+                // Напрямую передаем в навигацию параметры taskId и endpoint
+                // Вместо загрузки и сохранения в холдер
+                sendEvent(DynamicTaskDetailEvent.NavigateToTaskXDetail(taskId, startEndpoint))
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при запуске задания")
                 sendEvent(DynamicTaskDetailEvent.ShowSnackbar("Ошибка: ${e.message}"))
@@ -123,9 +112,5 @@ class DynamicTaskDetailViewModel(
                 updateState { it.copy(isLoading = false) }
             }
         }
-    }
-
-    private fun navigateToTaskXDetail(taskId: String) {
-        sendEvent(DynamicTaskDetailEvent.NavigateToTaskXDetail(taskId))
     }
 }

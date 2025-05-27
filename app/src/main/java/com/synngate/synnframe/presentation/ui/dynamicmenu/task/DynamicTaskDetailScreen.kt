@@ -35,7 +35,7 @@ import com.synngate.synnframe.util.html.HtmlUtils
 fun DynamicTaskDetailScreen(
     viewModel: DynamicTaskDetailViewModel,
     navigateBack: () -> Unit,
-    navigateToTaskXDetail: (String) -> Unit,
+    navigateToTaskXDetail: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -49,11 +49,12 @@ fun DynamicTaskDetailScreen(
                     snackbarHostState.showSnackbar(event.message)
                 }
                 is DynamicTaskDetailEvent.NavigateToTaskXDetail -> {
-                    // Переходим к экрану выполнения задания
-                    navigateToTaskXDetail(event.taskId)
+                    // Обновленный вызов навигации с передачей endpoint
+                    navigateToTaskXDetail(event.taskId, event.endpoint)
                 }
-
-                DynamicTaskDetailEvent.StartTaskExecution -> TODO()
+                is DynamicTaskDetailEvent.StartTaskExecution -> {
+                    viewModel.onStartTaskExecution()
+                }
             }
         }
     }

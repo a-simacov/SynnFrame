@@ -569,12 +569,15 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
     private val taskXDataHolder: TaskXDataHolder
         get() = appContainer.taskXDataHolder
 
-    fun createTaskXDetailViewModel(): TaskXDetailViewModel {
-        return getOrCreateViewModel("TaskXDetailViewModel") {
+    fun createTaskXDetailViewModel(taskId: String, endpoint: String): TaskXDetailViewModel {
+        return getOrCreateViewModel("TaskXDetailViewModel_$taskId") {
             TaskXDetailViewModel(
+                taskId = taskId,
+                endpoint = endpoint,
+                dynamicMenuUseCases = appContainer.dynamicMenuUseCases,
                 taskXUseCases = appContainer.taskXUseCases,
                 userUseCases = appContainer.userUseCases,
-                taskXDataHolder = taskXDataHolder
+                taskXDataHolder = taskXDataHolder  // Опционально, для обратной совместимости
             )
         }
     }

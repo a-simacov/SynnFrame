@@ -95,24 +95,10 @@ class DynamicTasksViewModel(
 
             try {
                 val startEndpoint = "$endpoint/$taskId/take"
-                val result = dynamicMenuUseCases.startDynamicTask(startEndpoint, taskId)
 
-                if (result.isSuccess()) {
-                    val taskX = result.getOrNull()
-                    if (taskX != null && taskX.taskType != null) {
-                        sendEvent(DynamicTasksEvent.SetTaskDataAndNavigate(
-                            task = taskX,
-                            taskType = taskX.taskType,
-                            endpoint = endpoint
-                        ))
-                    } else {
-                        sendEvent(DynamicTasksEvent.ShowSnackbar("Не удалось получить данные для запуска задания"))
-                    }
-                } else {
-                    val error = (result as? ApiResult.Error)?.message ?: "Неизвестная ошибка"
-                    Timber.e("Ошибка запуска задания: $error")
-                    sendEvent(DynamicTasksEvent.ShowSnackbar("Ошибка запуска задания: $error"))
-                }
+                // Вместо загрузки данных и сохранения в холдер просто навигируем
+                // с передачей необходимых параметров
+                sendEvent(DynamicTasksEvent.NavigateToTaskXDetail(taskId, startEndpoint))
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при запуске задания")
                 sendEvent(DynamicTasksEvent.ShowSnackbar("Ошибка: ${e.message}"))
@@ -196,7 +182,7 @@ class DynamicTasksViewModel(
     }
 
     private fun navigateToTaskXDetail(taskId: String) {
-        sendEvent(DynamicTasksEvent.NavigateToTaskXDetail(taskId))
+        sendEvent(DynamicTasksEvent.NavigateToTaskXDetail(taskId, endpoint))
     }
 
     fun clearError() {

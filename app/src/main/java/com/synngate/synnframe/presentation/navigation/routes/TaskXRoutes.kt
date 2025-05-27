@@ -1,5 +1,7 @@
 package com.synngate.synnframe.presentation.navigation.routes
 
+import java.util.Base64
+
 object TaskXRoutes {
 
     object TaskXList : Route {
@@ -7,15 +9,23 @@ object TaskXRoutes {
     }
 
     object TaskXDetail : RouteWithArgs {
-        override val route = "taskx_detail/{taskId}"
+        override val route = "taskx_detail/{taskId}/{endpoint}"
 
-        fun createRoute(taskId: String): String = "taskx_detail/$taskId"
+        fun createRoute(taskId: String, endpoint: String): String {
+            // Кодируем endpoint в Base64, т.к. он может содержать спецсимволы
+            val encodedEndpoint = Base64.getEncoder().encodeToString(endpoint.toByteArray())
+            return "taskx_detail/$taskId/$encodedEndpoint"
+        }
 
-        override fun createRoute(vararg args: Any?): String =
-            createRoute(args.firstOrNull() as? String ?: "")
+        override fun createRoute(vararg args: Any?): String {
+            require(args.size >= 2) { "TaskXDetail route requires taskId and endpoint" }
+            val taskId = args[0] as? String ?: ""
+            val endpoint = args[1] as? String ?: ""
+            return createRoute(taskId, endpoint)
+        }
     }
 
-    // Новый маршрут для экрана визарда действий
+    // Маршрут для экрана визарда действий
     object ActionWizardScreen : RouteWithArgs {
         override val route = "action_wizard/{taskId}/{actionId}"
 

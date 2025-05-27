@@ -40,7 +40,7 @@ import kotlinx.coroutines.launch
 fun DynamicTasksScreen(
     viewModel: DynamicTasksViewModel,
     navigateToTaskDetail: (taskId: String, endpoint: String) -> Unit, // Обновлен параметр
-    navigateToTaskXDetail: (taskId: String) -> Unit,
+    navigateToTaskXDetail: (taskId: String, endpoint: String) -> Unit,
     navigateBack: () -> Unit,
     screenContainer: ScreenContainer,
     modifier: Modifier = Modifier
@@ -67,17 +67,19 @@ fun DynamicTasksScreen(
                     navigateToTaskDetail(event.taskId, viewModel.endpoint)
                 }
                 is DynamicTasksEvent.NavigateToTaskXDetail -> {
-                    navigateToTaskXDetail(event.taskId)
+                    // Используем новый подход с передачей endpoint
+                    navigateToTaskXDetail(event.taskId, event.endpoint)
                 }
+                // Поддержка устаревшего метода для обратной совместимости
                 is DynamicTasksEvent.SetTaskDataAndNavigate -> {
-                    // Сохраняем данные в холдер
+                    // Сохраняем данные в холдер (устаревший подход)
                     screenContainer.setTaskXData(
                         task = event.task,
                         taskType = event.taskType,
                         endpoint = event.endpoint
                     )
                     // Навигируемся к экрану задания
-                    navigateToTaskXDetail(event.task.id)
+                    navigateToTaskXDetail(event.task.id, event.endpoint)
                 }
             }
         }

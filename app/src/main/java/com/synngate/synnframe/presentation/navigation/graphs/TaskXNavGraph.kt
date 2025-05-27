@@ -13,6 +13,7 @@ import com.synngate.synnframe.presentation.navigation.rememberPersistentScreenCo
 import com.synngate.synnframe.presentation.navigation.routes.TaskXRoutes
 import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailScreen
 import timber.log.Timber
+import java.util.Base64
 
 /**
  * Создает навигационный граф для экранов заданий X.
@@ -39,18 +40,33 @@ fun NavGraphBuilder.taskXNavGraph(
             arguments = listOf(
                 navArgument("taskId") {
                     type = NavType.StringType
+                },
+                navArgument("endpoint") {
+                    type = NavType.StringType
                 }
             )
         ) { entry ->
             val taskId = entry.arguments?.getString("taskId") ?: ""
+            val encodedEndpoint = entry.arguments?.getString("endpoint") ?: ""
+
+            // Декодируем endpoint из Base64
+            val endpoint = try {
+                String(Base64.getDecoder().decode(encodedEndpoint))
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to decode endpoint from Base64")
+                ""
+            }
+
+            Timber.d("Opening TaskXDetailScreen with taskId=$taskId, endpoint=$endpoint")
+
             val screenContainer = rememberEphemeralScreenContainer(
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
             )
 
-            // Создаем ViewModel через контейнер
-            val viewModel = remember(taskId) {
-                screenContainer.createTaskXDetailViewModel()
+            // Создаем ViewModel через контейнер с новыми параметрами
+            val viewModel = remember(taskId, endpoint) {
+                screenContainer.createTaskXDetailViewModel(taskId, endpoint)
             }
 
             TaskXDetailScreen(

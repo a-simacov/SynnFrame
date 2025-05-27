@@ -11,8 +11,11 @@ sealed class DynamicTasksEvent {
 
     data class NavigateToTaskDetail(val taskId: String, val endpoint: String) : DynamicTasksEvent()
 
-    data class NavigateToTaskXDetail(val taskId: String) : DynamicTasksEvent()
+    // Обновленное событие с endpoint
+    data class NavigateToTaskXDetail(val taskId: String, val endpoint: String) : DynamicTasksEvent()
 
+    // Устаревшее событие, оставлено для обратной совместимости
+    @Deprecated("Use NavigateToTaskXDetail with endpoint parameter instead")
     data class SetTaskDataAndNavigate(
         val task: TaskX,
         val taskType: TaskTypeX,

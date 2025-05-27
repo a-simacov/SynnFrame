@@ -109,8 +109,9 @@ fun NavGraphBuilder.dynamicNavGraph(
                 navigateBack = {
                     navController.popBackStack()
                 },
-                navigateToTaskXDetail = { taskXId ->
-                    navController.navigate(TaskXRoutes.TaskXDetail.createRoute(taskXId)) {
+                navigateToTaskXDetail = { taskIdNav, endpointNav ->
+                    // Передаем параметры в новый маршрут
+                    navController.navigate(TaskXRoutes.TaskXDetail.createRoute(taskIdNav, endpointNav)) {
                         // При переходе к экрану выполнения задания закрываем экран деталей
                         popUpTo(DynamicRoutes.DynamicTaskDetail.route) { inclusive = true }
                     }
@@ -191,8 +192,8 @@ fun NavGraphBuilder.dynamicNavGraph(
                         )
                     )
                 },
-                navigateToTaskXDetail = { taskId ->
-                    navController.navigate(TaskXRoutes.TaskXDetail.createRoute(taskId))
+                navigateToTaskXDetail = { taskId, taskEndpoint ->
+                    navController.navigate(TaskXRoutes.TaskXDetail.createRoute(taskId, taskEndpoint))
                 },
                 navigateBack = {
                     navController.popBackStack()
