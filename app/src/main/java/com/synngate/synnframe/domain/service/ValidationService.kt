@@ -91,6 +91,12 @@ class ValidationService(
     private fun isPlanItem(item: Any, planItems: List<*>): Boolean {
         return planItems.any { planItem ->
             when {
+                // Случай TaskProduct с Product из planItems
+                // Сравниваем только ID товара, игнорируя срок годности и статус
+                item is TaskProduct && planItem is Product ->
+                    item.product.id == planItem.id
+
+                // Стандартные случаи сравнения
                 item is BinX && planItem is BinX ->
                     item.code == planItem.code
 

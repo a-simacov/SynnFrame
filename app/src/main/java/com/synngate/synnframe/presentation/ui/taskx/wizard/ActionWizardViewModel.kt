@@ -3,6 +3,7 @@ package com.synngate.synnframe.presentation.ui.taskx.wizard
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.ProductStatus
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.repository.TaskXRepository
@@ -301,9 +302,31 @@ class ActionWizardViewModel(
 
     private fun getPlannedObjectForField(field: FactActionField): Any? {
         val plannedAction = uiState.value.plannedAction ?: return null
+        val currentStep = uiState.value.steps.getOrNull(uiState.value.currentStepIndex)
 
         return when (field) {
-            FactActionField.STORAGE_PRODUCT -> plannedAction.storageProduct
+            FactActionField.STORAGE_PRODUCT -> {
+                // Если storageProduct есть, возвращаем его
+                plannedAction.storageProduct ?: run {
+                    // Если storageProduct нет, но есть storageProductClassifier и включен
+                    // признак inputAdditionalProps, создаем временный TaskProduct
+                    if (plannedAction.storageProductClassifier != null &&
+                        currentStep?.inputAdditionalProps == true) {
+
+                        // Создаем временный TaskProduct на основе storageProductClassifier
+                        // Значения expirationDate и status не важны, так как при валидации
+                        // сравнивается только product.id, а не другие поля
+                        TaskProduct(
+                            id = UUID.randomUUID().toString(),
+                            product = plannedAction.storageProductClassifier,
+                            expirationDate = null,
+                            status = ProductStatus.STANDARD
+                        )
+                    } else {
+                        null
+                    }
+                }
+            }
             FactActionField.STORAGE_PRODUCT_CLASSIFIER -> plannedAction.storageProductClassifier
             FactActionField.STORAGE_BIN -> plannedAction.storageBin
             FactActionField.STORAGE_PALLET -> plannedAction.storagePallet
