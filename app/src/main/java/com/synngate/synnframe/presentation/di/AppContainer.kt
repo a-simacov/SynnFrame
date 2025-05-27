@@ -583,7 +583,8 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 actionId = actionId,
                 taskXRepository = appContainer.taskXRepository,
                 validationService = appContainer.validationService,
-                userUseCases = appContainer.userUseCases
+                userUseCases = appContainer.userUseCases,
+                productUseCases = appContainer.productUseCases
             )
         }
     }

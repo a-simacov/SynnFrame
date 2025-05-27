@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,7 +47,6 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.WizardQua
 import com.synngate.synnframe.presentation.ui.wizard.action.components.formatQuantityDisplay
 import kotlinx.coroutines.delay
 import timber.log.Timber
-import java.util.UUID
 
 @Composable
 fun StorageProductStep(
@@ -54,116 +55,220 @@ fun StorageProductStep(
     onObjectSelected: (Any) -> Unit
 ) {
     val plannedProduct = state.plannedAction?.storageProduct
-    val selectedProduct = state.selectedObjects[step.id] as? TaskProduct
 
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         if (plannedProduct != null) {
-            // Отображаем продукт из плана
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (selectedProduct != null)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = plannedProduct.product.name,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = "Артикул: ${plannedProduct.product.articleNumber}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    // Кнопка выбора
-                    IconButton(
-                        onClick = {
-                            val taskProduct = if (step.inputAdditionalProps) {
-                                // Если нужно вводить доп. свойства, создаем копию с текущими свойствами
-                                TaskProduct(
-                                    id = plannedProduct.id,
-                                    product = plannedProduct.product,
-                                    expirationDate = selectedProduct?.expirationDate ?: plannedProduct.expirationDate,
-                                    status = selectedProduct?.status ?: plannedProduct.status
-                                )
-                            } else {
-                                // Иначе используем как есть
-                                plannedProduct
-                            }
-                            onObjectSelected(taskProduct)
-                        }
-                    ) {
-                        Icon(
-                            imageVector = if (selectedProduct != null)
-                                Icons.Default.CheckCircle
-                            else
-                                Icons.Default.RadioButtonUnchecked,
-                            contentDescription = "Выбрать"
-                        )
-                    }
-                }
-            }
-
-            // Если требуется ввод доп. свойств и объект выбран
-            if (step.inputAdditionalProps && selectedProduct != null) {
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Срок годности
-                ExpirationDatePicker(
-                    expirationDate = selectedProduct.expirationDate,
-                    onDateSelected = { date ->
-                        onObjectSelected(selectedProduct.copy(expirationDate = date))
-                    },
-                    isRequired = plannedProduct.product.usesExpDate()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Статус товара
-                ProductStatusSelector(
-                    selectedStatus = selectedProduct.status,
-                    onStatusSelected = { status ->
-                        onObjectSelected(selectedProduct.copy(status = status))
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        } else {
-            // Если нет запланированного продукта, показываем поле ввода
-            Text(
-                text = "Нет запланированного товара. Введите ID товара:",
-                style = MaterialTheme.typography.bodyMedium
+            // Случай 1: В плане есть товар задания (storageProduct)
+            StorageProductCard(
+                product = plannedProduct,
+                isSelected = state.selectedObjects[step.id] != null,
+                onSelect = { onObjectSelected(plannedProduct) }
             )
-
-            OutlinedTextField(
-                value = selectedProduct?.product?.id ?: "",
-                onValueChange = { id ->
-                    if (id.isNotEmpty()) {
-                        // Создаем простой объект с ID
-                        val product = Product(id = id, name = "Товар $id")
-                        val taskProduct = TaskProduct(
-                            id = UUID.randomUUID().toString(),
-                            product = product
-                        )
-                        onObjectSelected(taskProduct)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
+        } else if (state.shouldShowAdditionalProductProps(step)) {
+            // Случай 2: Нужно отображать форму ввода дополнительных свойств
+            AdditionalPropsProductForm(
+                state = state,
+                step = step,
+                onObjectSelected = onObjectSelected
+            )
+        } else {
+            // Случай 3: Обычное поле ввода ID товара
+            ManualProductEntryField(
+                selectedProduct = state.selectedObjects[step.id] as? TaskProduct,
+                onObjectSelected = onObjectSelected
             )
         }
     }
+}
+
+/**
+ * Карточка с товаром из плана
+ */
+@Composable
+private fun StorageProductCard(
+    product: TaskProduct,
+    isSelected: Boolean,
+    onSelect: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = product.product.name,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "Артикул: ${product.product.articleNumber}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            // Кнопка выбора
+            IconButton(onClick = onSelect) {
+                Icon(
+                    imageVector = if (isSelected)
+                        Icons.Default.CheckCircle
+                    else
+                        Icons.Default.RadioButtonUnchecked,
+                    contentDescription = "Выбрать"
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Форма ввода дополнительных свойств товара
+ */
+@Composable
+private fun AdditionalPropsProductForm(
+    state: ActionWizardState,
+    step: ActionStepTemplate,
+    onObjectSelected: (Any) -> Unit
+) {
+    val classifierProduct = state.plannedAction?.storageProductClassifier
+    val taskProduct = state.getTaskProductFromClassifier(step.id)
+    val isSelected = state.selectedObjects[step.id] != null
+
+    // Отображаем товар из классификатора
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = classifierProduct?.name ?: "Товар",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "Артикул: ${classifierProduct?.articleNumber ?: ""}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "ID: ${classifierProduct?.id ?: ""}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Кнопка выбора
+            IconButton(
+                onClick = { onObjectSelected(taskProduct) }
+            ) {
+                Icon(
+                    imageVector = if (isSelected)
+                        Icons.Default.CheckCircle
+                    else
+                        Icons.Default.RadioButtonUnchecked,
+                    contentDescription = "Выбрать"
+                )
+            }
+        }
+    }
+
+    // Если товар выбран, показываем поля ввода свойств
+    if (isSelected) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Показываем поле срока годности только если товар учитывается по партиям
+        if (state.shouldShowExpirationDate()) {
+            ExpirationDatePicker(
+                expirationDate = taskProduct.expirationDate,
+                onDateSelected = { date ->
+                    onObjectSelected(taskProduct.copy(expirationDate = date))
+                },
+                isRequired = true
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        // Показываем выбор статуса товара
+        ProductStatusSelector(
+            selectedStatus = taskProduct.status,
+            onStatusSelected = { status ->
+                onObjectSelected(taskProduct.copy(status = status))
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Показываем индикатор загрузки, если информация о товаре еще загружается
+        if (!state.shouldShowExpirationDate() && state.isLoadingProductInfo) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Загрузка информации о товаре...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Поле для ручного ввода ID товара
+ */
+@Composable
+private fun ManualProductEntryField(
+    selectedProduct: TaskProduct?,
+    onObjectSelected: (Any) -> Unit
+) {
+    Text(
+        text = "Введите ID товара:",
+        style = MaterialTheme.typography.bodyMedium
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    OutlinedTextField(
+        value = selectedProduct?.product?.id ?: "",
+        onValueChange = { id ->
+            if (id.isNotEmpty()) {
+                // Создаем простой объект с ID
+                val product = Product(id = id, name = "Товар $id")
+                val taskProduct = TaskProduct(
+                    id = java.util.UUID.randomUUID().toString(),
+                    product = product
+                )
+                onObjectSelected(taskProduct)
+            }
+        },
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable

@@ -7,6 +7,7 @@ import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.service.ValidationService
+import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
@@ -22,7 +23,8 @@ class ActionWizardViewModel(
     private val actionId: String,
     private val taskXRepository: TaskXRepository,
     private val validationService: ValidationService,
-    private val userUseCases: UserUseCases
+    private val userUseCases: UserUseCases,
+    private val productUseCases: ProductUseCases
 ) : BaseViewModel<ActionWizardState, ActionWizardEvent>(ActionWizardState(taskId = taskId, actionId = actionId)) {
 
     init {
@@ -83,9 +85,87 @@ class ActionWizardViewModel(
                     isLoading = false
                 )
             }
+
+            plannedAction.storageProductClassifier?.let { product ->
+                loadClassifierProductInfo(product.id)
+            }
+
         } catch (e: Exception) {
             Timber.e(e, "Ошибка инициализации визарда: ${e.message}")
             updateState { it.copy(isLoading = false, error = "Ошибка: ${e.message}") }
+        }
+    }
+
+    private fun loadClassifierProductInfo(productId: String) {
+        launchIO {
+            updateState { it.copy(isLoadingProductInfo = true) }
+
+            try {
+                val product = productUseCases.getProductById(productId)
+
+                if (product != null) {
+                    updateState {
+                        it.copy(
+                            classifierProductInfo = product,
+                            isLoadingProductInfo = false
+                        )
+                    }
+
+                    Timber.d("Загружена полная информация о товаре классификатора: $productId, модель учета: ${product.accountingModel}")
+                } else {
+                    updateState {
+                        it.copy(
+                            isLoadingProductInfo = false,
+                            productInfoError = "Товар $productId не найден в базе данных"
+                        )
+                    }
+
+                    Timber.w("Товар классификатора $productId не найден в базе данных")
+                }
+            } catch (e: Exception) {
+                updateState {
+                    it.copy(
+                        isLoadingProductInfo = false,
+                        productInfoError = "Ошибка загрузки данных о товаре: ${e.message}"
+                    )
+                }
+
+                Timber.e(e, "Ошибка загрузки данных о товаре классификатора: $productId")
+            }
+        }
+    }
+
+    fun findProductByBarcode(barcode: String) {
+        launchIO {
+            try {
+                val product = productUseCases.findProductByBarcode(barcode)
+
+                if (product != null) {
+                    // Сравниваем с товаром из плана
+                    val plannedProductId = uiState.value.plannedAction?.storageProductClassifier?.id
+
+                    if (plannedProductId == product.id) {
+                        // Товар соответствует плану, можно использовать его
+                        Timber.d("Найден товар по штрихкоду: $barcode, соответствует плану")
+                        // Действия с найденным товаром...
+                    } else {
+                        Timber.w("Найденный товар не соответствует плану")
+                        updateState {
+                            it.copy(error = "Найденный товар не соответствует плану")
+                        }
+                    }
+                } else {
+                    Timber.w("Товар по штрихкоду $barcode не найден")
+                    updateState {
+                        it.copy(error = "Товар по штрихкоду не найден")
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка поиска товара по штрихкоду: $barcode")
+                updateState {
+                    it.copy(error = "Ошибка поиска товара: ${e.message}")
+                }
+            }
         }
     }
 
