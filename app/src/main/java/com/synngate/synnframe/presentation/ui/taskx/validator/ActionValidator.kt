@@ -111,7 +111,8 @@ class ActionValidator {
 
         // Проверка количества для действий с множественным выполнением
         if (action.canHaveMultipleFactActions() &&
-            action.isQuantityFulfilled(task.factActions)) {
+            action.isQuantityFulfilled(task.factActions) &&
+            task.taskType?.regularActionsExecutionOrder == RegularActionsExecutionOrder.STRICT) {
             return ValidationResult.Error("План по количеству уже выполнен")
         }
 

@@ -29,12 +29,12 @@ fun TaskProgressIndicator(
     val finalActions = task.plannedActions.filter { it.completionOrderType == CompletionOrderType.FINAL }
     val initialActions = task.plannedActions.filter { it.completionOrderType == CompletionOrderType.INITIAL }
 
-    val completedRegularActions = regularActions.count { it.isCompleted }
-    val completedFinalActions = finalActions.count { it.isCompleted }
-    val completedInitialActions = initialActions.count { it.isCompleted }
+    val completedRegularActions = regularActions.count { it.isFullyCompleted(task.factActions) }
+    val completedFinalActions = finalActions.count { it.isFullyCompleted(task.factActions) }
+    val completedInitialActions = initialActions.count { it.isFullyCompleted(task.factActions) }
 
     val totalProgress = if (task.plannedActions.isNotEmpty()) {
-        task.plannedActions.count { it.isCompleted }.toFloat() / task.plannedActions.size
+        task.plannedActions.count { it.isFullyCompleted(task.factActions) }.toFloat() / task.plannedActions.size
     } else 0f
 
     Card(
