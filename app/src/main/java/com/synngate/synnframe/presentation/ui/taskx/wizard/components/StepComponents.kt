@@ -716,7 +716,7 @@ fun PalletStep(
 fun QuantityStep(
     step: ActionStepTemplate,
     state: ActionWizardState,
-    onQuantityChanged: (Float) -> Unit,
+    onQuantityChanged: (Float, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val plannedQuantity = state.plannedAction?.quantity ?: 0f
@@ -762,27 +762,31 @@ fun QuantityStep(
             value = inputValue,
             onValueChange = { newValue ->
                 inputValue = newValue
-                newValue.toFloatOrNull()?.let { onQuantityChanged(it) }
+                // Передаем значение в ViewModel БЕЗ автоперехода
+                newValue.toFloatOrNull()?.let { onQuantityChanged(it, false) }
             },
             onIncrement = {
                 val newValue = (inputValue.toFloatOrNull() ?: 0f) + 1f
                 inputValue = newValue.toString()
-                onQuantityChanged(newValue)
+                // Передаем значение в ViewModel БЕЗ автоперехода
+                onQuantityChanged(newValue, false)
             },
             onDecrement = {
                 val currentValue = inputValue.toFloatOrNull() ?: 0f
                 if (currentValue > 1) {
                     val newValue = currentValue - 1f
                     inputValue = newValue.toString()
-                    onQuantityChanged(newValue)
+                    // Передаем значение в ViewModel БЕЗ автоперехода
+                    onQuantityChanged(newValue, false)
                 }
             },
             onImeAction = {
-                // Сохраняем результат при нажатии на кнопку клавиатуры и автоматически переходим дальше
+                // Только при нажатии на кнопку Done делаем автопереход
                 if (inputValue.isNotEmpty()) {
                     inputValue.toFloatOrNull()?.let {
                         Timber.d("IME-действие: количество $it")
-                        onQuantityChanged(it)
+                        // Передаем значение в ViewModel С автопереходом
+                        onQuantityChanged(it, true)
                     }
                 }
             },

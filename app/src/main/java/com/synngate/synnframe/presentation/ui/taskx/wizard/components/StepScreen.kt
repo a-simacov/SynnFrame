@@ -21,7 +21,7 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardSta
 fun StepScreen(
     state: ActionWizardState,
     onConfirm: () -> Unit,
-    onObjectSelected: (Any) -> Unit,
+    onObjectSelected: (Any, Boolean) -> Unit,  // Добавляем параметр autoAdvance
     onBarcodeSearch: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -55,7 +55,7 @@ fun StepScreen(
                 StorageProductStep(
                     step = currentStep,
                     state = state,
-                    onObjectSelected = onObjectSelected,
+                    onObjectSelected = { obj -> onObjectSelected(obj, true) },  // С автопереходом
                     onBarcodeSearch = { barcode ->
                         onBarcodeSearch(barcode)
                     }
@@ -65,7 +65,7 @@ fun StepScreen(
                 ProductClassifierStep(
                     step = currentStep,
                     state = state,
-                    onObjectSelected = onObjectSelected,
+                    onObjectSelected = { obj -> onObjectSelected(obj, true) },  // С автопереходом
                     onBarcodeSearch = { barcode ->
                         onBarcodeSearch(barcode)
                     }
@@ -75,7 +75,7 @@ fun StepScreen(
                 BinStep(
                     step = currentStep,
                     state = state,
-                    onObjectSelected = onObjectSelected,
+                    onObjectSelected = { obj -> onObjectSelected(obj, true) },  // С автопереходом
                     onBarcodeSearch = { barcode ->
                         onBarcodeSearch(barcode)
                     },
@@ -86,7 +86,7 @@ fun StepScreen(
                 BinStep(
                     step = currentStep,
                     state = state,
-                    onObjectSelected = onObjectSelected,
+                    onObjectSelected = { obj -> onObjectSelected(obj, true) },  // С автопереходом
                     onBarcodeSearch = { barcode ->
                         onBarcodeSearch(barcode)
                     },
@@ -97,7 +97,7 @@ fun StepScreen(
                 PalletStep(
                     step = currentStep,
                     state = state,
-                    onObjectSelected = onObjectSelected,
+                    onObjectSelected = { obj -> onObjectSelected(obj, true) },  // С автопереходом
                     onBarcodeSearch = { barcode ->
                         onBarcodeSearch(barcode)
                     },
@@ -108,7 +108,7 @@ fun StepScreen(
                 PalletStep(
                     step = currentStep,
                     state = state,
-                    onObjectSelected = onObjectSelected,
+                    onObjectSelected = { obj -> onObjectSelected(obj, true) },  // С автопереходом
                     onBarcodeSearch = { barcode ->
                         onBarcodeSearch(barcode)
                     },
@@ -119,7 +119,10 @@ fun StepScreen(
                 QuantityStep(
                     step = currentStep,
                     state = state,
-                    onQuantityChanged = { onObjectSelected(it) }
+                    onQuantityChanged = { value, autoAdvance ->
+                        // Передаем значение количества с флагом автоперехода
+                        onObjectSelected(value, autoAdvance)
+                    }
                 )
             }
             else -> {

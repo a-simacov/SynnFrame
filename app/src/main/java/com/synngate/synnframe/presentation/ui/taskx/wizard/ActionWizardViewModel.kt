@@ -222,7 +222,10 @@ class ActionWizardViewModel(
         }
 
         if (autoAdvance) {
+            Timber.d("Вызываем автопереход после установки объекта: $obj для шага ${currentStep.factActionField}")
             tryAutoAdvance()
+        } else {
+            Timber.d("Объект установлен без автоперехода: $obj для шага ${currentStep.factActionField}")
         }
     }
 

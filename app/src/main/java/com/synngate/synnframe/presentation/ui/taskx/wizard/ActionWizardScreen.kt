@@ -128,7 +128,10 @@ fun ActionWizardScreen(
                 StepScreen(
                     state = state,
                     onConfirm = { viewModel.confirmCurrentStep() },
-                    onObjectSelected = { viewModel.setObjectForCurrentStep(it) },
+                    onObjectSelected = { obj, autoAdvance ->
+                        // Передаем параметр autoAdvance из компонентов
+                        viewModel.setObjectForCurrentStep(obj, autoAdvance)
+                    },
                     onBarcodeSearch = { barcode ->
                         state.getCurrentStep()?.let { currentStep ->
                             viewModel.searchObjectByBarcode(barcode, currentStep.factActionField)
