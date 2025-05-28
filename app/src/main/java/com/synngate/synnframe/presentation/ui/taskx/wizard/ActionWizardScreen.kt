@@ -21,8 +21,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
+import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.status.StatusType
+import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.ExitConfirmationDialog
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.StepScreen
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.SummaryScreen
@@ -37,6 +40,32 @@ fun ActionWizardScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Получаем текущий сервис сканера для поддержки аппаратного сканера
+    val scannerService = LocalScannerService.current
+
+    // Подключаем слушатель сканера, если он доступен
+    if (scannerService?.hasRealScanner() == true) {
+        val currentStep = state.steps.getOrNull(state.currentStepIndex)
+
+        ScannerListener(onBarcodeScanned = { barcode ->
+            // Получаем тип поля текущего шага
+            currentStep?.factActionField?.let { fieldType ->
+                // Только для поддерживаемых типов полей обрабатываем сканирование
+                when (fieldType) {
+                    FactActionField.STORAGE_PRODUCT,
+                    FactActionField.STORAGE_PRODUCT_CLASSIFIER,
+                    FactActionField.STORAGE_BIN,
+                    FactActionField.ALLOCATION_BIN,
+                    FactActionField.STORAGE_PALLET,
+                    FactActionField.ALLOCATION_PALLET -> {
+                        viewModel.searchObjectByBarcode(barcode, fieldType)
+                    }
+                    else -> {} // Остальные типы полей не обрабатываем
+                }
+            }
+        })
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -104,7 +133,12 @@ fun ActionWizardScreen(
                 StepScreen(
                     state = state,
                     onConfirm = { viewModel.confirmCurrentStep() },
-                    onObjectSelected = { viewModel.setObjectForCurrentStep(it) }
+                    onObjectSelected = { viewModel.setObjectForCurrentStep(it) },
+                    onBarcodeSearch = { barcode ->
+                        state.getCurrentStep()?.let { currentStep ->
+                            viewModel.searchObjectByBarcode(barcode, currentStep.factActionField)
+                        }
+                    }
                 )
             }
         }

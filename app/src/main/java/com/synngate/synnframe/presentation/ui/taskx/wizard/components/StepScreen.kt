@@ -22,6 +22,7 @@ fun StepScreen(
     state: ActionWizardState,
     onConfirm: () -> Unit,
     onObjectSelected: (Any) -> Unit,
+    onBarcodeSearch: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val currentStep = state.steps.getOrNull(state.currentStepIndex) ?: return
@@ -48,35 +49,70 @@ fun StepScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Выбираем компонент в зависимости от типа поля
         when (currentStep.factActionField) {
             FactActionField.STORAGE_PRODUCT -> {
                 StorageProductStep(
                     step = currentStep,
                     state = state,
-                    onObjectSelected = onObjectSelected
+                    onObjectSelected = onObjectSelected,
+                    onBarcodeSearch = { barcode ->
+                        onBarcodeSearch(barcode)
+                    }
                 )
             }
             FactActionField.STORAGE_PRODUCT_CLASSIFIER -> {
-                StorageProductClassifierStep(
+                ProductClassifierStep(
                     step = currentStep,
                     state = state,
-                    onObjectSelected = onObjectSelected
+                    onObjectSelected = onObjectSelected,
+                    onBarcodeSearch = { barcode ->
+                        onBarcodeSearch(barcode)
+                    }
                 )
             }
-            FactActionField.STORAGE_BIN, FactActionField.ALLOCATION_BIN -> {
+            FactActionField.STORAGE_BIN -> {
                 BinStep(
                     step = currentStep,
                     state = state,
                     onObjectSelected = onObjectSelected,
-                    isStorage = currentStep.factActionField == FactActionField.STORAGE_BIN
+                    onBarcodeSearch = { barcode ->
+                        onBarcodeSearch(barcode)
+                    },
+                    isStorage = true
                 )
             }
-            FactActionField.STORAGE_PALLET, FactActionField.ALLOCATION_PALLET -> {
+            FactActionField.ALLOCATION_BIN -> {
+                BinStep(
+                    step = currentStep,
+                    state = state,
+                    onObjectSelected = onObjectSelected,
+                    onBarcodeSearch = { barcode ->
+                        onBarcodeSearch(barcode)
+                    },
+                    isStorage = false
+                )
+            }
+            FactActionField.STORAGE_PALLET -> {
                 PalletStep(
                     step = currentStep,
                     state = state,
                     onObjectSelected = onObjectSelected,
-                    isStorage = currentStep.factActionField == FactActionField.STORAGE_PALLET
+                    onBarcodeSearch = { barcode ->
+                        onBarcodeSearch(barcode)
+                    },
+                    isStorage = true
+                )
+            }
+            FactActionField.ALLOCATION_PALLET -> {
+                PalletStep(
+                    step = currentStep,
+                    state = state,
+                    onObjectSelected = onObjectSelected,
+                    onBarcodeSearch = { barcode ->
+                        onBarcodeSearch(barcode)
+                    },
+                    isStorage = false
                 )
             }
             FactActionField.QUANTITY -> {

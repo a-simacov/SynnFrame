@@ -11,6 +11,7 @@ import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
+import com.synngate.synnframe.presentation.ui.taskx.entity.ActionStepTemplate
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardEvent
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
@@ -384,5 +385,389 @@ class ActionWizardViewModel(
 
     fun clearError() {
         updateState { it.copy(error = null) }
+    }
+
+    fun searchObjectByBarcode(barcode: String, fieldType: FactActionField) {
+        if (barcode.isBlank()) {
+            sendEvent(ActionWizardEvent.ShowSnackbar("Пустой штрихкод"))
+            return
+        }
+
+        updateState { it.copy(isLoading = true, error = null) }
+
+        launchIO {
+            try {
+                when (fieldType) {
+                    FactActionField.STORAGE_PRODUCT_CLASSIFIER -> searchProductClassifier(barcode)
+                    FactActionField.STORAGE_PRODUCT -> searchTaskProduct(barcode)
+                    FactActionField.STORAGE_BIN -> searchBin(barcode, isStorage = true)
+                    FactActionField.ALLOCATION_BIN -> searchBin(barcode, isStorage = false)
+                    FactActionField.STORAGE_PALLET -> searchPallet(barcode, isStorage = true)
+                    FactActionField.ALLOCATION_PALLET -> searchPallet(barcode, isStorage = false)
+                    else -> {
+                        updateState { it.copy(isLoading = false) }
+                        sendEvent(ActionWizardEvent.ShowSnackbar("Тип поля не поддерживает поиск"))
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при поиске объекта по штрихкоду: $barcode")
+                updateState {
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка поиска: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Поиск товара из классификатора по штрихкоду, ID или артикулу
+     */
+    private suspend fun searchProductClassifier(barcode: String) {
+        try {
+            // Получаем текущий шаг
+            val currentStep = uiState.value.getCurrentStep() ?: return
+            val plannedProduct = uiState.value.plannedAction?.storageProductClassifier
+
+            // Сначала проверяем, совпадает ли баркод с информацией из плана
+            if (plannedProduct != null) {
+                // Проверяем по ID
+                if (plannedProduct.id == barcode) {
+                    setObjectForCurrentStep(plannedProduct)
+                    updateState { it.copy(isLoading = false) }
+                    return
+                }
+
+                // Проверяем по артикулу
+                if (plannedProduct.articleNumber == barcode) {
+                    setObjectForCurrentStep(plannedProduct)
+                    updateState { it.copy(isLoading = false) }
+                    return
+                }
+
+                // Проверка по штрихкодам через основные единицы измерения
+                val foundByBarcode = plannedProduct.units.any { unit ->
+                    unit.barcodes.contains(barcode) || unit.mainBarcode == barcode
+                }
+
+                if (foundByBarcode) {
+                    setObjectForCurrentStep(plannedProduct)
+                    updateState { it.copy(isLoading = false) }
+                    return
+                }
+            }
+
+            // Если не нашли в плане или плана нет, ищем в базе данных по штрихкоду
+            val product = productUseCases.findProductByBarcode(barcode)
+
+            if (product != null) {
+                // Проверяем валидацию
+                if (validateFoundObject(product, currentStep)) {
+                    setObjectForCurrentStep(product)
+                    updateState { it.copy(isLoading = false) }
+                } else {
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            error = "Найденный товар не соответствует плану"
+                        )
+                    }
+                }
+                return
+            }
+
+            // Если не нашли по штрихкоду, пробуем найти по ID
+            val productById = productUseCases.getProductById(barcode)
+
+            if (productById != null) {
+                // Проверяем валидацию
+                if (validateFoundObject(productById, currentStep)) {
+                    setObjectForCurrentStep(productById)
+                    updateState { it.copy(isLoading = false) }
+                } else {
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            error = "Найденный товар не соответствует плану"
+                        )
+                    }
+                }
+                return
+            }
+
+            // Если ничего не нашли
+            updateState {
+                it.copy(
+                    isLoading = false,
+                    error = "Товар не найден по штрихкоду или ID: $barcode"
+                )
+            }
+
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при поиске товара классификатора: $barcode")
+            updateState {
+                it.copy(
+                    isLoading = false,
+                    error = "Ошибка поиска: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * Поиск товара задания по штрихкоду, ID или артикулу
+     */
+    private suspend fun searchTaskProduct(barcode: String) {
+        try {
+            // Получаем текущий шаг
+            val currentStep = uiState.value.getCurrentStep() ?: return
+            val plannedTaskProduct = uiState.value.plannedAction?.storageProduct
+            val plannedClassifierProduct = uiState.value.plannedAction?.storageProductClassifier
+
+            // Сначала проверяем, совпадает ли баркод с информацией из плана
+            if (plannedTaskProduct != null) {
+                // Проверяем по ID товара задания
+                if (plannedTaskProduct.id == barcode) {
+                    setObjectForCurrentStep(plannedTaskProduct)
+                    updateState { it.copy(isLoading = false) }
+                    return
+                }
+
+                // Проверяем по ID товара классификатора
+                if (plannedTaskProduct.product.id == barcode) {
+                    setObjectForCurrentStep(plannedTaskProduct)
+                    updateState { it.copy(isLoading = false) }
+                    return
+                }
+
+                // Проверяем по артикулу
+                if (plannedTaskProduct.product.articleNumber == barcode) {
+                    setObjectForCurrentStep(plannedTaskProduct)
+                    updateState { it.copy(isLoading = false) }
+                    return
+                }
+
+                // Проверка по штрихкодам через основные единицы измерения
+                val foundByBarcode = plannedTaskProduct.product.units.any { unit ->
+                    unit.barcodes.contains(barcode) || unit.mainBarcode == barcode
+                }
+
+                if (foundByBarcode) {
+                    setObjectForCurrentStep(plannedTaskProduct)
+                    updateState { it.copy(isLoading = false) }
+                    return
+                }
+            }
+
+            // Если в плане есть товар из классификатора, но нет товара задания,
+            // и нужно заполнить дополнительные свойства
+            if (plannedTaskProduct == null && plannedClassifierProduct != null &&
+                uiState.value.shouldShowAdditionalProps(currentStep)) {
+
+                // Проверяем, совпадает ли с товаром классификатора
+                if (plannedClassifierProduct.id == barcode ||
+                    plannedClassifierProduct.articleNumber == barcode ||
+                    plannedClassifierProduct.units.any { unit ->
+                        unit.barcodes.contains(barcode) || unit.mainBarcode == barcode
+                    }) {
+
+                    // Создаем TaskProduct на основе товара из классификатора
+                    val taskProduct = uiState.value.getTaskProductFromClassifier(currentStep.id)
+
+                    // Проверяем валидацию
+                    if (validateFoundObject(taskProduct, currentStep)) {
+                        setObjectForCurrentStep(taskProduct)
+                        updateState { it.copy(isLoading = false) }
+                    } else {
+                        updateState {
+                            it.copy(
+                                isLoading = false,
+                                error = "Найденный товар не соответствует плану"
+                            )
+                        }
+                    }
+                    return
+                }
+            }
+
+            // Если не нашли в плане или плана нет, ищем в базе данных
+            val product = productUseCases.findProductByBarcode(barcode)
+
+            if (product != null) {
+                // Создаем TaskProduct на основе найденного товара
+                val taskProduct = TaskProduct(
+                    id = UUID.randomUUID().toString(),
+                    product = product,
+                    status = ProductStatus.STANDARD
+                )
+
+                // Проверяем валидацию
+                if (validateFoundObject(taskProduct, currentStep)) {
+                    setObjectForCurrentStep(taskProduct)
+                    updateState { it.copy(isLoading = false) }
+                } else {
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            error = "Найденный товар не соответствует плану"
+                        )
+                    }
+                }
+                return
+            }
+
+            // Если ничего не нашли
+            updateState {
+                it.copy(
+                    isLoading = false,
+                    error = "Товар не найден по штрихкоду или ID: $barcode"
+                )
+            }
+
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при поиске товара задания: $barcode")
+            updateState {
+                it.copy(
+                    isLoading = false,
+                    error = "Ошибка поиска: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * Поиск ячейки по коду
+     */
+    private fun searchBin(barcode: String, isStorage: Boolean) {
+        try {
+            // Получаем текущий шаг
+            val currentStep = uiState.value.getCurrentStep() ?: return
+
+            // Проверяем, есть ли ячейка в плане
+            val plannedBin = if (isStorage) {
+                uiState.value.plannedAction?.storageBin
+            } else {
+                uiState.value.plannedAction?.placementBin
+            }
+
+            // Сначала проверяем, совпадает ли баркод с информацией из плана
+            if (plannedBin != null && plannedBin.code == barcode) {
+                setObjectForCurrentStep(plannedBin)
+                updateState { it.copy(isLoading = false) }
+                return
+            }
+
+            // Если не нашли в плане или плана нет, создаем новую ячейку
+            val bin = BinX(code = barcode, zone = "")
+
+            // Проверяем валидацию
+            if (validateFoundObject(bin, currentStep)) {
+                setObjectForCurrentStep(bin)
+                updateState { it.copy(isLoading = false) }
+            } else {
+                updateState {
+                    it.copy(
+                        isLoading = false,
+                        error = "Введенная ячейка не соответствует плану"
+                    )
+                }
+            }
+
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при поиске ячейки: $barcode")
+            updateState {
+                it.copy(
+                    isLoading = false,
+                    error = "Ошибка поиска: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * Поиск паллеты по коду
+     */
+    private fun searchPallet(barcode: String, isStorage: Boolean) {
+        try {
+            // Получаем текущий шаг
+            val currentStep = uiState.value.getCurrentStep() ?: return
+
+            // Проверяем, есть ли паллета в плане
+            val plannedPallet = if (isStorage) {
+                uiState.value.plannedAction?.storagePallet
+            } else {
+                uiState.value.plannedAction?.placementPallet
+            }
+
+            // Сначала проверяем, совпадает ли баркод с информацией из плана
+            if (plannedPallet != null && plannedPallet.code == barcode) {
+                setObjectForCurrentStep(plannedPallet)
+                updateState { it.copy(isLoading = false) }
+                return
+            }
+
+            // Если не нашли в плане или плана нет, создаем новую паллету
+            val pallet = Pallet(code = barcode)
+
+            // Проверяем валидацию
+            if (validateFoundObject(pallet, currentStep)) {
+                setObjectForCurrentStep(pallet)
+                updateState { it.copy(isLoading = false) }
+            } else {
+                updateState {
+                    it.copy(
+                        isLoading = false,
+                        error = "Введенная паллета не соответствует плану"
+                    )
+                }
+            }
+
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при поиске паллеты: $barcode")
+            updateState {
+                it.copy(
+                    isLoading = false,
+                    error = "Ошибка поиска: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * Валидирует найденный объект с помощью правил валидации текущего шага
+     */
+    private fun validateFoundObject(obj: Any, step: ActionStepTemplate): Boolean {
+        // Если у шага нет правил валидации, считаем объект валидным
+        if (step.validationRules == null) {
+            return true
+        }
+
+        // Получаем плановый объект для формирования контекста валидации
+        val planItem = getPlannedObjectForField(step.factActionField)
+        val context = if (planItem != null) {
+            mapOf("planItems" to listOf(planItem))
+        } else {
+            emptyMap()
+        }
+
+        // Выполняем валидацию
+        val validationResult = validationService.validate(
+            rule = step.validationRules,
+            value = obj,
+            context = context
+        )
+
+        return validationResult.isSuccess
+    }
+
+    /**
+     * Проверяет, нужно ли отображать форму ввода дополнительных свойств товара
+     */
+    fun ActionWizardState.shouldShowAdditionalProps(step: ActionStepTemplate): Boolean {
+        return plannedAction?.storageProductClassifier != null &&
+                plannedAction.storageProduct == null &&
+                step.inputAdditionalProps &&
+                step.factActionField == FactActionField.STORAGE_PRODUCT
     }
 }

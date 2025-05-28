@@ -1,6 +1,8 @@
 package com.synngate.synnframe.presentation.ui.taskx.wizard.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -38,8 +40,10 @@ import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.ProductStatus
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
+import com.synngate.synnframe.presentation.common.dialog.OptimizedProductSelectionDialog
 import com.synngate.synnframe.presentation.common.inputs.ExpirationDatePicker
 import com.synngate.synnframe.presentation.common.inputs.ProductStatusSelector
+import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.taskx.entity.ActionStepTemplate
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
 import kotlinx.coroutines.delay
@@ -51,29 +55,135 @@ import java.time.format.DateTimeFormatter
 fun StorageProductStep(
     step: ActionStepTemplate,
     state: ActionWizardState,
-    onObjectSelected: (Any) -> Unit
+    onObjectSelected: (Any) -> Unit,
+    onBarcodeSearch: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val plannedProduct = state.plannedAction?.storageProduct
+    val selectedProduct = state.selectedObjects[step.id] as? TaskProduct
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    var barcodeValue by remember { mutableStateOf("") }
+    var showScanner by remember { mutableStateOf(false) }
+    var showProductSelector by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        // Если в плане есть товар задания, показываем его карточку
         if (plannedProduct != null) {
             StorageProductCard(
                 product = plannedProduct,
-                isSelected = state.selectedObjects[step.id] != null,
+                isSelected = selectedProduct != null,
                 onSelect = { onObjectSelected(plannedProduct) }
             )
-        } else if (state.shouldShowAdditionalProductProps(step)) {
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+        // Если в плане нет товара задания, но есть необходимость ввода доп. свойств
+        else if (state.shouldShowAdditionalProductProps(step)) {
             AdditionalPropsProductForm(
                 state = state,
                 step = step,
                 onObjectSelected = onObjectSelected
             )
-        } else {
-            ManualProductEntryField(
-                selectedProduct = state.selectedObjects[step.id] as? TaskProduct,
-                onObjectSelected = onObjectSelected
-            )
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
+
+        // Поле для сканирования/ввода
+        WizardBarcodeField(
+            value = barcodeValue,
+            onValueChange = { barcodeValue = it },
+            onSearch = {
+                if (barcodeValue.isNotEmpty()) {
+                    onBarcodeSearch(barcodeValue)
+                }
+            },
+            onScannerClick = { showScanner = true },
+            onSelectFromList = { showProductSelector = true },
+            label = "Поиск товара (штрихкод, ID, артикул)",
+            placeholder = "Введите или отсканируйте"
+        )
+
+        // Отображаем текущий выбранный объект, если он отличается от планового
+        if (selectedProduct != null && selectedProduct != plannedProduct) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "Выбранный товар:",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        text = selectedProduct.product.name,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "Артикул: ${selectedProduct.product.articleNumber}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (selectedProduct.hasExpirationDate()) {
+                        Text(
+                            text = "Срок годности: ${selectedProduct.expirationDate?.toLocalDate()}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    Text(
+                        text = "Статус: ${selectedProduct.status.format()}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+    }
+
+    // Диалог сканера камеры
+    if (showScanner) {
+        UniversalScannerDialog(
+            onBarcodeScanned = { barcode ->
+                barcodeValue = barcode
+                onBarcodeSearch(barcode)
+                showScanner = false
+            },
+            onClose = { showScanner = false },
+            instructionText = "Отсканируйте штрихкод товара"
+        )
+    }
+
+    // Диалог выбора товара из списка
+    if (showProductSelector) {
+        OptimizedProductSelectionDialog(
+            onProductSelected = { product ->
+                // Преобразуем Product в TaskProduct если нужно
+                val taskProduct = if (state.shouldShowAdditionalProductProps(step)) {
+                    // Создаем новый TaskProduct на основе выбранного Product
+                    val baseTaskProduct = state.getTaskProductFromClassifier(step.id)
+                    baseTaskProduct.copy(
+                        product = product
+                    )
+                } else {
+                    TaskProduct(
+                        id = java.util.UUID.randomUUID().toString(),
+                        product = product,
+                        status = com.synngate.synnframe.domain.entity.taskx.ProductStatus.STANDARD
+                    )
+                }
+                onObjectSelected(taskProduct)
+            },
+            onDismiss = { showProductSelector = false },
+            initialFilter = barcodeValue,
+            planProductIds = if (plannedProduct != null) {
+                setOf(plannedProduct.product.id)
+            } else state.plannedAction?.storageProductClassifier?.let {
+                setOf(it.id)
+            }
+        )
     }
 }
 
@@ -277,74 +387,106 @@ private fun ManualProductEntryField(
 }
 
 @Composable
-fun StorageProductClassifierStep(
+fun ProductClassifierStep(
     step: ActionStepTemplate,
     state: ActionWizardState,
-    onObjectSelected: (Any) -> Unit
+    onObjectSelected: (Any) -> Unit,
+    onBarcodeSearch: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val plannedProduct = state.plannedAction?.storageProductClassifier
     val selectedProduct = state.selectedObjects[step.id] as? Product
 
+    var barcodeValue by remember { mutableStateOf("") }
+    var showScanner by remember { mutableStateOf(false) }
+    var showProductSelector by remember { mutableStateOf(false) }
+
     Column(
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
+        // Карточка с запланированным объектом
         if (plannedProduct != null) {
+            PlannedObjectCard(
+                title = plannedProduct.name,
+                subtitle = "Артикул: ${plannedProduct.articleNumber}",
+                isSelected = selectedProduct != null,
+                onClick = { onObjectSelected(plannedProduct) }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Поле для сканирования/ввода
+        WizardBarcodeField(
+            value = barcodeValue,
+            onValueChange = { barcodeValue = it },
+            onSearch = {
+                if (barcodeValue.isNotEmpty()) {
+                    onBarcodeSearch(barcodeValue)
+                }
+            },
+            onScannerClick = { showScanner = true },
+            onSelectFromList = { showProductSelector = true },
+            label = "Поиск товара (штрихкод, ID, артикул)",
+            placeholder = "Введите или отсканируйте"
+        )
+
+        // Отображаем текущий выбранный объект (если есть)
+        if (selectedProduct != null && selectedProduct != plannedProduct) {
+            Spacer(modifier = Modifier.height(16.dp))
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (selectedProduct != null)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = plannedProduct.name,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = "Артикул: ${plannedProduct.articleNumber}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { onObjectSelected(plannedProduct) }
-                    ) {
-                        Icon(
-                            imageVector = if (selectedProduct != null)
-                                Icons.Default.CheckCircle
-                            else
-                                Icons.Default.RadioButtonUnchecked,
-                            contentDescription = "Выбрать"
-                        )
-                    }
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "Выбранный товар:",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        text = selectedProduct.name,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "Артикул: ${selectedProduct.articleNumber}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "ID: ${selectedProduct.id}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
-        } else {
-            Text(
-                text = "Нет запланированного товара. Введите ID товара:",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            OutlinedTextField(
-                value = selectedProduct?.id ?: "",
-                onValueChange = { id ->
-                    if (id.isNotEmpty()) {
-                        val product = Product(id = id, name = "Товар $id")
-                        onObjectSelected(product)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
         }
+    }
+
+    // Диалог сканера камеры
+    if (showScanner) {
+        UniversalScannerDialog(
+            onBarcodeScanned = { barcode ->
+                barcodeValue = barcode
+                onBarcodeSearch(barcode)
+                showScanner = false
+            },
+            onClose = { showScanner = false },
+            instructionText = "Отсканируйте штрихкод товара"
+        )
+    }
+
+    // Диалог выбора товара из списка
+    if (showProductSelector) {
+        OptimizedProductSelectionDialog(
+            onProductSelected = { product ->
+                onObjectSelected(product)
+            },
+            onDismiss = { showProductSelector = false },
+            initialFilter = barcodeValue,
+            planProductIds = state.plannedAction?.storageProductClassifier?.let { setOf(it.id) }
+        )
     }
 }
 
@@ -353,7 +495,9 @@ fun BinStep(
     step: ActionStepTemplate,
     state: ActionWizardState,
     onObjectSelected: (Any) -> Unit,
-    isStorage: Boolean
+    onBarcodeSearch: (String) -> Unit,
+    isStorage: Boolean,
+    modifier: Modifier = Modifier
 ) {
     val plannedBin = if (isStorage)
         state.plannedAction?.storageBin
@@ -361,77 +505,93 @@ fun BinStep(
         state.plannedAction?.placementBin
 
     val selectedBin = state.selectedObjects[step.id] as? BinX
+    var barcodeValue by remember { mutableStateOf("") }
+    var showScanner by remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
+        // Карточка с запланированным объектом
         if (plannedBin != null) {
+            PlannedObjectCard(
+                title = "Ячейка: ${plannedBin.code}",
+                subtitle = "Зона: ${plannedBin.zone}",
+                isSelected = selectedBin != null,
+                onClick = { onObjectSelected(plannedBin) }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Поле для сканирования/ввода
+        WizardBarcodeField(
+            value = barcodeValue,
+            onValueChange = { barcodeValue = it },
+            onSearch = {
+                if (barcodeValue.isNotEmpty()) {
+                    onBarcodeSearch(barcodeValue)
+                }
+            },
+            onScannerClick = { showScanner = true },
+            label = if (isStorage) "Код ячейки хранения" else "Код ячейки размещения",
+            placeholder = "Введите или отсканируйте код ячейки"
+        )
+
+        // Отображаем текущий выбранный объект (если есть)
+        if (selectedBin != null && selectedBin != plannedBin) {
+            Spacer(modifier = Modifier.height(16.dp))
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (selectedBin != null)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "Выбранная ячейка:",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        text = selectedBin.code,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    if (selectedBin.zone.isNotEmpty()) {
                         Text(
-                            text = "Ячейка: ${plannedBin.code}",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = "Зона: ${plannedBin.zone}",
+                            text = "Зона: ${selectedBin.zone}",
                             style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { onObjectSelected(plannedBin) }
-                    ) {
-                        Icon(
-                            imageVector = if (selectedBin != null)
-                                Icons.Default.CheckCircle
-                            else
-                                Icons.Default.RadioButtonUnchecked,
-                            contentDescription = "Выбрать"
                         )
                     }
                 }
             }
-        } else {
-            Text(
-                text = "Введите код ячейки:",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            OutlinedTextField(
-                value = selectedBin?.code ?: "",
-                onValueChange = { code ->
-                    if (code.isNotEmpty()) {
-                        // Создаем простой объект с кодом
-                        val bin = BinX(code = code, zone = "Неизвестно")
-                        onObjectSelected(bin)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
         }
+    }
+
+    // Диалог сканера камеры
+    if (showScanner) {
+        UniversalScannerDialog(
+            onBarcodeScanned = { barcode ->
+                barcodeValue = barcode
+                onBarcodeSearch(barcode)
+                showScanner = false
+            },
+            onClose = { showScanner = false },
+            instructionText = if (isStorage) "Отсканируйте код ячейки хранения" else "Отсканируйте код ячейки размещения"
+        )
     }
 }
 
+/**
+ * Улучшенный компонент для выбора паллеты, с поддержкой сканирования и ручного ввода
+ */
 @Composable
 fun PalletStep(
     step: ActionStepTemplate,
     state: ActionWizardState,
     onObjectSelected: (Any) -> Unit,
-    isStorage: Boolean
+    onBarcodeSearch: (String) -> Unit,
+    isStorage: Boolean,
+    modifier: Modifier = Modifier
 ) {
     val plannedPallet = if (isStorage)
         state.plannedAction?.storagePallet
@@ -439,69 +599,77 @@ fun PalletStep(
         state.plannedAction?.placementPallet
 
     val selectedPallet = state.selectedObjects[step.id] as? Pallet
+    var barcodeValue by remember { mutableStateOf("") }
+    var showScanner by remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
+        // Карточка с запланированным объектом
         if (plannedPallet != null) {
-            // Отображаем паллету из плана
+            PlannedObjectCard(
+                title = "Паллета: ${plannedPallet.code}",
+                subtitle = if (plannedPallet.isClosed) "Закрыта" else "Открыта",
+                isSelected = selectedPallet != null,
+                onClick = { onObjectSelected(plannedPallet) }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Поле для сканирования/ввода
+        WizardBarcodeField(
+            value = barcodeValue,
+            onValueChange = { barcodeValue = it },
+            onSearch = {
+                if (barcodeValue.isNotEmpty()) {
+                    onBarcodeSearch(barcodeValue)
+                }
+            },
+            onScannerClick = { showScanner = true },
+            label = if (isStorage) "Код паллеты хранения" else "Код паллеты размещения",
+            placeholder = "Введите или отсканируйте код паллеты"
+        )
+
+        // Отображаем текущий выбранный объект (если есть)
+        if (selectedPallet != null && selectedPallet != plannedPallet) {
+            Spacer(modifier = Modifier.height(16.dp))
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (selectedPallet != null)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Паллета: ${plannedPallet.code}",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = if (plannedPallet.isClosed) "Закрыта" else "Открыта",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { onObjectSelected(plannedPallet) }
-                    ) {
-                        Icon(
-                            imageVector = if (selectedPallet != null)
-                                Icons.Default.CheckCircle
-                            else
-                                Icons.Default.RadioButtonUnchecked,
-                            contentDescription = "Выбрать"
-                        )
-                    }
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "Выбранная паллета:",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        text = selectedPallet.code,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = if (selectedPallet.isClosed) "Закрыта" else "Открыта",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
-        } else {
-            Text(
-                text = "Введите код паллеты:",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            OutlinedTextField(
-                value = selectedPallet?.code ?: "",
-                onValueChange = { code ->
-                    if (code.isNotEmpty()) {
-                        // Создаем простой объект с кодом
-                        val pallet = Pallet(code = code)
-                        onObjectSelected(pallet)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
         }
+    }
+
+    // Диалог сканера камеры
+    if (showScanner) {
+        UniversalScannerDialog(
+            onBarcodeScanned = { barcode ->
+                barcodeValue = barcode
+                onBarcodeSearch(barcode)
+                showScanner = false
+            },
+            onClose = { showScanner = false },
+            instructionText = if (isStorage) "Отсканируйте код паллеты хранения" else "Отсканируйте код паллеты размещения"
+        )
     }
 }
 
@@ -639,5 +807,45 @@ private fun WarningMessage(message: String) {
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(8.dp)
         )
+    }
+}
+
+@Composable
+fun PlannedObjectCard(
+    title: String,
+    subtitle: String? = null,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
     }
 }
