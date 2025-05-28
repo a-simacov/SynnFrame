@@ -15,9 +15,6 @@ import com.synngate.synnframe.presentation.ui.taskx.validator.ActionValidator
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import timber.log.Timber
 
-/**
- * ViewModel для экрана детального просмотра задания
- */
 class TaskXDetailViewModel(
     private val taskId: String,
     private val endpoint: String,
@@ -26,7 +23,6 @@ class TaskXDetailViewModel(
     private val userUseCases: UserUseCases
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
 
-    // Валидатор действий
     private val actionValidator = ActionValidator()
 
     init {
@@ -34,25 +30,18 @@ class TaskXDetailViewModel(
         loadCurrentUser()
     }
 
-    /**
-     * Загрузка данных задания с сервера
-     */
     private fun loadTask() {
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
-                // Логируем начало загрузки
-                Timber.d("Начало загрузки задания $taskId с endpoint $endpoint")
                 val startEndpoint = "$endpoint/$taskId/take"
                 val taskResult = dynamicMenuUseCases.startDynamicTask(startEndpoint, taskId)
 
                 if (taskResult.isSuccess()) {
                     val task = taskResult.getOrNull()
                     if (task != null && task.taskType != null) {
-                        // Сохраняем в синглтон
                         TaskXDataHolderSingleton.setTaskData(task, task.taskType, endpoint)
-                        Timber.d("Задание $taskId успешно загружено и сохранено в синглтоне")
 
                         val actionUiModels = createActionUiModels(task)
 
@@ -100,9 +89,6 @@ class TaskXDetailViewModel(
         }
     }
 
-    /**
-     * Загрузка текущего пользователя
-     */
     private fun loadCurrentUser() {
         launchIO {
             userUseCases.getCurrentUser().collect { user ->
@@ -111,9 +97,6 @@ class TaskXDetailViewModel(
         }
     }
 
-    /**
-     * Обработка нажатия на действие
-     */
     fun onActionClick(actionId: String) {
         val task = uiState.value.task ?: return
         val actionUiModel = uiState.value.actionUiModels.find { it.id == actionId } ?: return
@@ -123,43 +106,29 @@ class TaskXDetailViewModel(
             return
         }
 
-        // Проверяем, может ли пользователь выполнять действие
         if (task.status != TaskXStatus.IN_PROGRESS) {
             sendEvent(TaskXDetailEvent.ShowSnackbar("Задание должно быть в статусе 'Выполняется'"))
             return
         }
 
-        // Проверяем порядок выполнения действий
         val validationResult = actionValidator.canExecuteAction(task, actionId)
         if (!validationResult.isSuccess) {
-            // Показываем диалог с ошибкой
             showValidationError(validationResult.errorMessage ?: "Невозможно выполнить действие")
             return
         }
 
-        // Проверяем, что данные задания есть в синглтоне перед навигацией
         if (!TaskXDataHolderSingleton.hasData()) {
-            Timber.e("Нет данных в TaskXDataHolderSingleton перед запуском визарда для действия $actionId")
-            // Если данных нет, пытаемся сохранить их снова
             TaskXDataHolderSingleton.setTaskData(task, task.taskType!!, endpoint)
 
-            // Двойная проверка
             if (!TaskXDataHolderSingleton.hasData()) {
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка: невозможно запустить визард. Данные недоступны."))
                 return
             }
         }
 
-        // Логируем переход к визарду
-        Timber.d("Переход к визарду для действия $actionId задания ${task.id}")
-
-        // Переход к визарду действия
         sendEvent(TaskXDetailEvent.NavigateToActionWizard(task.id, actionId))
     }
 
-    /**
-     * Показать ошибку валидации порядка выполнения
-     */
     private fun showValidationError(message: String) {
         updateState {
             it.copy(
@@ -169,9 +138,6 @@ class TaskXDetailViewModel(
         }
     }
 
-    /**
-     * Закрыть диалог ошибки валидации
-     */
     fun dismissValidationErrorDialog() {
         updateState {
             it.copy(
@@ -181,22 +147,15 @@ class TaskXDetailViewModel(
         }
     }
 
-    /**
-     * Изменение фильтра действий
-     */
     fun onFilterChange(filter: ActionFilter) {
         updateState {
             it.copy(actionFilter = filter)
         }
     }
 
-    /**
-     * Обработка кнопки "Назад"
-     */
     fun onBackPressed() {
         val task = uiState.value.task
 
-        // Если задание выполняется или на паузе, показываем диалог
         if (task?.status == TaskXStatus.IN_PROGRESS || task?.status == TaskXStatus.PAUSED) {
             updateState { it.copy(showExitDialog = true) }
         } else {
@@ -204,31 +163,19 @@ class TaskXDetailViewModel(
         }
     }
 
-    /**
-     * Закрытие диалога выхода
-     */
     fun dismissExitDialog() {
         updateState { it.copy(showExitDialog = false) }
     }
 
-    /**
-     * Выход без сохранения
-     */
     fun exitWithoutSaving() {
         dismissExitDialog()
         sendEvent(TaskXDetailEvent.NavigateBack)
     }
 
-    /**
-     * Продолжение работы
-     */
     fun continueWork() {
         dismissExitDialog()
     }
 
-    /**
-     * Приостановка задания
-     */
     fun pauseTask() {
         launchIO {
             val task = uiState.value.task ?: return@launchIO
@@ -241,12 +188,10 @@ class TaskXDetailViewModel(
                 if (result.isSuccess) {
                     val updatedTask = result.getOrNull()
                     if (updatedTask != null) {
-                        // Обновляем состояние
                         updateState {
                             it.copy(task = updatedTask)
                         }
 
-                        // Опционально обновляем холдер
                         TaskXDataHolderSingleton.updateTask(updatedTask)
                     }
                     sendEvent(TaskXDetailEvent.NavigateBackWithMessage("Задание приостановлено"))
@@ -262,15 +207,11 @@ class TaskXDetailViewModel(
         }
     }
 
-    /**
-     * Завершение задания
-     */
     fun completeTask() {
         launchIO {
             val task = uiState.value.task ?: return@launchIO
             val taskType = uiState.value.taskType ?: return@launchIO
 
-            // Проверяем, можно ли завершить задание
             val validationResult = actionValidator.canCompleteTask(task)
             if (!validationResult.isSuccess && !taskType.allowCompletionWithoutFactActions) {
                 sendEvent(TaskXDetailEvent.ShowSnackbar(
@@ -285,7 +226,6 @@ class TaskXDetailViewModel(
                 val result = taskXUseCases.completeTask(task.id, endpoint)
 
                 if (result.isSuccess) {
-                    // Принудительно очищаем данные в синглтоне при успешном завершении задания
                     TaskXDataHolderSingleton.forceClean()
                     sendEvent(TaskXDetailEvent.NavigateBackWithMessage("Задание завершено"))
                 } else {
@@ -306,5 +246,19 @@ class TaskXDetailViewModel(
 
     fun hideCameraScannerForSearch() {
         updateState { it.copy(showCameraScannerForSearch = false) }
+    }
+
+    fun checkTaskCompletion() {
+        val task = uiState.value.task ?: return
+
+        val allActionsCompleted = task.plannedActions.all { it.isFullyCompleted(task.factActions) }
+
+        if (allActionsCompleted && !uiState.value.showCompletionDialog) {
+            updateState { it.copy(showCompletionDialog = true) }
+        }
+    }
+
+    fun dismissCompletionDialog() {
+        updateState { it.copy(showCompletionDialog = false) }
     }
 }

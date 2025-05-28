@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.ProductStatus
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.presentation.common.inputs.ExpirationDatePicker
 import com.synngate.synnframe.presentation.common.inputs.ProductStatusSelector
@@ -47,6 +48,8 @@ import com.synngate.synnframe.presentation.ui.wizard.action.components.WizardQua
 import com.synngate.synnframe.presentation.ui.wizard.action.components.formatQuantityDisplay
 import kotlinx.coroutines.delay
 import timber.log.Timber
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun StorageProductStep(
@@ -58,21 +61,18 @@ fun StorageProductStep(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         if (plannedProduct != null) {
-            // Случай 1: В плане есть товар задания (storageProduct)
             StorageProductCard(
                 product = plannedProduct,
                 isSelected = state.selectedObjects[step.id] != null,
                 onSelect = { onObjectSelected(plannedProduct) }
             )
         } else if (state.shouldShowAdditionalProductProps(step)) {
-            // Случай 2: Нужно отображать форму ввода дополнительных свойств
             AdditionalPropsProductForm(
                 state = state,
                 step = step,
                 onObjectSelected = onObjectSelected
             )
         } else {
-            // Случай 3: Обычное поле ввода ID товара
             ManualProductEntryField(
                 selectedProduct = state.selectedObjects[step.id] as? TaskProduct,
                 onObjectSelected = onObjectSelected
@@ -81,15 +81,14 @@ fun StorageProductStep(
     }
 }
 
-/**
- * Карточка с товаром из плана
- */
 @Composable
 private fun StorageProductCard(
     product: TaskProduct,
     isSelected: Boolean,
     onSelect: () -> Unit
 ) {
+    val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -110,13 +109,36 @@ private fun StorageProductCard(
                     text = product.product.name,
                     style = MaterialTheme.typography.titleMedium
                 )
+
                 Text(
                     text = "Артикул: ${product.product.articleNumber}",
                     style = MaterialTheme.typography.bodyMedium
                 )
+
+                if (product.hasExpirationDate()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Срок годности: ${product.expirationDate?.toLocalDate()?.format(dateFormatter) ?: "Не указан"}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (product.expirationDate?.isBefore(LocalDateTime.now()) == true)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Статус: ${product.status.format()}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = when (product.status) {
+                        ProductStatus.STANDARD -> MaterialTheme.colorScheme.onSurface
+                        ProductStatus.DEFECTIVE -> MaterialTheme.colorScheme.error
+                        ProductStatus.EXPIRED -> Color(0xFFFF9800) // Оранжевый для просроченных
+                    }
+                )
             }
 
-            // Кнопка выбора
             IconButton(onClick = onSelect) {
                 Icon(
                     imageVector = if (isSelected)
@@ -130,9 +152,6 @@ private fun StorageProductCard(
     }
 }
 
-/**
- * Форма ввода дополнительных свойств товара
- */
 @Composable
 private fun AdditionalPropsProductForm(
     state: ActionWizardState,
@@ -143,7 +162,6 @@ private fun AdditionalPropsProductForm(
     val taskProduct = state.getTaskProductFromClassifier(step.id)
     val isSelected = state.selectedObjects[step.id] != null
 
-    // Отображаем товар из классификатора
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -175,7 +193,6 @@ private fun AdditionalPropsProductForm(
                 )
             }
 
-            // Кнопка выбора
             IconButton(
                 onClick = { onObjectSelected(taskProduct) }
             ) {
@@ -190,11 +207,9 @@ private fun AdditionalPropsProductForm(
         }
     }
 
-    // Если товар выбран, показываем поля ввода свойств
     if (isSelected) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Показываем поле срока годности только если товар учитывается по партиям
         if (state.shouldShowExpirationDate()) {
             ExpirationDatePicker(
                 expirationDate = taskProduct.expirationDate,
@@ -207,7 +222,6 @@ private fun AdditionalPropsProductForm(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // Показываем выбор статуса товара
         ProductStatusSelector(
             selectedStatus = taskProduct.status,
             onStatusSelected = { status ->
@@ -216,7 +230,6 @@ private fun AdditionalPropsProductForm(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Показываем индикатор загрузки, если информация о товаре еще загружается
         if (!state.shouldShowExpirationDate() && state.isLoadingProductInfo) {
             Spacer(modifier = Modifier.height(8.dp))
             Row(
@@ -239,9 +252,6 @@ private fun AdditionalPropsProductForm(
     }
 }
 
-/**
- * Поле для ручного ввода ID товара
- */
 @Composable
 private fun ManualProductEntryField(
     selectedProduct: TaskProduct?,
@@ -258,7 +268,6 @@ private fun ManualProductEntryField(
         value = selectedProduct?.product?.id ?: "",
         onValueChange = { id ->
             if (id.isNotEmpty()) {
-                // Создаем простой объект с ID
                 val product = Product(id = id, name = "Товар $id")
                 val taskProduct = TaskProduct(
                     id = java.util.UUID.randomUUID().toString(),
@@ -284,7 +293,6 @@ fun StorageProductClassifierStep(
         modifier = Modifier.fillMaxWidth()
     ) {
         if (plannedProduct != null) {
-            // Отображаем продукт из плана
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -311,7 +319,6 @@ fun StorageProductClassifierStep(
                         )
                     }
 
-                    // Кнопка выбора
                     IconButton(
                         onClick = { onObjectSelected(plannedProduct) }
                     ) {
@@ -326,7 +333,6 @@ fun StorageProductClassifierStep(
                 }
             }
         } else {
-            // Если нет запланированного продукта, показываем поле ввода
             Text(
                 text = "Нет запланированного товара. Введите ID товара:",
                 style = MaterialTheme.typography.bodyMedium
@@ -336,7 +342,6 @@ fun StorageProductClassifierStep(
                 value = selectedProduct?.id ?: "",
                 onValueChange = { id ->
                     if (id.isNotEmpty()) {
-                        // Создаем простой объект с ID
                         val product = Product(id = id, name = "Товар $id")
                         onObjectSelected(product)
                     }
@@ -365,7 +370,6 @@ fun BinStep(
         modifier = Modifier.fillMaxWidth()
     ) {
         if (plannedBin != null) {
-            // Отображаем ячейку из плана
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -392,7 +396,6 @@ fun BinStep(
                         )
                     }
 
-                    // Кнопка выбора
                     IconButton(
                         onClick = { onObjectSelected(plannedBin) }
                     ) {
@@ -407,7 +410,6 @@ fun BinStep(
                 }
             }
         } else {
-            // Если нет запланированной ячейки, показываем поле ввода
             Text(
                 text = "Введите код ячейки:",
                 style = MaterialTheme.typography.bodyMedium
@@ -473,7 +475,6 @@ fun PalletStep(
                         )
                     }
 
-                    // Кнопка выбора
                     IconButton(
                         onClick = { onObjectSelected(plannedPallet) }
                     ) {
@@ -488,7 +489,6 @@ fun PalletStep(
                 }
             }
         } else {
-            // Если нет запланированной паллеты, показываем поле ввода
             Text(
                 text = "Введите код паллеты:",
                 style = MaterialTheme.typography.bodyMedium
@@ -516,7 +516,6 @@ fun QuantityStep(
     onQuantityChanged: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Получаем данные о количестве из состояния
     val plannedQuantity = state.plannedAction?.quantity ?: 0f
     val selectedQuantity = (state.selectedObjects[step.id] as? Number)?.toFloat() ?: 0f
 
@@ -524,19 +523,11 @@ fun QuantityStep(
     // В реальном сценарии тут должна быть более сложная логика получения completedQuantity
     val completedQuantity = 0f
 
-    // Рассчитываем прогнозируемое итоговое количество
     val projectedTotalQuantity = completedQuantity + selectedQuantity
-
-    // Рассчитываем оставшееся количество после ввода (сколько осталось добрать до плана)
     val remainingAfterInput = (plannedQuantity - projectedTotalQuantity).coerceAtLeast(0f)
-
-    // Определяем, будет ли превышен план
     val willExceedPlan = projectedTotalQuantity > plannedQuantity
 
-    // Создаем фокусRequester для автоматического фокуса
     val focusRequester = remember { FocusRequester() }
-
-    // Локальное состояние для отслеживания ввода
     var inputValue by remember {
         mutableStateOf(if (selectedQuantity > 0) selectedQuantity.toString() else "")
     }
@@ -552,7 +543,6 @@ fun QuantityStep(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        // Показываем плановое количество, если оно задано
         if (plannedQuantity > 0) {
             QuantityIndicators(
                 plannedQuantity = plannedQuantity,
@@ -565,7 +555,6 @@ fun QuantityStep(
             FormSpacer(8)
         }
 
-        // Поле ввода количества с расширенной функциональностью
         WizardQuantityInput(
             value = inputValue,
             onValueChange = { newValue ->
@@ -598,7 +587,6 @@ fun QuantityStep(
             focusRequester = focusRequester
         )
 
-        // Показываем предупреждение при превышении плана
         if (willExceedPlan && plannedQuantity > 0) {
             FormSpacer(8)
             WarningMessage(message = "Внимание: превышение планового количества!")

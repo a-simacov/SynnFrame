@@ -36,7 +36,6 @@ class ActionWizardViewModel(
         updateState { it.copy(isLoading = true) }
 
         try {
-            // Получаем задание напрямую из синглтона
             val task = TaskXDataHolderSingleton.currentTask.value
             if (task == null) {
                 Timber.e("Задание не найдено в TaskXDataHolderSingleton")
@@ -44,7 +43,6 @@ class ActionWizardViewModel(
                 return
             }
 
-            // Находим плановое действие
             val plannedAction = task.plannedActions.find { it.id == actionId }
             if (plannedAction == null) {
                 Timber.e("Действие $actionId не найдено в задании ${task.id}")
@@ -52,7 +50,6 @@ class ActionWizardViewModel(
                 return
             }
 
-            // Получаем шаблон действия с шагами
             val actionTemplate = plannedAction.actionTemplate
             if (actionTemplate == null) {
                 Timber.e("Шаблон действия не найден для действия $actionId")
@@ -60,24 +57,23 @@ class ActionWizardViewModel(
                 return
             }
 
-            // Сортируем шаги по порядку
             val sortedSteps = actionTemplate.actionSteps.sortedBy { it.order }
 
-            // Создаем новое фактическое действие (не копируя данные из PlannedAction)
+            val hasQuantityStep = sortedSteps.any { it.factActionField == FactActionField.QUANTITY }
+
             val newFactAction = FactAction(
                 id = UUID.randomUUID().toString(),
                 taskId = taskId,
                 plannedActionId = plannedAction.id,
                 actionTemplateId = actionTemplate.id,
                 wmsAction = actionTemplate.wmsAction,
+                quantity = if (!hasQuantityStep && plannedAction.quantity > 0) plannedAction.quantity else 0f,
                 startedAt = LocalDateTime.now(),
-                completedAt = LocalDateTime.now() // Обновится при завершении
+                completedAt = LocalDateTime.now()
             )
 
-            // Логируем успешную инициализацию
             Timber.d("Визард успешно инициализирован для задания ${task.id}, действие $actionId")
 
-            // Обновляем состояние
             updateState {
                 it.copy(
                     plannedAction = plannedAction,
@@ -142,7 +138,6 @@ class ActionWizardViewModel(
                 val product = productUseCases.findProductByBarcode(barcode)
 
                 if (product != null) {
-                    // Сравниваем с товаром из плана
                     val plannedProductId = uiState.value.plannedAction?.storageProductClassifier?.id
 
                     if (plannedProductId == product.id) {
@@ -181,16 +176,13 @@ class ActionWizardViewModel(
 
         val currentStep = steps[currentStepIndex]
 
-        // Валидация текущего шага
         if (!validateCurrentStep()) {
             return
         }
 
-        // Если это последний шаг, переходим к итоговому экрану
         if (currentStepIndex == steps.size - 1) {
             updateState { it.copy(showSummary = true) }
         } else {
-            // Иначе переходим к следующему шагу
             updateState { it.copy(currentStepIndex = it.currentStepIndex + 1) }
         }
     }
@@ -198,19 +190,16 @@ class ActionWizardViewModel(
     fun previousStep() {
         val currentState = uiState.value
 
-        // Если мы на итоговом экране, возвращаемся к последнему шагу
         if (currentState.showSummary) {
             updateState { it.copy(showSummary = false) }
             return
         }
 
-        // Если мы на первом шаге, показываем диалог подтверждения выхода
         if (currentState.currentStepIndex == 0) {
             updateState { it.copy(showExitDialog = true) }
             return
         }
 
-        // Иначе переходим к предыдущему шагу
         updateState { it.copy(currentStepIndex = it.currentStepIndex - 1) }
     }
 
@@ -218,11 +207,9 @@ class ActionWizardViewModel(
         val currentState = uiState.value
         val currentStep = currentState.steps.getOrNull(currentState.currentStepIndex) ?: return
 
-        // Сохраняем объект в selectedObjects
         val updatedSelectedObjects = currentState.selectedObjects.toMutableMap()
         updatedSelectedObjects[currentStep.id] = obj
 
-        // Обновляем factAction в зависимости от типа объекта
         val updatedFactAction = updateFactActionWithObject(currentState.factAction, currentStep.factActionField, obj)
 
         updateState {
@@ -266,19 +253,16 @@ class ActionWizardViewModel(
         val currentState = uiState.value
         val currentStep = currentState.steps.getOrNull(currentState.currentStepIndex) ?: return false
 
-        // Если шаг не требует валидации, считаем его валидным
         if (!currentStep.isRequired) {
             return true
         }
 
-        // Проверяем, есть ли объект для этого шага
         val stepObject = currentState.selectedObjects[currentStep.id]
         if (stepObject == null) {
             sendEvent(ActionWizardEvent.ShowSnackbar("Необходимо выбрать объект для этого шага"))
             return false
         }
 
-        // Если есть правила валидации, проверяем их
         if (currentStep.validationRules != null) {
             val validationResult = validationService.validate(
                 rule = currentStep.validationRules,
@@ -346,26 +330,20 @@ class ActionWizardViewModel(
             updateState { it.copy(isLoading = true, sendingFailed = false) }
 
             try {
-                // Обновляем время завершения
                 val updatedFactAction = factAction.copy(completedAt = LocalDateTime.now())
 
-                // Проверяем, нужно ли отправлять на сервер
                 if (plannedAction.actionTemplate?.syncWithServer == true) {
-                    // Отправляем на сервер
                     val endpoint = TaskXDataHolderSingleton.endpoint ?: ""
                     val result = taskXRepository.addFactAction(updatedFactAction, endpoint)
 
                     if (result.isSuccess) {
-                        // Обновляем задание в холдере
                         val updatedTask = result.getOrNull()
                         if (updatedTask != null) {
                             TaskXDataHolderSingleton.updateTask(updatedTask)
                         }
 
-                        // Закрываем визард
                         sendEvent(ActionWizardEvent.NavigateToTaskDetail)
                     } else {
-                        // Ошибка отправки, разрешаем повторную попытку
                         updateState {
                             it.copy(
                                 isLoading = false,
@@ -375,10 +353,7 @@ class ActionWizardViewModel(
                         }
                     }
                 } else {
-                    // Если не нужно отправлять на сервер, просто добавляем в холдер
                     TaskXDataHolderSingleton.addFactAction(updatedFactAction)
-
-                    // Закрываем визард
                     sendEvent(ActionWizardEvent.NavigateToTaskDetail)
                 }
             } catch (e: Exception) {
@@ -394,12 +369,16 @@ class ActionWizardViewModel(
         }
     }
 
+    fun showExitDialog() {
+        updateState { it.copy(showExitDialog = true) }
+    }
+
     fun dismissExitDialog() {
         updateState { it.copy(showExitDialog = false) }
     }
 
     fun exitWizard() {
-        // Выходим без сохранения
+        updateState { it.copy(showExitDialog = false) }
         sendEvent(ActionWizardEvent.NavigateToTaskDetail)
     }
 

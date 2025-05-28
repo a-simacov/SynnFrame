@@ -25,7 +25,6 @@ fun SummaryScreen(
     state: ActionWizardState,
     onComplete: () -> Unit,
     onBack: () -> Unit,
-    onExit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -42,9 +41,7 @@ fun SummaryScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Отображаем информацию о действии
         state.factAction?.let { factAction ->
-            // Товар из классификатора
             factAction.storageProductClassifier?.let { product ->
                 SummaryItem(
                     title = "Товар из классификатора",
@@ -52,7 +49,6 @@ fun SummaryScreen(
                 )
             }
 
-            // Товар задания
             factAction.storageProduct?.let { taskProduct ->
                 SummaryItem(
                     title = "Товар",
@@ -72,7 +68,6 @@ fun SummaryScreen(
                 )
             }
 
-            // Ячейка хранения
             factAction.storageBin?.let { bin ->
                 SummaryItem(
                     title = "Ячейка хранения",
@@ -80,7 +75,6 @@ fun SummaryScreen(
                 )
             }
 
-            // Паллета хранения
             factAction.storagePallet?.let { pallet ->
                 SummaryItem(
                     title = "Паллета хранения",
@@ -88,7 +82,6 @@ fun SummaryScreen(
                 )
             }
 
-            // Ячейка размещения
             factAction.placementBin?.let { bin ->
                 SummaryItem(
                     title = "Ячейка размещения",
@@ -96,7 +89,6 @@ fun SummaryScreen(
                 )
             }
 
-            // Паллета размещения
             factAction.placementPallet?.let { pallet ->
                 SummaryItem(
                     title = "Паллета размещения",
@@ -104,7 +96,6 @@ fun SummaryScreen(
                 )
             }
 
-            // Количество
             if (factAction.quantity > 0) {
                 SummaryItem(
                     title = "Количество",
@@ -115,7 +106,6 @@ fun SummaryScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Если была ошибка отправки, показываем сообщение
         if (state.sendingFailed) {
             Text(
                 text = "Не удалось отправить данные на сервер. Вы можете повторить попытку или выйти без сохранения.",
@@ -125,18 +115,10 @@ fun SummaryScreen(
             )
         }
 
-        // Кнопки
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedButton(
-                onClick = onExit,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Выйти без сохранения")
-            }
-
             OutlinedButton(
                 onClick = onBack,
                 modifier = Modifier.weight(1f)

@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.taskx
 
+import TaskCompletionDialog
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -82,7 +83,6 @@ fun TaskXDetailScreen(
                 }
                 is TaskXDetailEvent.NavigateBackWithMessage -> {
                     navigateBack()
-                    // Показываем снекбар после навигации
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(
                             message = event.message,
@@ -94,7 +94,6 @@ fun TaskXDetailScreen(
         }
     }
 
-    // Диалог с ошибкой порядка выполнения
     if (state.showValidationErrorDialog && state.validationErrorMessage != null) {
         ValidationErrorDialog(
             errorMessage = state.validationErrorMessage!!,
@@ -127,6 +126,18 @@ fun TaskXDetailScreen(
         )
     }
 
+    if (state.showCompletionDialog) {
+        TaskCompletionDialog(
+            onDismiss = viewModel::dismissCompletionDialog,
+            onConfirm = viewModel::completeTask,
+            isProcessing = state.isProcessingAction
+        )
+    }
+
+    LaunchedEffect(state.actionUiModels) {
+        viewModel.checkTaskCompletion()
+    }
+
     AppScaffold(
         title = task?.name ?: stringResource(R.string.loading_task),
         onNavigateBack = viewModel::onBackPressed,
@@ -152,7 +163,7 @@ fun TaskXDetailScreen(
         ) {
             ExpandableTaskInfoCard(
                 title = stringResource(R.string.task_details),
-                initiallyExpanded = false, // По умолчанию свернуто
+                initiallyExpanded = false,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
@@ -201,7 +212,6 @@ fun TaskXDetailScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Фильтры действий
             ActionFilterChips(
                 currentFilter = state.actionFilter,
                 onFilterChange = viewModel::onFilterChange,
@@ -209,12 +219,11 @@ fun TaskXDetailScreen(
                 hasFinalActions = state.hasFinalActions()
             )
 
-            // Список действий
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 val displayActions = state.getDisplayActions()
 
@@ -226,7 +235,7 @@ fun TaskXDetailScreen(
                             textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(32.dp)
+                                .padding(4.dp)
                         )
                     }
                 } else {
@@ -237,13 +246,12 @@ fun TaskXDetailScreen(
                         PlannedActionCard(
                             actionUI = actionUI,
                             onClick = { viewModel.onActionClick(actionUI.id) },
-                            modifier = Modifier.padding(horizontal = 16.dp)
+                            modifier = Modifier.padding(horizontal = 4.dp)
                         )
                     }
 
-                    // Отступ снизу
                     item {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
             }

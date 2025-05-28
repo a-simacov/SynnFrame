@@ -3,9 +3,6 @@ package com.synngate.synnframe.presentation.ui.taskx.model
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 
-/**
- * Состояние экрана детального просмотра задания
- */
 data class TaskXDetailState(
     // Основные данные
     val task: TaskX? = null,
@@ -32,9 +29,7 @@ data class TaskXDetailState(
     // Информация о пользователе
     val currentUserId: String? = null
 ) {
-    /**
-     * Получить отображаемые действия с учетом фильтра
-     */
+
     fun getDisplayActions(): List<PlannedActionUI> {
         return when (actionFilter) {
             ActionFilter.ALL -> actionUiModels
@@ -46,23 +41,14 @@ data class TaskXDetailState(
         }
     }
 
-    /**
-     * Проверка наличия действий определенного типа
-     */
     fun hasInitialActions(): Boolean = actionUiModels.any { it.isInitialAction }
     fun hasFinalActions(): Boolean = actionUiModels.any { it.isFinalAction }
 
-    /**
-     * Подсчет действий
-     */
     fun getTotalActionsCount(): Int = actionUiModels.size
     fun getCompletedActionsCount(): Int = actionUiModels.count { it.isCompleted }
     fun getPendingActionsCount(): Int = getTotalActionsCount() - getCompletedActionsCount()
 }
 
-/**
- * Фильтры для отображения действий
- */
 enum class ActionFilter(val displayName: String) {
     ALL("Все"),
     PENDING("К выполнению"),

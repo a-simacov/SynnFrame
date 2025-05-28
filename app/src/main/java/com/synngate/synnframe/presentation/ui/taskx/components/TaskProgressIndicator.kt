@@ -49,7 +49,6 @@ fun TaskProgressIndicator(
                 .padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Общий прогресс выполнения задания
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

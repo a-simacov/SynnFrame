@@ -27,13 +27,20 @@ fun StepScreen(
     val currentStep = state.steps.getOrNull(state.currentStepIndex) ?: return
     val scrollState = rememberScrollState()
 
+    val isObjectSelected = state.selectedObjects.containsKey(currentStep.id)
+
+    val isButtonEnabled = if (currentStep.isRequired) {
+        isObjectSelected
+    } else {
+        true
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Описание шага
         Text(
             text = currentStep.promptText,
             style = MaterialTheme.typography.bodyLarge
@@ -41,7 +48,6 @@ fun StepScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Содержимое шага в зависимости от типа поля
         when (currentStep.factActionField) {
             FactActionField.STORAGE_PRODUCT -> {
                 StorageProductStep(
@@ -90,10 +96,10 @@ fun StepScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Кнопка подтверждения
         Button(
             onClick = onConfirm,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = isButtonEnabled
         ) {
             Text("Далее")
         }

@@ -38,7 +38,6 @@ fun ActionWizardScreen(
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Обработка событий
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
@@ -51,7 +50,6 @@ fun ActionWizardScreen(
         }
     }
 
-    // Диалог подтверждения выхода
     if (state.showExitDialog) {
         ExitConfirmationDialog(
             onDismiss = { viewModel.dismissExitDialog() },
@@ -64,7 +62,7 @@ fun ActionWizardScreen(
         subtitle = if (!state.showSummary) "Шаг ${state.currentStepIndex + 1} из ${state.steps.size}" else null,
         onNavigateBack = { viewModel.previousStep() },
         actions = {
-            IconButton(onClick = { viewModel.exitWizard() }) {
+            IconButton(onClick = { viewModel.showExitDialog() }) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Выйти"
@@ -82,7 +80,6 @@ fun ActionWizardScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            // Индикатор прогресса
             if (!state.showSummary && state.steps.isNotEmpty()) {
                 LinearProgressIndicator(
                     progress = { (state.currentStepIndex + 1).toFloat() / state.steps.size },
@@ -90,9 +87,7 @@ fun ActionWizardScreen(
                 )
             }
 
-            // Содержимое экрана
             if (state.isLoading) {
-                // Отображаем прогресс загрузки
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -100,15 +95,12 @@ fun ActionWizardScreen(
                     CircularProgressIndicator()
                 }
             } else if (state.showSummary) {
-                // Итоговый экран
                 SummaryScreen(
                     state = state,
                     onComplete = { viewModel.completeAction() },
-                    onBack = { viewModel.previousStep() },
-                    onExit = { viewModel.exitWizard() }
+                    onBack = { viewModel.previousStep() }
                 )
             } else if (state.steps.isNotEmpty()) {
-                // Экран шага
                 StepScreen(
                     state = state,
                     onConfirm = { viewModel.confirmCurrentStep() },

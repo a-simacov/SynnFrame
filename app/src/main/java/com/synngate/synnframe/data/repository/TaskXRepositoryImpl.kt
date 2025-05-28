@@ -42,7 +42,7 @@ class TaskXRepositoryImpl(
             val result = taskXApi.startTask(id, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    val task: TaskX? = null
+                    val task = TaskXDataHolderSingleton.currentTask.value
                     if (task != null && task.id == id) {
                         val updatedTask = task.copy(
                             status = TaskXStatus.IN_PROGRESS,
@@ -50,6 +50,7 @@ class TaskXRepositoryImpl(
                             startedAt = LocalDateTime.now(),
                             lastModifiedAt = LocalDateTime.now()
                         )
+                        TaskXDataHolderSingleton.updateTask(updatedTask)
                         Result.success(updatedTask)
                     } else {
                         Result.failure(Exception("Task not found in context"))
@@ -70,12 +71,13 @@ class TaskXRepositoryImpl(
             val result = taskXApi.pauseTask(id, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    val task: TaskX? = null
+                    val task = TaskXDataHolderSingleton.currentTask.value
                     if (task != null && task.id == id) {
                         val updatedTask = task.copy(
                             status = TaskXStatus.PAUSED,
                             lastModifiedAt = LocalDateTime.now()
                         )
+                        TaskXDataHolderSingleton.updateTask(updatedTask)
                         Result.success(updatedTask)
                     } else {
                         Result.failure(Exception("Task not found in context"))
@@ -96,19 +98,22 @@ class TaskXRepositoryImpl(
             val result = taskXApi.finishTask(id, endpoint)
             return when (result) {
                 is ApiResult.Success -> {
-                    val task: TaskX? = null
+                    val task = TaskXDataHolderSingleton.currentTask.value
                     if (task != null && task.id == id) {
                         val updatedTask = task.copy(
                             status = TaskXStatus.COMPLETED,
                             completedAt = LocalDateTime.now(),
                             lastModifiedAt = LocalDateTime.now()
                         )
+                        TaskXDataHolderSingleton.updateTask(updatedTask)
                         Result.success(updatedTask)
                     } else {
+                        Timber.e("Task not found in TaskXDataHolderSingleton for id: $id")
                         Result.failure(Exception("Task not found in context"))
                     }
                 }
                 is ApiResult.Error -> {
+                    Timber.e("Error finishing task $id: ${result.message}")
                     Result.failure(Exception(result.message))
                 }
             }
@@ -137,8 +142,6 @@ class TaskXRepositoryImpl(
                                 it.copy(isCompleted = true)
                             } else if (factAction.plannedActionId == null &&
                                 it.storageProduct?.product?.id == factAction.storageProduct?.product?.id) {
-                                // Дополнительно проверяем соответствие по продукту и действию,
-                                // если plannedActionId не указан
                                 it.copy(isCompleted = true)
                             } else {
                                 it
