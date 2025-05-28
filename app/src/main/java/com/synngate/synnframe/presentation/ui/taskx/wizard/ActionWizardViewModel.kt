@@ -204,7 +204,7 @@ class ActionWizardViewModel(
         updateState { it.copy(currentStepIndex = it.currentStepIndex - 1) }
     }
 
-    fun setObjectForCurrentStep(obj: Any) {
+    fun setObjectForCurrentStep(obj: Any, autoAdvance: Boolean = true) {
         val currentState = uiState.value
         val currentStep = currentState.steps.getOrNull(currentState.currentStepIndex) ?: return
 
@@ -216,9 +216,51 @@ class ActionWizardViewModel(
         updateState {
             it.copy(
                 selectedObjects = updatedSelectedObjects,
-                factAction = updatedFactAction
+                factAction = updatedFactAction,
+                error = null
             )
         }
+
+        if (autoAdvance) {
+            tryAutoAdvance()
+        }
+    }
+
+    private fun tryAutoAdvance(): Boolean {
+        val currentState = uiState.value
+        val currentStep = currentState.getCurrentStep() ?: return false
+
+        Timber.d("Пробуем выполнить автопереход с шага ${currentStep.name} (${currentStep.factActionField})")
+
+        val isAdditionalPropsStep = currentState.shouldShowAdditionalProps(currentStep)
+
+        if (isAdditionalPropsStep) {
+            val taskProduct = currentState.selectedObjects[currentStep.id] as? TaskProduct
+            if (taskProduct == null) {
+                Timber.d("Автопереход отменен: не выбран TaskProduct для шага с доп. свойствами")
+                return false
+            }
+
+            if (currentState.shouldShowExpirationDate() && taskProduct.expirationDate == null) {
+                Timber.d("Автопереход отменен: не указан срок годности")
+                return false
+            }
+        }
+
+        if (!validateCurrentStep()) {
+            Timber.d("Автопереход отменен: ошибка валидации")
+            return false
+        }
+
+        if (currentState.currentStepIndex == currentState.steps.size - 1) {
+            Timber.d("Автопереход: переходим к сводной информации")
+            updateState { it.copy(showSummary = true) }
+        } else {
+            Timber.d("Автопереход: переходим к следующему шагу ${currentState.currentStepIndex + 1}")
+            updateState { it.copy(currentStepIndex = it.currentStepIndex + 1) }
+        }
+
+        return true
     }
 
     private fun updateFactActionWithObject(factAction: FactAction?, field: FactActionField, obj: Any): FactAction? {
@@ -278,6 +320,7 @@ class ActionWizardViewModel(
                     "Ошибка валидации"
                 }
                 sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
+                updateState { it.copy(error = errorMessage) }
                 return false
             }
         }
@@ -424,50 +467,40 @@ class ActionWizardViewModel(
         }
     }
 
-    /**
-     * Поиск товара из классификатора по штрихкоду, ID или артикулу
-     */
     private suspend fun searchProductClassifier(barcode: String) {
         try {
-            // Получаем текущий шаг
             val currentStep = uiState.value.getCurrentStep() ?: return
             val plannedProduct = uiState.value.plannedAction?.storageProductClassifier
 
-            // Сначала проверяем, совпадает ли баркод с информацией из плана
             if (plannedProduct != null) {
-                // Проверяем по ID
                 if (plannedProduct.id == barcode) {
-                    setObjectForCurrentStep(plannedProduct)
+                    setObjectForCurrentStep(plannedProduct, autoAdvance = true)
                     updateState { it.copy(isLoading = false) }
                     return
                 }
 
-                // Проверяем по артикулу
                 if (plannedProduct.articleNumber == barcode) {
-                    setObjectForCurrentStep(plannedProduct)
+                    setObjectForCurrentStep(plannedProduct, autoAdvance = true)
                     updateState { it.copy(isLoading = false) }
                     return
                 }
 
-                // Проверка по штрихкодам через основные единицы измерения
                 val foundByBarcode = plannedProduct.units.any { unit ->
                     unit.barcodes.contains(barcode) || unit.mainBarcode == barcode
                 }
 
                 if (foundByBarcode) {
-                    setObjectForCurrentStep(plannedProduct)
+                    setObjectForCurrentStep(plannedProduct, autoAdvance = true)
                     updateState { it.copy(isLoading = false) }
                     return
                 }
             }
 
-            // Если не нашли в плане или плана нет, ищем в базе данных по штрихкоду
             val product = productUseCases.findProductByBarcode(barcode)
 
             if (product != null) {
-                // Проверяем валидацию
                 if (validateFoundObject(product, currentStep)) {
-                    setObjectForCurrentStep(product)
+                    setObjectForCurrentStep(product, autoAdvance = true)
                     updateState { it.copy(isLoading = false) }
                 } else {
                     updateState {
@@ -480,13 +513,11 @@ class ActionWizardViewModel(
                 return
             }
 
-            // Если не нашли по штрихкоду, пробуем найти по ID
             val productById = productUseCases.getProductById(barcode)
 
             if (productById != null) {
-                // Проверяем валидацию
                 if (validateFoundObject(productById, currentStep)) {
-                    setObjectForCurrentStep(productById)
+                    setObjectForCurrentStep(productById, autoAdvance = true)
                     updateState { it.copy(isLoading = false) }
                 } else {
                     updateState {
@@ -499,7 +530,6 @@ class ActionWizardViewModel(
                 return
             }
 
-            // Если ничего не нашли
             updateState {
                 it.copy(
                     isLoading = false,
@@ -518,69 +548,55 @@ class ActionWizardViewModel(
         }
     }
 
-    /**
-     * Поиск товара задания по штрихкоду, ID или артикулу
-     */
     private suspend fun searchTaskProduct(barcode: String) {
         try {
-            // Получаем текущий шаг
             val currentStep = uiState.value.getCurrentStep() ?: return
             val plannedTaskProduct = uiState.value.plannedAction?.storageProduct
             val plannedClassifierProduct = uiState.value.plannedAction?.storageProductClassifier
 
-            // Сначала проверяем, совпадает ли баркод с информацией из плана
             if (plannedTaskProduct != null) {
-                // Проверяем по ID товара задания
                 if (plannedTaskProduct.id == barcode) {
-                    setObjectForCurrentStep(plannedTaskProduct)
+                    setObjectForCurrentStep(plannedTaskProduct, autoAdvance = true)
                     updateState { it.copy(isLoading = false) }
                     return
                 }
 
-                // Проверяем по ID товара классификатора
                 if (plannedTaskProduct.product.id == barcode) {
-                    setObjectForCurrentStep(plannedTaskProduct)
+                    setObjectForCurrentStep(plannedTaskProduct, autoAdvance = true)
                     updateState { it.copy(isLoading = false) }
                     return
                 }
 
-                // Проверяем по артикулу
                 if (plannedTaskProduct.product.articleNumber == barcode) {
-                    setObjectForCurrentStep(plannedTaskProduct)
+                    setObjectForCurrentStep(plannedTaskProduct, autoAdvance = true)
                     updateState { it.copy(isLoading = false) }
                     return
                 }
 
-                // Проверка по штрихкодам через основные единицы измерения
                 val foundByBarcode = plannedTaskProduct.product.units.any { unit ->
                     unit.barcodes.contains(barcode) || unit.mainBarcode == barcode
                 }
 
                 if (foundByBarcode) {
-                    setObjectForCurrentStep(plannedTaskProduct)
+                    setObjectForCurrentStep(plannedTaskProduct, autoAdvance = true)
                     updateState { it.copy(isLoading = false) }
                     return
                 }
             }
 
-            // Если в плане есть товар из классификатора, но нет товара задания,
-            // и нужно заполнить дополнительные свойства
             if (plannedTaskProduct == null && plannedClassifierProduct != null &&
                 uiState.value.shouldShowAdditionalProps(currentStep)) {
 
-                // Проверяем, совпадает ли с товаром классификатора
                 if (plannedClassifierProduct.id == barcode ||
                     plannedClassifierProduct.articleNumber == barcode ||
                     plannedClassifierProduct.units.any { unit ->
                         unit.barcodes.contains(barcode) || unit.mainBarcode == barcode
                     }) {
 
-                    // Создаем TaskProduct на основе товара из классификатора
                     val taskProduct = uiState.value.getTaskProductFromClassifier(currentStep.id)
 
-                    // Проверяем валидацию
                     if (validateFoundObject(taskProduct, currentStep)) {
-                        setObjectForCurrentStep(taskProduct)
+                        setObjectForCurrentStep(taskProduct, autoAdvance = false) // Не переходим автоматически, так как нужно заполнить доп. свойства
                         updateState { it.copy(isLoading = false) }
                     } else {
                         updateState {
@@ -594,20 +610,18 @@ class ActionWizardViewModel(
                 }
             }
 
-            // Если не нашли в плане или плана нет, ищем в базе данных
             val product = productUseCases.findProductByBarcode(barcode)
 
             if (product != null) {
-                // Создаем TaskProduct на основе найденного товара
                 val taskProduct = TaskProduct(
                     id = UUID.randomUUID().toString(),
                     product = product,
                     status = ProductStatus.STANDARD
                 )
 
-                // Проверяем валидацию
                 if (validateFoundObject(taskProduct, currentStep)) {
-                    setObjectForCurrentStep(taskProduct)
+                    val autoAdvance = !uiState.value.shouldShowAdditionalProps(currentStep)
+                    setObjectForCurrentStep(taskProduct, autoAdvance = autoAdvance)
                     updateState { it.copy(isLoading = false) }
                 } else {
                     updateState {
@@ -620,7 +634,6 @@ class ActionWizardViewModel(
                 return
             }
 
-            // Если ничего не нашли
             updateState {
                 it.copy(
                     isLoading = false,
@@ -639,34 +652,26 @@ class ActionWizardViewModel(
         }
     }
 
-    /**
-     * Поиск ячейки по коду
-     */
     private fun searchBin(barcode: String, isStorage: Boolean) {
         try {
-            // Получаем текущий шаг
             val currentStep = uiState.value.getCurrentStep() ?: return
 
-            // Проверяем, есть ли ячейка в плане
             val plannedBin = if (isStorage) {
                 uiState.value.plannedAction?.storageBin
             } else {
                 uiState.value.plannedAction?.placementBin
             }
 
-            // Сначала проверяем, совпадает ли баркод с информацией из плана
             if (plannedBin != null && plannedBin.code == barcode) {
-                setObjectForCurrentStep(plannedBin)
+                setObjectForCurrentStep(plannedBin, autoAdvance = true)
                 updateState { it.copy(isLoading = false) }
                 return
             }
 
-            // Если не нашли в плане или плана нет, создаем новую ячейку
             val bin = BinX(code = barcode, zone = "")
 
-            // Проверяем валидацию
             if (validateFoundObject(bin, currentStep)) {
-                setObjectForCurrentStep(bin)
+                setObjectForCurrentStep(bin, autoAdvance = true)
                 updateState { it.copy(isLoading = false) }
             } else {
                 updateState {
@@ -688,34 +693,26 @@ class ActionWizardViewModel(
         }
     }
 
-    /**
-     * Поиск паллеты по коду
-     */
     private fun searchPallet(barcode: String, isStorage: Boolean) {
         try {
-            // Получаем текущий шаг
             val currentStep = uiState.value.getCurrentStep() ?: return
 
-            // Проверяем, есть ли паллета в плане
             val plannedPallet = if (isStorage) {
                 uiState.value.plannedAction?.storagePallet
             } else {
                 uiState.value.plannedAction?.placementPallet
             }
 
-            // Сначала проверяем, совпадает ли баркод с информацией из плана
             if (plannedPallet != null && plannedPallet.code == barcode) {
-                setObjectForCurrentStep(plannedPallet)
+                setObjectForCurrentStep(plannedPallet, autoAdvance = true)
                 updateState { it.copy(isLoading = false) }
                 return
             }
 
-            // Если не нашли в плане или плана нет, создаем новую паллету
             val pallet = Pallet(code = barcode)
 
-            // Проверяем валидацию
             if (validateFoundObject(pallet, currentStep)) {
-                setObjectForCurrentStep(pallet)
+                setObjectForCurrentStep(pallet, autoAdvance = true)
                 updateState { it.copy(isLoading = false) }
             } else {
                 updateState {
@@ -737,16 +734,11 @@ class ActionWizardViewModel(
         }
     }
 
-    /**
-     * Валидирует найденный объект с помощью правил валидации текущего шага
-     */
     private fun validateFoundObject(obj: Any, step: ActionStepTemplate): Boolean {
-        // Если у шага нет правил валидации, считаем объект валидным
         if (step.validationRules == null) {
             return true
         }
 
-        // Получаем плановый объект для формирования контекста валидации
         val planItem = getPlannedObjectForField(step.factActionField)
         val context = if (planItem != null) {
             mapOf("planItems" to listOf(planItem))
@@ -754,7 +746,6 @@ class ActionWizardViewModel(
             emptyMap()
         }
 
-        // Выполняем валидацию
         val validationResult = validationService.validate(
             rule = step.validationRules,
             value = obj,
@@ -762,15 +753,5 @@ class ActionWizardViewModel(
         )
 
         return validationResult.isSuccess
-    }
-
-    /**
-     * Проверяет, нужно ли отображать форму ввода дополнительных свойств товара
-     */
-    fun ActionWizardState.shouldShowAdditionalProps(step: ActionStepTemplate): Boolean {
-        return plannedAction?.storageProductClassifier != null &&
-                plannedAction.storageProduct == null &&
-                step.inputAdditionalProps &&
-                step.factActionField == FactActionField.STORAGE_PRODUCT
     }
 }

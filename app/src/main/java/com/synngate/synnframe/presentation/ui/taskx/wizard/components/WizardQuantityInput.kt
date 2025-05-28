@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -91,7 +92,7 @@ fun WizardQuantityInput(
                     for ((index, char) in newText.withIndex()) {
                         when {
                             char.isDigit() -> filteredText += char
-                            char == '.' && !hasDecimalPoint -> {
+                            char == '.' && !hasDecimalPoint && allowDecimals -> {
                                 // Разрешаем точку, только если она не первая (или после минуса)
                                 if (filteredText.isNotEmpty() || (hasMinusSign && filteredText.isEmpty())) {
                                     filteredText += char
@@ -129,9 +130,10 @@ fun WizardQuantityInput(
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(
-                    onAny = {
-                        if (onImeAction != null) {
-                            onImeAction()
+                    onDone = {
+                        Timber.d("Нажата клавиша IME Done на клавиатуре")
+                        if (value.isNotEmpty()) {
+                            onImeAction?.invoke()
                         }
                     }
                 ),

@@ -24,22 +24,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import timber.log.Timber
 
 @Composable
-fun WizardInputField(
+fun WizardBarcodeField(
     value: String,
     onValueChange: (String) -> Unit,
-    label: String,
+    onSearch: () -> Unit,
+    onScannerClick: () -> Unit,
     modifier: Modifier = Modifier,
+    label: String = "Введите штрихкод",
     isError: Boolean = false,
     errorText: String? = null,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    imeAction: ImeAction = ImeAction.Done,
-    onImeAction: () -> Unit = {},
-    leadingIcon: @Composable (() -> Unit)? = null,
-    trailingIcon: @Composable (() -> Unit)? = null,
-    enabled: Boolean = true,
-    singleLine: Boolean = true,
+    onSelectFromList: (() -> Unit)? = null,
     placeholder: String? = null
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -49,15 +46,37 @@ fun WizardInputField(
             label = { Text(label) },
             modifier = Modifier.fillMaxWidth(),
             isError = isError,
-            enabled = enabled,
-            singleLine = singleLine,
+            singleLine = true,
             keyboardOptions = KeyboardOptions(
-                keyboardType = keyboardType,
-                imeAction = imeAction
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Search
             ),
-            keyboardActions = KeyboardActions(onAny = { onImeAction() }),
-            leadingIcon = leadingIcon,
-            trailingIcon = trailingIcon,
+            keyboardActions = KeyboardActions(
+                onSearch = {
+                    if (value.isNotEmpty()) {
+                        Timber.d("Нажата клавиша IME Search на клавиатуре: $value")
+                        onSearch()
+                    }
+                }
+            ),
+            leadingIcon = if (onSelectFromList != null) {
+                {
+                    IconButton(onClick = onSelectFromList) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.List,
+                            contentDescription = "Выбрать из списка"
+                        )
+                    }
+                }
+            } else null,
+            trailingIcon = {
+                IconButton(onClick = onScannerClick) {
+                    Icon(
+                        imageVector = Icons.Default.QrCodeScanner,
+                        contentDescription = "Сканировать"
+                    )
+                }
+            },
             placeholder = placeholder?.let { { Text(it) } }
         )
 
@@ -81,51 +100,6 @@ fun WizardInputField(
             }
         }
     }
-}
-
-@Composable
-fun WizardBarcodeField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onSearch: () -> Unit,
-    onScannerClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    label: String = "Введите штрихкод",
-    isError: Boolean = false,
-    errorText: String? = null,
-    onSelectFromList: (() -> Unit)? = null,
-    placeholder: String? = null
-) {
-    WizardInputField(
-        value = value,
-        onValueChange = onValueChange,
-        label = label,
-        modifier = modifier,
-        isError = isError,
-        errorText = errorText,
-        keyboardType = KeyboardType.Text,
-        imeAction = ImeAction.Search,
-        onImeAction = onSearch,
-        placeholder = placeholder,
-        leadingIcon = if (onSelectFromList != null) {
-            {
-                IconButton(onClick = onSelectFromList) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.List,
-                        contentDescription = "Выбрать из списка"
-                    )
-                }
-            }
-        } else null,
-        trailingIcon = {
-            IconButton(onClick = onScannerClick) {
-                Icon(
-                    imageVector = Icons.Default.QrCodeScanner,
-                    contentDescription = "Сканировать"
-                )
-            }
-        }
-    )
 }
 
 @Composable

@@ -69,7 +69,6 @@ fun StorageProductStep(
     Column(
         modifier = modifier.fillMaxWidth()
     ) {
-        // Если в плане есть товар задания, показываем его карточку
         if (plannedProduct != null) {
             StorageProductCard(
                 product = plannedProduct,
@@ -79,8 +78,7 @@ fun StorageProductStep(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
-        // Если в плане нет товара задания, но есть необходимость ввода доп. свойств
-        else if (state.shouldShowAdditionalProductProps(step)) {
+        else if (state.shouldShowAdditionalProps(step)) {
             AdditionalPropsProductForm(
                 state = state,
                 step = step,
@@ -90,12 +88,12 @@ fun StorageProductStep(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Поле для сканирования/ввода
         WizardBarcodeField(
             value = barcodeValue,
             onValueChange = { barcodeValue = it },
             onSearch = {
                 if (barcodeValue.isNotEmpty()) {
+                    Timber.d("Поиск товара по штрихкоду: $barcodeValue")
                     onBarcodeSearch(barcodeValue)
                 }
             },
@@ -105,7 +103,6 @@ fun StorageProductStep(
             placeholder = "Введите или отсканируйте"
         )
 
-        // Отображаем текущий выбранный объект, если он отличается от планового
         if (selectedProduct != null && selectedProduct != plannedProduct) {
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -143,7 +140,6 @@ fun StorageProductStep(
         }
     }
 
-    // Диалог сканера камеры
     if (showScanner) {
         UniversalScannerDialog(
             onBarcodeScanned = { barcode ->
@@ -156,13 +152,10 @@ fun StorageProductStep(
         )
     }
 
-    // Диалог выбора товара из списка
     if (showProductSelector) {
         OptimizedProductSelectionDialog(
             onProductSelected = { product ->
-                // Преобразуем Product в TaskProduct если нужно
-                val taskProduct = if (state.shouldShowAdditionalProductProps(step)) {
-                    // Создаем новый TaskProduct на основе выбранного Product
+                val taskProduct = if (state.shouldShowAdditionalProps(step)) {
                     val baseTaskProduct = state.getTaskProductFromClassifier(step.id)
                     baseTaskProduct.copy(
                         product = product
@@ -188,7 +181,7 @@ fun StorageProductStep(
 }
 
 @Composable
-private fun StorageProductCard(
+fun StorageProductCard(
     product: TaskProduct,
     isSelected: Boolean,
     onSelect: () -> Unit
@@ -196,7 +189,8 @@ private fun StorageProductCard(
     val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth()
+            .clickable(onClick = onSelect),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
                 MaterialTheme.colorScheme.primaryContainer
@@ -259,7 +253,7 @@ private fun StorageProductCard(
 }
 
 @Composable
-private fun AdditionalPropsProductForm(
+fun AdditionalPropsProductForm(
     state: ActionWizardState,
     step: ActionStepTemplate,
     onObjectSelected: (Any) -> Unit
@@ -267,6 +261,11 @@ private fun AdditionalPropsProductForm(
     val classifierProduct = state.plannedAction?.storageProductClassifier
     val taskProduct = state.getTaskProductFromClassifier(step.id)
     val isSelected = state.selectedObjects[step.id] != null
+
+    var hasExpirationDate by remember(taskProduct) { mutableStateOf(taskProduct.expirationDate != null) }
+    var hasStatusSelected by remember(taskProduct) { mutableStateOf(true) }
+
+    val needsExpirationDate = state.shouldShowExpirationDate()
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -300,7 +299,12 @@ private fun AdditionalPropsProductForm(
             }
 
             IconButton(
-                onClick = { onObjectSelected(taskProduct) }
+                onClick = {
+                    onObjectSelected(taskProduct)
+                    if (!needsExpirationDate || hasExpirationDate) {
+                        Timber.d("Автоматический переход из AdditionalPropsProductForm")
+                    }
+                }
             ) {
                 Icon(
                     imageVector = if (isSelected)
@@ -320,7 +324,12 @@ private fun AdditionalPropsProductForm(
             ExpirationDatePicker(
                 expirationDate = taskProduct.expirationDate,
                 onDateSelected = { date ->
+                    hasExpirationDate = date != null
                     onObjectSelected(taskProduct.copy(expirationDate = date))
+
+                    if (date != null && hasStatusSelected) {
+                        Timber.d("Автоматический переход после выбора срока годности")
+                    }
                 },
                 isRequired = true
             )
@@ -331,7 +340,12 @@ private fun AdditionalPropsProductForm(
         ProductStatusSelector(
             selectedStatus = taskProduct.status,
             onStatusSelected = { status ->
+                hasStatusSelected = true
                 onObjectSelected(taskProduct.copy(status = status))
+
+                if (!needsExpirationDate || hasExpirationDate) {
+                    Timber.d("Автоматический переход после выбора статуса")
+                }
             },
             modifier = Modifier.fillMaxWidth()
         )
@@ -406,9 +420,8 @@ fun ProductClassifierStep(
     ) {
         // Карточка с запланированным объектом
         if (plannedProduct != null) {
-            PlannedObjectCard(
-                title = plannedProduct.name,
-                subtitle = "Артикул: ${plannedProduct.articleNumber}",
+            ProductClassifierCard(
+                product = plannedProduct,
                 isSelected = selectedProduct != null,
                 onClick = { onObjectSelected(plannedProduct) }
             )
@@ -416,12 +429,12 @@ fun ProductClassifierStep(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Поле для сканирования/ввода
         WizardBarcodeField(
             value = barcodeValue,
             onValueChange = { barcodeValue = it },
             onSearch = {
                 if (barcodeValue.isNotEmpty()) {
+                    Timber.d("Поиск товара по штрихкоду: $barcodeValue")
                     onBarcodeSearch(barcodeValue)
                 }
             },
@@ -431,7 +444,6 @@ fun ProductClassifierStep(
             placeholder = "Введите или отсканируйте"
         )
 
-        // Отображаем текущий выбранный объект (если есть)
         if (selectedProduct != null && selectedProduct != plannedProduct) {
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -464,7 +476,6 @@ fun ProductClassifierStep(
         }
     }
 
-    // Диалог сканера камеры
     if (showScanner) {
         UniversalScannerDialog(
             onBarcodeScanned = { barcode ->
@@ -477,7 +488,6 @@ fun ProductClassifierStep(
         )
     }
 
-    // Диалог выбора товара из списка
     if (showProductSelector) {
         OptimizedProductSelectionDialog(
             onProductSelected = { product ->
@@ -487,6 +497,44 @@ fun ProductClassifierStep(
             initialFilter = barcodeValue,
             planProductIds = state.plannedAction?.storageProductClassifier?.let { setOf(it.id) }
         )
+    }
+}
+
+@Composable
+fun ProductClassifierCard(
+    product: Product,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = product.name,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = "Артикул: ${product.articleNumber}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "ID: ${product.id}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -511,7 +559,6 @@ fun BinStep(
     Column(
         modifier = modifier.fillMaxWidth()
     ) {
-        // Карточка с запланированным объектом
         if (plannedBin != null) {
             PlannedObjectCard(
                 title = "Ячейка: ${plannedBin.code}",
@@ -523,12 +570,12 @@ fun BinStep(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Поле для сканирования/ввода
         WizardBarcodeField(
             value = barcodeValue,
             onValueChange = { barcodeValue = it },
             onSearch = {
                 if (barcodeValue.isNotEmpty()) {
+                    Timber.d("Поиск ячейки по коду: $barcodeValue")
                     onBarcodeSearch(barcodeValue)
                 }
             },
@@ -537,7 +584,6 @@ fun BinStep(
             placeholder = "Введите или отсканируйте код ячейки"
         )
 
-        // Отображаем текущий выбранный объект (если есть)
         if (selectedBin != null && selectedBin != plannedBin) {
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -567,7 +613,6 @@ fun BinStep(
         }
     }
 
-    // Диалог сканера камеры
     if (showScanner) {
         UniversalScannerDialog(
             onBarcodeScanned = { barcode ->
@@ -581,9 +626,6 @@ fun BinStep(
     }
 }
 
-/**
- * Улучшенный компонент для выбора паллеты, с поддержкой сканирования и ручного ввода
- */
 @Composable
 fun PalletStep(
     step: ActionStepTemplate,
@@ -605,7 +647,6 @@ fun PalletStep(
     Column(
         modifier = modifier.fillMaxWidth()
     ) {
-        // Карточка с запланированным объектом
         if (plannedPallet != null) {
             PlannedObjectCard(
                 title = "Паллета: ${plannedPallet.code}",
@@ -617,12 +658,12 @@ fun PalletStep(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Поле для сканирования/ввода
         WizardBarcodeField(
             value = barcodeValue,
             onValueChange = { barcodeValue = it },
             onSearch = {
                 if (barcodeValue.isNotEmpty()) {
+                    Timber.d("Поиск паллеты по коду: $barcodeValue")
                     onBarcodeSearch(barcodeValue)
                 }
             },
@@ -631,7 +672,6 @@ fun PalletStep(
             placeholder = "Введите или отсканируйте код паллеты"
         )
 
-        // Отображаем текущий выбранный объект (если есть)
         if (selectedPallet != null && selectedPallet != plannedPallet) {
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -659,7 +699,6 @@ fun PalletStep(
         }
     }
 
-    // Диалог сканера камеры
     if (showScanner) {
         UniversalScannerDialog(
             onBarcodeScanned = { barcode ->
@@ -739,8 +778,13 @@ fun QuantityStep(
                 }
             },
             onImeAction = {
-                // Сохраняем результат при нажатии на кнопку клавиатуры
-                inputValue.toFloatOrNull()?.let { onQuantityChanged(it) }
+                // Сохраняем результат при нажатии на кнопку клавиатуры и автоматически переходим дальше
+                if (inputValue.isNotEmpty()) {
+                    inputValue.toFloatOrNull()?.let {
+                        Timber.d("IME-действие: количество $it")
+                        onQuantityChanged(it)
+                    }
+                }
             },
             isError = state.error != null,
             errorText = state.error,
@@ -830,8 +874,8 @@ fun PlannedObjectCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-                .clickable(onClick = onClick),
+                .clickable(onClick = onClick)
+                .padding(16.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Column {
