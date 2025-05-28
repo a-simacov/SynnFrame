@@ -223,27 +223,27 @@ class ActionWizardViewModel(
     private fun updateFactActionWithObject(factAction: FactAction?, field: FactActionField, obj: Any): FactAction? {
         if (factAction == null) return null
 
-        return when (field) {
-            FactActionField.STORAGE_PRODUCT ->
-                if (obj is TaskProduct) factAction.copy(storageProduct = obj) else factAction
+        return when {
+            field == FactActionField.STORAGE_PRODUCT && obj is TaskProduct ->
+                factAction.copy(storageProduct = obj)
 
-            FactActionField.STORAGE_PRODUCT_CLASSIFIER ->
-                if (obj is Product) factAction.copy(storageProductClassifier = obj) else factAction
+            field == FactActionField.STORAGE_PRODUCT_CLASSIFIER && obj is Product ->
+                factAction.copy(storageProductClassifier = obj)
 
-            FactActionField.STORAGE_BIN ->
-                if (obj is BinX) factAction.copy(storageBin = obj) else factAction
+            field == FactActionField.STORAGE_BIN && obj is BinX ->
+                factAction.copy(storageBin = obj)
 
-            FactActionField.STORAGE_PALLET ->
-                if (obj is Pallet) factAction.copy(storagePallet = obj) else factAction
+            field == FactActionField.STORAGE_PALLET && obj is Pallet ->
+                factAction.copy(storagePallet = obj)
 
-            FactActionField.ALLOCATION_BIN ->
-                if (obj is BinX) factAction.copy(placementBin = obj) else factAction
+            field == FactActionField.ALLOCATION_BIN && obj is BinX ->
+                factAction.copy(placementBin = obj)
 
-            FactActionField.ALLOCATION_PALLET ->
-                if (obj is Pallet) factAction.copy(placementPallet = obj) else factAction
+            field == FactActionField.ALLOCATION_PALLET && obj is Pallet ->
+                factAction.copy(placementPallet = obj)
 
-            FactActionField.QUANTITY ->
-                if (obj is Number) factAction.copy(quantity = obj.toFloat()) else factAction
+            field == FactActionField.QUANTITY && obj is Number ->
+                factAction.copy(quantity = obj.toFloat())
 
             else -> factAction
         }

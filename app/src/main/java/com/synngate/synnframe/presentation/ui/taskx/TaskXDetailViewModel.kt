@@ -176,68 +176,73 @@ class TaskXDetailViewModel(
         dismissExitDialog()
     }
 
-    fun pauseTask() {
+    private fun processTaskAction(
+        action: suspend (String, String) -> Result<TaskX>,
+        loadingMessage: String,
+        successMessage: String,
+        errorMessage: String,
+        onSuccess: (TaskX) -> Unit = {
+            sendEvent(TaskXDetailEvent.NavigateBackWithMessage(successMessage))
+        }
+    ) {
+        val task = uiState.value.task ?: return
+
+        updateState { it.copy(isProcessingAction = true, showExitDialog = false, showCompletionDialog = false) }
+
         launchIO {
-            val task = uiState.value.task ?: return@launchIO
-
-            updateState { it.copy(isProcessingAction = true, showExitDialog = false) }
-
             try {
-                val result = taskXUseCases.pauseTask(task.id, endpoint)
+                Timber.d(loadingMessage)
+                val result = action(task.id, endpoint)
 
                 if (result.isSuccess) {
-                    val updatedTask = result.getOrNull()
-                    if (updatedTask != null) {
-                        updateState {
-                            it.copy(task = updatedTask)
-                        }
-
+                    result.getOrNull()?.let { updatedTask ->
+                        updateState { it.copy(task = updatedTask) }
                         TaskXDataHolderSingleton.updateTask(updatedTask)
                     }
-                    sendEvent(TaskXDetailEvent.NavigateBackWithMessage("Задание приостановлено"))
+                    onSuccess(task)
                 } else {
                     updateState { it.copy(isProcessingAction = false) }
-                    sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при приостановке задания"))
+                    sendEvent(TaskXDetailEvent.ShowSnackbar(errorMessage))
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error pausing task")
+                Timber.e(e, "$loadingMessage: ${e.message}")
                 updateState { it.copy(isProcessingAction = false) }
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка: ${e.message}"))
             }
         }
     }
 
+    fun pauseTask() {
+        processTaskAction(
+            action = { taskId, endpoint -> taskXUseCases.pauseTask(taskId, endpoint) },
+            loadingMessage = "Приостановка задания...",
+            successMessage = "Задание приостановлено",
+            errorMessage = "Ошибка при приостановке задания"
+        )
+    }
+
     fun completeTask() {
-        launchIO {
-            val task = uiState.value.task ?: return@launchIO
-            val taskType = uiState.value.taskType ?: return@launchIO
+        val task = uiState.value.task ?: return
+        val taskType = uiState.value.taskType ?: return
 
-            val validationResult = actionValidator.canCompleteTask(task)
-            if (!validationResult.isSuccess && !taskType.allowCompletionWithoutFactActions) {
-                sendEvent(TaskXDetailEvent.ShowSnackbar(
-                    validationResult.errorMessage ?: "Невозможно завершить задание"
-                ))
-                return@launchIO
-            }
-
-            updateState { it.copy(isProcessingAction = true, showExitDialog = false) }
-
-            try {
-                val result = taskXUseCases.completeTask(task.id, endpoint)
-
-                if (result.isSuccess) {
-                    TaskXDataHolderSingleton.forceClean()
-                    sendEvent(TaskXDetailEvent.NavigateBackWithMessage("Задание завершено"))
-                } else {
-                    updateState { it.copy(isProcessingAction = false) }
-                    sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка при завершении задания"))
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error completing task")
-                updateState { it.copy(isProcessingAction = false) }
-                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка: ${e.message}"))
-            }
+        val validationResult = actionValidator.canCompleteTask(task)
+        if (!validationResult.isSuccess && !taskType.allowCompletionWithoutFactActions) {
+            sendEvent(TaskXDetailEvent.ShowSnackbar(
+                validationResult.errorMessage ?: "Невозможно завершить задание"
+            ))
+            return
         }
+
+        processTaskAction(
+            action = { taskId, endpoint -> taskXUseCases.completeTask(taskId, endpoint) },
+            loadingMessage = "Завершение задания...",
+            successMessage = "Задание завершено",
+            errorMessage = "Ошибка при завершении задания",
+            onSuccess = {
+                TaskXDataHolderSingleton.forceClean()
+                sendEvent(TaskXDetailEvent.NavigateBackWithMessage("Задание завершено"))
+            }
+        )
     }
 
     fun searchByScanner(barcode: String) {

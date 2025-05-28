@@ -24,67 +24,41 @@ class ActionValidator {
             }
         }
 
-        if (action.completionOrderType == CompletionOrderType.INITIAL) {
-            val initialActions = task.getInitialActions()
-            val notCompletedInitial = initialActions.filter {
-                !it.isFullyCompleted(task.factActions)
-            }
-
-            if (notCompletedInitial.isNotEmpty() && notCompletedInitial.first().id != action.id) {
-                val firstAction = notCompletedInitial.first()
-                return ValidationResult.Error(
-                    "Начальные действия должны выполняться в указанном порядке. " +
-                            "Выполните сначала: ${firstAction.actionTemplate?.name ?: "Неизвестно"}"
-                )
-            }
+        return when (action.completionOrderType) {
+            CompletionOrderType.INITIAL -> validateInitialAction(task, action)
+            CompletionOrderType.REGULAR -> validateRegularAction(task, action)
+            CompletionOrderType.FINAL -> validateFinalAction(task, action)
         }
-        else if (action.completionOrderType == CompletionOrderType.REGULAR) {
-            if (!task.areInitialActionsCompleted()) {
-                return ValidationResult.Error(
-                    "Сначала необходимо выполнить все начальные действия"
-                )
-            }
+    }
 
-            if (task.taskType?.regularActionsExecutionOrder == RegularActionsExecutionOrder.STRICT) {
-                val regularActions = task.getRegularActions()
-                val incompleteRegular = regularActions
-                    .filter { !it.isFullyCompleted(task.factActions) }
+    private fun validateInitialAction(task: TaskX, action: PlannedAction): ValidationResult {
+        val notCompletedInitial = task.getInitialActions()
+            .filter { !it.isFullyCompleted(task.factActions) }
 
-                if (incompleteRegular.isNotEmpty() && incompleteRegular.first().id != action.id) {
-                    val firstAction = incompleteRegular.first()
-                    return ValidationResult.Error(
-                        "Действия должны выполняться в указанном порядке. " +
-                                "Выполните сначала: ${firstAction.actionTemplate?.name ?: "Неизвестно"}"
-                    )
-                }
-            }
+        if (notCompletedInitial.isNotEmpty() && notCompletedInitial.first().id != action.id) {
+            val firstAction = notCompletedInitial.first()
+            return ValidationResult.Error(
+                "Начальные действия должны выполняться в указанном порядке. " +
+                        "Выполните сначала: ${firstAction.actionTemplate?.name ?: "Неизвестно"}"
+            )
         }
-        else if (action.completionOrderType == CompletionOrderType.FINAL) {
-            if (!task.areInitialActionsCompleted()) {
-                return ValidationResult.Error(
-                    "Сначала необходимо выполнить все начальные действия"
-                )
-            }
 
-            val regularActions = task.getRegularActions()
-            val allRegularComplete = regularActions.all {
-                it.isFullyCompleted(task.factActions)
-            }
+        return ValidationResult.Success
+    }
 
-            if (!allRegularComplete) {
-                return ValidationResult.Error(
-                    "Сначала необходимо выполнить все обычные действия"
-                )
-            }
+    private fun validateRegularAction(task: TaskX, action: PlannedAction): ValidationResult {
+        if (!task.areInitialActionsCompleted()) {
+            return ValidationResult.Error("Сначала необходимо выполнить все начальные действия")
+        }
 
-            val finalActions = task.getFinalActions()
-            val incompleteFinal = finalActions
+        if (task.taskType?.regularActionsExecutionOrder == RegularActionsExecutionOrder.STRICT) {
+            val incompleteRegular = task.getRegularActions()
                 .filter { !it.isFullyCompleted(task.factActions) }
 
-            if (incompleteFinal.isNotEmpty() && incompleteFinal.first().id != action.id) {
-                val firstAction = incompleteFinal.first()
+            if (incompleteRegular.isNotEmpty() && incompleteRegular.first().id != action.id) {
+                val firstAction = incompleteRegular.first()
                 return ValidationResult.Error(
-                    "Завершающие действия должны выполняться в указанном порядке. " +
+                    "Действия должны выполняться в указанном порядке. " +
                             "Выполните сначала: ${firstAction.actionTemplate?.name ?: "Неизвестно"}"
                 )
             }
@@ -94,6 +68,32 @@ class ActionValidator {
             action.isQuantityFulfilled(task.factActions) &&
             task.taskType?.regularActionsExecutionOrder == RegularActionsExecutionOrder.STRICT) {
             return ValidationResult.Error("План по количеству уже выполнен")
+        }
+
+        return ValidationResult.Success
+    }
+
+    private fun validateFinalAction(task: TaskX, action: PlannedAction): ValidationResult {
+        if (!task.areInitialActionsCompleted()) {
+            return ValidationResult.Error("Сначала необходимо выполнить все начальные действия")
+        }
+
+        val regularActions = task.getRegularActions()
+        val allRegularComplete = regularActions.all { it.isFullyCompleted(task.factActions) }
+
+        if (!allRegularComplete) {
+            return ValidationResult.Error("Сначала необходимо выполнить все обычные действия")
+        }
+
+        val incompleteFinal = task.getFinalActions()
+            .filter { !it.isFullyCompleted(task.factActions) }
+
+        if (incompleteFinal.isNotEmpty() && incompleteFinal.first().id != action.id) {
+            val firstAction = incompleteFinal.first()
+            return ValidationResult.Error(
+                "Завершающие действия должны выполняться в указанном порядке. " +
+                        "Выполните сначала: ${firstAction.actionTemplate?.name ?: "Неизвестно"}"
+            )
         }
 
         return ValidationResult.Success
