@@ -393,6 +393,9 @@ class ActionWizardViewModel(
             return
         }
 
+        // Добавляем логирование для отладки
+        Timber.d("Поиск объекта по штрихкоду: $barcode для поля типа: $fieldType")
+
         updateState { it.copy(isLoading = true, error = null) }
 
         launchIO {
@@ -410,7 +413,7 @@ class ActionWizardViewModel(
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при поиске объекта по штрихкоду: $barcode")
+                Timber.e(e, "Ошибка при поиске объекта по штрихкоду: $barcode для типа: $fieldType")
                 updateState {
                     it.copy(
                         isLoading = false,

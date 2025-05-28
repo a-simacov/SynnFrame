@@ -25,12 +25,12 @@ import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.status.StatusType
-import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.ExitConfirmationDialog
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.StepScreen
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.SummaryScreen
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardEvent
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import timber.log.Timber
 
 @Composable
 fun ActionWizardScreen(
@@ -46,23 +46,18 @@ fun ActionWizardScreen(
 
     // Подключаем слушатель сканера, если он доступен
     if (scannerService?.hasRealScanner() == true) {
-        val currentStep = state.steps.getOrNull(state.currentStepIndex)
-
+        // ВАЖНО: Получаем текущий шаг ВНУТРИ композиции, чтобы он обновлялся при изменении state
         ScannerListener(onBarcodeScanned = { barcode ->
-            // Получаем тип поля текущего шага
+            // Получаем текущий шаг в момент сканирования, а не при создании слушателя
+            val currentStep = state.getCurrentStep()
+
+            // Логируем для отладки
+            Timber.d("Сканирование штрихкода: $barcode на шаге с типом: ${currentStep?.factActionField}")
+
+            // Только для поддерживаемых типов полей обрабатываем сканирование
             currentStep?.factActionField?.let { fieldType ->
-                // Только для поддерживаемых типов полей обрабатываем сканирование
-                when (fieldType) {
-                    FactActionField.STORAGE_PRODUCT,
-                    FactActionField.STORAGE_PRODUCT_CLASSIFIER,
-                    FactActionField.STORAGE_BIN,
-                    FactActionField.ALLOCATION_BIN,
-                    FactActionField.STORAGE_PALLET,
-                    FactActionField.ALLOCATION_PALLET -> {
-                        viewModel.searchObjectByBarcode(barcode, fieldType)
-                    }
-                    else -> {} // Остальные типы полей не обрабатываем
-                }
+                // Вызываем метод поиска объекта по штрихкоду с ТЕКУЩИМ типом поля
+                viewModel.searchObjectByBarcode(barcode, fieldType)
             }
         })
     }
