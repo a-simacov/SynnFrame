@@ -56,7 +56,7 @@ fun StorageProductStep(
     step: ActionStepTemplate,
     state: ActionWizardState,
     onObjectSelected: (Any) -> Unit,
-    onBarcodeSearch: (String) -> Unit,
+    handleBarcode: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val plannedProduct = state.plannedAction?.storageProduct
@@ -93,8 +93,8 @@ fun StorageProductStep(
             onValueChange = { barcodeValue = it },
             onSearch = {
                 if (barcodeValue.isNotEmpty()) {
-                    Timber.d("Поиск товара по штрихкоду: $barcodeValue")
-                    onBarcodeSearch(barcodeValue)
+                    Timber.d("Поиск по введенному штрихкоду: $barcodeValue")
+                    handleBarcode(barcodeValue)
                 }
             },
             onScannerClick = { showScanner = true },
@@ -144,8 +144,8 @@ fun StorageProductStep(
         UniversalScannerDialog(
             onBarcodeScanned = { barcode ->
                 barcodeValue = barcode
-                onBarcodeSearch(barcode)
                 showScanner = false
+                handleBarcode(barcodeValue)
             },
             onClose = { showScanner = false },
             instructionText = "Отсканируйте штрихкод товара"
@@ -405,7 +405,7 @@ fun ProductClassifierStep(
     step: ActionStepTemplate,
     state: ActionWizardState,
     onObjectSelected: (Any) -> Unit,
-    onBarcodeSearch: (String) -> Unit,
+    handleBarcode: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val plannedProduct = state.plannedAction?.storageProductClassifier
@@ -434,8 +434,8 @@ fun ProductClassifierStep(
             onValueChange = { barcodeValue = it },
             onSearch = {
                 if (barcodeValue.isNotEmpty()) {
-                    Timber.d("Поиск товара по штрихкоду: $barcodeValue")
-                    onBarcodeSearch(barcodeValue)
+                    Timber.d("Поиск по введенному штрихкоду: $barcodeValue")
+                    handleBarcode(barcodeValue)
                 }
             },
             onScannerClick = { showScanner = true },
@@ -480,8 +480,8 @@ fun ProductClassifierStep(
         UniversalScannerDialog(
             onBarcodeScanned = { barcode ->
                 barcodeValue = barcode
-                onBarcodeSearch(barcode)
                 showScanner = false
+                handleBarcode(barcodeValue)
             },
             onClose = { showScanner = false },
             instructionText = "Отсканируйте штрихкод товара"
@@ -543,7 +543,7 @@ fun BinStep(
     step: ActionStepTemplate,
     state: ActionWizardState,
     onObjectSelected: (Any) -> Unit,
-    onBarcodeSearch: (String) -> Unit,
+    handleBarcode: (String) -> Unit,
     isStorage: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -576,7 +576,7 @@ fun BinStep(
             onSearch = {
                 if (barcodeValue.isNotEmpty()) {
                     Timber.d("Поиск ячейки по коду: $barcodeValue")
-                    onBarcodeSearch(barcodeValue)
+                    handleBarcode(barcodeValue)
                 }
             },
             onScannerClick = { showScanner = true },
@@ -617,8 +617,8 @@ fun BinStep(
         UniversalScannerDialog(
             onBarcodeScanned = { barcode ->
                 barcodeValue = barcode
-                onBarcodeSearch(barcode)
                 showScanner = false
+                handleBarcode(barcode)
             },
             onClose = { showScanner = false },
             instructionText = if (isStorage) "Отсканируйте код ячейки хранения" else "Отсканируйте код ячейки размещения"
@@ -631,7 +631,7 @@ fun PalletStep(
     step: ActionStepTemplate,
     state: ActionWizardState,
     onObjectSelected: (Any) -> Unit,
-    onBarcodeSearch: (String) -> Unit,
+    handleBarcode: (String) -> Unit,
     isStorage: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -663,8 +663,8 @@ fun PalletStep(
             onValueChange = { barcodeValue = it },
             onSearch = {
                 if (barcodeValue.isNotEmpty()) {
-                    Timber.d("Поиск паллеты по коду: $barcodeValue")
-                    onBarcodeSearch(barcodeValue)
+                    Timber.d("Поиск по введенному штрихкоду: $barcodeValue")
+                    handleBarcode(barcodeValue)
                 }
             },
             onScannerClick = { showScanner = true },
@@ -703,8 +703,8 @@ fun PalletStep(
         UniversalScannerDialog(
             onBarcodeScanned = { barcode ->
                 barcodeValue = barcode
-                onBarcodeSearch(barcode)
                 showScanner = false
+                handleBarcode(barcodeValue)
             },
             onClose = { showScanner = false },
             instructionText = if (isStorage) "Отсканируйте код паллеты хранения" else "Отсканируйте код паллеты размещения"

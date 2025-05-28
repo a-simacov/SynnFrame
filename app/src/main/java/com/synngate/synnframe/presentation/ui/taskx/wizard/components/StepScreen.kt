@@ -21,8 +21,8 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardSta
 fun StepScreen(
     state: ActionWizardState,
     onConfirm: () -> Unit,
-    onObjectSelected: (Any, Boolean) -> Unit,  // Добавляем параметр autoAdvance
-    onBarcodeSearch: (String) -> Unit,
+    onObjectSelected: (Any, Boolean) -> Unit,
+    handleBarcode: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val currentStep = state.steps.getOrNull(state.currentStepIndex) ?: return
@@ -55,30 +55,24 @@ fun StepScreen(
                 StorageProductStep(
                     step = currentStep,
                     state = state,
-                    onObjectSelected = { obj -> onObjectSelected(obj, true) },  // С автопереходом
-                    onBarcodeSearch = { barcode ->
-                        onBarcodeSearch(barcode)
-                    }
+                    onObjectSelected = { obj -> onObjectSelected(obj, true) },
+                    handleBarcode = handleBarcode
                 )
             }
             FactActionField.STORAGE_PRODUCT_CLASSIFIER -> {
                 ProductClassifierStep(
                     step = currentStep,
                     state = state,
-                    onObjectSelected = { obj -> onObjectSelected(obj, true) },  // С автопереходом
-                    onBarcodeSearch = { barcode ->
-                        onBarcodeSearch(barcode)
-                    }
+                    onObjectSelected = { obj -> onObjectSelected(obj, true) },
+                    handleBarcode = handleBarcode
                 )
             }
             FactActionField.STORAGE_BIN -> {
                 BinStep(
                     step = currentStep,
                     state = state,
-                    onObjectSelected = { obj -> onObjectSelected(obj, true) },  // С автопереходом
-                    onBarcodeSearch = { barcode ->
-                        onBarcodeSearch(barcode)
-                    },
+                    onObjectSelected = { obj -> onObjectSelected(obj, true) },
+                    handleBarcode = handleBarcode,
                     isStorage = true
                 )
             }
@@ -86,10 +80,8 @@ fun StepScreen(
                 BinStep(
                     step = currentStep,
                     state = state,
-                    onObjectSelected = { obj -> onObjectSelected(obj, true) },  // С автопереходом
-                    onBarcodeSearch = { barcode ->
-                        onBarcodeSearch(barcode)
-                    },
+                    onObjectSelected = { obj -> onObjectSelected(obj, true) },
+                    handleBarcode = handleBarcode,
                     isStorage = false
                 )
             }
@@ -97,10 +89,8 @@ fun StepScreen(
                 PalletStep(
                     step = currentStep,
                     state = state,
-                    onObjectSelected = { obj -> onObjectSelected(obj, true) },  // С автопереходом
-                    onBarcodeSearch = { barcode ->
-                        onBarcodeSearch(barcode)
-                    },
+                    onObjectSelected = { obj -> onObjectSelected(obj, true) },
+                    handleBarcode = handleBarcode,
                     isStorage = true
                 )
             }
@@ -108,10 +98,8 @@ fun StepScreen(
                 PalletStep(
                     step = currentStep,
                     state = state,
-                    onObjectSelected = { obj -> onObjectSelected(obj, true) },  // С автопереходом
-                    onBarcodeSearch = { barcode ->
-                        onBarcodeSearch(barcode)
-                    },
+                    onObjectSelected = { obj -> onObjectSelected(obj, true) },
+                    handleBarcode = handleBarcode,
                     isStorage = false
                 )
             }
@@ -120,7 +108,6 @@ fun StepScreen(
                     step = currentStep,
                     state = state,
                     onQuantityChanged = { value, autoAdvance ->
-                        // Передаем значение количества с флагом автоперехода
                         onObjectSelected(value, autoAdvance)
                     }
                 )

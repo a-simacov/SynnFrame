@@ -41,23 +41,16 @@ fun ActionWizardScreen(
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Получаем текущий сервис сканера для поддержки аппаратного сканера
     val scannerService = LocalScannerService.current
 
-    // Подключаем слушатель сканера, если он доступен
     if (scannerService?.hasRealScanner() == true) {
-        // ВАЖНО: Получаем текущий шаг ВНУТРИ композиции, чтобы он обновлялся при изменении state
         ScannerListener(onBarcodeScanned = { barcode ->
-            // Получаем текущий шаг в момент сканирования, а не при создании слушателя
             val currentStep = state.getCurrentStep()
 
-            // Логируем для отладки
             Timber.d("Сканирование штрихкода: $barcode на шаге с типом: ${currentStep?.factActionField}")
 
-            // Только для поддерживаемых типов полей обрабатываем сканирование
             currentStep?.factActionField?.let { fieldType ->
-                // Вызываем метод поиска объекта по штрихкоду с ТЕКУЩИМ типом поля
-                viewModel.searchObjectByBarcode(barcode, fieldType)
+                viewModel.handleBarcode(barcode)
             }
         })
     }
@@ -129,14 +122,9 @@ fun ActionWizardScreen(
                     state = state,
                     onConfirm = { viewModel.confirmCurrentStep() },
                     onObjectSelected = { obj, autoAdvance ->
-                        // Передаем параметр autoAdvance из компонентов
                         viewModel.setObjectForCurrentStep(obj, autoAdvance)
                     },
-                    onBarcodeSearch = { barcode ->
-                        state.getCurrentStep()?.let { currentStep ->
-                            viewModel.searchObjectByBarcode(barcode, currentStep.factActionField)
-                        }
-                    }
+                    handleBarcode = { barcode -> viewModel.handleBarcode(barcode) }
                 )
             }
         }
