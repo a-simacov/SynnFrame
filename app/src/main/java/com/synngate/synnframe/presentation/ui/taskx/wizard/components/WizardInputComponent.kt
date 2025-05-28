@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.wizard.action.components
+package com.synngate.synnframe.presentation.ui.taskx.wizard.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

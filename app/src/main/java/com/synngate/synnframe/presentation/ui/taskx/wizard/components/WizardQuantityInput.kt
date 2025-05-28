@@ -1,7 +1,6 @@
-package com.synngate.synnframe.presentation.ui.wizard.action.components
+package com.synngate.synnframe.presentation.ui.taskx.wizard.components
 
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -260,37 +259,6 @@ private fun QuantityControlButton(
             contentDescription = contentDescription,
             tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
             modifier = Modifier.size(24.dp)
-        )
-    }
-}
-
-@Composable
-fun QuantityRow(
-    label: String,
-    value: String,
-    highlight: Boolean = false,
-    warning: Boolean = false
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
-        )
-
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (warning)
-                MaterialTheme.colorScheme.error
-            else
-                MaterialTheme.colorScheme.onPrimaryContainer,
-            fontWeight = if (highlight) FontWeight.Bold else FontWeight.Normal
         )
     }
 }
