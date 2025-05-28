@@ -33,7 +33,9 @@ class ObjectSearchService(
         // и не совпадает ли текущий штрихкод с предыдущим
         if (currentTime - lastScanTime < MIN_SCAN_INTERVAL && lastScannedBarcode == barcode) {
             Timber.d("Игнорирование повторного сканирования штрихкода: $barcode (слишком быстро)")
-            return Triple(false, null, "Игнорирование повторного сканирования")
+            // Возвращаем null вместо сообщения об ошибке, чтобы не показывать его пользователю
+            // Используем флаг success=false, чтобы не обрабатывать это как успешное сканирование
+            return Triple(false, null, null)
         }
 
         // Обновляем информацию о последнем сканировании
@@ -156,6 +158,7 @@ class ObjectSearchService(
             val plannedTaskProduct = state.plannedAction?.storageProduct
             val plannedClassifierProduct = state.plannedAction?.storageProductClassifier
 
+            // Если есть запланированный товар задания, проверяем его первым
             if (plannedTaskProduct != null) {
                 if (plannedTaskProduct.id == barcode) {
                     Timber.d("Найден запланированный товар задания по ID: ${plannedTaskProduct.id}")
@@ -187,26 +190,28 @@ class ObjectSearchService(
             if (plannedTaskProduct == null && plannedClassifierProduct != null &&
                 state.shouldShowAdditionalProps(currentStep)) {
 
-                if (plannedClassifierProduct.id == barcode ||
-                    plannedClassifierProduct.articleNumber == barcode ||
-                    plannedClassifierProduct.units.any { unit ->
-                        unit.barcodes.contains(barcode) || unit.mainBarcode == barcode
-                    }) {
+                // Проверяем соответствие штрихкода товару классификатора
+                val isClassifierMatch = plannedClassifierProduct.id == barcode ||
+                        plannedClassifierProduct.articleNumber == barcode ||
+                        plannedClassifierProduct.units.any { unit ->
+                            unit.barcodes.contains(barcode) || unit.mainBarcode == barcode
+                        }
 
-                    val taskProduct = state.getTaskProductFromClassifier(currentStep.id)
+                if (isClassifierMatch) {
+                    // Создаем TaskProduct на основе товара классификатора
+                    val taskProduct = TaskProduct(
+                        id = UUID.randomUUID().toString(),
+                        product = plannedClassifierProduct,
+                        expirationDate = null,
+                        status = ProductStatus.STANDARD
+                    )
 
-                    val (isValid, errorMessage) = validator.validateFoundObject(state, taskProduct, currentStep)
-                    if (isValid) {
-                        // Для товара с дополнительными свойствами не делаем автопереход,
-                        // так как нужно заполнить дополнительные поля
-                        Timber.d("Создан товар задания на основе товара классификатора: $barcode")
-                        return Pair(taskProduct, null)
-                    } else {
-                        return Pair(null, errorMessage ?: "Найденный товар не соответствует плану")
-                    }
+                    Timber.d("Создан товар задания на основе товара классификатора: $barcode")
+                    return Pair(taskProduct, null)
                 }
             }
 
+            // Если нет запланированного товара, ищем по штрихкоду
             val product = productUseCases.findProductByBarcode(barcode)
 
             if (product != null) {

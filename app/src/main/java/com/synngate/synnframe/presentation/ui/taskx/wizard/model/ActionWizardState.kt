@@ -32,18 +32,6 @@ data class ActionWizardState(
         return steps.getOrNull(currentStepIndex)
     }
 
-    fun shouldShowAdditionalProductProps(step: ActionStepTemplate): Boolean {
-        // Условия:
-        // 1. В плане есть товар из классификатора
-        // 2. В плане нет товара задания
-        // 3. Включен признак inputAdditionalProps
-        // 4. Поле фактического действия - STORAGE_PRODUCT
-        return plannedAction?.storageProductClassifier != null &&
-                plannedAction?.storageProduct == null &&
-                step.inputAdditionalProps &&
-                step.factActionField == FactActionField.STORAGE_PRODUCT
-    }
-
     fun shouldShowExpirationDate(): Boolean {
         return classifierProductInfo?.accountingModel == AccountingModel.BATCH
     }

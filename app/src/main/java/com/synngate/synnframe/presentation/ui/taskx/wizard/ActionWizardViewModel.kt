@@ -11,6 +11,7 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.service.ObjectSearchS
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardController
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardNetworkService
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardValidator
+import com.synngate.synnframe.presentation.ui.taskx.wizard.state.WizardStateMachine
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -25,8 +26,9 @@ class ActionWizardViewModel(
 ) : BaseViewModel<ActionWizardState, ActionWizardEvent>(ActionWizardState(taskId = taskId, actionId = actionId)) {
 
     // Сервисы для работы с визардом
+    private val stateMachine = WizardStateMachine()
     private val validator = WizardValidator(validationService)
-    private val controller = WizardController(validator)
+    private val controller = WizardController(validator, stateMachine)
     private val objectSearchService = ObjectSearchService(productUseCases, validator)
     private val networkService = WizardNetworkService(taskXRepository)
 
@@ -39,11 +41,7 @@ class ActionWizardViewModel(
 
         val initialState = controller.initializeWizard(taskId, actionId)
 
-        updateState {
-            initialState.copy(
-                isLoading = false
-            )
-        }
+        updateState { initialState }
 
         // Загружаем дополнительную информацию о товаре, если необходимо
         initialState.plannedAction?.storageProductClassifier?.let { product ->
@@ -104,7 +102,7 @@ class ActionWizardViewModel(
 
     fun setObjectForCurrentStep(obj: Any, autoAdvance: Boolean = true) {
         val updatedState = controller.setObjectForCurrentStep(uiState.value, obj)
-        updateState { updatedState.copy(isLoading = false) } // Гарантируем, что isLoading = false
+        updateState { updatedState }
 
         if (autoAdvance) {
             Timber.d("Вызываем автопереход после установки объекта: $obj")
@@ -120,7 +118,7 @@ class ActionWizardViewModel(
         }
 
         if (success) {
-            updateState { newState.copy(isLoading = false) } // Гарантируем, что isLoading = false
+            updateState { newState }
         }
     }
 
@@ -147,15 +145,18 @@ class ActionWizardViewModel(
                     // Затем устанавливаем найденный объект и пробуем выполнить автопереход
                     setObjectForCurrentStep(foundObject, true)
                 } else {
-                    updateState {
-                        controller.setLoading(
-                            controller.setError(it, errorMessage),
-                            false
-                        )
-                    }
-
+                    // Если получена ошибка, обрабатываем её
                     if (errorMessage != null) {
+                        updateState {
+                            controller.setLoading(
+                                controller.setError(it, errorMessage),
+                                false
+                            )
+                        }
                         sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
+                    } else {
+                        // Если ошибки нет (например, при повторном сканировании), просто снимаем флаг загрузки
+                        updateState { controller.setLoading(it, false) }
                     }
                 }
             } catch (e: Exception) {
@@ -166,6 +167,7 @@ class ActionWizardViewModel(
                         false
                     )
                 }
+                sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка при обработке штрих-кода: ${e.message}"))
             }
         }
     }
@@ -176,21 +178,22 @@ class ActionWizardViewModel(
             val factAction = currentState.factAction ?: return@launchIO
             val plannedAction = currentState.plannedAction ?: return@launchIO
 
-            updateState { it.copy(isLoading = true, sendingFailed = false) }
+            // Используем контроллер для перехода в состояние отправки
+            updateState { controller.submitForm(it) }
 
             val syncWithServer = plannedAction.actionTemplate?.syncWithServer == true
             val (success, errorMessage) = networkService.completeAction(factAction, syncWithServer)
 
             if (success) {
+                // Используем контроллер для обработки успешной отправки
+                updateState { controller.handleSendSuccess(it) }
                 sendEvent(ActionWizardEvent.NavigateToTaskDetail)
             } else {
+                // Используем контроллер для обработки ошибки отправки
                 updateState {
-                    it.copy(
-                        isLoading = false,
-                        sendingFailed = true,
-                        error = errorMessage
-                    )
+                    controller.handleSendFailure(it, errorMessage ?: "Неизвестная ошибка")
                 }
+                sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage ?: "Не удалось отправить данные"))
             }
         }
     }
