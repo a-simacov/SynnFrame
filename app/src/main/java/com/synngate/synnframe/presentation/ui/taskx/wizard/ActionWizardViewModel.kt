@@ -31,6 +31,11 @@ class ActionWizardViewModel(
     private val productUseCases: ProductUseCases
 ) : BaseViewModel<ActionWizardState, ActionWizardEvent>(ActionWizardState(taskId = taskId, actionId = actionId)) {
 
+    // Добавляем переменные для отслеживания времени последнего сканирования
+    private val MIN_SCAN_INTERVAL = 500L // Минимальный интервал между сканированиями (миллисекунды)
+    private var lastScanTime = 0L        // Время последнего сканирования
+    private var lastScannedBarcode = ""  // Последний отсканированный штрихкод
+
     init {
         initializeWizard()
     }
@@ -443,6 +448,19 @@ class ActionWizardViewModel(
      * @param fieldType Тип поля, для которого выполняется поиск. Если null - будет использоваться тип текущего шага.
      */
     fun handleBarcode(barcode: String, fieldType: FactActionField? = null) {
+        val currentTime = System.currentTimeMillis()
+
+        // Проверяем, прошло ли достаточно времени с момента последнего сканирования
+        // и не совпадает ли текущий штрихкод с предыдущим
+        if (currentTime - lastScanTime < MIN_SCAN_INTERVAL && lastScannedBarcode == barcode) {
+            Timber.d("Игнорирование повторного сканирования штрихкода: $barcode (слишком быстро)")
+            return
+        }
+
+        // Обновляем информацию о последнем сканировании
+        lastScanTime = currentTime
+        lastScannedBarcode = barcode
+
         val actualFieldType = fieldType ?: uiState.value.getCurrentStep()?.factActionField
 
         if (barcode.isBlank()) {
