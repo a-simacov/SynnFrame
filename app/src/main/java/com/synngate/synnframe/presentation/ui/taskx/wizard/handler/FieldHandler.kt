@@ -2,6 +2,9 @@ package com.synngate.synnframe.presentation.ui.taskx.wizard.handler
 
 import com.synngate.synnframe.presentation.ui.taskx.entity.ActionStepTemplate
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.CreationResult
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.SearchResult
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.ValidationResult
 
 /**
  * Универсальный интерфейс для обработчиков полей в визарде действий.
@@ -16,9 +19,9 @@ interface FieldHandler<T> {
      * @param barcode Отсканированный штрих-код
      * @param state Текущее состояние визарда
      * @param step Текущий шаг визарда
-     * @return Пара (найденный объект или null, сообщение об ошибке или null)
+     * @return Результат поиска объекта по штрихкоду
      */
-    suspend fun handleBarcode(barcode: String, state: ActionWizardState, step: ActionStepTemplate): Pair<T?, String?>
+    suspend fun handleBarcode(barcode: String, state: ActionWizardState, step: ActionStepTemplate): SearchResult<T>
 
     /**
      * Валидирует объект на соответствие правилам текущего шага
@@ -26,17 +29,17 @@ interface FieldHandler<T> {
      * @param obj Объект для валидации
      * @param state Текущее состояние визарда
      * @param step Текущий шаг визарда
-     * @return Пара (результат валидации, сообщение об ошибке или null)
+     * @return Результат валидации объекта
      */
-    suspend fun validateObject(obj: T, state: ActionWizardState, step: ActionStepTemplate): Pair<Boolean, String?>
+    suspend fun validateObject(obj: T, state: ActionWizardState, step: ActionStepTemplate): ValidationResult<T>
 
     /**
      * Создает объект из строкового представления (для случаев ручного ввода)
      *
      * @param value Строковое значение
-     * @return Пара (созданный объект или null, сообщение об ошибке или null)
+     * @return Результат создания объекта
      */
-    suspend fun createFromString(value: String): Pair<T?, String?>
+    suspend fun createFromString(value: String): CreationResult<T>
 
     /**
      * Проверяет, поддерживает ли обработчик данный тип объекта

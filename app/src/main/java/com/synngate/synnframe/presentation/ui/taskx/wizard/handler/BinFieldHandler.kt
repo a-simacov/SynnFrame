@@ -5,6 +5,8 @@ import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.taskx.entity.ActionStepTemplate
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.CreationResult
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.ValidationResult
 import timber.log.Timber
 
 /**
@@ -30,29 +32,29 @@ class BinFieldHandler(
         return plannedObject.code == barcode
     }
 
-    override suspend fun createFromString(value: String): Pair<BinX?, String?> {
+    override suspend fun createFromString(value: String): CreationResult<BinX> {
         if (value.isBlank()) {
-            return Pair(null, "Код ячейки не может быть пустым")
+            return CreationResult.error("Код ячейки не может быть пустым")
         }
 
         try {
             // В реальном приложении здесь может быть логика получения информации о ячейке из БД или API
             val bin = BinX(code = value, zone = "")
-            return Pair(bin, null)
+            return CreationResult.success(bin)
         } catch (e: Exception) {
             Timber.e(e, "Ошибка при создании ячейки из строки: $value")
-            return Pair(null, "Ошибка при создании ячейки: ${e.message}")
+            return CreationResult.error("Ошибка при создании ячейки: ${e.message}")
         }
     }
 
     /**
-     * ИСПРАВЛЕНИЕ: Добавлена дополнительная проверка соответствия плану
+     * Дополнительная проверка соответствия плану
      */
-    override suspend fun validateObject(obj: BinX, state: ActionWizardState, step: ActionStepTemplate): Pair<Boolean, String?> {
+    override suspend fun validateObject(obj: BinX, state: ActionWizardState, step: ActionStepTemplate): ValidationResult<BinX> {
         // Сначала проверяем с помощью стандартной валидации правил
-        val (baseValidationResult, baseErrorMessage) = super.validateObject(obj, state, step)
-        if (!baseValidationResult) {
-            return Pair(false, baseErrorMessage)
+        val baseValidationResult = super.validateObject(obj, state, step)
+        if (!baseValidationResult.isSuccess()) {
+            return baseValidationResult
         }
 
         // Дополнительная проверка: если есть плановый объект, проверяем точное соответствие
@@ -61,11 +63,11 @@ class BinFieldHandler(
             // Проверяем, совпадает ли код ячейки
             if (obj.code != plannedObject.code) {
                 val binType = if (isStorage) "хранения" else "размещения"
-                return Pair(false, "Ячейка $binType не соответствует плану. Ожидается: ${plannedObject.code}")
+                return ValidationResult.error("Ячейка $binType не соответствует плану. Ожидается: ${plannedObject.code}")
             }
         }
 
-        return Pair(true, null)
+        return ValidationResult.success(obj)
     }
 
     override fun supportsType(obj: Any): Boolean {

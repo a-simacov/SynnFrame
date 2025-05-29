@@ -4,6 +4,7 @@ import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.presentation.ui.taskx.entity.ActionStepTemplate
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.CreationResult
 import timber.log.Timber
 
 /**
@@ -24,23 +25,23 @@ class QuantityFieldHandler(
         return parsedValue != null && parsedValue == plannedObject
     }
 
-    override suspend fun createFromString(value: String): Pair<Float?, String?> {
+    override suspend fun createFromString(value: String): CreationResult<Float> {
         if (value.isBlank()) {
-            return Pair(null, "Значение не может быть пустым")
+            return CreationResult.error("Значение не может быть пустым")
         }
 
         try {
             val parsedValue = value.toFloatOrNull()
             if (parsedValue != null) {
                 if (parsedValue <= 0) {
-                    return Pair(null, "Количество должно быть больше нуля")
+                    return CreationResult.error("Количество должно быть больше нуля")
                 }
-                return Pair(parsedValue, null)
+                return CreationResult.success(parsedValue)
             }
-            return Pair(null, "Неверный формат числа: $value")
+            return CreationResult.error("Неверный формат числа: $value")
         } catch (e: Exception) {
             Timber.e(e, "Ошибка при парсинге количества: $value")
-            return Pair(null, "Ошибка при обработке количества: ${e.message}")
+            return CreationResult.error("Ошибка при обработке количества: ${e.message}")
         }
     }
 

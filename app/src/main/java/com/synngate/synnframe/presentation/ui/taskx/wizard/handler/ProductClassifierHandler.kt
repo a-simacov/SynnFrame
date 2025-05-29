@@ -6,6 +6,8 @@ import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.ui.taskx.entity.ActionStepTemplate
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.CreationResult
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.ValidationResult
 import timber.log.Timber
 
 /**
@@ -35,9 +37,9 @@ class ProductClassifierHandler(
         }
     }
 
-    override suspend fun createFromString(value: String): Pair<Product?, String?> {
+    override suspend fun createFromString(value: String): CreationResult<Product> {
         if (value.isBlank()) {
-            return Pair(null, "Значение не может быть пустым")
+            return CreationResult.error("Значение не может быть пустым")
         }
 
         try {
@@ -50,24 +52,24 @@ class ProductClassifierHandler(
             }
 
             if (product != null) {
-                return Pair(product, null)
+                return CreationResult.success(product)
             }
 
-            return Pair(null, "Товар не найден по штрихкоду или ID: $value")
+            return CreationResult.error("Товар не найден по штрихкоду или ID: $value")
         } catch (e: Exception) {
             Timber.e(e, "Ошибка при поиске товара: $value")
-            return Pair(null, "Ошибка при поиске товара: ${e.message}")
+            return CreationResult.error("Ошибка при поиске товара: ${e.message}")
         }
     }
 
     /**
-     * ИСПРАВЛЕНИЕ: Добавлена дополнительная проверка соответствия плану
+     * Дополнительная проверка соответствия плану
      */
-    override suspend fun validateObject(obj: Product, state: ActionWizardState, step: ActionStepTemplate): Pair<Boolean, String?> {
+    override suspend fun validateObject(obj: Product, state: ActionWizardState, step: ActionStepTemplate): ValidationResult<Product> {
         // Сначала проверяем с помощью стандартной валидации правил
-        val (baseValidationResult, baseErrorMessage) = super.validateObject(obj, state, step)
-        if (!baseValidationResult) {
-            return Pair(false, baseErrorMessage)
+        val baseValidationResult = super.validateObject(obj, state, step)
+        if (!baseValidationResult.isSuccess()) {
+            return baseValidationResult
         }
 
         // Дополнительная проверка: если есть плановый объект, проверяем точное соответствие
@@ -75,11 +77,11 @@ class ProductClassifierHandler(
         if (plannedObject != null) {
             // Проверяем, совпадает ли ID товара
             if (obj.id != plannedObject.id) {
-                return Pair(false, "Товар не соответствует плану. Ожидается: ${plannedObject.name} (${plannedObject.id})")
+                return ValidationResult.error("Товар не соответствует плану. Ожидается: ${plannedObject.name} (${plannedObject.id})")
             }
         }
 
-        return Pair(true, null)
+        return ValidationResult.success(obj)
     }
 
     override fun supportsType(obj: Any): Boolean {
