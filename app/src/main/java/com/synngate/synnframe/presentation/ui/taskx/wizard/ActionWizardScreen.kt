@@ -1,8 +1,9 @@
 package com.synngate.synnframe.presentation.ui.taskx.wizard
 
-import androidx.activity.compose.BackHandler  // Добавляем импорт
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,8 +13,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -96,7 +99,6 @@ fun ActionWizardScreen(
 
     AppScaffold(
         title = if (state.showSummary) "Итог" else getStepTitle(state),
-        subtitle = if (!state.showSummary) "Шаг ${state.currentStepIndex + 1} из ${state.steps.size}" else null,
         onNavigateBack = { viewModel.previousStep() },
         actions = {
             IconButton(onClick = { viewModel.showExitDialog() }) {
@@ -118,10 +120,21 @@ fun ActionWizardScreen(
                 .padding(16.dp)
         ) {
             if (!state.showSummary && state.steps.isNotEmpty()) {
-                LinearProgressIndicator(
-                    progress = { (state.currentStepIndex + 1).toFloat() / state.steps.size },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    LinearProgressIndicator(
+                        progress = { (state.currentStepIndex + 1).toFloat() / state.steps.size },
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Text(
+                        text = "(${state.currentStepIndex + 1}/${state.steps.size})",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
             }
 
             if (state.isLoading) {

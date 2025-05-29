@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -30,7 +29,6 @@ fun StepScreen(
 
     val isObjectSelected = state.selectedObjects.containsKey(currentStep.id)
 
-    // Определяем, заблокирован ли шаг буфером
     val isLocked = state.lockedObjectSteps.contains(currentStep.id)
     val bufferSource = state.bufferObjectSources[currentStep.id]
 
@@ -44,16 +42,13 @@ fun StepScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(scrollState),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
             text = currentStep.promptText,
             style = MaterialTheme.typography.bodyLarge
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Показываем индикатор буфера, если значение взято из буфера
         if (bufferSource != null) {
             BufferIndicator(
                 source = bufferSource,
@@ -61,7 +56,6 @@ fun StepScreen(
             )
         }
 
-        // Выбираем компонент в зависимости от типа поля
         when (currentStep.factActionField) {
             FactActionField.STORAGE_PRODUCT -> {
                 StorageProductStep(
