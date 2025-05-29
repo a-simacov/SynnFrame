@@ -28,6 +28,7 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.components.StepScreen
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.SummaryScreen
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardEvent
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import timber.log.Timber
 
 @Composable
 fun ActionWizardScreen(
@@ -38,13 +39,21 @@ fun ActionWizardScreen(
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Определяем, должна ли быть включена обработка сканирования
+    val shouldProcessScanning = !state.isLoading && !state.showExitDialog && !state.showSummary
+
     // Используем улучшенный компонент для прослушивания сканирования
     WizardScannerListener(
         onBarcodeScanned = { barcode ->
-            viewModel.handleBarcode(barcode)
+            // Обрабатываем сканирование только если разрешено
+            if (shouldProcessScanning) {
+                viewModel.handleBarcode(barcode)
+            } else {
+                Timber.d("Сканирование игнорируется из-за состояния экрана")
+            }
         },
-        // Отключаем прослушивание в состояниях, когда сканирование не нужно
-        isEnabled = !state.isLoading && !state.showExitDialog && !state.showSummary
+        // ВАЖНО: всегда включен, но обработка зависит от условий внутри onBarcodeScanned
+        isEnabled = true
     )
 
     LaunchedEffect(viewModel) {

@@ -144,6 +144,9 @@ class ActionWizardViewModel(
     /**
      * Обработка штрихкода с защитой от дублирования и гарантированным сбросом флага обработки
      */
+    // Файл: app/src/main/java/com/synngate/synnframe/presentation/ui/taskx/wizard/ActionWizardViewModel.kt
+
+// 1. Исправление метода handleBarcode
     fun handleBarcode(barcode: String) {
         // Игнорируем сканирование, если мы находимся на экране сводки или диалоге выхода
         val currentState = determineStateType(uiState.value)
@@ -176,6 +179,7 @@ class ActionWizardViewModel(
             if (isProcessingBarcode) {
                 Timber.d("Принудительный сброс флага обработки сканирования по таймауту")
                 isProcessingBarcode = false
+                updateState { controller.setLoading(it, false) } // Также сбрасываем состояние загрузки
             }
         }
 
@@ -207,7 +211,7 @@ class ActionWizardViewModel(
                 }
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка при обработке штрих-кода: ${e.message}"))
             } finally {
-                // В любом случае снимаем флаг обработки
+                // ВАЖНОЕ ИСПРАВЛЕНИЕ: Безусловно сбрасываем флаг обработки в блоке finally
                 isProcessingBarcode = false
                 Timber.d("Сброс флага обработки сканирования после завершения")
 
@@ -257,9 +261,13 @@ class ActionWizardViewModel(
         sendEvent(ActionWizardEvent.NavigateToTaskDetail)
     }
 
+    // 2. Исправление метода clearError
     fun clearError() {
-        // Сбрасываем флаг обработки при очистке ошибки
+        // ВАЖНОЕ ИСПРАВЛЕНИЕ: Сбрасываем флаг обработки при очистке ошибки
         isProcessingBarcode = false
+        resetProcessingJob?.cancel()
+        resetProcessingJob = null
+
         updateState { controller.clearError(it) }
     }
 

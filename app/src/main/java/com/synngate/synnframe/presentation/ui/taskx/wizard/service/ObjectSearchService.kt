@@ -34,6 +34,11 @@ class ObjectSearchService(
      * @return Тройка (успех операции, найденный объект или null, сообщение об ошибке или null)
      */
     suspend fun handleBarcode(state: ActionWizardState, barcode: String): Triple<Boolean, Any?, String?> {
+        if (state.error != null) {
+            Timber.d("Очистка кэша при наличии ошибки перед новым сканированием")
+            validationCache.clear()
+        }
+
         val currentTime = System.currentTimeMillis()
         val currentStep = state.getCurrentStep()
         val fieldType = currentStep?.factActionField

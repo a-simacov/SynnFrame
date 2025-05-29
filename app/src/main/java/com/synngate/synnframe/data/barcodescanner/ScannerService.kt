@@ -66,12 +66,24 @@ class ScannerService(
         }
     }
 
-    fun removeListener(listener: ScanResultListener) {
+    fun removeListener(listener: ScanResultListener, disableOnEmpty: Boolean = true) {
         listeners.remove(listener)
 
-        if (listeners.isEmpty() && _scannerState.value == ScannerState.Enabled) {
+        // Отключаем сканер только если это запрошено и нет других слушателей
+        if (disableOnEmpty && listeners.isEmpty() && _scannerState.value == ScannerState.Enabled) {
             disable()
         }
+    }
+
+    // Добавить новый метод для управления обработкой без отключения сканера
+    fun pauseProcessing() {
+        // Только записываем в лог, но не отключаем сканер
+        Timber.d("Scanner processing paused but scanner remains enabled")
+    }
+
+    fun resumeProcessing() {
+        // Только записываем в лог, что обработка возобновлена
+        Timber.d("Scanner processing resumed")
     }
 
     fun hasRealScanner(): Boolean {
