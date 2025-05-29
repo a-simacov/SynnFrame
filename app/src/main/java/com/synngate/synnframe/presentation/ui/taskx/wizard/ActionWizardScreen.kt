@@ -43,7 +43,24 @@ fun ActionWizardScreen(
     val shouldProcessScanning = !state.isLoading && !state.showExitDialog && !state.showSummary
 
     BackHandler {
-        viewModel.previousStep()
+        when {
+            state.showSummary && state.sendingFailed -> {
+                // При ошибке отправки сразу выходим из визарда
+                viewModel.exitWizard()
+            }
+            state.isLoading && state.sendingFailed -> {
+                // Если произошла ошибка при загрузке, но флаг isLoading не сбросился
+                viewModel.clearErrorAndLoading()
+            }
+            state.showExitDialog -> {
+                // Закрываем диалог выхода
+                viewModel.dismissExitDialog()
+            }
+            else -> {
+                // Обычный возврат назад
+                viewModel.previousStep()
+            }
+        }
     }
 
     WizardScannerListener(

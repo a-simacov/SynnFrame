@@ -276,26 +276,35 @@ class ActionWizardViewModel(
                 return@launchIO
             }
 
-            updateState { controller.submitForm(it).getNewState() }
+            try {
+                updateState { controller.submitForm(it).getNewState() }
 
-            val syncWithServer = plannedAction.actionTemplate?.syncWithServer == true
-            val result = networkService.completeAction(factAction, syncWithServer)
+                val syncWithServer = plannedAction.actionTemplate?.syncWithServer == true
+                val result = networkService.completeAction(factAction, syncWithServer)
 
-            if (result.isSuccess()) {
-                updateState { controller.handleSendSuccess(it).getNewState() }
-                sendEvent(ActionWizardEvent.NavigateToTaskDetail)
-            } else {
-                updateState {
-                    controller.handleSendFailure(
-                        it,
-                        result.getErrorMessage() ?: "Неизвестная ошибка"
-                    ).getNewState()
-                }
-                sendEvent(
-                    ActionWizardEvent.ShowSnackbar(
-                        result.getErrorMessage() ?: "Не удалось отправить данные"
+                if (result.isSuccess()) {
+                    updateState { controller.handleSendSuccess(it).getNewState() }
+                    sendEvent(ActionWizardEvent.NavigateToTaskDetail)
+                } else {
+                    // Явно сбрасываем состояние загрузки перед установкой ошибки
+                    updateState { it.copy(isLoading = false) }
+                    updateState {
+                        controller.handleSendFailure(
+                            it,
+                            result.getErrorMessage() ?: "Неизвестная ошибка"
+                        ).getNewState()
+                    }
+                    sendEvent(
+                        ActionWizardEvent.ShowSnackbar(
+                            result.getErrorMessage() ?: "Не удалось отправить данные"
+                        )
                     )
-                )
+                }
+            } catch (e: Exception) {
+                // Добавляем обработку исключений с явным сбросом флага загрузки
+                Timber.e(e, "Ошибка при отправке данных: ${e.message}")
+                updateState { it.copy(isLoading = false, sendingFailed = true, error = e.message) }
+                sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: ${e.message}"))
             }
         }
     }
@@ -309,6 +318,7 @@ class ActionWizardViewModel(
     }
 
     fun exitWizard() {
+        clearErrorAndLoading()
         updateState { controller.dismissExitDialog(it).getNewState() }
         sendEvent(ActionWizardEvent.NavigateToTaskDetail)
     }
@@ -328,6 +338,20 @@ class ActionWizardViewModel(
             state.showSummary -> WizardState.SUMMARY
             state.error != null -> WizardState.ERROR
             else -> WizardState.STEP
+        }
+    }
+
+    fun clearErrorAndLoading() {
+        isProcessingBarcode = false
+        resetProcessingJob?.cancel()
+        resetProcessingJob = null
+
+        updateState {
+            it.copy(
+                isLoading = false,
+                error = null,
+                sendingFailed = false
+            )
         }
     }
 }

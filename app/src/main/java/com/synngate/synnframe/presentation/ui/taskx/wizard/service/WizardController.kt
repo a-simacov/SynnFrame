@@ -334,7 +334,20 @@ class WizardController(
     }
 
     fun handleSendFailure(state: ActionWizardState, error: String): StateTransitionResult<ActionWizardState> {
-        val newState = stateMachine.transition(state, WizardEvent.SendFailure(error))
-        return StateTransitionResult.error(newState, error)
+        // Сначала явно сбрасываем флаг загрузки
+        val stateWithoutLoading = state.copy(isLoading = false)
+
+        // Затем обрабатываем событие ошибки
+        val newState = stateMachine.transition(stateWithoutLoading, WizardEvent.SendFailure(error))
+
+        // Дополнительная проверка, что isLoading точно сброшен
+        val finalState = if (newState.isLoading) {
+            Timber.w("isLoading все еще true после SendFailure, принудительно сбрасываем")
+            newState.copy(isLoading = false, sendingFailed = true)
+        } else {
+            newState
+        }
+
+        return StateTransitionResult.error(finalState, error)
     }
 }
