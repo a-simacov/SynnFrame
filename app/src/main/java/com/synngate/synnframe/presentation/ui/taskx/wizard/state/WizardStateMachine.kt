@@ -4,18 +4,13 @@ import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
+import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
 import timber.log.Timber
 
-/**
- * Машина состояний для управления жизненным циклом визарда
- */
 class WizardStateMachine {
 
-    /**
-     * Переводит текущее состояние визарда в новое состояние на основе события
-     */
     fun transition(state: ActionWizardState, event: WizardEvent): ActionWizardState {
         val currentStateType = determineStateType(state)
 
@@ -32,9 +27,6 @@ class WizardStateMachine {
         }
     }
 
-    /**
-     * Определяет текущее состояние визарда на основе состояния UI
-     */
     private fun determineStateType(state: ActionWizardState): WizardState {
         return when {
             state.isLoading -> WizardState.LOADING
@@ -45,12 +37,15 @@ class WizardStateMachine {
         }
     }
 
-    private fun handleLoadingState(state: ActionWizardState, event: WizardEvent): ActionWizardState {
+    private fun handleLoadingState(
+        state: ActionWizardState,
+        event: WizardEvent
+    ): ActionWizardState {
         return when (event) {
             is WizardEvent.LoadSuccess -> state.copy(isLoading = false, error = null)
             is WizardEvent.LoadFailure -> state.copy(isLoading = false, error = event.error)
             is WizardEvent.StopLoading -> state.copy(isLoading = false)
-            is WizardEvent.SetError -> state.copy(error = event.error) // Добавляем обработку ошибок в состоянии загрузки
+            is WizardEvent.SetError -> state.copy(error = event.error)
             else -> state
         }
     }
@@ -67,6 +62,7 @@ class WizardStateMachine {
                     state.copy(currentStepIndex = currentStep + 1)
                 }
             }
+
             is WizardEvent.PreviousStep -> {
                 if (state.currentStepIndex > 0) {
                     state.copy(currentStepIndex = state.currentStepIndex - 1)
@@ -74,12 +70,12 @@ class WizardStateMachine {
                     state.copy(showExitDialog = true)
                 }
             }
+
             is WizardEvent.ShowExitDialog -> state.copy(showExitDialog = true)
             is WizardEvent.SetObject -> {
                 val updatedObjects = state.selectedObjects.toMutableMap()
                 updatedObjects[event.stepId] = event.obj
 
-                // Обновляем factAction на основе типа поля текущего шага
                 val updatedFactAction = updateFactActionWithObject(
                     state.factAction,
                     state.getCurrentStep()?.factActionField,
@@ -89,9 +85,10 @@ class WizardStateMachine {
                 state.copy(
                     selectedObjects = updatedObjects,
                     factAction = updatedFactAction,
-                    error = null // Важно: очищаем ошибку при успешной установке объекта
+                    error = null
                 )
             }
+
             is WizardEvent.SetError -> state.copy(error = event.error)
             is WizardEvent.ClearError -> state.copy(error = null)
             is WizardEvent.StartLoading -> state.copy(isLoading = true)
@@ -100,7 +97,10 @@ class WizardStateMachine {
         }
     }
 
-    private fun handleSummaryState(state: ActionWizardState, event: WizardEvent): ActionWizardState {
+    private fun handleSummaryState(
+        state: ActionWizardState,
+        event: WizardEvent
+    ): ActionWizardState {
         return when (event) {
             is WizardEvent.PreviousStep -> state.copy(showSummary = false)
             is WizardEvent.SubmitForm -> state.copy(isLoading = true)
@@ -112,7 +112,10 @@ class WizardStateMachine {
         }
     }
 
-    private fun handleSendingState(state: ActionWizardState, event: WizardEvent): ActionWizardState {
+    private fun handleSendingState(
+        state: ActionWizardState,
+        event: WizardEvent
+    ): ActionWizardState {
         return when (event) {
             is WizardEvent.SendSuccess -> state.copy(isLoading = false)
             is WizardEvent.SendFailure -> {
@@ -122,12 +125,16 @@ class WizardStateMachine {
                     sendingFailed = true
                 )
             }
+
             is WizardEvent.StopLoading -> state.copy(isLoading = false)
             else -> state
         }
     }
 
-    private fun handleSuccessState(state: ActionWizardState, event: WizardEvent): ActionWizardState {
+    private fun handleSuccessState(
+        state: ActionWizardState,
+        event: WizardEvent
+    ): ActionWizardState {
         // В большинстве случаев после успеха обычно происходит навигация
         // и состояние не меняется
         return state
@@ -140,8 +147,6 @@ class WizardStateMachine {
             is WizardEvent.StartLoading -> state.copy(isLoading = true)
             is WizardEvent.StopLoading -> state.copy(isLoading = false)
             is WizardEvent.SetObject -> {
-                // Критическое исправление: при установке объекта из состояния ошибки
-                // нужно очистить ошибку и вернуться в нормальное состояние
                 val updatedObjects = state.selectedObjects.toMutableMap()
                 updatedObjects[event.stepId] = event.obj
 
@@ -154,16 +159,20 @@ class WizardStateMachine {
                 state.copy(
                     selectedObjects = updatedObjects,
                     factAction = updatedFactAction,
-                    error = null, // Очищаем ошибку
-                    isLoading = false // Убеждаемся, что загрузка выключена
+                    error = null,
+                    isLoading = false
                 )
             }
+
             is WizardEvent.SetError -> state.copy(error = event.error)
             else -> state
         }
     }
 
-    private fun handleExitDialogState(state: ActionWizardState, event: WizardEvent): ActionWizardState {
+    private fun handleExitDialogState(
+        state: ActionWizardState,
+        event: WizardEvent
+    ): ActionWizardState {
         return when (event) {
             is WizardEvent.DismissExitDialog -> state.copy(showExitDialog = false)
             is WizardEvent.ConfirmExit -> state
@@ -172,10 +181,11 @@ class WizardStateMachine {
         }
     }
 
-    /**
-     * Обновляет factAction с новым объектом в зависимости от типа поля
-     */
-    private fun updateFactActionWithObject(factAction: com.synngate.synnframe.domain.entity.taskx.action.FactAction?, field: FactActionField?, obj: Any): com.synngate.synnframe.domain.entity.taskx.action.FactAction? {
+    private fun updateFactActionWithObject(
+        factAction: FactAction?,
+        field: FactActionField?,
+        obj: Any
+    ): FactAction? {
         if (factAction == null || field == null) return factAction
 
         return when {

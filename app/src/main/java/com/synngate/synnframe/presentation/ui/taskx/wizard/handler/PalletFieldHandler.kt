@@ -9,12 +9,6 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.result.CreationResult
 import com.synngate.synnframe.presentation.ui.taskx.wizard.result.ValidationResult
 import timber.log.Timber
 
-/**
- * Обработчик для полей типа паллета (Pallet)
- *
- * @param validationService Сервис валидации
- * @param isStorage Флаг, определяющий, работаем ли с паллетой хранения (true) или размещения (false)
- */
 class PalletFieldHandler(
     validationService: ValidationService,
     private val isStorage: Boolean
@@ -47,20 +41,14 @@ class PalletFieldHandler(
         }
     }
 
-    /**
-     * Дополнительная проверка соответствия плану
-     */
     override suspend fun validateObject(obj: Pallet, state: ActionWizardState, step: ActionStepTemplate): ValidationResult<Pallet> {
-        // Сначала проверяем с помощью стандартной валидации правил
         val baseValidationResult = super.validateObject(obj, state, step)
         if (!baseValidationResult.isSuccess()) {
             return baseValidationResult
         }
 
-        // Дополнительная проверка: если есть плановый объект, проверяем точное соответствие
         val plannedObject = getPlannedObject(state, step)
         if (plannedObject != null) {
-            // Проверяем, совпадает ли код паллеты
             if (obj.code != plannedObject.code) {
                 val palletType = if (isStorage) "хранения" else "размещения"
                 return ValidationResult.error("Паллета $palletType не соответствует плану. Ожидается: ${plannedObject.code}")
@@ -75,9 +63,6 @@ class PalletFieldHandler(
     }
 
     companion object {
-        /**
-         * Проверяет, соответствует ли поле типу обработчика
-         */
         fun isApplicableField(field: FactActionField, isStorage: Boolean): Boolean {
             return (isStorage && field == FactActionField.STORAGE_PALLET) ||
                     (!isStorage && field == FactActionField.ALLOCATION_PALLET)

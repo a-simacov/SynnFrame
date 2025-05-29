@@ -7,22 +7,19 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.result.NetworkResult
 import timber.log.Timber
 import java.time.LocalDateTime
 
-/**
- * Сервис для сетевого взаимодействия визарда с сервером
- */
 class WizardNetworkService(
     private val taskXRepository: TaskXRepository
 ) {
-    /**
-     * Отправляет действие на сервер
-     * @return Результат сетевой операции
-     */
-    suspend fun completeAction(factAction: FactAction, syncWithServer: Boolean): NetworkResult<Unit> {
+    suspend fun completeAction(
+        factAction: FactAction,
+        syncWithServer: Boolean
+    ): NetworkResult<Unit> {
         try {
             val updatedFactAction = factAction.copy(completedAt = LocalDateTime.now())
 
             if (syncWithServer) {
-                val endpoint = TaskXDataHolderSingleton.endpoint ?: return NetworkResult.error("Endpoint не определен")
+                val endpoint = TaskXDataHolderSingleton.endpoint
+                    ?: return NetworkResult.error("Endpoint не определен")
                 val result = taskXRepository.addFactAction(updatedFactAction, endpoint)
 
                 if (result.isSuccess) {

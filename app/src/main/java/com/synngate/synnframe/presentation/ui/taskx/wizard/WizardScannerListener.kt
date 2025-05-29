@@ -9,15 +9,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.synngate.synnframe.domain.common.ScanResult
+import com.synngate.synnframe.domain.common.ScanResultListener
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * Улучшенный компонент для прослушивания сканирования штрихкодов с защитой от дублирования
- */
 @Composable
 fun WizardScannerListener(
     onBarcodeScanned: (String) -> Unit,
@@ -37,11 +36,9 @@ fun WizardScannerListener(
     // Внутренний флаг обработки - не влияет на физическое состояние сканера
     var internalProcessingEnabled by remember { mutableStateOf(isEnabled) }
 
-    // Используем coroutineScope для управления задачами
     val scope = rememberCoroutineScope()
     var debounceJob: Job? = null
 
-    // Обновляем внутренний флаг обработки при изменении isEnabled
     LaunchedEffect(isEnabled) {
         internalProcessingEnabled = isEnabled
 
@@ -85,11 +82,10 @@ fun WizardScannerListener(
         }
     }
 
-    // Правильно используем DisposableEffect для очистки ресурсов
-    DisposableEffect(Unit) { // Важно: используем Unit вместо isEnabled
+    DisposableEffect(Unit) {
         // Регистрируем слушатель сканирования всегда
-        val scanListener = object : com.synngate.synnframe.domain.common.ScanResultListener {
-            override fun onScanSuccess(result: com.synngate.synnframe.domain.common.ScanResult) {
+        val scanListener = object : ScanResultListener {
+            override fun onScanSuccess(result: ScanResult) {
                 handleScan(result.barcode)
             }
 

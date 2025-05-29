@@ -7,11 +7,6 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardSta
 import com.synngate.synnframe.presentation.ui.taskx.wizard.result.CreationResult
 import timber.log.Timber
 
-/**
- * Обработчик для полей типа количество (Float)
- *
- * @param validationService Сервис валидации
- */
 class QuantityFieldHandler(
     validationService: ValidationService
 ) : BaseFieldHandler<Float>(validationService) {
@@ -50,9 +45,6 @@ class QuantityFieldHandler(
     }
 
     companion object {
-        /**
-         * Проверяет, соответствует ли поле типу обработчика
-         */
         fun isApplicableField(field: FactActionField): Boolean {
             return field == FactActionField.QUANTITY
         }

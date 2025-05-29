@@ -10,12 +10,6 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.result.CreationResult
 import com.synngate.synnframe.presentation.ui.taskx.wizard.result.ValidationResult
 import timber.log.Timber
 
-/**
- * Обработчик для полей типа товар классификатора (Product)
- *
- * @param validationService Сервис валидации
- * @param productUseCases Сценарии использования для работы с товарами
- */
 class ProductClassifierHandler(
     validationService: ValidationService,
     private val productUseCases: ProductUseCases
@@ -26,12 +20,10 @@ class ProductClassifierHandler(
     }
 
     override fun matchesPlannedObject(barcode: String, plannedObject: Product): Boolean {
-        // Проверяем по ID и артикулу
         if (plannedObject.id == barcode || plannedObject.articleNumber == barcode) {
             return true
         }
 
-        // Проверяем по штрихкодам единиц измерения
         return plannedObject.units.any { unit ->
             unit.barcodes.contains(barcode) || unit.mainBarcode == barcode
         }
@@ -43,10 +35,8 @@ class ProductClassifierHandler(
         }
 
         try {
-            // Сначала ищем по штрихкоду
             var product = productUseCases.findProductByBarcode(value)
 
-            // Если не нашли, пробуем найти по ID
             if (product == null) {
                 product = productUseCases.getProductById(value)
             }
@@ -62,20 +52,14 @@ class ProductClassifierHandler(
         }
     }
 
-    /**
-     * Дополнительная проверка соответствия плану
-     */
     override suspend fun validateObject(obj: Product, state: ActionWizardState, step: ActionStepTemplate): ValidationResult<Product> {
-        // Сначала проверяем с помощью стандартной валидации правил
         val baseValidationResult = super.validateObject(obj, state, step)
         if (!baseValidationResult.isSuccess()) {
             return baseValidationResult
         }
 
-        // Дополнительная проверка: если есть плановый объект, проверяем точное соответствие
         val plannedObject = getPlannedObject(state, step)
         if (plannedObject != null) {
-            // Проверяем, совпадает ли ID товара
             if (obj.id != plannedObject.id) {
                 return ValidationResult.error("Товар не соответствует плану. Ожидается: ${plannedObject.name} (${plannedObject.id})")
             }
@@ -89,9 +73,6 @@ class ProductClassifierHandler(
     }
 
     companion object {
-        /**
-         * Проверяет, соответствует ли поле типу обработчика
-         */
         fun isApplicableField(field: FactActionField): Boolean {
             return field == FactActionField.STORAGE_PRODUCT_CLASSIFIER
         }

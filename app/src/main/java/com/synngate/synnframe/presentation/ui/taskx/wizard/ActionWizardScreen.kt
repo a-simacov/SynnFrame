@@ -39,13 +39,10 @@ fun ActionWizardScreen(
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Определяем, должна ли быть включена обработка сканирования
     val shouldProcessScanning = !state.isLoading && !state.showExitDialog && !state.showSummary
 
-    // Используем улучшенный компонент для прослушивания сканирования
     WizardScannerListener(
         onBarcodeScanned = { barcode ->
-            // Обрабатываем сканирование только если разрешено
             if (shouldProcessScanning) {
                 viewModel.handleBarcode(barcode)
             } else {

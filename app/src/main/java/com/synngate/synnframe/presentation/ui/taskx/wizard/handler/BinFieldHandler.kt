@@ -9,12 +9,6 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.result.CreationResult
 import com.synngate.synnframe.presentation.ui.taskx.wizard.result.ValidationResult
 import timber.log.Timber
 
-/**
- * Обработчик для полей типа ячейка (BinX)
- *
- * @param validationService Сервис валидации
- * @param isStorage Флаг, определяющий, работаем ли с ячейкой хранения (true) или размещения (false)
- */
 class BinFieldHandler(
     validationService: ValidationService,
     private val isStorage: Boolean
@@ -47,20 +41,14 @@ class BinFieldHandler(
         }
     }
 
-    /**
-     * Дополнительная проверка соответствия плану
-     */
     override suspend fun validateObject(obj: BinX, state: ActionWizardState, step: ActionStepTemplate): ValidationResult<BinX> {
-        // Сначала проверяем с помощью стандартной валидации правил
         val baseValidationResult = super.validateObject(obj, state, step)
         if (!baseValidationResult.isSuccess()) {
             return baseValidationResult
         }
 
-        // Дополнительная проверка: если есть плановый объект, проверяем точное соответствие
         val plannedObject = getPlannedObject(state, step)
         if (plannedObject != null) {
-            // Проверяем, совпадает ли код ячейки
             if (obj.code != plannedObject.code) {
                 val binType = if (isStorage) "хранения" else "размещения"
                 return ValidationResult.error("Ячейка $binType не соответствует плану. Ожидается: ${plannedObject.code}")
@@ -75,9 +63,6 @@ class BinFieldHandler(
     }
 
     companion object {
-        /**
-         * Проверяет, соответствует ли поле типу обработчика
-         */
         fun isApplicableField(field: FactActionField, isStorage: Boolean): Boolean {
             return (isStorage && field == FactActionField.STORAGE_BIN) ||
                     (!isStorage && field == FactActionField.ALLOCATION_BIN)

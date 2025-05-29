@@ -1,20 +1,12 @@
-// Базовый интерфейс для всех результатов
 package com.synngate.synnframe.presentation.ui.taskx.wizard.result
 
-/**
- * Базовый интерфейс для результатов операций
- */
 interface OperationResult {
-    /** Возвращает признак успешного выполнения операции */
+
     fun isSuccess(): Boolean
 
-    /** Возвращает сообщение об ошибке (null в случае успеха) */
     fun getErrorMessage(): String?
 }
 
-/**
- * Базовая абстрактная реализация интерфейса OperationResult
- */
 abstract class BaseOperationResult(
     private val success: Boolean,
     private val errorMessage: String?
@@ -23,30 +15,18 @@ abstract class BaseOperationResult(
     override fun getErrorMessage(): String? = errorMessage
 }
 
-/**
- * Результат валидации данных
- */
 data class ValidationResult<T>(
     private val success: Boolean,
     private val errorMessage: String?,
     private val validatedData: T? = null
 ) : BaseOperationResult(success, errorMessage) {
 
-    /**
-     * Возвращает проверенный объект
-     */
     fun getValidatedData(): T? = validatedData
 
-    /**
-     * Выполняет преобразование результата
-     */
     fun <R> map(transform: (T?) -> R?): ValidationResult<R> {
         return ValidationResult(success, errorMessage, transform(validatedData))
     }
 
-    /**
-     * Выполняет плоское преобразование результата
-     */
     fun <R> flatMap(transform: (T?) -> ValidationResult<R>): ValidationResult<R> {
         return if (isSuccess() && validatedData != null) {
             transform(validatedData)
@@ -61,9 +41,6 @@ data class ValidationResult<T>(
     }
 }
 
-/**
- * Результат поиска данных
- */
 data class SearchResult<T>(
     private val success: Boolean,
     private val errorMessage: String?,
@@ -71,19 +48,10 @@ data class SearchResult<T>(
     private val foundData: T? = null
 ) : BaseOperationResult(success, errorMessage) {
 
-    /**
-     * Возвращает найденный объект
-     */
     fun getFoundData(): T? = foundData
 
-    /**
-     * Возвращает тип результата
-     */
     fun getResultType(): ResultType = resultType
 
-    /**
-     * Преобразует результат в другой тип
-     */
     fun <R> map(transform: (T?) -> R?): SearchResult<R> {
         return if (isSuccess() && foundData != null) {
             success(transform(foundData)!!)
@@ -94,9 +62,6 @@ data class SearchResult<T>(
         }
     }
 
-    /**
-     * Выполняет плоское преобразование результата
-     */
     fun <R> flatMap(transform: (T?) -> SearchResult<R>): SearchResult<R> {
         return if (isSuccess() && foundData != null) {
             transform(foundData)
@@ -107,9 +72,6 @@ data class SearchResult<T>(
         }
     }
 
-    /**
-     * Типы результатов поиска
-     */
     enum class ResultType {
         SUCCESS,    // Объект найден успешно
         NOT_FOUND,  // Объект не найден (это не ошибка)
@@ -123,30 +85,18 @@ data class SearchResult<T>(
     }
 }
 
-/**
- * Результат создания объекта из строки
- */
 data class CreationResult<T>(
     private val success: Boolean,
     private val errorMessage: String?,
     private val createdData: T? = null
 ) : BaseOperationResult(success, errorMessage) {
 
-    /**
-     * Возвращает созданный объект
-     */
     fun getCreatedData(): T? = createdData
 
-    /**
-     * Преобразует результат в другой тип
-     */
     fun <R> map(transform: (T?) -> R?): CreationResult<R> {
         return CreationResult(success, errorMessage, transform(createdData))
     }
 
-    /**
-     * Выполняет плоское преобразование результата
-     */
     fun <R> flatMap(transform: (T?) -> CreationResult<R>): CreationResult<R> {
         return if (isSuccess() && createdData != null) {
             transform(createdData)
@@ -161,30 +111,18 @@ data class CreationResult<T>(
     }
 }
 
-/**
- * Результат сетевой операции
- */
 data class NetworkResult<T>(
     private val success: Boolean,
     private val errorMessage: String?,
     private val responseData: T? = null
 ) : BaseOperationResult(success, errorMessage) {
 
-    /**
-     * Возвращает данные ответа
-     */
     fun getResponseData(): T? = responseData
 
-    /**
-     * Преобразует результат в другой тип
-     */
     fun <R> map(transform: (T?) -> R?): NetworkResult<R> {
         return NetworkResult(success, errorMessage, transform(responseData))
     }
 
-    /**
-     * Выполняет плоское преобразование результата
-     */
     fun <R> flatMap(transform: (T?) -> NetworkResult<R>): NetworkResult<R> {
         return if (isSuccess() && responseData != null) {
             transform(responseData)
@@ -200,23 +138,14 @@ data class NetworkResult<T>(
     }
 }
 
-/**
- * Результат перехода состояния визарда
- */
 data class StateTransitionResult<T>(
     private val success: Boolean,
     private val newState: T,
     private val errorMessage: String? = null
 ) : BaseOperationResult(success, errorMessage) {
 
-    /**
-     * Возвращает новое состояние
-     */
     fun getNewState(): T = newState
 
-    /**
-     * Преобразует состояние в другой тип
-     */
     fun <R> map(transform: (T) -> R): StateTransitionResult<R> {
         return StateTransitionResult(success, transform(newState), errorMessage)
     }
@@ -227,9 +156,6 @@ data class StateTransitionResult<T>(
     }
 }
 
-/**
- * Результат обработки штрихкода
- */
 data class BarcodeProcessResult<T>(
     private val success: Boolean,
     private val errorMessage: String?,
@@ -237,19 +163,10 @@ data class BarcodeProcessResult<T>(
     private val resultData: T? = null
 ) : BaseOperationResult(success, errorMessage) {
 
-    /**
-     * Возвращает признак необходимости обработки штрихкода
-     */
     fun isProcessingRequired(): Boolean = processingRequired
 
-    /**
-     * Возвращает данные результата
-     */
     fun getResultData(): T? = resultData
 
-    /**
-     * Преобразует результат в другой тип
-     */
     fun <R> map(transform: (T?) -> R?): BarcodeProcessResult<R> {
         return BarcodeProcessResult(success, errorMessage, processingRequired, transform(resultData))
     }
