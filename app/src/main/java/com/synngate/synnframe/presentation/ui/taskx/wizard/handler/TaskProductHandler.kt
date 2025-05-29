@@ -23,9 +23,7 @@ class TaskProductHandler(
 ) : BaseFieldHandler<TaskProduct>(validationService) {
 
     /**
-     * ИСПРАВЛЕНИЕ: Метод учитывает как storageProduct, так и storageProductClassifier
-     * Если есть storageProduct, возвращаем его
-     * Если нет storageProduct, но есть storageProductClassifier, создаем временный TaskProduct
+     * Получает плановый объект для текущего шага
      */
     override fun getPlannedObject(state: ActionWizardState, step: ActionStepTemplate): TaskProduct? {
         // Первый приоритет - товар задания, если он указан в плане
@@ -66,6 +64,23 @@ class TaskProductHandler(
         }
     }
 
+    /**
+     * Переопределяем метод handleBarcode для использования createFromClassifier
+     */
+    override suspend fun handleBarcode(barcode: String, state: ActionWizardState, step: ActionStepTemplate): Pair<TaskProduct?, String?> {
+        // Проверяем наличие товара классификатора в состоянии
+        val classifierProduct = state.plannedAction?.storageProductClassifier
+
+        // Если шаг предполагает ввод дополнительных свойств и есть товар классификатора,
+        // используем специализированный метод
+        if (step.inputAdditionalProps && classifierProduct != null) {
+            return createFromClassifier(barcode, classifierProduct, state, step)
+        }
+
+        // Иначе используем стандартную логику
+        return super.handleBarcode(barcode, state, step)
+    }
+
     override suspend fun createFromString(value: String): Pair<TaskProduct?, String?> {
         if (value.isBlank()) {
             return Pair(null, "Значение не может быть пустым")
@@ -98,7 +113,7 @@ class TaskProductHandler(
     }
 
     /**
-     * ИСПРАВЛЕНИЕ: Добавлена валидация на соответствие плановому товару
+     * Дополнительная валидация на соответствие плановому товару
      */
     override suspend fun validateObject(obj: TaskProduct, state: ActionWizardState, step: ActionStepTemplate): Pair<Boolean, String?> {
         // Сначала проверяем с помощью стандартной валидации правил
@@ -124,16 +139,18 @@ class TaskProductHandler(
      */
     suspend fun createFromClassifier(
         value: String,
-        classifierProduct: Product?,
+        classifierProduct: Product,
         state: ActionWizardState,
         step: ActionStepTemplate
     ): Pair<TaskProduct?, String?> {
-        if (classifierProduct == null) {
-            return createFromString(value)
+        if (value.isBlank()) {
+            return Pair(null, "Значение не может быть пустым")
         }
 
         // Проверяем, совпадает ли штрихкод с товаром классификатора
         if (matchesProduct(value, classifierProduct)) {
+            Timber.d("Штрихкод $value соответствует товару классификатора ${classifierProduct.id}")
+
             // Создаем TaskProduct на основе товара классификатора
             val taskProduct = TaskProduct(
                 id = UUID.randomUUID().toString(),
@@ -149,6 +166,8 @@ class TaskProductHandler(
 
             return Pair(taskProduct, null)
         }
+
+        Timber.d("Штрихкод $value не соответствует товару классификатора ${classifierProduct.id}, выполняем стандартный поиск")
 
         // Если штрихкод не совпадает с товаром классификатора, создаем обычным способом
         // а затем проверяем на соответствие плану

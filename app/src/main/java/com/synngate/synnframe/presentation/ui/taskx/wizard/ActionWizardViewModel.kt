@@ -5,6 +5,7 @@ import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
+import com.synngate.synnframe.presentation.ui.taskx.wizard.handler.FieldHandlerFactory
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardEvent
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.ObjectSearchService
@@ -28,9 +29,12 @@ class ActionWizardViewModel(
     private val productUseCases: ProductUseCases
 ) : BaseViewModel<ActionWizardState, ActionWizardEvent>(ActionWizardState(taskId = taskId, actionId = actionId)) {
 
+    // Фабрика обработчиков полей
+    private val handlerFactory = FieldHandlerFactory(validationService, productUseCases)
+
     // Сервисы для работы с визардом
     private val stateMachine = WizardStateMachine()
-    private val validator = WizardValidator(validationService)
+    private val validator = WizardValidator(validationService, handlerFactory)
     private val controller = WizardController(validator, stateMachine)
     private val objectSearchService = ObjectSearchService(productUseCases, validationService)
     private val networkService = WizardNetworkService(taskXRepository)
@@ -141,12 +145,6 @@ class ActionWizardViewModel(
         return isValid
     }
 
-    /**
-     * Обработка штрихкода с защитой от дублирования и гарантированным сбросом флага обработки
-     */
-    // Файл: app/src/main/java/com/synngate/synnframe/presentation/ui/taskx/wizard/ActionWizardViewModel.kt
-
-// 1. Исправление метода handleBarcode
     fun handleBarcode(barcode: String) {
         // Игнорируем сканирование, если мы находимся на экране сводки или диалоге выхода
         val currentState = determineStateType(uiState.value)
@@ -211,7 +209,7 @@ class ActionWizardViewModel(
                 }
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка при обработке штрих-кода: ${e.message}"))
             } finally {
-                // ВАЖНОЕ ИСПРАВЛЕНИЕ: Безусловно сбрасываем флаг обработки в блоке finally
+                // Безусловно сбрасываем флаг обработки в блоке finally
                 isProcessingBarcode = false
                 Timber.d("Сброс флага обработки сканирования после завершения")
 
@@ -227,6 +225,12 @@ class ActionWizardViewModel(
             val currentState = uiState.value
             val factAction = currentState.factAction ?: return@launchIO
             val plannedAction = currentState.plannedAction ?: return@launchIO
+
+            // Проверяем, что визард можно завершить
+            if (!validator.canComplete(currentState)) {
+                sendEvent(ActionWizardEvent.ShowSnackbar("Не все обязательные шаги выполнены"))
+                return@launchIO
+            }
 
             // Используем контроллер для перехода в состояние отправки
             updateState { controller.submitForm(it) }
@@ -261,9 +265,8 @@ class ActionWizardViewModel(
         sendEvent(ActionWizardEvent.NavigateToTaskDetail)
     }
 
-    // 2. Исправление метода clearError
     fun clearError() {
-        // ВАЖНОЕ ИСПРАВЛЕНИЕ: Сбрасываем флаг обработки при очистке ошибки
+        // Сбрасываем флаг обработки при очистке ошибки
         isProcessingBarcode = false
         resetProcessingJob?.cancel()
         resetProcessingJob = null

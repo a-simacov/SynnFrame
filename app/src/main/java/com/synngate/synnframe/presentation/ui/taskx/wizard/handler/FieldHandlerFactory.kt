@@ -24,14 +24,29 @@ class FieldHandlerFactory(
      * @return Подходящий обработчик или null, если тип не поддерживается
      */
     fun createHandler(fieldType: FactActionField): FieldHandler<*>? {
-        return when (fieldType) {
-            FactActionField.STORAGE_BIN -> BinFieldHandler(validationService, true)
-            FactActionField.ALLOCATION_BIN -> BinFieldHandler(validationService, false)
-            FactActionField.STORAGE_PALLET -> PalletFieldHandler(validationService, true)
-            FactActionField.ALLOCATION_PALLET -> PalletFieldHandler(validationService, false)
-            FactActionField.STORAGE_PRODUCT_CLASSIFIER -> ProductClassifierHandler(validationService, productUseCases)
-            FactActionField.STORAGE_PRODUCT -> TaskProductHandler(validationService, productUseCases)
-            FactActionField.QUANTITY -> QuantityFieldHandler(validationService)
+        // Используем методы isApplicableField для более гибкого определения подходящего обработчика
+        return when {
+            BinFieldHandler.isApplicableField(fieldType, true) ->
+                BinFieldHandler(validationService, true)
+
+            BinFieldHandler.isApplicableField(fieldType, false) ->
+                BinFieldHandler(validationService, false)
+
+            PalletFieldHandler.isApplicableField(fieldType, true) ->
+                PalletFieldHandler(validationService, true)
+
+            PalletFieldHandler.isApplicableField(fieldType, false) ->
+                PalletFieldHandler(validationService, false)
+
+            ProductClassifierHandler.isApplicableField(fieldType) ->
+                ProductClassifierHandler(validationService, productUseCases)
+
+            TaskProductHandler.isApplicableField(fieldType) ->
+                TaskProductHandler(validationService, productUseCases)
+
+            QuantityFieldHandler.isApplicableField(fieldType) ->
+                QuantityFieldHandler(validationService)
+
             else -> {
                 Timber.w("Неподдерживаемый тип поля: $fieldType")
                 null

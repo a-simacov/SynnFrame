@@ -42,13 +42,14 @@ class ObjectSearchService(
 
         val currentTime = System.currentTimeMillis()
         val currentStep = state.getCurrentStep()
-        val fieldType = currentStep?.factActionField
 
-        // Выходим, если тип поля не определен
-        if (fieldType == null || currentStep == null) {
-            Timber.w("Тип поля не определен для штрих-кода: $barcode")
-            return Triple(false, null, "Не удалось определить тип поля для поиска")
+        // Выходим, если текущий шаг не определен
+        if (currentStep == null) {
+            Timber.w("Текущий шаг не определен для штрих-кода: $barcode")
+            return Triple(false, null, "Не удалось определить текущий шаг для поиска")
         }
+
+        val fieldType = currentStep.factActionField
 
         // Проверяем, прошло ли достаточно времени с момента последнего сканирования
         // и не совпадает ли текущий штрихкод с предыдущим
@@ -86,12 +87,12 @@ class ObjectSearchService(
             }
         }
 
-        Timber.d("Обработка штрих-кода: $barcode для поля типа: $fieldType")
+        Timber.d("Обработка штрих-кода: $barcode для шага: ${currentStep.name}")
 
         try {
-            // Получаем обработчик для текущего типа поля
-            val handler = handlerFactory.createHandler(fieldType)
-                ?: return Triple(false, null, "Неподдерживаемый тип поля: $fieldType").also {
+            // Используем метод createHandlerForStep для получения обработчика для текущего шага
+            val handler = handlerFactory.createHandlerForStep(currentStep)
+                ?: return Triple(false, null, "Неподдерживаемый тип шага: ${currentStep.factActionField}").also {
                     activeRequests.remove(fieldType)
                 }
 

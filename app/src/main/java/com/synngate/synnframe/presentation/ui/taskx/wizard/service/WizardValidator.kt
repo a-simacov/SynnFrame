@@ -1,22 +1,19 @@
 package com.synngate.synnframe.presentation.ui.taskx.wizard.service
 
-import com.synngate.synnframe.domain.entity.taskx.ProductStatus
-import com.synngate.synnframe.domain.entity.taskx.TaskProduct
-import com.synngate.synnframe.domain.service.ValidationResult
 import com.synngate.synnframe.domain.service.ValidationService
-import com.synngate.synnframe.presentation.ui.taskx.entity.ActionStepTemplate
-import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
+import com.synngate.synnframe.presentation.ui.taskx.wizard.handler.FieldHandlerFactory
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
-import java.util.UUID
+import timber.log.Timber
 
 /**
- * Класс для валидации данных в визарде
+ * Класс для высокоуровневой валидации шагов визарда
  */
 class WizardValidator(
-    private val validationService: ValidationService
+    private val validationService: ValidationService,
+    private val handlerFactory: FieldHandlerFactory? = null
 ) {
     /**
-     * Проверяет текущий шаг
+     * Проверяет текущий шаг на валидность
      * @return true, если шаг прошел валидацию
      */
     fun validateCurrentStep(state: ActionWizardState): Boolean {
@@ -28,17 +25,41 @@ class WizardValidator(
 
         val stepObject = state.selectedObjects[currentStep.id]
         if (stepObject == null) {
+            Timber.d("Шаг ${currentStep.name} не прошел валидацию: не выбран объект")
             return false
         }
 
+        // Если доступна фабрика обработчиков, используем ее для валидации
+        if (handlerFactory != null) {
+            val handler = handlerFactory.createHandlerForObject(stepObject)
+            if (handler != null) {
+                val validationResult = runCatching {
+                    @Suppress("UNCHECKED_CAST")
+                    val result = handler.validateObject(stepObject as Any, state, currentStep)
+                    if (!result.first) {
+                        Timber.d("Шаг ${currentStep.name} не прошел валидацию обработчика: ${result.second}")
+                        return false
+                    }
+                    true
+                }.getOrElse { e ->
+                    Timber.e(e, "Ошибка при валидации объекта через обработчик")
+                    false
+                }
+
+                return validationResult
+            }
+        }
+
+        // Если обработчик не доступен или не найден, используем базовую валидацию
         if (currentStep.validationRules != null) {
             val validationResult = validationService.validate(
                 rule = currentStep.validationRules,
                 value = stepObject,
-                context = mapOf("planItems" to listOfNotNull(getPlannedObjectForField(state, currentStep.factActionField)))
+                context = emptyMap()
             )
 
-            if (validationResult !is ValidationResult.Success) {
+            if (validationResult !is com.synngate.synnframe.domain.service.ValidationResult.Success) {
+                Timber.d("Шаг ${currentStep.name} не прошел базовую валидацию правил")
                 return false
             }
         }
@@ -47,70 +68,20 @@ class WizardValidator(
     }
 
     /**
-     * Проверяет найденный объект по правилам валидации
-     * @return Пара (результат валидации, сообщение об ошибке)
+     * Проверяет возможность завершения визарда
+     * @return true, если все обязательные шаги выполнены
      */
-    fun validateFoundObject(state: ActionWizardState, obj: Any, step: ActionStepTemplate): Pair<Boolean, String?> {
-        if (step.validationRules == null) {
-            return Pair(true, null)
+    fun canComplete(state: ActionWizardState): Boolean {
+        // Проверяем, что все обязательные шаги имеют выбранные объекты
+        val allRequiredStepsCompleted = state.steps
+            .filter { it.isRequired }
+            .all { step -> state.selectedObjects.containsKey(step.id) }
+
+        if (!allRequiredStepsCompleted) {
+            Timber.d("Не все обязательные шаги выполнены")
+            return false
         }
 
-        val planItem = getPlannedObjectForField(state, step.factActionField)
-        val context = if (planItem != null) {
-            mapOf("planItems" to listOf(planItem))
-        } else {
-            emptyMap()
-        }
-
-        val validationResult = validationService.validate(
-            rule = step.validationRules,
-            value = obj,
-            context = context
-        )
-
-        return when (validationResult) {
-            is ValidationResult.Success -> Pair(true, null)
-            is ValidationResult.Error -> Pair(false, validationResult.message)
-        }
-    }
-
-    /**
-     * Получает плановый объект для указанного типа поля
-     */
-    fun getPlannedObjectForField(state: ActionWizardState, field: FactActionField): Any? {
-        val plannedAction = state.plannedAction ?: return null
-        val currentStep = state.steps.getOrNull(state.currentStepIndex)
-
-        return when (field) {
-            FactActionField.STORAGE_PRODUCT -> {
-                // Если storageProduct есть, возвращаем его
-                plannedAction.storageProduct ?: run {
-                    // Если storageProduct нет, но есть storageProductClassifier и включен
-                    // признак inputAdditionalProps, создаем временный TaskProduct
-                    if (plannedAction.storageProductClassifier != null &&
-                        currentStep?.inputAdditionalProps == true) {
-
-                        // Создаем временный TaskProduct на основе storageProductClassifier
-                        // Значения expirationDate и status не важны, так как при валидации
-                        // сравнивается только product.id, а не другие поля
-                        TaskProduct(
-                            id = UUID.randomUUID().toString(),
-                            product = plannedAction.storageProductClassifier,
-                            expirationDate = null,
-                            status = ProductStatus.STANDARD
-                        )
-                    } else {
-                        null
-                    }
-                }
-            }
-            FactActionField.STORAGE_PRODUCT_CLASSIFIER -> plannedAction.storageProductClassifier
-            FactActionField.STORAGE_BIN -> plannedAction.storageBin
-            FactActionField.STORAGE_PALLET -> plannedAction.storagePallet
-            FactActionField.ALLOCATION_BIN -> plannedAction.placementBin
-            FactActionField.ALLOCATION_PALLET -> plannedAction.placementPallet
-            FactActionField.QUANTITY -> plannedAction.quantity
-            else -> null
-        }
+        return true
     }
 }
