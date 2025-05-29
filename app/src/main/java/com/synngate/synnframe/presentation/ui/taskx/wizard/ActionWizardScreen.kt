@@ -21,16 +21,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
-import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.ExitConfirmationDialog
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.StepScreen
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.SummaryScreen
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardEvent
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
-import timber.log.Timber
 
 @Composable
 fun ActionWizardScreen(
@@ -41,19 +38,14 @@ fun ActionWizardScreen(
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val scannerService = LocalScannerService.current
-
-    if (scannerService?.hasRealScanner() == true) {
-        ScannerListener(onBarcodeScanned = { barcode ->
-            val currentStep = state.getCurrentStep()
-
-            Timber.d("Сканирование штрихкода: $barcode на шаге с типом: ${currentStep?.factActionField}")
-
-            currentStep?.factActionField?.let { fieldType ->
-                viewModel.handleBarcode(barcode)
-            }
-        })
-    }
+    // Используем улучшенный компонент для прослушивания сканирования
+    WizardScannerListener(
+        onBarcodeScanned = { barcode ->
+            viewModel.handleBarcode(barcode)
+        },
+        // Отключаем прослушивание в состояниях, когда сканирование не нужно
+        isEnabled = !state.isLoading && !state.showExitDialog && !state.showSummary
+    )
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->

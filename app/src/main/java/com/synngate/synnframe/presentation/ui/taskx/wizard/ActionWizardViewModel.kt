@@ -11,8 +11,11 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.service.ObjectSearchS
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardController
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardNetworkService
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardValidator
+import com.synngate.synnframe.presentation.ui.taskx.wizard.state.WizardState
 import com.synngate.synnframe.presentation.ui.taskx.wizard.state.WizardStateMachine
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -31,6 +34,12 @@ class ActionWizardViewModel(
     private val controller = WizardController(validator, stateMachine)
     private val objectSearchService = ObjectSearchService(productUseCases, validator)
     private val networkService = WizardNetworkService(taskXRepository)
+
+    // Флаг для отслеживания текущей обработки сканирования
+    private var isProcessingBarcode = false
+
+    // Задача для автоматического сброса флага обработки
+    private var resetProcessingJob: Job? = null
 
     init {
         initializeWizard()
@@ -132,31 +141,60 @@ class ActionWizardViewModel(
         return isValid
     }
 
+    /**
+     * Обработка штрихкода с защитой от дублирования и гарантированным сбросом флага обработки
+     */
     fun handleBarcode(barcode: String) {
+        // Игнорируем сканирование, если мы находимся на экране сводки или диалоге выхода
+        val currentState = determineStateType(uiState.value)
+        if (currentState == WizardState.SUMMARY ||
+            currentState == WizardState.EXIT_DIALOG ||
+            currentState == WizardState.SENDING) {
+            Timber.d("Игнорирование сканирования в состоянии $currentState")
+            return
+        }
+
+        // Проверяем, не обрабатывается ли уже другое сканирование
+        if (isProcessingBarcode) {
+            Timber.d("Игнорирование сканирования: предыдущее еще обрабатывается")
+            return
+        }
+
+        // Отменяем предыдущую задачу сброса флага, если она еще выполняется
+        resetProcessingJob?.cancel()
+
+        // Устанавливаем флаг, что начали обработку
+        isProcessingBarcode = true
+
+        // Показываем индикатор загрузки
+        updateState { controller.setLoading(it, true) }
+
+        // Запускаем задачу для гарантированного сброса флага обработки через 5 секунд
+        // в любом случае (это страховка на случай сбоев)
+        resetProcessingJob = viewModelScope.launch {
+            delay(5000)
+            if (isProcessingBarcode) {
+                Timber.d("Принудительный сброс флага обработки сканирования по таймауту")
+                isProcessingBarcode = false
+            }
+        }
+
+        // Запускаем задачу для обработки сканирования
         viewModelScope.launch {
             try {
-                updateState { controller.setLoading(it, true) }
-
                 val (success, foundObject, errorMessage) = objectSearchService.handleBarcode(uiState.value, barcode)
 
+                // Снимаем флаг загрузки
+                updateState { controller.setLoading(it, false) }
+
                 if (success && foundObject != null) {
-                    // Сначала снимаем флаг загрузки
-                    updateState { controller.setLoading(it, false) }
-                    // Затем устанавливаем найденный объект и пробуем выполнить автопереход
+                    // Устанавливаем найденный объект и пробуем выполнить автопереход
                     setObjectForCurrentStep(foundObject, true)
                 } else {
                     // Если получена ошибка, обрабатываем её
                     if (errorMessage != null) {
-                        updateState {
-                            controller.setLoading(
-                                controller.setError(it, errorMessage),
-                                false
-                            )
-                        }
+                        updateState { controller.setError(it, errorMessage) }
                         sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
-                    } else {
-                        // Если ошибки нет (например, при повторном сканировании), просто снимаем флаг загрузки
-                        updateState { controller.setLoading(it, false) }
                     }
                 }
             } catch (e: Exception) {
@@ -168,6 +206,14 @@ class ActionWizardViewModel(
                     )
                 }
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка при обработке штрих-кода: ${e.message}"))
+            } finally {
+                // В любом случае снимаем флаг обработки
+                isProcessingBarcode = false
+                Timber.d("Сброс флага обработки сканирования после завершения")
+
+                // Отменяем таймер автоматического сброса
+                resetProcessingJob?.cancel()
+                resetProcessingJob = null
             }
         }
     }
@@ -212,6 +258,21 @@ class ActionWizardViewModel(
     }
 
     fun clearError() {
+        // Сбрасываем флаг обработки при очистке ошибки
+        isProcessingBarcode = false
         updateState { controller.clearError(it) }
+    }
+
+    /**
+     * Определяет текущее состояние визарда
+     */
+    private fun determineStateType(state: ActionWizardState): WizardState {
+        return when {
+            state.isLoading -> WizardState.LOADING
+            state.showExitDialog -> WizardState.EXIT_DIALOG
+            state.showSummary -> WizardState.SUMMARY
+            state.error != null -> WizardState.ERROR
+            else -> WizardState.STEP
+        }
     }
 }

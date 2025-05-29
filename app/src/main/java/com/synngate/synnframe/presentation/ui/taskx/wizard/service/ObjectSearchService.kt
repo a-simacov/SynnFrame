@@ -9,18 +9,25 @@ import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
 import timber.log.Timber
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Сервис для поиска объектов по штрихкодам
+ * Сервис для поиска объектов по штрихкодам с улучшенной защитой от дублирующих запросов
  */
 class ObjectSearchService(
     private val productUseCases: ProductUseCases,
     private val validator: WizardValidator
 ) {
     // Переменные для отслеживания времени последнего сканирования
-    private val MIN_SCAN_INTERVAL = 500L // Минимальный интервал между сканированиями (миллисекунды)
+    private val MIN_SCAN_INTERVAL = 1000L // Увеличенный интервал между сканированиями (миллисекунды)
     private var lastScanTime = 0L        // Время последнего сканирования
     private var lastScannedBarcode = ""  // Последний отсканированный штрихкод
+
+    // Кэш результатов валидации для предотвращения повторных запросов
+    private val validationCache = ConcurrentHashMap<String, Triple<Boolean, Any?, String?>>()
+
+    // Флаг для отслеживания активных запросов по типам полей
+    private val activeRequests = ConcurrentHashMap<FactActionField, Long>()
 
     /**
      * Обрабатывает штрих-код в контексте текущего шага
@@ -28,30 +35,49 @@ class ObjectSearchService(
      */
     suspend fun handleBarcode(state: ActionWizardState, barcode: String): Triple<Boolean, Any?, String?> {
         val currentTime = System.currentTimeMillis()
+        val currentStep = state.getCurrentStep()
+        val fieldType = currentStep?.factActionField
+
+        // Выходим, если тип поля не определен
+        if (fieldType == null) {
+            Timber.w("Тип поля не определен для штрих-кода: $barcode")
+            return Triple(false, null, "Не удалось определить тип поля для поиска")
+        }
 
         // Проверяем, прошло ли достаточно времени с момента последнего сканирования
         // и не совпадает ли текущий штрихкод с предыдущим
         if (currentTime - lastScanTime < MIN_SCAN_INTERVAL && lastScannedBarcode == barcode) {
-            Timber.d("Игнорирование повторного сканирования штрихкода: $barcode (слишком быстро)")
-            // Возвращаем null вместо сообщения об ошибке, чтобы не показывать его пользователю
-            // Используем флаг success=false, чтобы не обрабатывать это как успешное сканирование
+            Timber.d("Игнорирование повторного сканирования штрихкода: $barcode (прошло менее ${MIN_SCAN_INTERVAL}мс)")
             return Triple(false, null, null)
+        }
+
+        // Проверяем, не выполняется ли уже запрос для данного типа поля
+        val lastRequestTime = activeRequests[fieldType]
+        if (lastRequestTime != null && currentTime - lastRequestTime < 5000) {
+            Timber.d("Игнорирование запроса для поля $fieldType: предыдущий запрос еще выполняется")
+            return Triple(false, null, null)
+        }
+
+        // Проверяем кэш результатов валидации
+        val cacheKey = "${fieldType}_$barcode"
+        val cachedResult = validationCache[cacheKey]
+        if (cachedResult != null) {
+            Timber.d("Использование кешированного результата для $cacheKey")
+            return cachedResult
         }
 
         // Обновляем информацию о последнем сканировании
         lastScanTime = currentTime
         lastScannedBarcode = barcode
 
-        val currentStep = state.getCurrentStep()
-        val fieldType = currentStep?.factActionField
+        // Устанавливаем флаг активного запроса
+        activeRequests[fieldType] = currentTime
 
         if (barcode.isBlank()) {
-            return Triple(false, null, "Пустой штрихкод")
-        }
-
-        if (fieldType == null) {
-            Timber.w("Тип поля не определен для штрих-кода: $barcode")
-            return Triple(false, null, "Не удалось определить тип поля для поиска")
+            return Triple(false, null, "Пустой штрихкод").also {
+                // Очищаем флаг активного запроса
+                activeRequests.remove(fieldType)
+            }
         }
 
         Timber.d("Обработка штрих-кода: $barcode для поля типа: $fieldType")
@@ -75,13 +101,25 @@ class ObjectSearchService(
                 else -> Pair(null, "Неподдерживаемый тип поля: $fieldType")
             }
 
-            return when {
+            val finalResult = when {
                 result.first != null -> Triple(true, result.first, null)
                 result.second != null -> Triple(false, null, result.second)
                 else -> Triple(false, null, "Не удалось найти объект по штрих-коду: $barcode")
             }
+
+            // Сохраняем результат в кэш
+            validationCache[cacheKey] = finalResult
+
+            // Очищаем флаг активного запроса
+            activeRequests.remove(fieldType)
+
+            return finalResult
         } catch (e: Exception) {
             Timber.e(e, "Ошибка при обработке штрих-кода: $barcode")
+
+            // Очищаем флаг активного запроса
+            activeRequests.remove(fieldType)
+
             return Triple(false, null, "Ошибка при обработке штрих-кода: ${e.message}")
         }
     }
@@ -306,5 +344,13 @@ class ObjectSearchService(
             Timber.e(e, "Ошибка при поиске паллеты: $barcode")
             return Pair(null, "Ошибка поиска: ${e.message}")
         }
+    }
+
+    /**
+     * Очищает кэш и состояние обработки
+     */
+    fun clearCache() {
+        validationCache.clear()
+        activeRequests.clear()
     }
 }
