@@ -32,7 +32,7 @@ class ActionWizardViewModel(
     private val stateMachine = WizardStateMachine()
     private val validator = WizardValidator(validationService)
     private val controller = WizardController(validator, stateMachine)
-    private val objectSearchService = ObjectSearchService(productUseCases, validator)
+    private val objectSearchService = ObjectSearchService(productUseCases, validationService)
     private val networkService = WizardNetworkService(taskXRepository)
 
     // Флаг для отслеживания текущей обработки сканирования

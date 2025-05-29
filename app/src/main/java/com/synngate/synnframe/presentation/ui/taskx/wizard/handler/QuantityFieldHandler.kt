@@ -1,0 +1,59 @@
+package com.synngate.synnframe.presentation.ui.taskx.wizard.handler
+
+import com.synngate.synnframe.domain.service.ValidationService
+import com.synngate.synnframe.presentation.ui.taskx.entity.ActionStepTemplate
+import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
+import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import timber.log.Timber
+
+/**
+ * Обработчик для полей типа количество (Float)
+ *
+ * @param validationService Сервис валидации
+ */
+class QuantityFieldHandler(
+    validationService: ValidationService
+) : BaseFieldHandler<Float>(validationService) {
+
+    override fun getPlannedObject(state: ActionWizardState, step: ActionStepTemplate): Float? {
+        return state.plannedAction?.quantity?.takeIf { it > 0 }
+    }
+
+    override fun matchesPlannedObject(barcode: String, plannedObject: Float): Boolean {
+        val parsedValue = barcode.toFloatOrNull()
+        return parsedValue != null && parsedValue == plannedObject
+    }
+
+    override suspend fun createFromString(value: String): Pair<Float?, String?> {
+        if (value.isBlank()) {
+            return Pair(null, "Значение не может быть пустым")
+        }
+
+        try {
+            val parsedValue = value.toFloatOrNull()
+            if (parsedValue != null) {
+                if (parsedValue <= 0) {
+                    return Pair(null, "Количество должно быть больше нуля")
+                }
+                return Pair(parsedValue, null)
+            }
+            return Pair(null, "Неверный формат числа: $value")
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при парсинге количества: $value")
+            return Pair(null, "Ошибка при обработке количества: ${e.message}")
+        }
+    }
+
+    override fun supportsType(obj: Any): Boolean {
+        return obj is Float || obj is Number
+    }
+
+    companion object {
+        /**
+         * Проверяет, соответствует ли поле типу обработчика
+         */
+        fun isApplicableField(field: FactActionField): Boolean {
+            return field == FactActionField.QUANTITY
+        }
+    }
+}
