@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.taskx.wizard
 
+import androidx.activity.compose.BackHandler  // Добавляем импорт
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,6 +41,10 @@ fun ActionWizardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val shouldProcessScanning = !state.isLoading && !state.showExitDialog && !state.showSummary
+
+    BackHandler {
+        viewModel.previousStep()
+    }
 
     WizardScannerListener(
         onBarcodeScanned = { barcode ->
