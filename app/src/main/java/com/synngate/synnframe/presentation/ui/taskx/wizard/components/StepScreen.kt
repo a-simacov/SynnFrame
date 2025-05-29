@@ -25,10 +25,14 @@ fun StepScreen(
     handleBarcode: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val currentStep = state.steps.getOrNull(state.currentStepIndex) ?: return
+    val currentStep = state.getCurrentStep() ?: return
     val scrollState = rememberScrollState()
 
     val isObjectSelected = state.selectedObjects.containsKey(currentStep.id)
+
+    // Определяем, заблокирован ли шаг буфером
+    val isLocked = state.lockedObjectSteps.contains(currentStep.id)
+    val bufferSource = state.bufferObjectSources[currentStep.id]
 
     val isButtonEnabled = if (currentStep.isRequired) {
         isObjectSelected
@@ -49,6 +53,14 @@ fun StepScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Показываем индикатор буфера, если значение взято из буфера
+        if (bufferSource != null) {
+            BufferIndicator(
+                source = bufferSource,
+                isLocked = isLocked
+            )
+        }
+
         // Выбираем компонент в зависимости от типа поля
         when (currentStep.factActionField) {
             FactActionField.STORAGE_PRODUCT -> {
@@ -56,7 +68,8 @@ fun StepScreen(
                     step = currentStep,
                     state = state,
                     onObjectSelected = { obj -> onObjectSelected(obj, true) },
-                    handleBarcode = handleBarcode
+                    handleBarcode = handleBarcode,
+                    isLocked = isLocked
                 )
             }
             FactActionField.STORAGE_PRODUCT_CLASSIFIER -> {
@@ -64,7 +77,8 @@ fun StepScreen(
                     step = currentStep,
                     state = state,
                     onObjectSelected = { obj -> onObjectSelected(obj, true) },
-                    handleBarcode = handleBarcode
+                    handleBarcode = handleBarcode,
+                    isLocked = isLocked
                 )
             }
             FactActionField.STORAGE_BIN -> {
@@ -73,7 +87,8 @@ fun StepScreen(
                     state = state,
                     onObjectSelected = { obj -> onObjectSelected(obj, true) },
                     handleBarcode = handleBarcode,
-                    isStorage = true
+                    isStorage = true,
+                    isLocked = isLocked
                 )
             }
             FactActionField.ALLOCATION_BIN -> {
@@ -82,7 +97,8 @@ fun StepScreen(
                     state = state,
                     onObjectSelected = { obj -> onObjectSelected(obj, true) },
                     handleBarcode = handleBarcode,
-                    isStorage = false
+                    isStorage = false,
+                    isLocked = isLocked
                 )
             }
             FactActionField.STORAGE_PALLET -> {
@@ -91,7 +107,8 @@ fun StepScreen(
                     state = state,
                     onObjectSelected = { obj -> onObjectSelected(obj, true) },
                     handleBarcode = handleBarcode,
-                    isStorage = true
+                    isStorage = true,
+                    isLocked = isLocked
                 )
             }
             FactActionField.ALLOCATION_PALLET -> {
@@ -100,7 +117,8 @@ fun StepScreen(
                     state = state,
                     onObjectSelected = { obj -> onObjectSelected(obj, true) },
                     handleBarcode = handleBarcode,
-                    isStorage = false
+                    isStorage = false,
+                    isLocked = isLocked
                 )
             }
             FactActionField.QUANTITY -> {
@@ -109,7 +127,8 @@ fun StepScreen(
                     state = state,
                     onQuantityChanged = { value, autoAdvance ->
                         onObjectSelected(value, autoAdvance)
-                    }
+                    },
+                    isLocked = isLocked
                 )
             }
             else -> {

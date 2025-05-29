@@ -12,13 +12,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -32,13 +30,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
-import com.synngate.synnframe.domain.entity.taskx.ProductStatus
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.presentation.common.dialog.OptimizedProductSelectionDialog
 import com.synngate.synnframe.presentation.common.inputs.ExpirationDatePicker
@@ -48,8 +46,6 @@ import com.synngate.synnframe.presentation.ui.taskx.entity.ActionStepTemplate
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
 import kotlinx.coroutines.delay
 import timber.log.Timber
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 @Composable
 fun StorageProductStep(
@@ -57,6 +53,7 @@ fun StorageProductStep(
     state: ActionWizardState,
     onObjectSelected: (Any) -> Unit,
     handleBarcode: (String) -> Unit,
+    isLocked: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val plannedProduct = state.plannedAction?.storageProduct
@@ -73,7 +70,9 @@ fun StorageProductStep(
             StorageProductCard(
                 product = plannedProduct,
                 isSelected = selectedProduct != null,
-                onSelect = { onObjectSelected(plannedProduct) }
+                onSelect = { onObjectSelected(plannedProduct) },
+                isLocked = isLocked,
+                icon = if (isLocked) Icons.Default.Lock else null
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -82,59 +81,97 @@ fun StorageProductStep(
             AdditionalPropsProductForm(
                 state = state,
                 step = step,
-                onObjectSelected = onObjectSelected
+                onObjectSelected = onObjectSelected,
+                isLocked = isLocked
             )
 
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        WizardBarcodeField(
-            value = barcodeValue,
-            onValueChange = { barcodeValue = it },
-            onSearch = {
-                if (barcodeValue.isNotEmpty()) {
-                    Timber.d("Поиск по введенному штрихкоду: $barcodeValue")
-                    handleBarcode(barcodeValue)
-                }
-            },
-            onScannerClick = { showScanner = true },
-            onSelectFromList = { showProductSelector = true },
-            label = "Поиск товара (штрихкод, ID, артикул)",
-            placeholder = "Введите или отсканируйте"
-        )
-
-        if (selectedProduct != null && selectedProduct != plannedProduct) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "Выбранный товар:",
-                        style = MaterialTheme.typography.titleSmall
+        // Если поле заблокировано, показываем только выбранное значение
+        if (isLocked) {
+            selectedProduct?.let { product ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
                     )
-                    Text(
-                        text = selectedProduct.product.name,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = "Артикул: ${selectedProduct.product.articleNumber}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    if (selectedProduct.hasExpirationDate()) {
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Срок годности: ${selectedProduct.expirationDate?.toLocalDate()}",
+                            "Выбранный товар (заблокирован):",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Text(
+                            text = product.product.name,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Артикул: ${product.product.articleNumber}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        if (product.hasExpirationDate()) {
+                            Text(
+                                text = "Срок годности: ${product.expirationDate?.toLocalDate()}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        Text(
+                            text = "Статус: ${product.status.format()}",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
-                    Text(
-                        text = "Статус: ${selectedProduct.status.format()}",
-                        style = MaterialTheme.typography.bodyMedium
+                }
+            }
+        } else {
+            WizardBarcodeField(
+                value = barcodeValue,
+                onValueChange = { barcodeValue = it },
+                onSearch = {
+                    if (barcodeValue.isNotEmpty()) {
+                        Timber.d("Поиск по введенному штрихкоду: $barcodeValue")
+                        handleBarcode(barcodeValue)
+                    }
+                },
+                onScannerClick = { showScanner = true },
+                onSelectFromList = { showProductSelector = true },
+                label = "Поиск товара (штрихкод, ID, артикул)",
+                placeholder = "Введите или отсканируйте"
+            )
+
+            if (selectedProduct != null && selectedProduct != plannedProduct) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
                     )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "Выбранный товар:",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Text(
+                            text = selectedProduct.product.name,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Артикул: ${selectedProduct.product.articleNumber}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        if (selectedProduct.hasExpirationDate()) {
+                            Text(
+                                text = "Срок годности: ${selectedProduct.expirationDate?.toLocalDate()}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        Text(
+                            text = "Статус: ${selectedProduct.status.format()}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
         }
@@ -145,7 +182,7 @@ fun StorageProductStep(
             onBarcodeScanned = { barcode ->
                 barcodeValue = barcode
                 showScanner = false
-                handleBarcode(barcodeValue)
+                handleBarcode(barcode)
             },
             onClose = { showScanner = false },
             instructionText = "Отсканируйте штрихкод товара"
@@ -184,79 +221,34 @@ fun StorageProductStep(
 fun StorageProductCard(
     product: TaskProduct,
     isSelected: Boolean,
-    onSelect: () -> Unit
+    onSelect: () -> Unit,
+    isLocked: Boolean = false,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null
 ) {
-    val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+    val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy")
 
-    Card(
-        modifier = Modifier.fillMaxWidth()
-            .clickable(onClick = onSelect),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = product.product.name,
-                    style = MaterialTheme.typography.titleMedium
-                )
-
-                Text(
-                    text = "Артикул: ${product.product.articleNumber}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-
-                if (product.hasExpirationDate()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Срок годности: ${product.expirationDate?.toLocalDate()?.format(dateFormatter) ?: "Не указан"}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (product.expirationDate?.isBefore(LocalDateTime.now()) == true)
-                            MaterialTheme.colorScheme.error
-                        else
-                            MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Статус: ${product.status.format()}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = when (product.status) {
-                        ProductStatus.STANDARD -> MaterialTheme.colorScheme.onSurface
-                        ProductStatus.DEFECTIVE -> MaterialTheme.colorScheme.error
-                        ProductStatus.EXPIRED -> Color(0xFFFF9800) // Оранжевый для просроченных
-                    }
-                )
+    PlannedObjectCard(
+        title = product.product.name,
+        subtitle = buildString {
+            append("Артикул: ${product.product.articleNumber}")
+            if (product.hasExpirationDate()) {
+                append("\nСрок годности: ${product.expirationDate?.toLocalDate()?.format(dateFormatter) ?: "Не указан"}")
             }
-
-            IconButton(onClick = onSelect) {
-                Icon(
-                    imageVector = if (isSelected)
-                        Icons.Default.CheckCircle
-                    else
-                        Icons.Default.RadioButtonUnchecked,
-                    contentDescription = "Выбрать"
-                )
-            }
-        }
-    }
+            append("\nСтатус: ${product.status.format()}")
+        },
+        isSelected = isSelected,
+        onClick = onSelect,
+        isLocked = isLocked,
+        icon = icon
+    )
 }
 
 @Composable
 fun AdditionalPropsProductForm(
     state: ActionWizardState,
     step: ActionStepTemplate,
-    onObjectSelected: (Any) -> Unit
+    onObjectSelected: (Any) -> Unit,
+    isLocked: Boolean = false
 ) {
     val classifierProduct = state.plannedAction?.storageProductClassifier
     val taskProduct = state.getTaskProductFromClassifier(step.id)
@@ -267,22 +259,18 @@ fun AdditionalPropsProductForm(
 
     val needsExpirationDate = state.shouldShowExpirationDate()
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+    // Если поле заблокировано, показываем только выбранное значение
+    if (isLocked) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isSelected)
+                    MaterialTheme.colorScheme.primaryContainer
+                else
+                    MaterialTheme.colorScheme.surface
+            )
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = classifierProduct?.name ?: "Товар",
                     style = MaterialTheme.typography.titleMedium
@@ -296,24 +284,44 @@ fun AdditionalPropsProductForm(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-
-            IconButton(
-                onClick = {
-                    onObjectSelected(taskProduct)
-                    if (!needsExpirationDate || hasExpirationDate) {
-                        Timber.d("Автоматический переход из AdditionalPropsProductForm")
-                    }
+                if (taskProduct.hasExpirationDate()) {
+                    Text(
+                        text = "Срок годности: ${taskProduct.expirationDate?.toLocalDate()}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
-            ) {
-                Icon(
-                    imageVector = if (isSelected)
-                        Icons.Default.CheckCircle
-                    else
-                        Icons.Default.RadioButtonUnchecked,
-                    contentDescription = "Выбрать"
+                Text(
+                    text = "Статус: ${taskProduct.status.format()}",
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
+        }
+        return
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = classifierProduct?.name ?: "Товар",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = "Артикул: ${classifierProduct?.articleNumber ?: ""}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "ID: ${classifierProduct?.id ?: ""}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 
@@ -406,6 +414,7 @@ fun ProductClassifierStep(
     state: ActionWizardState,
     onObjectSelected: (Any) -> Unit,
     handleBarcode: (String) -> Unit,
+    isLocked: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val plannedProduct = state.plannedAction?.storageProductClassifier
@@ -423,53 +432,62 @@ fun ProductClassifierStep(
             ProductClassifierCard(
                 product = plannedProduct,
                 isSelected = selectedProduct != null,
-                onClick = { onObjectSelected(plannedProduct) }
+                onClick = { onObjectSelected(plannedProduct) },
+                isLocked = isLocked,
+                icon = if (isLocked) Icons.Default.Lock else null
             )
 
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        WizardBarcodeField(
-            value = barcodeValue,
-            onValueChange = { barcodeValue = it },
-            onSearch = {
-                if (barcodeValue.isNotEmpty()) {
-                    Timber.d("Поиск по введенному штрихкоду: $barcodeValue")
-                    handleBarcode(barcodeValue)
+        // Если поле заблокировано, показываем только выбранное значение
+        if (isLocked) {
+            selectedProduct?.let { product ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    ProductClassifierCard(
+                        product = product,
+                        isSelected = true,
+                        onClick = { /* Ничего не делаем, поле заблокировано */ },
+                        isLocked = true,
+                        icon = Icons.Default.Lock
+                    )
                 }
-            },
-            onScannerClick = { showScanner = true },
-            onSelectFromList = { showProductSelector = true },
-            label = "Поиск товара (штрихкод, ID, артикул)",
-            placeholder = "Введите или отсканируйте"
-        )
+            }
+        } else {
+            // Обычный UI с возможностью выбора
+            WizardBarcodeField(
+                value = barcodeValue,
+                onValueChange = { barcodeValue = it },
+                onSearch = {
+                    if (barcodeValue.isNotEmpty()) {
+                        Timber.d("Поиск по введенному штрихкоду: $barcodeValue")
+                        handleBarcode(barcodeValue)
+                    }
+                },
+                onScannerClick = { showScanner = true },
+                onSelectFromList = { showProductSelector = true },
+                label = "Поиск товара (штрихкод, ID, артикул)",
+                placeholder = "Введите или отсканируйте"
+            )
 
-        if (selectedProduct != null && selectedProduct != plannedProduct) {
-            Spacer(modifier = Modifier.height(16.dp))
+            if (selectedProduct != null && selectedProduct != plannedProduct) {
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "Выбранный товар:",
-                        style = MaterialTheme.typography.titleSmall
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
                     )
-                    Text(
-                        text = selectedProduct.name,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = "Артикул: ${selectedProduct.articleNumber}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "ID: ${selectedProduct.id}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                ) {
+                    ProductClassifierCard(
+                        product = selectedProduct,
+                        isSelected = true,
+                        onClick = { /* Уже выбрано */ }
                     )
                 }
             }
@@ -481,7 +499,7 @@ fun ProductClassifierStep(
             onBarcodeScanned = { barcode ->
                 barcodeValue = barcode
                 showScanner = false
-                handleBarcode(barcodeValue)
+                handleBarcode(barcode)
             },
             onClose = { showScanner = false },
             instructionText = "Отсканируйте штрихкод товара"
@@ -504,38 +522,18 @@ fun ProductClassifierStep(
 fun ProductClassifierCard(
     product: Product,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    isLocked: Boolean = false,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = product.name,
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = "Артикул: ${product.articleNumber}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = "ID: ${product.id}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
+    PlannedObjectCard(
+        title = product.name,
+        subtitle = "Артикул: ${product.articleNumber}\nID: ${product.id}",
+        isSelected = isSelected,
+        onClick = onClick,
+        isLocked = isLocked,
+        icon = icon
+    )
 }
 
 @Composable
@@ -545,6 +543,7 @@ fun BinStep(
     onObjectSelected: (Any) -> Unit,
     handleBarcode: (String) -> Unit,
     isStorage: Boolean,
+    isLocked: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val plannedBin = if (isStorage)
@@ -564,50 +563,64 @@ fun BinStep(
                 title = "Ячейка: ${plannedBin.code}",
                 subtitle = "Зона: ${plannedBin.zone}",
                 isSelected = selectedBin != null,
-                onClick = { onObjectSelected(plannedBin) }
+                onClick = { onObjectSelected(plannedBin) },
+                isLocked = isLocked,
+                icon = if (isLocked) Icons.Default.Lock else null
             )
 
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        WizardBarcodeField(
-            value = barcodeValue,
-            onValueChange = { barcodeValue = it },
-            onSearch = {
-                if (barcodeValue.isNotEmpty()) {
-                    Timber.d("Поиск ячейки по коду: $barcodeValue")
-                    handleBarcode(barcodeValue)
+        // Если поле заблокировано, показываем только выбранное значение
+        if (isLocked) {
+            selectedBin?.let { bin ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    PlannedObjectCard(
+                        title = "Ячейка: ${bin.code}",
+                        subtitle = bin.zone.takeIf { it.isNotEmpty() }?.let { "Зона: $it" },
+                        isSelected = true,
+                        onClick = { /* Ничего не делаем, поле заблокировано */ },
+                        isLocked = true,
+                        icon = Icons.Default.Lock
+                    )
                 }
-            },
-            onScannerClick = { showScanner = true },
-            label = if (isStorage) "Код ячейки хранения" else "Код ячейки размещения",
-            placeholder = "Введите или отсканируйте код ячейки"
-        )
-
-        if (selectedBin != null && selectedBin != plannedBin) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "Выбранная ячейка:",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    Text(
-                        text = selectedBin.code,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    if (selectedBin.zone.isNotEmpty()) {
-                        Text(
-                            text = "Зона: ${selectedBin.zone}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+            }
+        } else {
+            // Обычный UI с возможностью выбора
+            WizardBarcodeField(
+                value = barcodeValue,
+                onValueChange = { barcodeValue = it },
+                onSearch = {
+                    if (barcodeValue.isNotEmpty()) {
+                        Timber.d("Поиск ячейки по коду: $barcodeValue")
+                        handleBarcode(barcodeValue)
                     }
+                },
+                onScannerClick = { showScanner = true },
+                label = if (isStorage) "Код ячейки хранения" else "Код ячейки размещения",
+                placeholder = "Введите или отсканируйте код ячейки"
+            )
+
+            if (selectedBin != null && selectedBin != plannedBin) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    PlannedObjectCard(
+                        title = "Ячейка: ${selectedBin.code}",
+                        subtitle = selectedBin.zone.takeIf { it.isNotEmpty() }?.let { "Зона: $it" },
+                        isSelected = true,
+                        onClick = { /* Уже выбрано */ }
+                    )
                 }
             }
         }
@@ -633,6 +646,7 @@ fun PalletStep(
     onObjectSelected: (Any) -> Unit,
     handleBarcode: (String) -> Unit,
     isStorage: Boolean,
+    isLocked: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val plannedPallet = if (isStorage)
@@ -652,47 +666,63 @@ fun PalletStep(
                 title = "Паллета: ${plannedPallet.code}",
                 subtitle = if (plannedPallet.isClosed) "Закрыта" else "Открыта",
                 isSelected = selectedPallet != null,
-                onClick = { onObjectSelected(plannedPallet) }
+                onClick = { onObjectSelected(plannedPallet) },
+                isLocked = isLocked,
+                icon = if (isLocked) Icons.Default.Lock else null
             )
 
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        WizardBarcodeField(
-            value = barcodeValue,
-            onValueChange = { barcodeValue = it },
-            onSearch = {
-                if (barcodeValue.isNotEmpty()) {
-                    Timber.d("Поиск по введенному штрихкоду: $barcodeValue")
-                    handleBarcode(barcodeValue)
+        // Если поле заблокировано, показываем только выбранное значение
+        if (isLocked) {
+            selectedPallet?.let { pallet ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    PlannedObjectCard(
+                        title = "Паллета: ${pallet.code}",
+                        subtitle = if (pallet.isClosed) "Закрыта" else "Открыта",
+                        isSelected = true,
+                        onClick = { /* Ничего не делаем, поле заблокировано */ },
+                        isLocked = true,
+                        icon = Icons.Default.Lock
+                    )
                 }
-            },
-            onScannerClick = { showScanner = true },
-            label = if (isStorage) "Код паллеты хранения" else "Код паллеты размещения",
-            placeholder = "Введите или отсканируйте код паллеты"
-        )
+            }
+        } else {
+            // Обычный UI с возможностью выбора
+            WizardBarcodeField(
+                value = barcodeValue,
+                onValueChange = { barcodeValue = it },
+                onSearch = {
+                    if (barcodeValue.isNotEmpty()) {
+                        Timber.d("Поиск по введенному штрихкоду: $barcodeValue")
+                        handleBarcode(barcodeValue)
+                    }
+                },
+                onScannerClick = { showScanner = true },
+                label = if (isStorage) "Код паллеты хранения" else "Код паллеты размещения",
+                placeholder = "Введите или отсканируйте код паллеты"
+            )
 
-        if (selectedPallet != null && selectedPallet != plannedPallet) {
-            Spacer(modifier = Modifier.height(16.dp))
+            if (selectedPallet != null && selectedPallet != plannedPallet) {
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "Выбранная паллета:",
-                        style = MaterialTheme.typography.titleSmall
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
                     )
-                    Text(
-                        text = selectedPallet.code,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = if (selectedPallet.isClosed) "Закрыта" else "Открыта",
-                        style = MaterialTheme.typography.bodyMedium
+                ) {
+                    PlannedObjectCard(
+                        title = "Паллета: ${selectedPallet.code}",
+                        subtitle = if (selectedPallet.isClosed) "Закрыта" else "Открыта",
+                        isSelected = true,
+                        onClick = { /* Уже выбрано */ }
                     )
                 }
             }
@@ -704,7 +734,7 @@ fun PalletStep(
             onBarcodeScanned = { barcode ->
                 barcodeValue = barcode
                 showScanner = false
-                handleBarcode(barcodeValue)
+                handleBarcode(barcode)
             },
             onClose = { showScanner = false },
             instructionText = if (isStorage) "Отсканируйте код паллеты хранения" else "Отсканируйте код паллеты размещения"
@@ -717,6 +747,7 @@ fun QuantityStep(
     step: ActionStepTemplate,
     state: ActionWizardState,
     onQuantityChanged: (Float, Boolean) -> Unit,
+    isLocked: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val plannedQuantity = state.plannedAction?.quantity ?: 0f
@@ -735,13 +766,15 @@ fun QuantityStep(
         mutableStateOf(if (selectedQuantity > 0) selectedQuantity.toString() else "")
     }
 
-    // Устанавливаем фокус на поле ввода при первом отображении
+    // Устанавливаем фокус на поле ввода при первом отображении, если не заблокировано
     LaunchedEffect(Unit) {
-        try {
-            delay(100)
-            focusRequester.requestFocus()
-        } catch (e: Exception) {
-            Timber.e(e, "Ошибка при установке фокуса на поле ввода количества")
+        if (!isLocked) {
+            try {
+                delay(100)
+                focusRequester.requestFocus()
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при установке фокуса на поле ввода количества")
+            }
         }
     }
 
@@ -758,46 +791,86 @@ fun QuantityStep(
             FormSpacer(8)
         }
 
-        WizardQuantityInput(
-            value = inputValue,
-            onValueChange = { newValue ->
-                inputValue = newValue
-                // Передаем значение в ViewModel БЕЗ автоперехода
-                newValue.toFloatOrNull()?.let { onQuantityChanged(it, false) }
-            },
-            onIncrement = {
-                val newValue = (inputValue.toFloatOrNull() ?: 0f) + 1f
-                inputValue = newValue.toString()
-                // Передаем значение в ViewModel БЕЗ автоперехода
-                onQuantityChanged(newValue, false)
-            },
-            onDecrement = {
-                val currentValue = inputValue.toFloatOrNull() ?: 0f
-                if (currentValue > 1) {
-                    val newValue = currentValue - 1f
+        // Если поле заблокировано буфером, показываем только заблокированную карточку
+        if (isLocked) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Количество (заблокировано):",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        text = formatQuantityDisplay(selectedQuantity),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Заблокировано",
+                            tint = Color(0xFFEC407A),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Значение заблокировано",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFEC407A)
+                        )
+                    }
+                }
+            }
+        } else {
+            WizardQuantityInput(
+                value = inputValue,
+                onValueChange = { newValue ->
+                    inputValue = newValue
+                    // Передаем значение в ViewModel БЕЗ автоперехода
+                    newValue.toFloatOrNull()?.let { onQuantityChanged(it, false) }
+                },
+                onIncrement = {
+                    val newValue = (inputValue.toFloatOrNull() ?: 0f) + 1f
                     inputValue = newValue.toString()
                     // Передаем значение в ViewModel БЕЗ автоперехода
                     onQuantityChanged(newValue, false)
-                }
-            },
-            onImeAction = {
-                // Только при нажатии на кнопку Done делаем автопереход
-                if (inputValue.isNotEmpty()) {
-                    inputValue.toFloatOrNull()?.let {
-                        Timber.d("IME-действие: количество $it")
-                        // Передаем значение в ViewModel С автопереходом
-                        onQuantityChanged(it, true)
+                },
+                onDecrement = {
+                    val currentValue = inputValue.toFloatOrNull() ?: 0f
+                    if (currentValue > 1) {
+                        val newValue = currentValue - 1f
+                        inputValue = newValue.toString()
+                        // Передаем значение в ViewModel БЕЗ автоперехода
+                        onQuantityChanged(newValue, false)
                     }
-                }
-            },
-            isError = state.error != null,
-            errorText = state.error,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-            fontSize = 24.sp,
-            label = step.promptText,
-            focusRequester = focusRequester
-        )
+                },
+                onImeAction = {
+                    // Только при нажатии на кнопку Done делаем автопереход
+                    if (inputValue.isNotEmpty()) {
+                        inputValue.toFloatOrNull()?.let {
+                            Timber.d("IME-действие: количество $it")
+                            // Передаем значение в ViewModel С автопереходом
+                            onQuantityChanged(it, true)
+                        }
+                    }
+                },
+                isError = state.error != null,
+                errorText = state.error,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                fontSize = 24.sp,
+                label = step.promptText,
+                focusRequester = focusRequester
+            )
+        }
 
         if (willExceedPlan && plannedQuantity > 0) {
             FormSpacer(8)
@@ -864,10 +937,13 @@ fun PlannedObjectCard(
     subtitle: String? = null,
     isSelected: Boolean,
     onClick: () -> Unit,
+    isLocked: Boolean = false,
+    icon: ImageVector? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth()
+            .let { if (!isLocked) it.clickable(onClick = onClick) else it },
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
                 MaterialTheme.colorScheme.primaryContainer
@@ -878,7 +954,6 @@ fun PlannedObjectCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick)
                 .padding(16.dp),
             contentAlignment = Alignment.CenterStart
         ) {
@@ -892,6 +967,23 @@ fun PlannedObjectCard(
                         text = subtitle,
                         style = MaterialTheme.typography.bodyMedium
                     )
+                }
+                if (isLocked) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = icon ?: Icons.Default.Lock,
+                            contentDescription = "Заблокировано",
+                            tint = Color(0xFFEC407A),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Значение заблокировано",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFEC407A)
+                        )
+                    }
                 }
             }
         }

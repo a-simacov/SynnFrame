@@ -1,8 +1,12 @@
 package com.synngate.synnframe.presentation.ui.taskx.wizard.service
 
+import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.taskx.BinX
+import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
+import com.synngate.synnframe.presentation.ui.taskx.enums.BufferUsage
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
 import com.synngate.synnframe.presentation.ui.taskx.wizard.result.StateTransitionResult
@@ -103,7 +107,10 @@ class WizardController(
             return StateTransitionResult.error(state, "Валидация шага не пройдена")
         }
 
-        val newState = stateMachine.transition(state, WizardEvent.NextStep)
+        // Перед переходом сохраняем объект в буфер, если нужно
+        val stateAfterBuffer = saveToBufferIfNeeded(state).getNewState()
+
+        val newState = stateMachine.transition(stateAfterBuffer, WizardEvent.NextStep)
         return StateTransitionResult.success(newState)
     }
 
@@ -114,6 +121,11 @@ class WizardController(
 
     fun setObjectForCurrentStep(state: ActionWizardState, obj: Any): StateTransitionResult<ActionWizardState> {
         val currentStep = state.getCurrentStep() ?: return StateTransitionResult.error(state, "Текущий шаг не найден")
+
+        // Если шаг заблокирован буфером (режим ALWAYS), не позволяем изменять значение
+        if (state.lockedObjectSteps.contains(currentStep.id)) {
+            return StateTransitionResult.error(state, "Шаг заблокирован буфером (режим ALWAYS)")
+        }
 
         var updatedState = state
         if (state.error != null) {
@@ -161,7 +173,10 @@ class WizardController(
             return StateTransitionResult.error(state, "Автопереход отменен: ошибка валидации")
         }
 
-        val newState = stateMachine.transition(state, WizardEvent.NextStep)
+        // Перед переходом сохраняем объект в буфер, если нужно
+        val stateAfterBuffer = saveToBufferIfNeeded(state).getNewState()
+
+        val newState = stateMachine.transition(stateAfterBuffer, WizardEvent.NextStep)
 
         val success = newState != state
         Timber.d("Результат автоперехода: success=$success")
@@ -171,6 +186,108 @@ class WizardController(
         } else {
             StateTransitionResult.error(state, "Автопереход не выполнен: состояние не изменилось")
         }
+    }
+
+    /**
+     * Метод для проверки и применения значения из буфера для текущего шага
+     */
+    fun applyBufferValueIfNeeded(state: ActionWizardState): StateTransitionResult<ActionWizardState> {
+        val currentStep = state.getCurrentStep() ?:
+        return StateTransitionResult.success(state)
+
+        // Проверяем, можно ли использовать буфер для текущего шага
+        val bufferUsage = currentStep.bufferUsage
+        if (bufferUsage == BufferUsage.NEVER) {
+            Timber.d("Буфер не используется для шага ${currentStep.id} (режим NEVER)")
+            return StateTransitionResult.success(state)
+        }
+
+        // Если уже выбран объект для этого шага, не применяем буфер
+        if (state.selectedObjects.containsKey(currentStep.id)) {
+            Timber.d("Объект уже выбран для шага ${currentStep.id}, буфер не применяется")
+            return StateTransitionResult.success(state)
+        }
+
+        // Получаем объект из буфера
+        val taskBuffer = TaskXDataHolderSingleton.taskBuffer
+        val bufferValue = taskBuffer.getObjectForField(currentStep.factActionField)
+
+        if (bufferValue == null) {
+            Timber.d("Объект не найден в буфере для поля ${currentStep.factActionField}")
+            return StateTransitionResult.success(state)
+        }
+
+        val (obj, source) = bufferValue
+        val isBufferObjectLocked = bufferUsage == BufferUsage.ALWAYS
+
+        Timber.d("Применяем объект из буфера для шага ${currentStep.id}: $obj, source: $source, locked: $isBufferObjectLocked")
+
+        // Применяем значение из буфера
+        val updatedState = stateMachine.transition(
+            state,
+            WizardEvent.SetObjectFromBuffer(obj, currentStep.id, source, isBufferObjectLocked)
+        )
+
+        return StateTransitionResult.success(updatedState)
+    }
+
+    /**
+     * Метод для автоматического перехода при применении объекта из буфера
+     */
+    fun tryAutoAdvanceFromBuffer(state: ActionWizardState): StateTransitionResult<ActionWizardState> {
+        val currentStep = state.getCurrentStep()
+        if (currentStep == null || !state.isCurrentStepLockedByBuffer()) {
+            return StateTransitionResult.success(state)
+        }
+
+        Timber.d("Автопереход из буфера для шага ${currentStep.id}")
+
+        // Для заблокированных полей (режим ALWAYS) автоматически переходим к следующему шагу
+        val updatedState = stateMachine.transition(state, WizardEvent.AutoAdvanceFromBuffer)
+        return StateTransitionResult.success(updatedState)
+    }
+
+    /**
+     * Метод для сохранения объекта в буфер, если это необходимо
+     */
+    fun saveToBufferIfNeeded(state: ActionWizardState): StateTransitionResult<ActionWizardState> {
+        val currentStep = state.getCurrentStep() ?:
+        return StateTransitionResult.success(state)
+
+        // Если шаг требует сохранения в буфер
+        if (currentStep.saveToTaskBuffer) {
+            val selectedObject = state.selectedObjects[currentStep.id] ?:
+            return StateTransitionResult.success(state)
+
+            val taskBuffer = TaskXDataHolderSingleton.taskBuffer
+
+            Timber.d("Сохранение объекта ${selectedObject.javaClass.simpleName} в буфер из шага ${currentStep.name}")
+
+            // Сохраняем объект в буфер с указанием источника "wizard"
+            when (currentStep.factActionField) {
+                FactActionField.STORAGE_BIN ->
+                    taskBuffer.addBin(selectedObject as BinX, true, "wizard")
+                FactActionField.ALLOCATION_BIN ->
+                    taskBuffer.addBin(selectedObject as BinX, false, "wizard")
+                FactActionField.STORAGE_PALLET ->
+                    taskBuffer.addPallet(selectedObject as Pallet, true, "wizard")
+                FactActionField.ALLOCATION_PALLET ->
+                    taskBuffer.addPallet(selectedObject as Pallet, false, "wizard")
+                FactActionField.STORAGE_PRODUCT_CLASSIFIER ->
+                    taskBuffer.addProduct(selectedObject as Product, "wizard")
+                FactActionField.STORAGE_PRODUCT ->
+                    taskBuffer.addTaskProduct(selectedObject as TaskProduct, "wizard")
+                else -> {} // Другие типы не сохраняем
+            }
+        }
+
+        // Если для шага установлен режим CLEAR, очищаем соответствующее поле в буфере
+        if (currentStep.bufferUsage == BufferUsage.CLEAR) {
+            Timber.d("Очистка поля ${currentStep.factActionField} в буфере (режим CLEAR)")
+            TaskXDataHolderSingleton.taskBuffer.clearField(currentStep.factActionField)
+        }
+
+        return StateTransitionResult.success(state)
     }
 
     fun showExitDialog(state: ActionWizardState): StateTransitionResult<ActionWizardState> {

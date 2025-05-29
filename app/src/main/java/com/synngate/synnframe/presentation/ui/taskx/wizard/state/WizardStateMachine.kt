@@ -72,6 +72,7 @@ class WizardStateMachine {
             }
 
             is WizardEvent.ShowExitDialog -> state.copy(showExitDialog = true)
+
             is WizardEvent.SetObject -> {
                 val updatedObjects = state.selectedObjects.toMutableMap()
                 updatedObjects[event.stepId] = event.obj
@@ -87,6 +88,47 @@ class WizardStateMachine {
                     factAction = updatedFactAction,
                     error = null
                 )
+            }
+
+            // Обработка нового события установки объекта из буфера
+            is WizardEvent.SetObjectFromBuffer -> {
+                val updatedObjects = state.selectedObjects.toMutableMap()
+                updatedObjects[event.stepId] = event.obj
+
+                val updatedBufferSources = state.bufferObjectSources.toMutableMap()
+                updatedBufferSources[event.stepId] = event.source
+
+                val updatedLockedSteps = if (event.isLocked) {
+                    state.lockedObjectSteps + event.stepId
+                } else {
+                    state.lockedObjectSteps
+                }
+
+                val updatedFactAction = updateFactActionWithObject(
+                    state.factAction,
+                    state.getCurrentStep()?.factActionField,
+                    event.obj
+                )
+
+                state.copy(
+                    selectedObjects = updatedObjects,
+                    factAction = updatedFactAction,
+                    bufferObjectSources = updatedBufferSources,
+                    lockedObjectSteps = updatedLockedSteps,
+                    error = null
+                )
+            }
+
+            // Обработка автоматического перехода из буфера
+            is WizardEvent.AutoAdvanceFromBuffer -> {
+                val currentStep = state.currentStepIndex
+                val totalSteps = state.steps.size
+
+                if (currentStep >= totalSteps - 1) {
+                    state.copy(showSummary = true)
+                } else {
+                    state.copy(currentStepIndex = currentStep + 1)
+                }
             }
 
             is WizardEvent.SetError -> state.copy(error = event.error)
@@ -159,6 +201,36 @@ class WizardStateMachine {
                 state.copy(
                     selectedObjects = updatedObjects,
                     factAction = updatedFactAction,
+                    error = null,
+                    isLoading = false
+                )
+            }
+
+            // Обработка события установки объекта из буфера в состоянии ошибки
+            is WizardEvent.SetObjectFromBuffer -> {
+                val updatedObjects = state.selectedObjects.toMutableMap()
+                updatedObjects[event.stepId] = event.obj
+
+                val updatedBufferSources = state.bufferObjectSources.toMutableMap()
+                updatedBufferSources[event.stepId] = event.source
+
+                val updatedLockedSteps = if (event.isLocked) {
+                    state.lockedObjectSteps + event.stepId
+                } else {
+                    state.lockedObjectSteps
+                }
+
+                val updatedFactAction = updateFactActionWithObject(
+                    state.factAction,
+                    state.getCurrentStep()?.factActionField,
+                    event.obj
+                )
+
+                state.copy(
+                    selectedObjects = updatedObjects,
+                    factAction = updatedFactAction,
+                    bufferObjectSources = updatedBufferSources,
+                    lockedObjectSteps = updatedLockedSteps,
                     error = null,
                     isLoading = false
                 )

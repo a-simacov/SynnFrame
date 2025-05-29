@@ -58,6 +58,34 @@ class ActionWizardViewModel(
         initResult.getNewState().plannedAction?.storageProductClassifier?.let { product ->
             loadClassifierProductInfo(product.id)
         }
+
+        // После инициализации инициализируем текущий шаг (проверяем буфер)
+        initializeStep(initResult.getNewState().currentStepIndex)
+    }
+
+    /**
+     * Инициализация шага: проверка и применение значений из буфера
+     */
+    private fun initializeStep(stepIndex: Int) {
+        val state = uiState.value
+        if (stepIndex < 0 || stepIndex >= state.steps.size) return
+
+        // Проверяем, нужно ли применить значение из буфера
+        launchIO {
+            val applyBufferResult = controller.applyBufferValueIfNeeded(state)
+            updateState { applyBufferResult.getNewState() }
+
+            // Если объект из буфера успешно применен
+            if (applyBufferResult.getNewState() != state) {
+                Timber.d("Применено значение из буфера для шага $stepIndex")
+
+                // Для заблокированных полей (режим ALWAYS) автоматически переходим к следующему шагу
+                if (applyBufferResult.getNewState().isCurrentStepLockedByBuffer()) {
+                    delay(300) // Небольшая задержка для UI
+                    tryAutoAdvanceFromBuffer()
+                }
+            }
+        }
     }
 
     private fun loadClassifierProductInfo(productId: String) {
@@ -99,6 +127,9 @@ class ActionWizardViewModel(
                 validateCurrentStep()
             }
             updateState { result.getNewState() }
+
+            // После перехода на новый шаг инициализируем его
+            initializeStep(result.getNewState().currentStepIndex)
         }
     }
 
@@ -125,6 +156,25 @@ class ActionWizardViewModel(
 
             if (result.isSuccess()) {
                 updateState { result.getNewState() }
+
+                // После автоперехода инициализируем новый шаг
+                initializeStep(result.getNewState().currentStepIndex)
+            }
+        }
+    }
+
+    /**
+     * Автоматический переход для объектов из буфера с режимом ALWAYS
+     */
+    private fun tryAutoAdvanceFromBuffer() {
+        launchIO {
+            val result = controller.tryAutoAdvanceFromBuffer(uiState.value)
+
+            if (result.isSuccess()) {
+                updateState { result.getNewState() }
+
+                // Рекурсивно проверяем следующий шаг на наличие значений в буфере
+                initializeStep(result.getNewState().currentStepIndex)
             }
         }
     }
@@ -145,6 +195,13 @@ class ActionWizardViewModel(
             currentState == WizardState.EXIT_DIALOG ||
             currentState == WizardState.SENDING
         ) {
+            return
+        }
+
+        // Если текущий шаг заблокирован буфером, не обрабатываем сканирования
+        if (uiState.value.isCurrentStepLockedByBuffer()) {
+            Timber.d("Шаг заблокирован буфером (режим ALWAYS), сканирование игнорируется")
+            sendEvent(ActionWizardEvent.ShowSnackbar("Поле заблокировано буфером"))
             return
         }
 

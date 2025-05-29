@@ -14,6 +14,18 @@ sealed class WizardEvent {
 
     data class SetObject(val obj: Any, val stepId: String) : WizardEvent()
 
+    // Новые события для работы с буфером
+    data class SetObjectFromBuffer(
+        val obj: Any,
+        val stepId: String,
+        val source: String,
+        val isLocked: Boolean
+    ) : WizardEvent()
+
+    object AutoAdvanceFromBuffer : WizardEvent()
+
+    data class ClearFieldInBuffer(val field: com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField) : WizardEvent()
+
     data class SetError(val error: String) : WizardEvent()
     object ClearError : WizardEvent()
 

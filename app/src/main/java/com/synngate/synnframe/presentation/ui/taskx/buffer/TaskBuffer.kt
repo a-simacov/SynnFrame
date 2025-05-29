@@ -12,9 +12,67 @@ import java.time.LocalDateTime
  * Автоматически заполняет поля в визарде действий
  */
 class TaskBuffer {
+    // Хранение одного объекта для каждого типа поля с указанием источника
+    private var storageBin: Pair<BinX, String>? = null
+    private var storagePallet: Pair<Pallet, String>? = null
+    private var storageProductClassifier: Pair<Product, String>? = null
+    private var storageProduct: Pair<TaskProduct, String>? = null
+    private var allocationBin: Pair<BinX, String>? = null
+    private var allocationPallet: Pair<Pallet, String>? = null
 
-    private val items = mutableListOf<BufferItem>()
+    // Список всех добавленных объектов для отображения истории
+    private val history = mutableListOf<BufferItem>()
 
+    // Максимальный размер истории
+    private val MAX_HISTORY_SIZE = 20
+
+    /**
+     * Добавление ячейки в буфер
+     */
+    fun addBin(bin: BinX, isStorage: Boolean, source: String) {
+        val type = if (isStorage) BufferItemType.STORAGE_BIN else BufferItemType.ALLOCATION_BIN
+        val item = BufferItem(
+            id = generateId(),
+            type = type,
+            data = bin,
+            source = source,
+            savedAt = LocalDateTime.now()
+        )
+
+        if (isStorage) {
+            storageBin = Pair(bin, source)
+        } else {
+            allocationBin = Pair(bin, source)
+        }
+
+        addToHistory(item)
+    }
+
+    /**
+     * Добавление паллеты в буфер
+     */
+    fun addPallet(pallet: Pallet, isStorage: Boolean, source: String) {
+        val type = if (isStorage) BufferItemType.STORAGE_PALLET else BufferItemType.ALLOCATION_PALLET
+        val item = BufferItem(
+            id = generateId(),
+            type = type,
+            data = pallet,
+            source = source,
+            savedAt = LocalDateTime.now()
+        )
+
+        if (isStorage) {
+            storagePallet = Pair(pallet, source)
+        } else {
+            allocationPallet = Pair(pallet, source)
+        }
+
+        addToHistory(item)
+    }
+
+    /**
+     * Добавление товара классификатора в буфер
+     */
     fun addProduct(product: Product, source: String) {
         val item = BufferItem(
             id = generateId(),
@@ -23,10 +81,14 @@ class TaskBuffer {
             source = source,
             savedAt = LocalDateTime.now()
         )
-        items.add(0, item) // Добавляем в начало для быстрого доступа
-        limitBufferSize()
+
+        storageProductClassifier = Pair(product, source)
+        addToHistory(item)
     }
 
+    /**
+     * Добавление товара задания в буфер
+     */
     fun addTaskProduct(taskProduct: TaskProduct, source: String) {
         val item = BufferItem(
             id = generateId(),
@@ -35,84 +97,81 @@ class TaskBuffer {
             source = source,
             savedAt = LocalDateTime.now()
         )
-        items.add(0, item)
-        limitBufferSize()
+
+        storageProduct = Pair(taskProduct, source)
+        addToHistory(item)
     }
 
-    fun addPallet(pallet: Pallet, source: String) {
-        val item = BufferItem(
-            id = generateId(),
-            type = BufferItemType.PALLET,
-            data = pallet,
-            source = source,
-            savedAt = LocalDateTime.now()
-        )
-        items.add(0, item)
-        limitBufferSize()
-    }
-
-    fun addBin(bin: BinX, source: String) {
-        val item = BufferItem(
-            id = generateId(),
-            type = BufferItemType.BIN,
-            data = bin,
-            source = source,
-            savedAt = LocalDateTime.now()
-        )
-        items.add(0, item)
-        limitBufferSize()
-    }
-
-    fun getLastPallet(): Pair<Pallet, String>? {
-        val item = items.firstOrNull { it.type == BufferItemType.PALLET }
-        return if (item != null) Pair(item.data as Pallet, item.source) else null
-    }
-
-    fun getLastBin(): Pair<BinX, String>? {
-        val item = items.firstOrNull { it.type == BufferItemType.BIN }
-        return if (item != null) Pair(item.data as BinX, item.source) else null
-    }
-
-    fun getLastProduct(): Pair<Product, String>? {
-        val item = items.firstOrNull { it.type == BufferItemType.PRODUCT }
-        return if (item != null) Pair(item.data as Product, item.source) else null
-    }
-
-    fun getLastTaskProduct(): Pair<TaskProduct, String>? {
-        val item = items.firstOrNull { it.type == BufferItemType.TASK_PRODUCT }
-        return if (item != null) Pair(item.data as TaskProduct, item.source) else null
-    }
-
-    fun getItemForField(field: FactActionField): Pair<Any, String>? {
+    /**
+     * Получение объекта из буфера по типу поля
+     */
+    fun getObjectForField(field: FactActionField): Pair<Any, String>? {
         return when (field) {
-            FactActionField.STORAGE_PALLET, FactActionField.ALLOCATION_PALLET -> getLastPallet()
-            FactActionField.STORAGE_BIN, FactActionField.ALLOCATION_BIN -> getLastBin()
-            FactActionField.STORAGE_PRODUCT_CLASSIFIER -> getLastProduct()
-            FactActionField.STORAGE_PRODUCT -> getLastTaskProduct()
+            FactActionField.STORAGE_BIN -> storageBin
+            FactActionField.STORAGE_PALLET -> storagePallet
+            FactActionField.STORAGE_PRODUCT_CLASSIFIER -> storageProductClassifier
+            FactActionField.STORAGE_PRODUCT -> storageProduct
+            FactActionField.ALLOCATION_BIN -> allocationBin
+            FactActionField.ALLOCATION_PALLET -> allocationPallet
             else -> null
         }
     }
 
-    fun getAllItems(): List<BufferItem> = items.toList()
-
-    fun clear() {
-        items.clear()
-    }
-
-    fun removeItem(id: String) {
-        items.removeAll { it.id == id }
-    }
-
-    private fun limitBufferSize() {
-        // Ограничиваем буфер 20 элементами
-        if (items.size > 20) {
-            items.subList(20, items.size).clear()
+    /**
+     * Очистка поля в буфере
+     */
+    fun clearField(field: FactActionField) {
+        when (field) {
+            FactActionField.STORAGE_BIN -> storageBin = null
+            FactActionField.STORAGE_PALLET -> storagePallet = null
+            FactActionField.STORAGE_PRODUCT_CLASSIFIER -> storageProductClassifier = null
+            FactActionField.STORAGE_PRODUCT -> storageProduct = null
+            FactActionField.ALLOCATION_BIN -> allocationBin = null
+            FactActionField.ALLOCATION_PALLET -> allocationPallet = null
+            else -> {} // Другие поля не хранятся в буфере
         }
     }
 
+    /**
+     * Полная очистка буфера
+     */
+    fun clear() {
+        storageBin = null
+        storagePallet = null
+        storageProductClassifier = null
+        storageProduct = null
+        allocationBin = null
+        allocationPallet = null
+        history.clear()
+    }
+
+    /**
+     * Получение истории буфера
+     */
+    fun getHistory(): List<BufferItem> = history.toList()
+
+    /**
+     * Добавление элемента в историю с ограничением размера
+     */
+    private fun addToHistory(item: BufferItem) {
+        // Добавляем в начало списка
+        history.add(0, item)
+
+        // Ограничиваем размер истории
+        if (history.size > MAX_HISTORY_SIZE) {
+            history.subList(MAX_HISTORY_SIZE, history.size).clear()
+        }
+    }
+
+    /**
+     * Генерация уникального ID для элемента буфера
+     */
     private fun generateId(): String = "buffer_${System.currentTimeMillis()}"
 }
 
+/**
+ * Элемент буфера с метаданными
+ */
 data class BufferItem(
     val id: String,
     val type: BufferItemType,
@@ -121,9 +180,14 @@ data class BufferItem(
     val savedAt: LocalDateTime
 )
 
+/**
+ * Типы объектов в буфере
+ */
 enum class BufferItemType {
     PRODUCT,
     TASK_PRODUCT,
-    PALLET,
-    BIN
+    STORAGE_PALLET,
+    ALLOCATION_PALLET,
+    STORAGE_BIN,
+    ALLOCATION_BIN
 }

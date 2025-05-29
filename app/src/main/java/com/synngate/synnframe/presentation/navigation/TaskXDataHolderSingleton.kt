@@ -21,6 +21,7 @@ object TaskXDataHolderSingleton {
     val currentTaskType: TaskTypeX?
         get() = _currentTask.value?.taskType
 
+    // Буфер задания для хранения и повторного использования объектов
     private val _taskBuffer = TaskBuffer()
     val taskBuffer: TaskBuffer get() = _taskBuffer
 
@@ -38,7 +39,7 @@ object TaskXDataHolderSingleton {
 
         _currentTask.value = taskWithType
         _endpoint = endpoint
-        _taskBuffer.clear()
+        // НЕ очищаем буфер при установке данных, чтобы сохранять данные между заданиями
 
         Timber.d("TaskXDataHolderSingleton: данные задания установлены, endpoint = $endpoint")
     }

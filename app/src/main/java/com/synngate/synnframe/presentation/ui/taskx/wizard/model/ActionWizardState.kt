@@ -25,7 +25,11 @@ data class ActionWizardState(
 
     val classifierProductInfo: Product? = null,
     val isLoadingProductInfo: Boolean = false,
-    val productInfoError: String? = null
+    val productInfoError: String? = null,
+
+    // Новые поля для работы с буфером
+    val bufferObjectSources: Map<String, String> = emptyMap(), // stepId -> source
+    val lockedObjectSteps: Set<String> = emptySet()  // stepId заблокированных объектов (ALWAYS)
 ) {
 
     fun getCurrentStep(): ActionStepTemplate? {
@@ -64,5 +68,23 @@ data class ActionWizardState(
                 plannedAction.storageProduct == null &&
                 step.inputAdditionalProps &&
                 step.factActionField == FactActionField.STORAGE_PRODUCT
+    }
+
+    // Новые вспомогательные функции для буфера
+
+    /**
+     * Проверяет, заблокирован ли текущий шаг буфером (режим ALWAYS)
+     */
+    fun isCurrentStepLockedByBuffer(): Boolean {
+        val currentStep = getCurrentStep() ?: return false
+        return lockedObjectSteps.contains(currentStep.id)
+    }
+
+    /**
+     * Возвращает источник данных из буфера для текущего шага
+     */
+    fun getBufferSourceForCurrentStep(): String? {
+        val currentStep = getCurrentStep() ?: return null
+        return bufferObjectSources[currentStep.id]
     }
 }
