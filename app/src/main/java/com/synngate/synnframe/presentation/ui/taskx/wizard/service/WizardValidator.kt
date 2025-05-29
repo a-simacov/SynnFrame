@@ -16,7 +16,7 @@ class WizardValidator(
      * Проверяет текущий шаг на валидность
      * @return true, если шаг прошел валидацию
      */
-    fun validateCurrentStep(state: ActionWizardState): Boolean {
+    suspend fun validateCurrentStep(state: ActionWizardState): Boolean {
         val currentStep = state.steps.getOrNull(state.currentStepIndex) ?: return false
 
         if (!currentStep.isRequired) {

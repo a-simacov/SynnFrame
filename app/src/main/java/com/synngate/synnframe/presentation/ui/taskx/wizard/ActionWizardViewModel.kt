@@ -102,10 +102,12 @@ class ActionWizardViewModel(
     }
 
     fun confirmCurrentStep() {
-        val newState = controller.confirmCurrentStep(uiState.value) {
-            validateCurrentStep()
+        launchIO {
+            val newState = controller.confirmCurrentStep(uiState.value) {
+                validateCurrentStep()
+            }
+            updateState { newState }
         }
-        updateState { newState }
     }
 
     fun previousStep() {
@@ -126,16 +128,18 @@ class ActionWizardViewModel(
     }
 
     private fun tryAutoAdvance() {
-        val (success, newState) = controller.tryAutoAdvance(uiState.value) {
-            validateCurrentStep()
-        }
+        launchIO {
+            val (success, newState) = controller.tryAutoAdvance(uiState.value) {
+                validateCurrentStep()
+            }
 
-        if (success) {
-            updateState { newState }
+            if (success) {
+                updateState { newState }
+            }
         }
     }
 
-    private fun validateCurrentStep(): Boolean {
+    private suspend fun validateCurrentStep(): Boolean {
         val isValid = validator.validateCurrentStep(uiState.value)
 
         if (!isValid) {

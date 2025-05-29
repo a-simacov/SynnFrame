@@ -98,7 +98,7 @@ class WizardController(
     /**
      * Обрабатывает нажатие на кнопку "Далее" для текущего шага
      */
-    fun confirmCurrentStep(state: ActionWizardState, validateStep: () -> Boolean): ActionWizardState {
+    suspend fun confirmCurrentStep(state: ActionWizardState, validateStep: suspend () -> Boolean): ActionWizardState {
         val currentStepIndex = state.currentStepIndex
         val steps = state.steps
 
@@ -141,7 +141,7 @@ class WizardController(
     /**
      * Пытается выполнить автоматический переход к следующему шагу
      */
-    fun tryAutoAdvance(state: ActionWizardState, validateStep: () -> Boolean): Pair<Boolean, ActionWizardState> {
+    suspend fun tryAutoAdvance(state: ActionWizardState, validateStep: suspend () -> Boolean): Pair<Boolean, ActionWizardState> {
         // Если есть ошибка, не выполняем автопереход
         if (state.error != null) {
             Timber.d("Автопереход отменен: есть ошибка в состоянии")
