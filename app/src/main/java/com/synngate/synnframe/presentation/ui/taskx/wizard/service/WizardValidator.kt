@@ -36,8 +36,8 @@ class WizardValidator(
                 val validationResult = runCatching {
                     @Suppress("UNCHECKED_CAST")
                     val result = handler.validateObject(stepObject as Any, state, currentStep)
-                    if (!result.first) {
-                        Timber.d("Шаг ${currentStep.name} не прошел валидацию обработчика: ${result.second}")
+                    if (!result.isSuccess()) {
+                        Timber.d("Шаг ${currentStep.name} не прошел валидацию обработчика: ${result.getErrorMessage()}")
                         return false
                     }
                     true

@@ -52,12 +52,11 @@ class ActionWizardViewModel(
     private fun initializeWizard() {
         updateState { it.copy(isLoading = true) }
 
-        val initialState = controller.initializeWizard(taskId, actionId)
-
-        updateState { initialState }
+        val initResult = controller.initializeWizard(taskId, actionId)
+        updateState { initResult.getNewState() }
 
         // Загружаем дополнительную информацию о товаре, если необходимо
-        initialState.plannedAction?.storageProductClassifier?.let { product ->
+        initResult.getNewState().plannedAction?.storageProductClassifier?.let { product ->
             loadClassifierProductInfo(product.id)
         }
     }
@@ -103,21 +102,21 @@ class ActionWizardViewModel(
 
     fun confirmCurrentStep() {
         launchIO {
-            val newState = controller.confirmCurrentStep(uiState.value) {
+            val result = controller.confirmCurrentStep(uiState.value) {
                 validateCurrentStep()
             }
-            updateState { newState }
+            updateState { result.getNewState() }
         }
     }
 
     fun previousStep() {
-        val newState = controller.previousStep(uiState.value)
-        updateState { newState }
+        val result = controller.previousStep(uiState.value)
+        updateState { result.getNewState() }
     }
 
     fun setObjectForCurrentStep(obj: Any, autoAdvance: Boolean = true) {
-        val updatedState = controller.setObjectForCurrentStep(uiState.value, obj)
-        updateState { updatedState }
+        val result = controller.setObjectForCurrentStep(uiState.value, obj)
+        updateState { result.getNewState() }
 
         if (autoAdvance) {
             Timber.d("Вызываем автопереход после установки объекта: $obj")
@@ -129,12 +128,12 @@ class ActionWizardViewModel(
 
     private fun tryAutoAdvance() {
         launchIO {
-            val (success, newState) = controller.tryAutoAdvance(uiState.value) {
+            val result = controller.tryAutoAdvance(uiState.value) {
                 validateCurrentStep()
             }
 
-            if (success) {
-                updateState { newState }
+            if (result.isSuccess()) {
+                updateState { result.getNewState() }
             }
         }
     }
@@ -172,7 +171,7 @@ class ActionWizardViewModel(
         isProcessingBarcode = true
 
         // Показываем индикатор загрузки
-        updateState { controller.setLoading(it, true) }
+        updateState { controller.setLoading(it, true).getNewState() }
 
         // Запускаем задачу для гарантированного сброса флага обработки через 5 секунд
         // в любом случае (это страховка на случай сбоев)
@@ -181,35 +180,37 @@ class ActionWizardViewModel(
             if (isProcessingBarcode) {
                 Timber.d("Принудительный сброс флага обработки сканирования по таймауту")
                 isProcessingBarcode = false
-                updateState { controller.setLoading(it, false) } // Также сбрасываем состояние загрузки
+                updateState { controller.setLoading(it, false).getNewState() } // Также сбрасываем состояние загрузки
             }
         }
 
         // Запускаем задачу для обработки сканирования
         viewModelScope.launch {
             try {
-                val (success, foundObject, errorMessage) = objectSearchService.handleBarcode(uiState.value, barcode)
+                val result = objectSearchService.handleBarcode(uiState.value, barcode)
 
                 // Снимаем флаг загрузки
-                updateState { controller.setLoading(it, false) }
+                updateState { controller.setLoading(it, false).getNewState() }
 
-                if (success && foundObject != null) {
+                if (result.isSuccess() && result.isProcessingRequired()) {
                     // Устанавливаем найденный объект и пробуем выполнить автопереход
-                    setObjectForCurrentStep(foundObject, true)
-                } else {
+                    val foundObject = result.getResultData()
+                    if (foundObject != null) {
+                        setObjectForCurrentStep(foundObject, true)
+                    }
+                } else if (!result.isSuccess()) {
                     // Если получена ошибка, обрабатываем её
+                    val errorMessage = result.getErrorMessage()
                     if (errorMessage != null) {
-                        updateState { controller.setError(it, errorMessage) }
+                        updateState { controller.setError(it, errorMessage).getNewState() }
                         sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
                     }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при обработке штрих-кода: $barcode")
                 updateState {
-                    controller.setLoading(
-                        controller.setError(it, "Ошибка при обработке штрих-кода: ${e.message}"),
-                        false
-                    )
+                    val withError = controller.setError(it, "Ошибка при обработке штрих-кода: ${e.message}").getNewState()
+                    controller.setLoading(withError, false).getNewState()
                 }
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка при обработке штрих-кода: ${e.message}"))
             } finally {
@@ -237,35 +238,35 @@ class ActionWizardViewModel(
             }
 
             // Используем контроллер для перехода в состояние отправки
-            updateState { controller.submitForm(it) }
+            updateState { controller.submitForm(it).getNewState() }
 
             val syncWithServer = plannedAction.actionTemplate?.syncWithServer == true
-            val (success, errorMessage) = networkService.completeAction(factAction, syncWithServer)
+            val result = networkService.completeAction(factAction, syncWithServer)
 
-            if (success) {
+            if (result.isSuccess()) {
                 // Используем контроллер для обработки успешной отправки
-                updateState { controller.handleSendSuccess(it) }
+                updateState { controller.handleSendSuccess(it).getNewState() }
                 sendEvent(ActionWizardEvent.NavigateToTaskDetail)
             } else {
                 // Используем контроллер для обработки ошибки отправки
                 updateState {
-                    controller.handleSendFailure(it, errorMessage ?: "Неизвестная ошибка")
+                    controller.handleSendFailure(it, result.getErrorMessage() ?: "Неизвестная ошибка").getNewState()
                 }
-                sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage ?: "Не удалось отправить данные"))
+                sendEvent(ActionWizardEvent.ShowSnackbar(result.getErrorMessage() ?: "Не удалось отправить данные"))
             }
         }
     }
 
     fun showExitDialog() {
-        updateState { controller.showExitDialog(it) }
+        updateState { controller.showExitDialog(it).getNewState() }
     }
 
     fun dismissExitDialog() {
-        updateState { controller.dismissExitDialog(it) }
+        updateState { controller.dismissExitDialog(it).getNewState() }
     }
 
     fun exitWizard() {
-        updateState { controller.dismissExitDialog(it) }
+        updateState { controller.dismissExitDialog(it).getNewState() }
         sendEvent(ActionWizardEvent.NavigateToTaskDetail)
     }
 
@@ -275,7 +276,7 @@ class ActionWizardViewModel(
         resetProcessingJob?.cancel()
         resetProcessingJob = null
 
-        updateState { controller.clearError(it) }
+        updateState { controller.clearError(it).getNewState() }
     }
 
     /**

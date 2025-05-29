@@ -8,6 +8,9 @@ import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.ui.taskx.entity.ActionStepTemplate
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.CreationResult
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.SearchResult
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.ValidationResult
 import timber.log.Timber
 import java.util.UUID
 
@@ -67,7 +70,7 @@ class TaskProductHandler(
     /**
      * Переопределяем метод handleBarcode для использования createFromClassifier
      */
-    override suspend fun handleBarcode(barcode: String, state: ActionWizardState, step: ActionStepTemplate): Pair<TaskProduct?, String?> {
+    override suspend fun handleBarcode(barcode: String, state: ActionWizardState, step: ActionStepTemplate): SearchResult<TaskProduct> {
         // Проверяем наличие товара классификатора в состоянии
         val classifierProduct = state.plannedAction?.storageProductClassifier
 
@@ -81,9 +84,9 @@ class TaskProductHandler(
         return super.handleBarcode(barcode, state, step)
     }
 
-    override suspend fun createFromString(value: String): Pair<TaskProduct?, String?> {
+    override suspend fun createFromString(value: String): CreationResult<TaskProduct> {
         if (value.isBlank()) {
-            return Pair(null, "Значение не может быть пустым")
+            return CreationResult.error("Значение не может быть пустым")
         }
 
         try {
@@ -98,13 +101,13 @@ class TaskProductHandler(
                     product = product,
                     status = ProductStatus.STANDARD
                 )
-                return Pair(taskProduct, null)
+                return CreationResult.success(taskProduct)
             }
 
-            return Pair(null, "Товар не найден по штрихкоду или ID: $value")
+            return CreationResult.error("Товар не найден по штрихкоду или ID: $value")
         } catch (e: Exception) {
             Timber.e(e, "Ошибка при поиске товара задания: $value")
-            return Pair(null, "Ошибка при поиске товара: ${e.message}")
+            return CreationResult.error("Ошибка при поиске товара: ${e.message}")
         }
     }
 
@@ -115,11 +118,11 @@ class TaskProductHandler(
     /**
      * Дополнительная валидация на соответствие плановому товару
      */
-    override suspend fun validateObject(obj: TaskProduct, state: ActionWizardState, step: ActionStepTemplate): Pair<Boolean, String?> {
+    override suspend fun validateObject(obj: TaskProduct, state: ActionWizardState, step: ActionStepTemplate): ValidationResult<TaskProduct> {
         // Сначала проверяем с помощью стандартной валидации правил
-        val (baseValidationResult, baseErrorMessage) = super.validateObject(obj, state, step)
-        if (!baseValidationResult) {
-            return Pair(false, baseErrorMessage)
+        val baseValidationResult = super.validateObject(obj, state, step)
+        if (!baseValidationResult.isSuccess()) {
+            return baseValidationResult
         }
 
         // Дополнительная проверка: если есть плановый объект, проверяем соответствие
@@ -127,11 +130,11 @@ class TaskProductHandler(
         if (plannedObject != null) {
             // Проверяем, совпадает ли ID продукта
             if (obj.product.id != plannedObject.product.id) {
-                return Pair(false, "Товар не соответствует плану. Ожидается: ${plannedObject.product.name} (${plannedObject.product.id})")
+                return ValidationResult.error("Товар не соответствует плану. Ожидается: ${plannedObject.product.name} (${plannedObject.product.id})")
             }
         }
 
-        return Pair(true, null)
+        return ValidationResult.success(obj)
     }
 
     /**
@@ -142,9 +145,9 @@ class TaskProductHandler(
         classifierProduct: Product,
         state: ActionWizardState,
         step: ActionStepTemplate
-    ): Pair<TaskProduct?, String?> {
+    ): SearchResult<TaskProduct> {
         if (value.isBlank()) {
-            return Pair(null, "Значение не может быть пустым")
+            return SearchResult.error("Значение не может быть пустым")
         }
 
         // Проверяем, совпадает ли штрихкод с товаром классификатора
@@ -159,30 +162,32 @@ class TaskProductHandler(
             )
 
             // Валидируем созданный объект
-            val (isValid, validationError) = validateObject(taskProduct, state, step)
-            if (!isValid) {
-                return Pair(null, validationError)
+            val validationResult = validateObject(taskProduct, state, step)
+            if (!validationResult.isSuccess()) {
+                return SearchResult.error(validationResult.getErrorMessage() ?: "Ошибка валидации")
             }
 
-            return Pair(taskProduct, null)
+            return SearchResult.success(taskProduct)
         }
 
         Timber.d("Штрихкод $value не соответствует товару классификатора ${classifierProduct.id}, выполняем стандартный поиск")
 
         // Если штрихкод не совпадает с товаром классификатора, создаем обычным способом
         // а затем проверяем на соответствие плану
-        val (product, error) = createFromString(value)
-        if (product == null) {
-            return Pair(null, error)
+        val creationResult = createFromString(value)
+        if (!creationResult.isSuccess()) {
+            return SearchResult.error(creationResult.getErrorMessage() ?: "Не удалось создать объект")
         }
+
+        val product = creationResult.getCreatedData() ?: return SearchResult.error("Не удалось создать объект")
 
         // Проверяем, соответствует ли созданный товар плану
-        val (isValid, validationError) = validateObject(product, state, step)
-        if (!isValid) {
-            return Pair(null, validationError)
+        val validationResult = validateObject(product, state, step)
+        if (!validationResult.isSuccess()) {
+            return SearchResult.error(validationResult.getErrorMessage() ?: "Ошибка валидации")
         }
 
-        return Pair(product, null)
+        return SearchResult.success(product)
     }
 
     /**

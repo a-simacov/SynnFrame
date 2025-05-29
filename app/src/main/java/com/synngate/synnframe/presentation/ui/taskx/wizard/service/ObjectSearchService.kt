@@ -6,6 +6,8 @@ import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.handler.FieldHandler
 import com.synngate.synnframe.presentation.ui.taskx.wizard.handler.FieldHandlerFactory
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.BarcodeProcessResult
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.ValidationResult
 import timber.log.Timber
 import java.util.concurrent.ConcurrentHashMap
 
@@ -25,16 +27,16 @@ class ObjectSearchService(
     private var lastScannedBarcode = ""  // Последний отсканированный штрихкод
 
     // Кэш результатов валидации для предотвращения повторных запросов
-    private val validationCache = ConcurrentHashMap<String, Triple<Boolean, Any?, String?>>()
+    private val validationCache = ConcurrentHashMap<String, BarcodeProcessResult<Any>>()
 
     // Флаг для отслеживания активных запросов по типам полей
     private val activeRequests = ConcurrentHashMap<FactActionField, Long>()
 
     /**
      * Обрабатывает штрих-код в контексте текущего шага
-     * @return Тройка (успех операции, найденный объект или null, сообщение об ошибке или null)
+     * @return Результат обработки штрихкода
      */
-    suspend fun handleBarcode(state: ActionWizardState, barcode: String): Triple<Boolean, Any?, String?> {
+    suspend fun handleBarcode(state: ActionWizardState, barcode: String): BarcodeProcessResult<Any> {
         if (state.error != null) {
             Timber.d("Очистка кэша при наличии ошибки перед новым сканированием")
             validationCache.clear()
@@ -46,7 +48,7 @@ class ObjectSearchService(
         // Выходим, если текущий шаг не определен
         if (currentStep == null) {
             Timber.w("Текущий шаг не определен для штрих-кода: $barcode")
-            return Triple(false, null, "Не удалось определить текущий шаг для поиска")
+            return BarcodeProcessResult.error<Any>("Не удалось определить текущий шаг для поиска")
         }
 
         val fieldType = currentStep.factActionField
@@ -55,14 +57,14 @@ class ObjectSearchService(
         // и не совпадает ли текущий штрихкод с предыдущим
         if (currentTime - lastScanTime < MIN_SCAN_INTERVAL && lastScannedBarcode == barcode) {
             Timber.d("Игнорирование повторного сканирования штрихкода: $barcode (прошло менее ${MIN_SCAN_INTERVAL}мс)")
-            return Triple(false, null, null)
+            return BarcodeProcessResult.ignored<Any>()
         }
 
         // Проверяем, не выполняется ли уже запрос для данного типа поля
         val lastRequestTime = activeRequests[fieldType]
         if (lastRequestTime != null && currentTime - lastRequestTime < 5000) {
             Timber.d("Игнорирование запроса для поля $fieldType: предыдущий запрос еще выполняется")
-            return Triple(false, null, null)
+            return BarcodeProcessResult.ignored<Any>()
         }
 
         // Проверяем кэш результатов валидации
@@ -81,7 +83,7 @@ class ObjectSearchService(
         activeRequests[fieldType] = currentTime
 
         if (barcode.isBlank()) {
-            return Triple(false, null, "Пустой штрихкод").also {
+            return BarcodeProcessResult.error<Any>("Пустой штрихкод").also {
                 // Очищаем флаг активного запроса
                 activeRequests.remove(fieldType)
             }
@@ -92,17 +94,18 @@ class ObjectSearchService(
         try {
             // Используем метод createHandlerForStep для получения обработчика для текущего шага
             val handler = handlerFactory.createHandlerForStep(currentStep)
-                ?: return Triple(false, null, "Неподдерживаемый тип шага: ${currentStep.factActionField}").also {
+                ?: return BarcodeProcessResult.error<Any>("Неподдерживаемый тип шага: ${currentStep.factActionField}").also {
                     activeRequests.remove(fieldType)
                 }
 
             // Обрабатываем штрихкод с помощью обработчика
             val result = handler.handleBarcode(barcode, state, currentStep)
 
-            val finalResult = if (result.first != null) {
-                Triple(true, result.first, null)
+            val finalResult = if (result.isSuccess()) {
+                val data = result.getFoundData() ?: return BarcodeProcessResult.error<Any>("Не удалось получить данные объекта")
+                BarcodeProcessResult.success<Any>(data)
             } else {
-                Triple(false, null, result.second ?: "Не удалось найти объект по штрих-коду: $barcode")
+                BarcodeProcessResult.error<Any>(result.getErrorMessage() ?: "Не удалось найти объект по штрих-коду: $barcode")
             }
 
             // Сохраняем результат в кэш
@@ -118,18 +121,18 @@ class ObjectSearchService(
             // Очищаем флаг активного запроса
             activeRequests.remove(fieldType)
 
-            return Triple(false, null, "Ошибка при обработке штрих-кода: ${e.message}")
+            return BarcodeProcessResult.error<Any>("Ошибка при обработке штрих-кода: ${e.message}")
         }
     }
 
     /**
      * Валидирует объект с помощью соответствующего обработчика
      */
-    suspend fun <T : Any> validateObject(obj: T, state: ActionWizardState): Pair<Boolean, String?> {
-        val currentStep = state.getCurrentStep() ?: return Pair(false, "Шаг не найден")
+    suspend fun <T : Any> validateObject(obj: T, state: ActionWizardState): ValidationResult<T> {
+        val currentStep = state.getCurrentStep() ?: return ValidationResult.error<T>("Шаг не найден")
 
         val handler = handlerFactory.createHandlerForObject(obj)
-            ?: return Pair(false, "Неподдерживаемый тип объекта: ${obj.javaClass.simpleName}")
+            ?: return ValidationResult.error<T>("Неподдерживаемый тип объекта: ${obj.javaClass.simpleName}")
 
         @Suppress("UNCHECKED_CAST")
         return (handler as FieldHandler<T>).validateObject(obj, state, currentStep)

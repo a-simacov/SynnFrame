@@ -5,6 +5,7 @@ import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.StateTransitionResult
 import com.synngate.synnframe.presentation.ui.taskx.wizard.state.WizardEvent
 import com.synngate.synnframe.presentation.ui.taskx.wizard.state.WizardStateMachine
 import timber.log.Timber
@@ -21,36 +22,39 @@ class WizardController(
     /**
      * Инициализирует визард для указанного задания и действия
      */
-    fun initializeWizard(taskId: String, actionId: String): ActionWizardState {
+    fun initializeWizard(taskId: String, actionId: String): StateTransitionResult<ActionWizardState> {
         try {
             val task = TaskXDataHolderSingleton.currentTask.value
             if (task == null) {
                 Timber.e("Задание не найдено в TaskXDataHolderSingleton")
-                return ActionWizardState(
+                val errorState = ActionWizardState(
                     taskId = taskId,
                     actionId = actionId,
                     error = "Задание не найдено"
                 )
+                return StateTransitionResult.error(errorState, "Задание не найдено")
             }
 
             val plannedAction = task.plannedActions.find { it.id == actionId }
             if (plannedAction == null) {
                 Timber.e("Действие $actionId не найдено в задании ${task.id}")
-                return ActionWizardState(
+                val errorState = ActionWizardState(
                     taskId = taskId,
                     actionId = actionId,
                     error = "Действие не найдено"
                 )
+                return StateTransitionResult.error(errorState, "Действие не найдено")
             }
 
             val actionTemplate = plannedAction.actionTemplate
             if (actionTemplate == null) {
                 Timber.e("Шаблон действия не найден для действия $actionId")
-                return ActionWizardState(
+                val errorState = ActionWizardState(
                     taskId = taskId,
                     actionId = actionId,
                     error = "Шаблон действия не найден"
                 )
+                return StateTransitionResult.error(errorState, "Шаблон действия не найден")
             }
 
             val sortedSteps = actionTemplate.actionSteps.sortedBy { it.order }
@@ -79,7 +83,8 @@ class WizardController(
             )
 
             // Используем машину состояний для перехода к состоянию загрузки завершена
-            return stateMachine.transition(initialState, WizardEvent.LoadSuccess)
+            val updatedState = stateMachine.transition(initialState, WizardEvent.LoadSuccess)
+            return StateTransitionResult.success(updatedState)
 
         } catch (e: Exception) {
             Timber.e(e, "Ошибка инициализации визарда: ${e.message}")
@@ -91,42 +96,45 @@ class WizardController(
             )
 
             // Используем машину состояний для перехода к состоянию ошибки загрузки
-            return stateMachine.transition(initialState, WizardEvent.LoadFailure(e.message ?: "Неизвестная ошибка"))
+            val errorState = stateMachine.transition(initialState, WizardEvent.LoadFailure(e.message ?: "Неизвестная ошибка"))
+            return StateTransitionResult.error(errorState, "Ошибка инициализации визарда: ${e.message}")
         }
     }
 
     /**
      * Обрабатывает нажатие на кнопку "Далее" для текущего шага
      */
-    suspend fun confirmCurrentStep(state: ActionWizardState, validateStep: suspend () -> Boolean): ActionWizardState {
+    suspend fun confirmCurrentStep(state: ActionWizardState, validateStep: suspend () -> Boolean): StateTransitionResult<ActionWizardState> {
         val currentStepIndex = state.currentStepIndex
         val steps = state.steps
 
         if (currentStepIndex >= steps.size) {
-            return state
+            return StateTransitionResult.error(state, "Индекс шага вне диапазона")
         }
 
         if (!validateStep()) {
-            return state
+            return StateTransitionResult.error(state, "Валидация шага не пройдена")
         }
 
         // Используем машину состояний для перехода к следующему шагу
-        return stateMachine.transition(state, WizardEvent.NextStep)
+        val newState = stateMachine.transition(state, WizardEvent.NextStep)
+        return StateTransitionResult.success(newState)
     }
 
     /**
      * Обрабатывает нажатие на кнопку "Назад"
      */
-    fun previousStep(state: ActionWizardState): ActionWizardState {
+    fun previousStep(state: ActionWizardState): StateTransitionResult<ActionWizardState> {
         // Используем машину состояний для перехода к предыдущему шагу
-        return stateMachine.transition(state, WizardEvent.PreviousStep)
+        val newState = stateMachine.transition(state, WizardEvent.PreviousStep)
+        return StateTransitionResult.success(newState)
     }
 
     /**
      * Устанавливает объект для текущего шага и обновляет состояние
      */
-    fun setObjectForCurrentStep(state: ActionWizardState, obj: Any): ActionWizardState {
-        val currentStep = state.getCurrentStep() ?: return state
+    fun setObjectForCurrentStep(state: ActionWizardState, obj: Any): StateTransitionResult<ActionWizardState> {
+        val currentStep = state.getCurrentStep() ?: return StateTransitionResult.error(state, "Текущий шаг не найден")
 
         // Сначала очищаем ошибку, если она есть
         var updatedState = state
@@ -135,20 +143,21 @@ class WizardController(
         }
 
         // Затем используем машину состояний для установки объекта
-        return stateMachine.transition(updatedState, WizardEvent.SetObject(obj, currentStep.id))
+        val newState = stateMachine.transition(updatedState, WizardEvent.SetObject(obj, currentStep.id))
+        return StateTransitionResult.success(newState)
     }
 
     /**
      * Пытается выполнить автоматический переход к следующему шагу
      */
-    suspend fun tryAutoAdvance(state: ActionWizardState, validateStep: suspend () -> Boolean): Pair<Boolean, ActionWizardState> {
+    suspend fun tryAutoAdvance(state: ActionWizardState, validateStep: suspend () -> Boolean): StateTransitionResult<ActionWizardState> {
         // Если есть ошибка, не выполняем автопереход
         if (state.error != null) {
             Timber.d("Автопереход отменен: есть ошибка в состоянии")
-            return Pair(false, state)
+            return StateTransitionResult.error(state, "Автопереход отменен: есть ошибка в состоянии")
         }
 
-        val currentStep = state.getCurrentStep() ?: return Pair(false, state)
+        val currentStep = state.getCurrentStep() ?: return StateTransitionResult.error(state, "Текущий шаг не найден")
 
         Timber.d("Пробуем выполнить автопереход с шага ${currentStep.name} (${currentStep.factActionField})")
 
@@ -162,7 +171,7 @@ class WizardController(
                 val selectedObj = state.selectedObjects[currentStep.id]
                 if (selectedObj == null) {
                     Timber.d("Автопереход отменен: не выбран объект для шага товара")
-                    return Pair(false, state)
+                    return StateTransitionResult.error(state, "Автопереход отменен: не выбран объект для шага товара")
                 }
 
                 // Если это товар, проверяем заполнены ли его свойства
@@ -173,20 +182,19 @@ class WizardController(
                     // Проверяем, заполнен ли срок годности, если он требуется
                     if (needsExpDate && taskProduct.expirationDate == null) {
                         Timber.d("Автопереход отменен: товар требует заполнения срока годности")
-                        return Pair(false, state)
+                        return StateTransitionResult.error(state, "Автопереход отменен: товар требует заполнения срока годности")
                     }
 
-                    // Для товаров с дополнительными свойствами автопереход не выполняем - пользователь должен явно нажать кнопку "Далее"
-                    // Это предотвращает случайные переходы без заполнения всех свойств
+                    // Для товаров с дополнительными свойствами автопереход не выполняем
                     Timber.d("Автопереход отменен: для товаров с дополнительными свойствами автопереход запрещен")
-                    return Pair(false, state)
+                    return StateTransitionResult.error(state, "Автопереход отменен: для товаров с дополнительными свойствами автопереход запрещен")
                 }
             }
         }
 
         if (!validateStep()) {
             Timber.d("Автопереход отменен: ошибка валидации")
-            return Pair(false, state)
+            return StateTransitionResult.error(state, "Автопереход отменен: ошибка валидации")
         }
 
         // Используем машину состояний для перехода к следующему шагу
@@ -196,78 +204,90 @@ class WizardController(
         val success = newState != state
         Timber.d("Результат автоперехода: success=$success")
 
-        return Pair(success, newState)
+        return if (success) {
+            StateTransitionResult.success(newState)
+        } else {
+            StateTransitionResult.error(state, "Автопереход не выполнен: состояние не изменилось")
+        }
     }
 
     /**
      * Показывает диалог выхода
      */
-    fun showExitDialog(state: ActionWizardState): ActionWizardState {
+    fun showExitDialog(state: ActionWizardState): StateTransitionResult<ActionWizardState> {
         // Используем машину состояний для показа диалога выхода
-        return stateMachine.transition(state, WizardEvent.ShowExitDialog)
+        val newState = stateMachine.transition(state, WizardEvent.ShowExitDialog)
+        return StateTransitionResult.success(newState)
     }
 
     /**
      * Скрывает диалог выхода
      */
-    fun dismissExitDialog(state: ActionWizardState): ActionWizardState {
+    fun dismissExitDialog(state: ActionWizardState): StateTransitionResult<ActionWizardState> {
         // Используем машину состояний для скрытия диалога выхода
-        return stateMachine.transition(state, WizardEvent.DismissExitDialog)
+        val newState = stateMachine.transition(state, WizardEvent.DismissExitDialog)
+        return StateTransitionResult.success(newState)
     }
 
     /**
      * Очищает ошибку в состоянии
      */
-    fun clearError(state: ActionWizardState): ActionWizardState {
+    fun clearError(state: ActionWizardState): StateTransitionResult<ActionWizardState> {
         // Используем машину состояний для очистки ошибки
-        return stateMachine.transition(state, WizardEvent.ClearError)
+        val newState = stateMachine.transition(state, WizardEvent.ClearError)
+        return StateTransitionResult.success(newState)
     }
 
     /**
      * Устанавливает состояние загрузки
      */
-    fun setLoading(state: ActionWizardState, isLoading: Boolean): ActionWizardState {
+    fun setLoading(state: ActionWizardState, isLoading: Boolean): StateTransitionResult<ActionWizardState> {
         // Используем машину состояний для установки состояния загрузки
-        return if (isLoading) {
+        val newState = if (isLoading) {
             stateMachine.transition(state, WizardEvent.StartLoading)
         } else {
             stateMachine.transition(state, WizardEvent.StopLoading)
         }
+        return StateTransitionResult.success(newState)
     }
 
     /**
      * Устанавливает сообщение об ошибке
      */
-    fun setError(state: ActionWizardState, message: String?): ActionWizardState {
+    fun setError(state: ActionWizardState, message: String?): StateTransitionResult<ActionWizardState> {
         // Используем машину состояний для установки ошибки
-        return if (message != null) {
+        val newState = if (message != null) {
             stateMachine.transition(state, WizardEvent.SetError(message))
         } else {
             stateMachine.transition(state, WizardEvent.ClearError)
         }
+        return StateTransitionResult.success(newState)
     }
 
     /**
      * Отправляет форму на сервер
      */
-    fun submitForm(state: ActionWizardState): ActionWizardState {
+    fun submitForm(state: ActionWizardState): StateTransitionResult<ActionWizardState> {
         // Используем машину состояний для отправки формы
-        return stateMachine.transition(state, WizardEvent.SubmitForm)
+        val newState = stateMachine.transition(state, WizardEvent.SubmitForm)
+        return StateTransitionResult.success(newState)
     }
 
     /**
      * Обрабатывает успешную отправку данных
      */
-    fun handleSendSuccess(state: ActionWizardState): ActionWizardState {
+    fun handleSendSuccess(state: ActionWizardState): StateTransitionResult<ActionWizardState> {
         // Используем машину состояний для обработки успешной отправки
-        return stateMachine.transition(state, WizardEvent.SendSuccess)
+        val newState = stateMachine.transition(state, WizardEvent.SendSuccess)
+        return StateTransitionResult.success(newState)
     }
 
     /**
      * Обрабатывает ошибку отправки данных
      */
-    fun handleSendFailure(state: ActionWizardState, error: String): ActionWizardState {
+    fun handleSendFailure(state: ActionWizardState, error: String): StateTransitionResult<ActionWizardState> {
         // Используем машину состояний для обработки ошибки отправки
-        return stateMachine.transition(state, WizardEvent.SendFailure(error))
+        val newState = stateMachine.transition(state, WizardEvent.SendFailure(error))
+        return StateTransitionResult.error(newState, error)
     }
 }
