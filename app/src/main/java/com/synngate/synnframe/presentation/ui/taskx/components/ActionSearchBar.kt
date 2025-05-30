@@ -5,6 +5,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,10 +28,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -82,23 +79,27 @@ private fun SearchField(
     error: String?,
     modifier: Modifier = Modifier
 ) {
-    var launchedSearch by remember { mutableStateOf(false) }
+    val borderColor = if (error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline
 
     Card(
-        modifier = modifier.padding(vertical = 4.dp),
+        modifier = modifier
+            .padding(vertical = 4.dp)
+            .border(
+                width = 1.dp,
+                color = borderColor,
+                shape = MaterialTheme.shapes.medium
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
+                modifier = Modifier.fillMaxWidth()
             ) {
                 // Поле ввода
                 OutlinedTextField(
                     value = query,
                     onValueChange = {
-                        launchedSearch = false
                         onQueryChange(it)
                     },
                     placeholder = { Text("Поиск действия...") },
@@ -115,7 +116,6 @@ private fun SearchField(
                         onSearch = {
                             if (query.isNotEmpty()) {
                                 onSearch()
-                                launchedSearch = true
                             }
                         }
                     ),
@@ -140,7 +140,6 @@ private fun SearchField(
                                 IconButton(onClick = {
                                     if (query.isNotEmpty()) {
                                         onSearch()
-                                        launchedSearch = true
                                     }
                                 }) {
                                     Icon(
@@ -172,7 +171,7 @@ private fun SearchField(
                         text = it,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(4.dp)
                     )
                 }
             }

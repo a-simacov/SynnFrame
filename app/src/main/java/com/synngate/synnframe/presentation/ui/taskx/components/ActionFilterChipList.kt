@@ -43,7 +43,7 @@ fun ActionFilterChipList(
         Column(
             modifier = modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+                .padding(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Row(

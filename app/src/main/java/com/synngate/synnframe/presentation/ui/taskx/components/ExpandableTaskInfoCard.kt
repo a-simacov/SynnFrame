@@ -5,31 +5,28 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+/**
+ * Обновленная карточка с информацией о задании.
+ * В свернутом состоянии показывает только header,
+ * в развернутом - header и дополнительный контент.
+ */
 @Composable
 fun ExpandableTaskInfoCard(
-    title: String,
+    header: @Composable () -> Unit,
+    content: @Composable () -> Unit,
     initiallyExpanded: Boolean = false,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
+    modifier: Modifier = Modifier
 ) {
     var isExpanded by remember { mutableStateOf(initiallyExpanded) }
 
@@ -39,27 +36,13 @@ fun ExpandableTaskInfoCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(4.dp)
+                .clickable { isExpanded = !isExpanded }
+                .padding(8.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { isExpanded = !isExpanded }
-                    .padding(0.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f)
-                )
+            // Header всегда видим
+            header()
 
-                Icon(
-                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (isExpanded) "Свернуть" else "Развернуть"
-                )
-            }
-
+            // Дополнительный контент видим только при развороте
             AnimatedVisibility(
                 visible = isExpanded,
                 enter = expandVertically(),
@@ -68,7 +51,7 @@ fun ExpandableTaskInfoCard(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(8.dp)
+                        .padding(top = 8.dp)
                 ) {
                     content()
                 }
