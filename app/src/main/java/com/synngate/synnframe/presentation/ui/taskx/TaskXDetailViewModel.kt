@@ -56,12 +56,15 @@ class TaskXDetailViewModel(
 
                         val actionUiModels = createActionUiModels(task)
 
+                        val searchEnabled = task.taskType.isActionSearchEnabled()
+
                         updateState {
                             it.copy(
                                 task = task,
                                 taskType = task.taskType,
                                 actionUiModels = actionUiModels,
-                                isLoading = false
+                                isLoading = false,
+                                showSearchBar = searchEnabled
                             )
                         }
                     } else {
@@ -180,6 +183,7 @@ class TaskXDetailViewModel(
 
     fun exitWithoutSaving() {
         dismissExitDialog()
+        TaskXDataHolderSingleton.forceClean()
         sendEvent(TaskXDetailEvent.NavigateBack)
     }
 
@@ -282,8 +286,7 @@ class TaskXDetailViewModel(
         updateState {
             it.copy(
                 activeFilters = activeFilters,
-                showSearchBar = activeFilters.isNotEmpty() ||
-                        it.task?.taskType?.isActionSearchEnabled() == true
+                showSearchBar = it.task?.taskType?.isActionSearchEnabled() == true || activeFilters.isNotEmpty()
             )
         }
     }
@@ -483,7 +486,9 @@ class TaskXDetailViewModel(
      */
     fun onReturnFromWizard() {
         // Очищаем последний добавленный фильтр, если он привел к открытию визарда
-        clearLastAddedFilter()
+        // Используем метод синглтона вместо локального метода
+        TaskXDataHolderSingleton.clearLastAddedFilter()
+        updateFilterState() // Обновляем состояние фильтров в UI
     }
 
     fun dismissCompletionDialog() {

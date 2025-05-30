@@ -178,29 +178,6 @@ fun TaskXDetailScreen(
                 .padding(paddingValues)
                 .padding(4.dp)
         ) {
-            // Поисковая строка
-            if (state.showSearchBar) {
-                ActionSearchBar(
-                    query = state.searchValue,
-                    onQueryChange = viewModel::setSearchValue,
-                    onSearch = { viewModel.searchByText(state.searchValue) },
-                    onClear = viewModel::clearSearchValue,
-                    onScannerClick = viewModel::showCameraScannerForSearch,
-                    isSearching = state.isSearching,
-                    error = state.searchError,
-                    visible = state.showSearchBar
-                )
-
-                // Отображение активных фильтров
-                if (state.activeFilters.isNotEmpty()) {
-                    ActionFilterChipList(
-                        filters = state.activeFilters,
-                        onRemove = viewModel::removeFilter,
-                        onClearAll = viewModel::clearAllFilters
-                    )
-                }
-            }
-
             ExpandableTaskInfoCard(
                 title = stringResource(R.string.task_details),
                 initiallyExpanded = false,
@@ -258,6 +235,29 @@ fun TaskXDetailScreen(
                 hasInitialActions = state.hasInitialActions(),
                 hasFinalActions = state.hasFinalActions()
             )
+
+            // Поисковая строка - всегда располагается под чипами фильтра
+            if (state.showSearchBar) {
+                ActionSearchBar(
+                    query = state.searchValue,
+                    onQueryChange = viewModel::setSearchValue,
+                    onSearch = { viewModel.searchByText(state.searchValue) },
+                    onClear = viewModel::clearSearchValue,
+                    onScannerClick = viewModel::showCameraScannerForSearch,
+                    isSearching = state.isSearching,
+                    error = state.searchError,
+                    visible = state.showSearchBar
+                )
+
+                // Отображение активных фильтров
+                if (state.activeFilters.isNotEmpty()) {
+                    ActionFilterChipList(
+                        filters = state.activeFilters,
+                        onRemove = viewModel::removeFilter,
+                        onClearAll = viewModel::clearAllFilters
+                    )
+                }
+            }
 
             LazyColumn(
                 modifier = Modifier
