@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
+import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.ui.taskx.wizard.handler.FieldHandlerFactory
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardEvent
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
@@ -59,31 +60,51 @@ class ActionWizardViewModel(
             loadClassifierProductInfo(product.id)
         }
 
-        // После инициализации инициализируем текущий шаг (проверяем буфер)
-        initializeStep(initResult.getNewState().currentStepIndex)
+        // Проверяем не только буфер, но и активные фильтры
+        initializeStepWithFiltersAndBuffer(initResult.getNewState().currentStepIndex)
     }
 
     /**
-     * Инициализация шага: проверка и применение значений из буфера
+     * Инициализация шага: проверка и применение значений из буфера и фильтров
      */
-    private fun initializeStep(stepIndex: Int) {
+    private fun initializeStepWithFiltersAndBuffer(stepIndex: Int) {
         val state = uiState.value
         if (stepIndex < 0 || stepIndex >= state.steps.size) return
 
-        // Проверяем, нужно ли применить значение из буфера
         launchIO {
+            // 1. Сначала проверяем и применяем значения из буфера
             val applyBufferResult = controller.applyBufferValueIfNeeded(state)
             updateState { applyBufferResult.getNewState() }
 
-            // Если объект из буфера успешно применен
-            if (applyBufferResult.getNewState() != state) {
-                Timber.d("Применено значение из буфера для шага $stepIndex")
+            // Проверяем, было ли изменено состояние после применения буфера
+            val bufferApplied = applyBufferResult.getNewState() != state
 
-                // Для заблокированных полей (режим ALWAYS) автоматически переходим к следующему шагу
-                if (applyBufferResult.getNewState().isCurrentStepLockedByBuffer()) {
-                    delay(300) // Небольшая задержка для UI
-                    tryAutoAdvanceFromBuffer()
+            // 2. Затем проверяем и применяем значения из фильтров (если есть)
+            val activeFilters = TaskXDataHolderSingleton.actionsFilter.getActiveFilters()
+
+            // Получаем текущий шаг после применения буфера
+            val currentStep = applyBufferResult.getNewState().getCurrentStep()
+
+            if (currentStep != null && !bufferApplied) {
+                // Ищем фильтр, соответствующий текущему шагу
+                val matchingFilter = activeFilters.find { it.field == currentStep.factActionField }
+
+                if (matchingFilter != null) {
+                    Timber.d("Найден соответствующий фильтр для шага ${currentStep.id}: ${matchingFilter.field}")
+
+                    // Устанавливаем значение из фильтра
+                    setObjectForCurrentStep(matchingFilter.data, true)
+
+                    // Для логирования
+                    Timber.d("Значение из фильтра ${matchingFilter.field} установлено в шаг ${currentStep.id}")
+                    return@launchIO
                 }
+            }
+
+            // 3. Если объект из буфера успешно применен, выполняем автопереход для заблокированных полей
+            if (bufferApplied && applyBufferResult.getNewState().isCurrentStepLockedByBuffer()) {
+                delay(300) // Небольшая задержка для UI
+                tryAutoAdvanceFromBuffer()
             }
         }
     }
@@ -129,7 +150,7 @@ class ActionWizardViewModel(
             updateState { result.getNewState() }
 
             // После перехода на новый шаг инициализируем его
-            initializeStep(result.getNewState().currentStepIndex)
+            initializeStepWithFiltersAndBuffer(result.getNewState().currentStepIndex)
         }
     }
 
@@ -158,7 +179,7 @@ class ActionWizardViewModel(
                 updateState { result.getNewState() }
 
                 // После автоперехода инициализируем новый шаг
-                initializeStep(result.getNewState().currentStepIndex)
+                initializeStepWithFiltersAndBuffer(result.getNewState().currentStepIndex)
             }
         }
     }
@@ -173,8 +194,8 @@ class ActionWizardViewModel(
             if (result.isSuccess()) {
                 updateState { result.getNewState() }
 
-                // Рекурсивно проверяем следующий шаг на наличие значений в буфере
-                initializeStep(result.getNewState().currentStepIndex)
+                // Рекурсивно проверяем следующий шаг на наличие значений в буфере или фильтрах
+                initializeStepWithFiltersAndBuffer(result.getNewState().currentStepIndex)
             }
         }
     }

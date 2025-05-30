@@ -39,6 +39,7 @@ class TaskXDetailViewModel(
         loadTask()
         loadCurrentUser()
         updateFilterState()
+        updateBufferState()
     }
 
     private fun loadTask() {
@@ -391,6 +392,8 @@ class TaskXDetailViewModel(
 
                 // Обновляем состояние фильтров в UI
                 updateFilterState()
+                // Обновляем состояние буфера
+                updateBufferState()
 
                 // Очищаем поле поиска
                 updateState {
@@ -429,6 +432,45 @@ class TaskXDetailViewModel(
     }
 
     /**
+     * Обновляет состояние буфера задания в UI
+     */
+    private fun updateBufferState() {
+        val bufferItems = TaskXDataHolderSingleton.taskBuffer.getActiveBufferItems()
+
+        updateState {
+            it.copy(
+                bufferItems = bufferItems,
+                showBufferItems = bufferItems.isNotEmpty()
+            )
+        }
+    }
+
+    /**
+     * Удаляет элемент из буфера задания
+     */
+    fun removeBufferItem(field: FactActionField) {
+        TaskXDataHolderSingleton.taskBuffer.clearField(field)
+        updateBufferState()
+    }
+
+    /**
+     * Очищает весь буфер задания
+     */
+    fun clearAllBufferItems() {
+        TaskXDataHolderSingleton.taskBuffer.clear()
+        updateBufferState()
+    }
+
+    /**
+     * Переключает отображение элементов буфера
+     */
+    fun toggleBufferDisplay() {
+        updateState {
+            it.copy(showBufferItems = !it.showBufferItems)
+        }
+    }
+
+    /**
      * Удаляет фильтр по указанному полю
      */
     fun removeFilter(field: FactActionField) {
@@ -443,8 +485,9 @@ class TaskXDetailViewModel(
             lastAddedFilterField = null
         }
 
-        // Обновляем состояние фильтров
+        // Обновляем состояние фильтров и буфера
         updateFilterState()
+        updateBufferState()
     }
 
     /**
@@ -458,8 +501,9 @@ class TaskXDetailViewModel(
         filterObjectsAddedToBuffer.clear()
         lastAddedFilterField = null
 
-        // Обновляем состояние фильтров
+        // Обновляем состояние фильтров и буфера
         updateFilterState()
+        updateBufferState()
     }
 
     /**
@@ -486,9 +530,9 @@ class TaskXDetailViewModel(
      */
     fun onReturnFromWizard() {
         // Очищаем последний добавленный фильтр, если он привел к открытию визарда
-        // Используем метод синглтона вместо локального метода
         TaskXDataHolderSingleton.clearLastAddedFilter()
         updateFilterState() // Обновляем состояние фильтров в UI
+        updateBufferState() // Обновляем состояние буфера
     }
 
     fun dismissCompletionDialog() {

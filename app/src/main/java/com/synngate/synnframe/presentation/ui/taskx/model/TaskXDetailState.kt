@@ -7,6 +7,7 @@ import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
+import com.synngate.synnframe.presentation.ui.taskx.model.buffer.BufferDisplayItem
 import com.synngate.synnframe.presentation.ui.taskx.model.filter.FilterItem
 
 data class TaskXDetailState(
@@ -35,11 +36,16 @@ data class TaskXDetailState(
     // Информация о пользователе
     val currentUserId: String? = null,
 
+    // Поиск и фильтры
     val showSearchBar: Boolean = false,
     val searchValue: String = "",
     val isSearching: Boolean = false,
     val searchError: String? = null,
-    val activeFilters: List<FilterItem> = emptyList()
+    val activeFilters: List<FilterItem> = emptyList(),
+
+    // Буфер задания
+    val bufferItems: List<BufferDisplayItem> = emptyList(),
+    val showBufferItems: Boolean = false // Флаг для отображения буфера
 ) {
 
     fun getDisplayActions(): List<PlannedActionUI> {

@@ -5,6 +5,7 @@ import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
+import com.synngate.synnframe.presentation.ui.taskx.model.buffer.BufferDisplayItem
 import java.time.LocalDateTime
 
 /**
@@ -149,6 +150,87 @@ class TaskBuffer {
      * Получение истории буфера
      */
     fun getHistory(): List<BufferItem> = history.toList()
+
+    /**
+     * Получение всех активных элементов буфера для отображения
+     */
+    fun getActiveBufferItems(): List<BufferDisplayItem> {
+        val items = mutableListOf<BufferDisplayItem>()
+
+        storageBin?.let { (bin, source) ->
+            items.add(
+                BufferDisplayItem(
+                    field = FactActionField.STORAGE_BIN,
+                    displayName = "Ячейка хранения",
+                    value = bin.code,
+                    data = bin,
+                    source = source
+                )
+            )
+        }
+
+        storagePallet?.let { (pallet, source) ->
+            items.add(
+                BufferDisplayItem(
+                    field = FactActionField.STORAGE_PALLET,
+                    displayName = "Паллета хранения",
+                    value = pallet.code,
+                    data = pallet,
+                    source = source
+                )
+            )
+        }
+
+        storageProductClassifier?.let { (product, source) ->
+            items.add(
+                BufferDisplayItem(
+                    field = FactActionField.STORAGE_PRODUCT_CLASSIFIER,
+                    displayName = "Товар",
+                    value = product.name,
+                    data = product,
+                    source = source
+                )
+            )
+        }
+
+        storageProduct?.let { (taskProduct, source) ->
+            items.add(
+                BufferDisplayItem(
+                    field = FactActionField.STORAGE_PRODUCT,
+                    displayName = "Товар задания",
+                    value = taskProduct.product.name,
+                    data = taskProduct,
+                    source = source
+                )
+            )
+        }
+
+        allocationBin?.let { (bin, source) ->
+            items.add(
+                BufferDisplayItem(
+                    field = FactActionField.ALLOCATION_BIN,
+                    displayName = "Ячейка размещения",
+                    value = bin.code,
+                    data = bin,
+                    source = source
+                )
+            )
+        }
+
+        allocationPallet?.let { (pallet, source) ->
+            items.add(
+                BufferDisplayItem(
+                    field = FactActionField.ALLOCATION_PALLET,
+                    displayName = "Паллета размещения",
+                    value = pallet.code,
+                    data = pallet,
+                    source = source
+                )
+            )
+        }
+
+        return items
+    }
 
     /**
      * Добавление элемента в историю с ограничением размера

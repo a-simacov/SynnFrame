@@ -40,6 +40,10 @@ object TaskXDataHolderSingleton {
     // Отслеживание объектов, добавленных в буфер из фильтра
     private val filterObjectsAddedToBuffer = mutableSetOf<FactActionField>()
 
+    // Последнее добавленное значение фильтра
+    private var lastAddedSearchValue: Any? = null
+    private var lastAddedSearchField: FactActionField? = null
+
     fun setTaskData(task: TaskX, taskType: TaskTypeX, endpoint: String) {
         Timber.d("TaskXDataHolderSingleton: установка данных задания ${task.id} с типом ${taskType.id}")
 
@@ -93,6 +97,12 @@ object TaskXDataHolderSingleton {
         // Добавляем фильтр
         _actionsFilter.addFilter(field, value)
 
+        // Сохраняем последнее добавленное значение для поиска
+        lastAddedSearchField = field
+        lastAddedSearchValue = value
+
+        Timber.d("Добавлен фильтр и сохранено значение поиска: поле $field, значение $value")
+
         // Если нужно сохранить в буфер и это ещё не было сделано
         if (saveToBuffer && !filterObjectsAddedToBuffer.contains(field)) {
             saveObjectToBuffer(field, value)
@@ -100,6 +110,13 @@ object TaskXDataHolderSingleton {
 
             Timber.d("Объект из фильтра по полю $field добавлен в буфер")
         }
+    }
+
+    /**
+     * Получает последнее использованное для поиска значение для указанного поля
+     */
+    fun getLastSearchValueForField(field: FactActionField): Any? {
+        return if (lastAddedSearchField == field) lastAddedSearchValue else null
     }
 
     /**
@@ -116,6 +133,13 @@ object TaskXDataHolderSingleton {
 
             Timber.d("Объект из буфера по полю $field удален после удаления фильтра")
         }
+
+        // Очищаем последнее добавленное значение, если оно соответствует удаляемому полю
+        if (lastAddedSearchField == field) {
+            lastAddedSearchField = null
+            lastAddedSearchValue = null
+            Timber.d("Очищено последнее добавленное значение поиска для поля $field")
+        }
     }
 
     /**
@@ -131,6 +155,10 @@ object TaskXDataHolderSingleton {
         }
 
         filterObjectsAddedToBuffer.clear()
+
+        // Очищаем последнее добавленное значение
+        lastAddedSearchField = null
+        lastAddedSearchValue = null
 
         Timber.d("Очищены все фильтры и связанные объекты в буфере")
     }

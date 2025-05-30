@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -37,6 +41,7 @@ import com.synngate.synnframe.presentation.common.status.TaskXStatusIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.ActionFilterChipList
 import com.synngate.synnframe.presentation.ui.taskx.components.ActionFilterChips
 import com.synngate.synnframe.presentation.ui.taskx.components.ActionSearchBar
+import com.synngate.synnframe.presentation.ui.taskx.components.BufferItemChipList
 import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableTaskInfoCard
 import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionCard
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskProgressIndicator
@@ -155,6 +160,15 @@ fun TaskXDetailScreen(
         },
         isLoading = state.isLoading,
         actions = {
+            if (state.bufferItems.isNotEmpty()) {
+                IconButton(onClick = viewModel::toggleBufferDisplay) {
+                    Icon(
+                        imageVector = Icons.Default.Storage, // Нужно добавить импорт
+                        contentDescription = if (state.showBufferItems) "Скрыть буфер" else "Показать буфер",
+                        tint = if (state.showBufferItems) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
             // Добавляем кнопку поиска, если тип задания поддерживает поиск
             if (state.task?.taskType?.isActionSearchEnabled() == true) {
                 SearchButton(
@@ -248,15 +262,23 @@ fun TaskXDetailScreen(
                     error = state.searchError,
                     visible = state.showSearchBar
                 )
+            }
 
-                // Отображение активных фильтров
-                if (state.activeFilters.isNotEmpty()) {
-                    ActionFilterChipList(
-                        filters = state.activeFilters,
-                        onRemove = viewModel::removeFilter,
-                        onClearAll = viewModel::clearAllFilters
-                    )
-                }
+            if (state.showBufferItems && state.bufferItems.isNotEmpty()) {
+                BufferItemChipList(
+                    items = state.bufferItems,
+                    onRemove = viewModel::removeBufferItem,
+                    onClearAll = viewModel::clearAllBufferItems
+                )
+            }
+
+            // Отображение активных фильтров
+            if (state.activeFilters.isNotEmpty()) {
+                ActionFilterChipList(
+                    filters = state.activeFilters,
+                    onRemove = viewModel::removeFilter,
+                    onClearAll = viewModel::clearAllFilters
+                )
             }
 
             LazyColumn(
