@@ -1,7 +1,13 @@
 package com.synngate.synnframe.presentation.ui.taskx.model
 
+import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.taskx.BinX
+import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.TaskTypeX
 import com.synngate.synnframe.domain.entity.taskx.TaskX
+import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
+import com.synngate.synnframe.presentation.ui.taskx.model.filter.FilterItem
 
 data class TaskXDetailState(
     // Основные данные
@@ -27,7 +33,13 @@ data class TaskXDetailState(
     val validationErrorMessage: String? = null,
 
     // Информация о пользователе
-    val currentUserId: String? = null
+    val currentUserId: String? = null,
+
+    val showSearchBar: Boolean = false,
+    val searchValue: String = "",
+    val isSearching: Boolean = false,
+    val searchError: String? = null,
+    val activeFilters: List<FilterItem> = emptyList()
 ) {
 
     fun getDisplayActions(): List<PlannedActionUI> {
@@ -47,6 +59,45 @@ data class TaskXDetailState(
     fun getTotalActionsCount(): Int = actionUiModels.size
     fun getCompletedActionsCount(): Int = actionUiModels.count { it.isCompleted }
     fun getPendingActionsCount(): Int = getTotalActionsCount() - getCompletedActionsCount()
+
+    fun getFilteredActions(): List<PlannedActionUI> {
+        val displayActions = getDisplayActions()
+
+        // Если нет активных фильтров, возвращаем обычный список
+        if (activeFilters.isEmpty()) {
+            return displayActions
+        }
+
+        // Фильтруем действия по всем активным фильтрам
+        return displayActions.filter { actionUI ->
+            val action = actionUI.action
+
+            // Проверяем соответствие каждому фильтру
+            activeFilters.all { filter ->
+                when (filter.field) {
+                    FactActionField.STORAGE_BIN ->
+                        action.storageBin?.code == (filter.data as? BinX)?.code
+
+                    FactActionField.STORAGE_PALLET ->
+                        action.storagePallet?.code == (filter.data as? Pallet)?.code
+
+                    FactActionField.STORAGE_PRODUCT_CLASSIFIER ->
+                        action.storageProductClassifier?.id == (filter.data as? Product)?.id
+
+                    FactActionField.STORAGE_PRODUCT ->
+                        action.storageProduct?.product?.id == (filter.data as? TaskProduct)?.product?.id
+
+                    FactActionField.ALLOCATION_BIN ->
+                        action.placementBin?.code == (filter.data as? BinX)?.code
+
+                    FactActionField.ALLOCATION_PALLET ->
+                        action.placementPallet?.code == (filter.data as? Pallet)?.code
+
+                    else -> true // Для других типов полей всегда true
+                }
+            }
+        }
+    }
 }
 
 enum class ActionFilter(val displayName: String) {

@@ -572,6 +572,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 dynamicMenuUseCases = appContainer.dynamicMenuUseCases,
                 taskXUseCases = appContainer.taskXUseCases,
                 userUseCases = appContainer.userUseCases,
+                productUseCases = appContainer.productUseCases
             )
         }
     }

@@ -4,13 +4,17 @@ import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
+import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
+import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.model.ActionFilter
 import com.synngate.synnframe.presentation.ui.taskx.model.PlannedActionUI
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
+import com.synngate.synnframe.presentation.ui.taskx.model.filter.SearchResult
+import com.synngate.synnframe.presentation.ui.taskx.service.ActionSearchService
 import com.synngate.synnframe.presentation.ui.taskx.validator.ActionValidator
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import timber.log.Timber
@@ -20,14 +24,21 @@ class TaskXDetailViewModel(
     private val endpoint: String,
     private val dynamicMenuUseCases: DynamicMenuUseCases,
     private val taskXUseCases: TaskXUseCases,
-    private val userUseCases: UserUseCases
+    private val userUseCases: UserUseCases,
+    private val productUseCases: ProductUseCases,
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
 
     private val actionValidator = ActionValidator()
+    private val actionSearchService = ActionSearchService(productUseCases)
+    // Отслеживание объектов, добавленных в буфер из фильтра
+    private val filterObjectsAddedToBuffer = mutableSetOf<FactActionField>()
+    // Отслеживание последнего добавленного фильтра
+    private var lastAddedFilterField: FactActionField? = null
 
     init {
         loadTask()
         loadCurrentUser()
+        updateFilterState()
     }
 
     private fun loadTask() {
@@ -245,12 +256,12 @@ class TaskXDetailViewModel(
         )
     }
 
-    fun searchByScanner(barcode: String) {
-        // Реализация поиска по штрих-коду
-    }
-
     fun hideCameraScannerForSearch() {
         updateState { it.copy(showCameraScannerForSearch = false) }
+    }
+
+    fun showCameraScannerForSearch() {
+        updateState { it.copy(showCameraScannerForSearch = true) }
     }
 
     fun checkTaskCompletion() {
@@ -261,6 +272,207 @@ class TaskXDetailViewModel(
         if (allActionsCompleted && !uiState.value.showCompletionDialog) {
             updateState { it.copy(showCompletionDialog = true) }
         }
+    }
+
+    private fun updateFilterState() {
+        val activeFilters = TaskXDataHolderSingleton.actionsFilter.getActiveFilters(
+            uiState.value.taskType?.searchActionFieldsTypes
+        )
+
+        updateState {
+            it.copy(
+                activeFilters = activeFilters,
+                showSearchBar = activeFilters.isNotEmpty() ||
+                        it.task?.taskType?.isActionSearchEnabled() == true
+            )
+        }
+    }
+
+    /**
+     * Устанавливает значение для поиска
+     */
+    fun setSearchValue(value: String) {
+        updateState { it.copy(searchValue = value) }
+    }
+
+    /**
+     * Очищает значение поиска
+     */
+    fun clearSearchValue() {
+        updateState { it.copy(searchValue = "", searchError = null) }
+    }
+
+    /**
+     * Выполняет поиск по введенному тексту
+     */
+    fun searchByText(value: String) {
+        if (value.isBlank()) {
+            updateState { it.copy(searchError = "Введите значение для поиска") }
+            return
+        }
+
+        search(value)
+    }
+
+    /**
+     * Выполняет поиск по отсканированному штрихкоду
+     */
+    fun searchByScanner(barcode: String) {
+        search(barcode)
+    }
+
+    /**
+     * Базовый метод поиска
+     */
+    private fun search(value: String) {
+        val task = uiState.value.task ?: return
+
+        updateState { it.copy(isSearching = true, searchError = null) }
+
+        launchIO {
+            try {
+                val result = actionSearchService.searchActions(
+                    value = value,
+                    task = task,
+                    currentFilter = TaskXDataHolderSingleton.actionsFilter
+                )
+
+                handleSearchResult(result)
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при поиске: $value")
+                updateState {
+                    it.copy(
+                        isSearching = false,
+                        searchError = "Ошибка: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    private fun handleSearchResult(result: SearchResult) {
+        when (result) {
+            is SearchResult.Success -> {
+                Timber.d("Найдено ${result.actionIds.size} действий по полю ${result.field}")
+
+                // Сохраняем последний добавленный фильтр
+                lastAddedFilterField = result.field
+
+                // Проверяем, нужно ли сохранить в буфер
+                val searchFieldType = uiState.value.task?.taskType?.searchActionFieldsTypes
+                    ?.find { it.actionField == result.field }
+
+                val saveToBuffer = searchFieldType?.saveToTaskBuffer == true
+
+                // Добавляем фильтр и сохраняем в буфер, если нужно
+                TaskXDataHolderSingleton.addFilterAndSaveToBuffer(
+                    field = result.field,
+                    value = result.value,
+                    saveToBuffer = saveToBuffer
+                )
+
+                if (saveToBuffer) {
+                    filterObjectsAddedToBuffer.add(result.field)
+                }
+
+                // Обновляем состояние фильтров в UI
+                updateFilterState()
+
+                // Очищаем поле поиска
+                updateState {
+                    it.copy(
+                        isSearching = false,
+                        searchValue = "",
+                        searchError = null
+                    )
+                }
+
+                // Если найдено только одно действие, открываем визард
+                if (result.actionIds.size == 1) {
+                    val actionId = result.actionIds.first()
+                    sendEvent(TaskXDetailEvent.NavigateToActionWizard(taskId, actionId))
+                }
+            }
+
+            is SearchResult.NotFound -> {
+                updateState {
+                    it.copy(
+                        isSearching = false,
+                        searchError = result.message
+                    )
+                }
+            }
+
+            is SearchResult.Error -> {
+                updateState {
+                    it.copy(
+                        isSearching = false,
+                        searchError = result.message
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Удаляет фильтр по указанному полю
+     */
+    fun removeFilter(field: FactActionField) {
+        // Удаляем фильтр и объект из буфера, если он был добавлен из фильтра
+        TaskXDataHolderSingleton.removeFilterAndClearFromBuffer(field)
+
+        // Удаляем поле из отслеживаемых
+        filterObjectsAddedToBuffer.remove(field)
+
+        // Если это был последний добавленный фильтр, очищаем его
+        if (lastAddedFilterField == field) {
+            lastAddedFilterField = null
+        }
+
+        // Обновляем состояние фильтров
+        updateFilterState()
+    }
+
+    /**
+     * Очищает все фильтры
+     */
+    fun clearAllFilters() {
+        // Очищаем все фильтры и объекты из буфера
+        TaskXDataHolderSingleton.clearAllFiltersAndBufferObjects()
+
+        // Очищаем отслеживаемые поля
+        filterObjectsAddedToBuffer.clear()
+        lastAddedFilterField = null
+
+        // Обновляем состояние фильтров
+        updateFilterState()
+    }
+
+    /**
+     * Очищает последний добавленный фильтр
+     * Вызывается после возврата из визарда
+     */
+    fun clearLastAddedFilter() {
+        lastAddedFilterField?.let { field ->
+            // Удаляем фильтр и объект из буфера, если он был добавлен из фильтра
+            TaskXDataHolderSingleton.removeFilterAndClearFromBuffer(field)
+
+            // Удаляем поле из отслеживаемых
+            filterObjectsAddedToBuffer.remove(field)
+            lastAddedFilterField = null
+
+            // Обновляем состояние фильтров
+            updateFilterState()
+        }
+    }
+
+    /**
+     * Обработка возврата из визарда
+     * Вызывается при возврате на экран деталей задания
+     */
+    fun onReturnFromWizard() {
+        // Очищаем последний добавленный фильтр, если он привел к открытию визарда
+        clearLastAddedFilter()
     }
 
     fun dismissCompletionDialog() {
