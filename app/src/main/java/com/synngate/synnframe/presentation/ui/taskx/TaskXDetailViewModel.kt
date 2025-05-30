@@ -288,6 +288,17 @@ class TaskXDetailViewModel(
         }
     }
 
+    fun toggleSearchBar() {
+        updateState {
+            it.copy(
+                showSearchBar = !it.showSearchBar,
+                // Если скрываем панель поиска, очищаем значение и ошибку
+                searchValue = if (it.showSearchBar) "" else it.searchValue,
+                searchError = if (it.showSearchBar) null else it.searchError
+            )
+        }
+    }
+
     /**
      * Устанавливает значение для поиска
      */

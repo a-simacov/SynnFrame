@@ -29,11 +29,14 @@ import com.synngate.synnframe.R
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
+import com.synngate.synnframe.presentation.common.scaffold.SearchButton
 import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.common.status.TaskXStatusIndicator
+import com.synngate.synnframe.presentation.ui.taskx.components.ActionFilterChipList
 import com.synngate.synnframe.presentation.ui.taskx.components.ActionFilterChips
+import com.synngate.synnframe.presentation.ui.taskx.components.ActionSearchBar
 import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableTaskInfoCard
 import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionCard
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskProgressIndicator
@@ -64,6 +67,11 @@ fun TaskXDetailScreen(
 
     BackHandler {
         viewModel.onBackPressed()
+    }
+
+    // Обработка возврата из визарда
+    LaunchedEffect(Unit) {
+        viewModel.onReturnFromWizard()
     }
 
     LaunchedEffect(viewModel) {
@@ -145,7 +153,16 @@ fun TaskXDetailScreen(
         notification = state.error?.let {
             Pair(it, StatusType.ERROR)
         },
-        isLoading = state.isLoading
+        isLoading = state.isLoading,
+        actions = {
+            // Добавляем кнопку поиска, если тип задания поддерживает поиск
+            if (state.task?.taskType?.isActionSearchEnabled() == true) {
+                SearchButton(
+                    isSearchActive = state.showSearchBar,
+                    onToggleSearch = viewModel::toggleSearchBar
+                )
+            }
+        }
     ) { paddingValues ->
         if (task == null) {
             EmptyScreenContent(
@@ -161,6 +178,29 @@ fun TaskXDetailScreen(
                 .padding(paddingValues)
                 .padding(4.dp)
         ) {
+            // Поисковая строка
+            if (state.showSearchBar) {
+                ActionSearchBar(
+                    query = state.searchValue,
+                    onQueryChange = viewModel::setSearchValue,
+                    onSearch = { viewModel.searchByText(state.searchValue) },
+                    onClear = viewModel::clearSearchValue,
+                    onScannerClick = viewModel::showCameraScannerForSearch,
+                    isSearching = state.isSearching,
+                    error = state.searchError,
+                    visible = state.showSearchBar
+                )
+
+                // Отображение активных фильтров
+                if (state.activeFilters.isNotEmpty()) {
+                    ActionFilterChipList(
+                        filters = state.activeFilters,
+                        onRemove = viewModel::removeFilter,
+                        onClearAll = viewModel::clearAllFilters
+                    )
+                }
+            }
+
             ExpandableTaskInfoCard(
                 title = stringResource(R.string.task_details),
                 initiallyExpanded = false,
@@ -225,7 +265,8 @@ fun TaskXDetailScreen(
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                val displayActions = state.getDisplayActions()
+                // Используем getFilteredActions вместо getDisplayActions
+                val displayActions = state.getFilteredActions()
 
                 if (displayActions.isEmpty()) {
                     item {
@@ -240,7 +281,7 @@ fun TaskXDetailScreen(
                     }
                 } else {
                     items(
-                        items = state.getDisplayActions(),
+                        items = displayActions,
                         key = { it.id }
                     ) { actionUI ->
                         PlannedActionCard(
