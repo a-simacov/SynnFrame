@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -11,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -30,8 +30,8 @@ import com.synngate.synnframe.presentation.ui.taskx.model.PlannedActionUI
 import kotlin.math.absoluteValue
 
 /**
- * Карточка для отображения планового действия с обновленным дизайном
- * С адаптивной шириной блока количества
+ * Карточка для отображения планового действия с оптимизированными вертикальными полосами
+ * для индикации статуса и прогресса.
  */
 @Composable
 fun PlannedActionCard(
@@ -41,17 +41,17 @@ fun PlannedActionCard(
 ) {
     val action = actionUI.action
 
-    // Определяем цвет левой полосы статуса
+    // Определяем яркие, контрастные цвета для индикаторов
     val statusBarColor = when {
-        actionUI.isInitialAction -> MaterialTheme.colorScheme.primary
-        actionUI.isFinalAction -> MaterialTheme.colorScheme.tertiary
-        actionUI.isCompleted -> MaterialTheme.colorScheme.secondary
-        else -> MaterialTheme.colorScheme.outline
+        actionUI.isInitialAction -> Color(0xFF1976D2) // Яркий синий
+        actionUI.isFinalAction -> Color(0xFFC2185B)   // Яркий пурпурный
+        actionUI.isCompleted -> Color(0xFF388E3C)     // Яркий зеленый
+        else -> Color(0xFF757575)                     // Серый
     }
 
-    // Фон элемента
+    // Фон элемента соответствует теме
     val backgroundColor = if (actionUI.isCompleted)
-        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.1f)
+        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.15f)
     else
         MaterialTheme.colorScheme.surface
 
@@ -71,7 +71,7 @@ fun PlannedActionCard(
             // План совпадает с фактом
             quantityText = formatQuantity(actionUI.quantity)
             diffText = ""
-            quantityColor = MaterialTheme.colorScheme.secondary
+            quantityColor = Color(0xFF388E3C)  // Яркий зеленый
         } else {
             // План не совпадает с фактом
             quantityText = formatQuantity(actionUI.completedQuantity)
@@ -79,9 +79,9 @@ fun PlannedActionCard(
             val sign = if (diff > 0) "+" else ""
             diffText = "($sign${formatQuantity(diff.absoluteValue)})"
             quantityColor = if (diff > 0)
-                MaterialTheme.colorScheme.primary
+                Color(0xFF1976D2)  // Яркий синий
             else
-                MaterialTheme.colorScheme.error
+                Color(0xFFD32F2F)  // Яркий красный
         }
     } else {
         quantityText = ""
@@ -95,22 +95,31 @@ fun PlannedActionCard(
     else
         0f
 
+    // Контрастные цвета для индикатора прогресса
+    val progressBackgroundColor = Color(0xFFE0E0E0)  // Светло-серый, хорошо видный в обеих темах
+    val progressFillColor = if (progressPercentage >= 100f)
+        Color(0xFF388E3C)  // Яркий зеленый
+    else
+        Color(0xFF1976D2)  // Яркий синий
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clickable(enabled = actionUI.isClickable) { onClick() },
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (actionUI.isCompleted) 1.dp else 2.dp
+            defaultElevation = if (actionUI.isCompleted) 1.dp else 3.dp
         ),
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
         ),
-        shape = RoundedCornerShape(4.dp)
+        shape = RoundedCornerShape(8.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
         ) {
-            // Левая полоса статуса
+            // ЛЕВАЯ ПОЛОСА СТАТУСА - уменьшена ширина до 4dp
             Box(
                 modifier = Modifier
                     .width(4.dp)
@@ -118,13 +127,13 @@ fun PlannedActionCard(
                     .background(statusBarColor)
             )
 
-            // Основное содержимое
+            // Основное содержимое в колонке с отступами
             Column(
                 modifier = Modifier
-                    .weight(1f, fill = true)
-                    .padding(8.dp)
+                    .weight(1f)
+                    .padding(10.dp)
             ) {
-                // Информация о товаре (выделено)
+                // Информация о товаре
                 if (action.storageProduct != null || action.storageProductClassifier != null) {
                     val productName = action.storageProduct?.product?.name
                         ?: action.storageProductClassifier?.name
@@ -134,7 +143,7 @@ fun PlannedActionCard(
                         text = productName,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
+                        fontSize = 16.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -142,14 +151,14 @@ fun PlannedActionCard(
 
                 // Информация о ячейках
                 if (action.storageBin != null || action.placementBin != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Row(modifier = Modifier.fillMaxWidth()) {
                         action.storageBin?.let {
                             Text(
                                 text = "Из: ${it.code}",
-                                fontSize = 12.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                             )
                         }
 
@@ -157,8 +166,8 @@ fun PlannedActionCard(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "В: ${it.code}",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                             )
                         }
                     }
@@ -166,13 +175,13 @@ fun PlannedActionCard(
 
                 // Информация о паллетах
                 if (action.storagePallet != null || action.placementPallet != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Row(modifier = Modifier.fillMaxWidth()) {
                         action.storagePallet?.let {
                             Text(
                                 text = "Паллета: ${it.code}",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                             )
                         }
 
@@ -180,8 +189,8 @@ fun PlannedActionCard(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "На паллету: ${it.code}",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                             )
                         }
                     }
@@ -191,12 +200,12 @@ fun PlannedActionCard(
                 Spacer(modifier = Modifier.weight(1f, fill = true))
 
                 // Название действия с номером (внизу)
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Номер действия
+                    // Номер действия - размер не изменяется
                     Text(
                         text = "#${actionUI.order}",
                         fontSize = 10.sp,
@@ -205,7 +214,7 @@ fun PlannedActionCard(
                         modifier = Modifier.padding(end = 4.dp)
                     )
 
-                    // Название шаблона действия
+                    // Название шаблона действия - размер не изменяется
                     Text(
                         text = actionUI.name,
                         fontSize = 10.sp,
@@ -217,13 +226,13 @@ fun PlannedActionCard(
                 }
             }
 
-            // Блок количества (справа) - с адаптивной шириной
+            // Блок количества (справа) - отображается, только если есть количество
             if (hasQuantity) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
                     modifier = Modifier
-                        .widthIn(min = 48.dp, max = 80.dp) // Минимальная и максимальная ширина
+                        .width(70.dp)
                         .fillMaxHeight()
                         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.98f))
                         .padding(horizontal = 4.dp, vertical = 8.dp)
@@ -232,7 +241,7 @@ fun PlannedActionCard(
                         text = quantityText,
                         color = quantityColor,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
+                        fontSize = 16.sp,
                         textAlign = TextAlign.Center,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -243,31 +252,28 @@ fun PlannedActionCard(
                         Text(
                             text = diffText,
                             color = quantityColor,
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             textAlign = TextAlign.Center,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
+            }
 
-                // Правая полоса прогресса
-                Box(
-                    modifier = Modifier
-                        .width(4.dp)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                ) {
+            // ПРАВАЯ ПОЛОСА ПРОГРЕССА - уменьшена ширина до 4dp
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(progressBackgroundColor)
+            ) {
+                if (hasQuantity) {
                     Box(
                         modifier = Modifier
                             .width(4.dp)
                             .fillMaxHeight(progressPercentage / 100f)
-                            .background(
-                                if (progressPercentage >= 100f)
-                                    MaterialTheme.colorScheme.secondary
-                                else
-                                    MaterialTheme.colorScheme.primary
-                            )
+                            .background(progressFillColor)
                             .align(Alignment.BottomCenter)
                     )
                 }
