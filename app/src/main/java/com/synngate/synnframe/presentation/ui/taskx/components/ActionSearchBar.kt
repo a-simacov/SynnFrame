@@ -83,7 +83,7 @@ private fun SearchField(
 
     Card(
         modifier = modifier
-            .padding(vertical = 4.dp)
+            .padding(top = 2.dp, bottom = 4.dp)
             .border(
                 width = 1.dp,
                 color = borderColor,

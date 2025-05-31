@@ -16,11 +16,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-/**
- * Обновленная карточка с информацией о задании.
- * В свернутом состоянии показывает только header,
- * в развернутом - header и дополнительный контент.
- */
 @Composable
 fun ExpandableTaskInfoCard(
     header: @Composable () -> Unit,
@@ -37,12 +32,10 @@ fun ExpandableTaskInfoCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { isExpanded = !isExpanded }
-                .padding(8.dp)
+                .padding(2.dp)
         ) {
-            // Header всегда видим
             header()
 
-            // Дополнительный контент видим только при развороте
             AnimatedVisibility(
                 visible = isExpanded,
                 enter = expandVertically(),

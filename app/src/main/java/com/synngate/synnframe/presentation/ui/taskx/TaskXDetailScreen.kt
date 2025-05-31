@@ -30,7 +30,6 @@ import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.common.status.StatusType
-import com.synngate.synnframe.presentation.common.status.TaskXStatusIndicator
 import com.synngate.synnframe.presentation.ui.taskx.components.ActionFilterChipList
 import com.synngate.synnframe.presentation.ui.taskx.components.ActionFilterChips
 import com.synngate.synnframe.presentation.ui.taskx.components.ActionSearchBar
@@ -152,8 +151,7 @@ fun TaskXDetailScreen(
             Pair(it, StatusType.ERROR)
         },
         isLoading = state.isLoading,
-        actions = { }, // Убираем все действия из AppScaffold
-        showTopBar = false // Скрываем заголовок
+        showTopBar = false
     ) { paddingValues ->
         if (task == null) {
             EmptyScreenContent(
@@ -169,7 +167,6 @@ fun TaskXDetailScreen(
                 .padding(paddingValues)
                 .padding(2.dp)
         ) {
-            // Обновленная карточка с информацией о задании
             ExpandableTaskInfoCard(
                 header = {
                     // Заголовок с индикатором прогресса и кнопками управления
@@ -185,7 +182,6 @@ fun TaskXDetailScreen(
                     )
                 },
                 content = {
-                    // Дополнительные детали задания (видны только при развороте)
                     Text(
                         text = "Имя: ${task.name}",
                         style = MaterialTheme.typography.bodyMedium,
@@ -202,8 +198,10 @@ fun TaskXDetailScreen(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    TaskXStatusIndicator(
-                        status = task.status,
+                    Text(
+                        text = "Статус: ${task.status.name}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     task.startedAt?.let {
@@ -224,7 +222,7 @@ fun TaskXDetailScreen(
                         )
                     }
                 },
-                initiallyExpanded = false, // По умолчанию свернуто
+                initiallyExpanded = false,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -235,7 +233,6 @@ fun TaskXDetailScreen(
                 hasFinalActions = state.hasFinalActions()
             )
 
-            // Поисковая строка
             if (state.showSearchBar) {
                 ActionSearchBar(
                     query = state.searchValue,
@@ -248,7 +245,6 @@ fun TaskXDetailScreen(
                     visible = state.showSearchBar
                 )
 
-                // Отображение активных фильтров
                 if (state.activeFilters.isNotEmpty()) {
                     ActionFilterChipList(
                         filters = state.activeFilters,
@@ -258,7 +254,6 @@ fun TaskXDetailScreen(
                 }
             }
 
-            // Отображение элементов буфера
             if (state.showBufferItems && state.bufferItems.isNotEmpty()) {
                 BufferItemChipList(
                     items = state.bufferItems,
@@ -288,6 +283,10 @@ fun TaskXDetailScreen(
                         )
                     }
                 } else {
+                    item {
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+
                     items(
                         items = displayActions,
                         key = { it.id }

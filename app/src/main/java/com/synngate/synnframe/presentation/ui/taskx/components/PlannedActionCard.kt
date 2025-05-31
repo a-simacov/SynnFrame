@@ -24,15 +24,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.taskx.BinX
+import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.action.PlannedAction
+import com.synngate.synnframe.presentation.theme.SynnFrameTheme
+import com.synngate.synnframe.presentation.ui.taskx.enums.CompletionOrderType
 import com.synngate.synnframe.presentation.ui.taskx.model.PlannedActionUI
 import kotlin.math.absoluteValue
 
-/**
- * Карточка для отображения планового действия с оптимизированными вертикальными полосами
- * для индикации статуса и прогресса.
- */
 @Composable
 fun PlannedActionCard(
     actionUI: PlannedActionUI,
@@ -48,12 +51,6 @@ fun PlannedActionCard(
         actionUI.isCompleted -> Color(0xFF388E3C)     // Яркий зеленый
         else -> Color(0xFF757575)                     // Серый
     }
-
-    // Фон элемента соответствует теме
-    val backgroundColor = if (actionUI.isCompleted)
-        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.15f)
-    else
-        MaterialTheme.colorScheme.surface
 
     // Информация о количестве
     val hasQuantity = actionUI.quantity > 0f
@@ -106,11 +103,9 @@ fun PlannedActionCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(enabled = actionUI.isClickable) { onClick() },
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (actionUI.isCompleted) 1.dp else 3.dp
-        ),
+        elevation = CardDefaults.cardElevation(1.dp),
         colors = CardDefaults.cardColors(
-            containerColor = backgroundColor
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         shape = RoundedCornerShape(8.dp)
     ) {
@@ -131,7 +126,7 @@ fun PlannedActionCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(10.dp)
+                    .padding(4.dp)
             ) {
                 // Информация о товаре
                 if (action.storageProduct != null || action.storageProductClassifier != null) {
@@ -156,7 +151,7 @@ fun PlannedActionCard(
                         action.storageBin?.let {
                             Text(
                                 text = "Из: ${it.code}",
-                                fontSize = 14.sp,
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                             )
@@ -166,7 +161,7 @@ fun PlannedActionCard(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "В: ${it.code}",
-                                fontSize = 14.sp,
+                                fontSize = 16.sp,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                             )
                         }
@@ -176,11 +171,11 @@ fun PlannedActionCard(
                 // Информация о паллетах
                 if (action.storagePallet != null || action.placementPallet != null) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Row(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         action.storagePallet?.let {
                             Text(
                                 text = "Паллета: ${it.code}",
-                                fontSize = 14.sp,
+                                fontSize = 16.sp,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                             )
                         }
@@ -189,7 +184,7 @@ fun PlannedActionCard(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "На паллету: ${it.code}",
-                                fontSize = 14.sp,
+                                fontSize = 16.sp,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                             )
                         }
@@ -199,8 +194,6 @@ fun PlannedActionCard(
                 // Гибкий пробел, чтобы название было внизу
                 Spacer(modifier = Modifier.weight(1f, fill = true))
 
-                // Название действия с номером (внизу)
-                Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -208,7 +201,7 @@ fun PlannedActionCard(
                     // Номер действия - размер не изменяется
                     Text(
                         text = "#${actionUI.order}",
-                        fontSize = 10.sp,
+                        fontSize = 8.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.padding(end = 4.dp)
@@ -217,7 +210,7 @@ fun PlannedActionCard(
                     // Название шаблона действия - размер не изменяется
                     Text(
                         text = actionUI.name,
-                        fontSize = 10.sp,
+                        fontSize = 8.sp,
                         color = MaterialTheme.colorScheme.outline,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -315,5 +308,33 @@ private fun formatQuantity(value: Float): String {
             // Удаляем лишние нули после запятой
             formattedValue.replace("\\.0+([KM]?)$".toRegex(), "$1")
         }
+    }
+}
+
+@Preview(apiLevel = 34, showBackground = true)
+@Composable
+private fun PlannedActionCardPreview() {
+    SynnFrameTheme {
+        PlannedActionCard(
+            actionUI = PlannedActionUI(
+                PlannedAction(
+                    id = "",
+                    order = 2,
+                    actionTemplateId = "",
+                    actionTemplate = null,
+                    completionOrderType = CompletionOrderType.REGULAR,
+                    storageProductClassifier = Product(id = "", name = "Ночник 3D MOON LAMP CompletionOrderType.REGULAR storageProductClassifier"),
+                    storageBin = BinX(code = "A00111", zone = ""),
+                    placementBin = BinX(code = "A00112", zone = ""),
+                    storagePallet = Pallet("IN00000000009"),
+                    placementPallet = Pallet("IN00000000010"),
+                    isCompleted = true,
+                    quantity = 2000f
+                ),
+                isCompleted = true,
+                completedQuantity = 1223f
+            ),
+            onClick = { /*TODO*/ }
+        )
     }
 }
