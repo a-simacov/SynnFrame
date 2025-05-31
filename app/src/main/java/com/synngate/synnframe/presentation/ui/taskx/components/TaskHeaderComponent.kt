@@ -17,31 +17,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 
-/**
- * Компонент заголовка задания, объединяющий индикатор прогресса и кнопки управления
- */
 @Composable
 fun TaskHeaderComponent(
     task: TaskX,
     showSearchBar: Boolean,
     showBufferItems: Boolean,
+    showFilters: Boolean,
     hasBufferItems: Boolean,
     hasFilters: Boolean,
     onToggleSearch: () -> Unit,
     onToggleBufferDisplay: () -> Unit,
+    onToggleFilters: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Индикатор прогресса
         TaskProgressIndicator(
             task = task,
             modifier = Modifier.weight(1f)
         )
 
-        // Кнопка поиска
         if (task.taskType?.isActionSearchEnabled() == true) {
             IconButton(
                 onClick = onToggleSearch,
@@ -55,7 +52,19 @@ fun TaskHeaderComponent(
             }
         }
 
-        // Кнопка буфера
+        if (hasFilters) {
+            IconButton(
+                onClick = onToggleFilters,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FilterList,
+                    contentDescription = if (showFilters) "Скрыть фильтры" else "Показать фильтры",
+                    tint = if (showFilters) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
         if (hasBufferItems) {
             IconButton(
                 onClick = onToggleBufferDisplay,
@@ -67,16 +76,6 @@ fun TaskHeaderComponent(
                     tint = if (showBufferItems) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface
                 )
             }
-        }
-
-        // Индикатор активных фильтров
-        if (hasFilters) {
-            Icon(
-                imageVector = Icons.Default.FilterList,
-                contentDescription = "Активные фильтры",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
         }
     }
 }

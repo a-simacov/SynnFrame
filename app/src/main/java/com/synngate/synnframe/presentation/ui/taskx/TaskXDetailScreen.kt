@@ -80,12 +80,15 @@ fun TaskXDetailScreen(
                         duration = SnackbarDuration.Short
                     )
                 }
+
                 is TaskXDetailEvent.NavigateToActionWizard -> {
                     navigateToActionWizard(event.taskId, event.actionId)
                 }
+
                 is TaskXDetailEvent.NavigateBack -> {
                     navigateBack()
                 }
+
                 is TaskXDetailEvent.NavigateBackWithMessage -> {
                     navigateBack()
                     coroutineScope.launch {
@@ -174,10 +177,12 @@ fun TaskXDetailScreen(
                         task = task,
                         showSearchBar = state.showSearchBar,
                         showBufferItems = state.showBufferItems,
+                        showFilters = state.showFilters,
                         hasBufferItems = state.bufferItems.isNotEmpty(),
                         hasFilters = state.activeFilters.isNotEmpty(),
                         onToggleSearch = viewModel::toggleSearchBar,
                         onToggleBufferDisplay = viewModel::toggleBufferDisplay,
+                        onToggleFilters = viewModel::toggleFilters,
                         modifier = Modifier.fillMaxWidth()
                     )
                 },

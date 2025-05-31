@@ -11,10 +11,17 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -149,21 +156,51 @@ fun PlannedActionCard(
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(modifier = Modifier.fillMaxWidth()) {
                         action.storageBin?.let {
-                            Text(
-                                text = "Из: ${it.code}",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = "Ячейка хранения",
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.ArrowUpward,
+                                    contentDescription = "Из",
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = it.code,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                )
+                            }
                         }
 
                         action.placementBin?.let {
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "В: ${it.code}",
-                                fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = "Ячейка размещения",
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDownward,
+                                    contentDescription = "В",
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = it.code,
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                )
+                            }
                         }
                     }
                 }
@@ -173,20 +210,50 @@ fun PlannedActionCard(
                     Spacer(modifier = Modifier.height(4.dp))
                     Column(modifier = Modifier.fillMaxWidth()) {
                         action.storagePallet?.let {
-                            Text(
-                                text = "Паллета: ${it.code}",
-                                fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.ViewInAr,
+                                    contentDescription = "Паллета хранения",
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.ArrowUpward,
+                                    contentDescription = "Из",
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = it.code,
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                )
+                            }
                         }
 
                         action.placementPallet?.let {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "На паллету: ${it.code}",
-                                fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.ViewInAr,
+                                    contentDescription = "Паллета размещения",
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDownward,
+                                    contentDescription = "В",
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = it.code,
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                )
+                            }
                         }
                     }
                 }
@@ -287,8 +354,7 @@ private fun formatQuantity(value: Float): String {
         value % 1f == 0f -> {
             val intValue = value.toInt()
             when {
-                intValue < 1000 -> intValue.toString()
-                intValue < 10000 -> String.format("%.1fK", intValue / 1000f).replace(".0K", "K")
+                intValue < 10000 -> intValue.toString() // Показываем как есть до 10_000
                 intValue < 1000000 -> String.format("%dK", intValue / 1000)
                 else -> String.format("%.1fM", intValue / 1000000f).replace(".0M", "M")
             }
@@ -299,8 +365,7 @@ private fun formatQuantity(value: Float): String {
             val formattedValue = when {
                 value < 0.01f -> String.format("%.3f", value)
                 value < 0.1f -> String.format("%.2f", value)
-                value < 1000f -> String.format("%.1f", value)
-                value < 10000f -> String.format("%.1fK", value / 1000f)
+                value < 10000f -> String.format("%.1f", value) // Показываем как есть до 10_000
                 value < 1000000f -> String.format("%dK", (value / 1000f).toInt())
                 else -> String.format("%.1fM", value / 1000000f)
             }

@@ -470,6 +470,12 @@ class TaskXDetailViewModel(
         }
     }
 
+    fun toggleFilters() {
+        updateState {
+            it.copy(showFilters = !it.showFilters)
+        }
+    }
+
     /**
      * Удаляет фильтр по указанному полю
      */

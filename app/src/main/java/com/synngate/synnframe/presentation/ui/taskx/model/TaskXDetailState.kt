@@ -42,10 +42,11 @@ data class TaskXDetailState(
     val isSearching: Boolean = false,
     val searchError: String? = null,
     val activeFilters: List<FilterItem> = emptyList(),
+    val showFilters: Boolean = true,
 
     // Буфер задания
     val bufferItems: List<BufferDisplayItem> = emptyList(),
-    val showBufferItems: Boolean = false // Флаг для отображения буфера
+    val showBufferItems: Boolean = false
 ) {
 
     fun getDisplayActions(): List<PlannedActionUI> {
