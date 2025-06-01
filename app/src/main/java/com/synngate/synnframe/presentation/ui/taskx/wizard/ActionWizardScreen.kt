@@ -18,6 +18,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,6 +35,7 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.components.StepScreen
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.SummaryScreen
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardEvent
 import timber.log.Timber
+import java.util.UUID
 
 @Composable
 fun ActionWizardScreen(
@@ -43,6 +45,22 @@ fun ActionWizardScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val lifecycleToken = remember { UUID.randomUUID().toString() }
+    DisposableEffect(lifecycleToken) {
+        Timber.d("ActionWizardScreen с токеном $lifecycleToken создан")
+        onDispose {
+            Timber.d("ActionWizardScreen с токеном $lifecycleToken уничтожается")
+        }
+    }
+
+    LaunchedEffect(viewModel, lifecycleToken) {
+        Timber.d("ActionWizardScreen: установка callback навигации для токена $lifecycleToken")
+        viewModel.setNavigateBackCallback {
+            Timber.d("ActionWizardScreen: вызов navigateBack() для токена $lifecycleToken")
+            navigateBack()
+        }
+    }
 
     BackHandler {
         when {
@@ -78,12 +96,19 @@ fun ActionWizardScreen(
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is ActionWizardEvent.NavigateBack -> navigateBack()
-                is ActionWizardEvent.NavigateToTaskDetail -> navigateBack()
                 is ActionWizardEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(event.message, duration = SnackbarDuration.Short)
                 }
+                // Убираем обработку событий навигации, так как теперь используем callback
+                else -> { /* ignore */ }
             }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        Timber.d("ActionWizardScreen: создан")
+        onDispose {
+            Timber.d("ActionWizardScreen: уничтожен")
         }
     }
 

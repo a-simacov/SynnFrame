@@ -44,6 +44,15 @@ class ActionWizardViewModel(
     private var isProcessingBarcode = false
     private var resetProcessingJob: Job? = null
 
+    // Новый callback для навигации
+    private var navigateBackCallback: (() -> Unit)? = null
+
+    // Метод для установки callback'а навигации
+    fun setNavigateBackCallback(callback: () -> Unit) {
+        navigateBackCallback = callback
+        Timber.d("Установлен callback навигации назад из визарда")
+    }
+
     init {
         initializeWizard()
     }
@@ -282,10 +291,14 @@ class ActionWizardViewModel(
                 val result = networkService.completeAction(factAction, syncWithServer)
 
                 if (result.isSuccess()) {
-                    Timber.d("ActionWizardViewModel: успешная отправка, вызов навигации")
+                    Timber.d("ActionWizardViewModel: успешная отправка, вызов навигации через callback")
                     updateState { controller.handleSendSuccess(it).getNewState() }
-                    sendEvent(ActionWizardEvent.NavigateToTaskDetail)
-                    Timber.d("ActionWizardViewModel: событие навигации отправлено")
+
+                    // Вызываем callback из главного потока с задержкой для завершения обработки
+                    launchMain {
+                        Timber.d("Вызов навигации из главного потока")
+                        navigateBackCallback?.invoke()
+                    }
                 } else {
                     Timber.d("ActionWizardViewModel: ошибка отправки: ${result.getErrorMessage()}")
                     // Явно сбрасываем состояние загрузки перед установкой ошибки
@@ -320,9 +333,15 @@ class ActionWizardViewModel(
     }
 
     fun exitWizard() {
+        Timber.d("ActionWizardViewModel: вызов метода exitWizard()")
         clearErrorAndLoading()
         updateState { controller.dismissExitDialog(it).getNewState() }
-        sendEvent(ActionWizardEvent.NavigateToTaskDetail)
+
+        // Используем callback вместо отправки события
+        launchMain {
+            navigateBackCallback?.invoke()
+            Timber.d("ActionWizardViewModel: callback навигации вызван из exitWizard()")
+        }
     }
 
     fun clearError() {

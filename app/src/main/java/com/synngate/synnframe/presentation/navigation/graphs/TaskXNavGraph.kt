@@ -119,6 +119,37 @@ fun NavGraphBuilder.taskXNavGraph(
 
             Timber.d("TaskXNavGraph: текущий маршрут=$currentRoute, предыдущий маршрут=$previousRoute")
 
+            val navigateBackToTaskDetail: () -> Unit = {
+                // Получаем текущий endpoint из синглтона
+                val endpoint = TaskXDataHolderSingleton.endpoint
+                if (endpoint != null) {
+                    try {
+                        val encodedEndpoint = Base64.getEncoder().encodeToString(endpoint.toByteArray())
+
+                        // Явно навигируем на экран TaskXDetail с очисткой стека
+                        Timber.d("Выполняется явная навигация на taskx_detail с taskId=$taskId, endpoint=$endpoint")
+                        navController.navigate(TaskXRoutes.TaskXDetail.createRoute(taskId, endpoint)) {
+                            // Удаляем текущий экран и все промежуточные экраны до TaskXDetail
+                            popUpTo(TaskXRoutes.TaskXGraph.route) {
+                                saveState = false
+                                inclusive = false
+                            }
+                            // Предотвращаем создание дубликатов экрана
+                            launchSingleTop = true
+                            restoreState = false
+                        }
+                        Timber.d("Навигация на TaskXDetail выполнена")
+                    } catch (e: Exception) {
+                        Timber.e(e, "Ошибка при навигации на TaskXDetail")
+                        // Аварийный вариант - просто пытаемся вернуться назад
+                        navController.popBackStack()
+                    }
+                } else {
+                    Timber.w("Невозможно выполнить явную навигацию: endpoint не задан")
+                    navController.popBackStack()
+                }
+            }
+
             val screenContainer = rememberEphemeralScreenContainer(
                 navBackStackEntry = entry,
                 navigationScopeManager = navigationScopeManager
@@ -152,16 +183,14 @@ fun NavGraphBuilder.taskXNavGraph(
                     }
                 }
             } else {
-                // Создаем ViewModel только если данные доступны
                 val viewModel = remember(taskId, actionId) {
                     screenContainer.createActionWizardViewModel(taskId, actionId)
                 }
 
                 ActionWizardScreen(
                     viewModel = viewModel,
-                    navigateBack = {
-                        navController.popBackStack()
-                    }
+                    // Передаем нашу надежную функцию навигации
+                    navigateBack = navigateBackToTaskDetail
                 )
             }
         }
