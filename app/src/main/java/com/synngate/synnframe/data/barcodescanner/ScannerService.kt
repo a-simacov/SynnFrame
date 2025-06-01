@@ -75,17 +75,6 @@ class ScannerService(
         }
     }
 
-    // Добавить новый метод для управления обработкой без отключения сканера
-    fun pauseProcessing() {
-        // Только записываем в лог, но не отключаем сканер
-        Timber.d("Scanner processing paused but scanner remains enabled")
-    }
-
-    fun resumeProcessing() {
-        // Только записываем в лог, что обработка возобновлена
-        Timber.d("Scanner processing resumed")
-    }
-
     fun hasRealScanner(): Boolean {
         return scanner != null && scanner !is NullBarcodeScanner
     }

@@ -211,11 +211,12 @@ class ActionWizardViewModel(
     }
 
     fun handleBarcode(barcode: String) {
-        val currentState = determineStateType(uiState.value)
-        if (currentState == WizardState.SUMMARY ||
-            currentState == WizardState.EXIT_DIALOG ||
-            currentState == WizardState.SENDING
-        ) {
+        // Проверка состояния экрана - не обрабатываем штрихкоды во время загрузки,
+        // показа диалогов или на экране сводки
+        if (uiState.value.isLoading ||
+            uiState.value.showExitDialog ||
+            uiState.value.showSummary) {
+            Timber.d("Сканирование игнорируется из-за состояния экрана")
             return
         }
 
@@ -226,34 +227,15 @@ class ActionWizardViewModel(
             return
         }
 
-        // Проверяем, не обрабатывается ли уже другое сканирование
-        if (isProcessingBarcode) {
-            Timber.d("Игнорирование сканирования: предыдущее еще обрабатывается")
-            return
-        }
-
-        resetProcessingJob?.cancel()
-
-        isProcessingBarcode = true
-
-        updateState { controller.setLoading(it, true).getNewState() }
-
-        // Запускаем задачу для гарантированного сброса флага обработки через 5 секунд
-        // в любом случае (это страховка на случай сбоев)
-        resetProcessingJob = viewModelScope.launch {
-            delay(5000)
-            if (isProcessingBarcode) {
-                Timber.d("Принудительный сброс флага обработки сканирования по таймауту")
-                isProcessingBarcode = false
-                updateState { controller.setLoading(it, false).getNewState() }
-            }
-        }
+        // Показываем индикатор загрузки
+        updateState { it.copy(isLoading = true) }
 
         viewModelScope.launch {
             try {
                 val result = objectSearchService.handleBarcode(uiState.value, barcode)
 
-                updateState { controller.setLoading(it, false).getNewState() }
+                // Убираем индикатор загрузки
+                updateState { it.copy(isLoading = false) }
 
                 if (result.isSuccess() && result.isProcessingRequired()) {
                     val foundObject = result.getResultData()
@@ -263,25 +245,19 @@ class ActionWizardViewModel(
                 } else if (!result.isSuccess()) {
                     val errorMessage = result.getErrorMessage()
                     if (errorMessage != null) {
-                        updateState { controller.setError(it, errorMessage).getNewState() }
+                        updateState { it.copy(error = errorMessage) }
                         sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
                     }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка при обработке штрих-кода: $barcode")
                 updateState {
-                    val withError =
-                        controller.setError(it, "Ошибка при обработке штрих-кода: ${e.message}")
-                            .getNewState()
-                    controller.setLoading(withError, false).getNewState()
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка при обработке штрих-кода: ${e.message}"
+                    )
                 }
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка при обработке штрих-кода: ${e.message}"))
-            } finally {
-                isProcessingBarcode = false
-                Timber.d("Сброс флага обработки сканирования после завершения")
-
-                resetProcessingJob?.cancel()
-                resetProcessingJob = null
             }
         }
     }

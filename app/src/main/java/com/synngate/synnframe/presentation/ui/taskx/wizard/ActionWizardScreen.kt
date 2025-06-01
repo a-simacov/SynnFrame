@@ -25,13 +25,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
+import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.ExitConfirmationDialog
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.StepScreen
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.SummaryScreen
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardEvent
-import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
 import timber.log.Timber
 
 @Composable
@@ -42,8 +43,6 @@ fun ActionWizardScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-
-    val shouldProcessScanning = !state.isLoading && !state.showExitDialog && !state.showSummary
 
     BackHandler {
         when {
@@ -66,17 +65,15 @@ fun ActionWizardScreen(
         }
     }
 
-    WizardScannerListener(
-        onBarcodeScanned = { barcode ->
-            if (shouldProcessScanning) {
-                viewModel.handleBarcode(barcode)
-            } else {
-                Timber.d("Сканирование игнорируется из-за состояния экрана")
-            }
-        },
-        // ВАЖНО: всегда включен, но обработка зависит от условий внутри onBarcodeScanned
-        isEnabled = true
-    )
+    // Используем стандартный ScannerListener вместо WizardScannerListener
+    val scannerService = LocalScannerService.current
+    if (scannerService?.hasRealScanner() == true) {
+        ScannerListener(onBarcodeScanned = { barcode ->
+            val currentStep = state.getCurrentStep()
+            Timber.d("Сканирование штрихкода: $barcode на шаге с типом: ${currentStep?.factActionField}")
+            viewModel.handleBarcode(barcode)
+        })
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -165,7 +162,7 @@ fun ActionWizardScreen(
 }
 
 @Composable
-private fun getStepTitle(state: ActionWizardState): String {
+private fun getStepTitle(state: com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState): String {
     val currentStep = state.steps.getOrNull(state.currentStepIndex)
     return currentStep?.name ?: "Действие"
 }
