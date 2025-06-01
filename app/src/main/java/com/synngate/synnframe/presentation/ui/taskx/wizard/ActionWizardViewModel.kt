@@ -287,6 +287,7 @@ class ActionWizardViewModel(
     }
 
     fun completeAction() {
+        Timber.d("ActionWizardViewModel: начало метода completeAction()")
         launchIO {
             val currentState = uiState.value
             val factAction = currentState.factAction ?: return@launchIO
@@ -298,15 +299,19 @@ class ActionWizardViewModel(
             }
 
             try {
+                Timber.d("ActionWizardViewModel: отправка данных на сервер")
                 updateState { controller.submitForm(it).getNewState() }
 
                 val syncWithServer = plannedAction.actionTemplate?.syncWithServer == true
                 val result = networkService.completeAction(factAction, syncWithServer)
 
                 if (result.isSuccess()) {
+                    Timber.d("ActionWizardViewModel: успешная отправка, вызов навигации")
                     updateState { controller.handleSendSuccess(it).getNewState() }
                     sendEvent(ActionWizardEvent.NavigateToTaskDetail)
+                    Timber.d("ActionWizardViewModel: событие навигации отправлено")
                 } else {
+                    Timber.d("ActionWizardViewModel: ошибка отправки: ${result.getErrorMessage()}")
                     // Явно сбрасываем состояние загрузки перед установкой ошибки
                     updateState { it.copy(isLoading = false) }
                     updateState {

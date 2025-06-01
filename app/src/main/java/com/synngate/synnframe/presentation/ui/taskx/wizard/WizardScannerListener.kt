@@ -24,6 +24,8 @@ fun WizardScannerListener(
 ) {
     val scannerService = LocalScannerService.current ?: return
 
+    Timber.d("WizardScannerListener: инициализация с isEnabled=$isEnabled")
+
     // Если сканер недоступен, просто выходим
     if (!scannerService.hasRealScanner()) return
 
@@ -83,9 +85,12 @@ fun WizardScannerListener(
     }
 
     DisposableEffect(Unit) {
+        Timber.d("WizardScannerListener: добавление слушателя сканирования")
         // Регистрируем слушатель сканирования всегда
         val scanListener = object : ScanResultListener {
             override fun onScanSuccess(result: ScanResult) {
+                // Добавить лог
+                Timber.d("WizardScannerListener: получено сканирование: ${result.barcode}")
                 handleScan(result.barcode)
             }
 
@@ -99,7 +104,8 @@ fun WizardScannerListener(
 
         // Возвращаем действие для очистки при размонтировании
         onDispose {
-            // ВАЖНО: используем disableOnEmpty=false, чтобы не отключать сканер
+            // Добавить лог
+            Timber.d("WizardScannerListener: onDispose вызван, удаление слушателя")
             scannerService.removeListener(scanListener, disableOnEmpty = false)
             debounceJob?.cancel()
         }

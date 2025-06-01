@@ -112,7 +112,12 @@ fun NavGraphBuilder.taskXNavGraph(
             val actionId = entry.arguments?.getString("actionId") ?: ""
 
             // Добавляем логирование
-            Timber.d("Создание экрана визарда с taskId=$taskId, actionId=$actionId")
+            Timber.d("TaskXNavGraph: composable вызван для ActionWizardScreen с taskId=$taskId, actionId=$actionId")
+
+            val currentRoute = navController.currentBackStackEntry?.destination?.route
+            val previousRoute = navController.previousBackStackEntry?.destination?.route
+
+            Timber.d("TaskXNavGraph: текущий маршрут=$currentRoute, предыдущий маршрут=$previousRoute")
 
             val screenContainer = rememberEphemeralScreenContainer(
                 navBackStackEntry = entry,
