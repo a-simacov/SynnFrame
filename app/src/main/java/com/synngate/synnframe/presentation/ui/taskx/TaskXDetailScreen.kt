@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -24,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.presentation.common.LocalScannerService
@@ -179,7 +184,23 @@ fun TaskXDetailScreen(
             Pair(it, StatusType.ERROR)
         },
         isLoading = state.isLoading,
-        showTopBar = false
+        showTopBar = false,
+        floatingActionButton = {
+            // Добавляем FAB для быстрого доступа к текущему действию
+            if (task != null && state.getDisplayActions().isNotEmpty()) {
+                FloatingActionButton(
+                    onClick = { viewModel.onFastForwardClick() },
+                    modifier = Modifier.alpha(0.85f), // Полупрозрачность
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FastForward,
+                        contentDescription = "Выполнить текущее действие"
+                    )
+                }
+            }
+        }
     ) { paddingValues ->
         if (task == null) {
             EmptyScreenContent(

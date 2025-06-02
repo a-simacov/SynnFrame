@@ -624,4 +624,26 @@ class TaskXDetailViewModel(
             }
         }
     }
+
+    fun onFastForwardClick() {
+        // Временно меняем фильтр на "Текущие", чтобы получить текущие действия
+        val currentFilter = uiState.value.actionFilter
+        updateState { it.copy(actionFilter = ActionFilter.CURRENT) }
+
+        // Получаем первое текущее действие
+        val currentActions = uiState.value.getDisplayActions()
+
+        // Восстанавливаем оригинальный фильтр
+        updateState { it.copy(actionFilter = currentFilter) }
+
+        if (currentActions.isNotEmpty()) {
+            // Открываем визард для первого текущего действия
+            val firstAction = currentActions.first()
+            Timber.d("Открытие текущего действия через FAB: ${firstAction.name}")
+            onActionClick(firstAction.id)
+        } else {
+            // Если нет текущих действий, показываем сообщение
+            sendEvent(TaskXDetailEvent.ShowSnackbar("Нет доступных текущих действий"))
+        }
+    }
 }
