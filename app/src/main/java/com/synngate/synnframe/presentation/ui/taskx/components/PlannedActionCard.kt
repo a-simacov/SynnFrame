@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -86,11 +87,14 @@ fun ExpandableActionCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
     ) {
-        // Вместо использования PlannedActionCard, создадим собственную карточку
-        // с нужными обработчиками событий
         Card(
             modifier = Modifier
                 .fillMaxWidth()
+                .border(
+                    width = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.75f), // Очень светлая граница
+                    shape = RoundedCornerShape(8.dp)
+                )
                 .pointerInput(actionUI.id) {
                     detectTapGestures(
                         onTap = { onClick() },
@@ -102,7 +106,7 @@ fun ExpandableActionCard(
                         }
                     )
                 },
-            elevation = CardDefaults.cardElevation(1.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // Без тени
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             ),
@@ -254,8 +258,9 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
             action.storagePallet != null ||
             action.placementPallet != null
 
+    val actionWithoutPlannedObjects = (actionUI.isInitialAction || actionUI.isFinalAction) && !hasPlannedObjects
     // Определяем размер шрифта для названия шаблона
-    val templateNameFontSize = if ((actionUI.isInitialAction || actionUI.isFinalAction) && !hasPlannedObjects) {
+    val templateNameFontSize = if (actionWithoutPlannedObjects) {
         16.sp // Увеличенный размер для начальных/финальных действий без объектов
     } else {
         8.sp // Стандартный размер
@@ -423,11 +428,11 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
                 Text(
                     text = actionUI.name,
                     fontSize = templateNameFontSize,
-                    fontWeight = if ((actionUI.isInitialAction || actionUI.isFinalAction) && !hasPlannedObjects)
+                    fontWeight = if (actionWithoutPlannedObjects)
                         FontWeight.Bold else FontWeight.Normal,
-                    color = if ((actionUI.isInitialAction || actionUI.isFinalAction) && !hasPlannedObjects)
+                    color = if (actionWithoutPlannedObjects)
                         MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                    maxLines = 1,
+                    maxLines = if (actionWithoutPlannedObjects) 2 else 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
