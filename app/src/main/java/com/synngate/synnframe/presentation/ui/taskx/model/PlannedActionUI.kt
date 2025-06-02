@@ -10,7 +10,9 @@ data class PlannedActionUI(
     val action: PlannedAction,
     val isCompleted: Boolean,
     val completedQuantity: Float = 0f,
-    val isClickable: Boolean = true
+    val isClickable: Boolean = true,
+    val manuallyCompleted: Boolean = false,
+    val canBeCompletedManually: Boolean = false
 ) {
     companion object {
         /**
@@ -35,11 +37,18 @@ data class PlannedActionUI(
             val isClickable = isTaskInProgress && (!isCompleted ||
                     (action.canHaveMultipleFactActions() && action.isRegularAction()))
 
+            // Определяем, может ли действие быть выполнено вручную
+            val canBeCompletedManually = isTaskInProgress &&
+                    action.actionTemplate?.allowManualActionCompletion == true &&
+                    !action.manuallyCompleted
+
             return PlannedActionUI(
                 action = action,
                 isCompleted = isCompleted,
                 completedQuantity = completedQuantity,
-                isClickable = isClickable
+                isClickable = isClickable,
+                manuallyCompleted = action.manuallyCompleted,
+                canBeCompletedManually = canBeCompletedManually
             )
         }
     }

@@ -18,6 +18,7 @@ import com.synngate.synnframe.presentation.ui.taskx.service.ActionSearchService
 import com.synngate.synnframe.presentation.ui.taskx.validator.ActionValidator
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import timber.log.Timber
+import java.time.LocalDateTime
 
 class TaskXDetailViewModel(
     private val taskId: String,
@@ -557,5 +558,70 @@ class TaskXDetailViewModel(
 
     fun dismissCompletionDialog() {
         updateState { it.copy(showCompletionDialog = false) }
+    }
+
+    fun toggleActionStatus(actionUI: PlannedActionUI, completed: Boolean) {
+        val task = uiState.value.task ?: return
+
+        if (task.status != TaskXStatus.IN_PROGRESS) {
+            sendEvent(TaskXDetailEvent.ShowSnackbar("Задание должно быть в статусе 'Выполняется'"))
+            return
+        }
+
+        updateState { it.copy(isProcessingAction = true) }
+
+        launchIO {
+            try {
+                val result = taskXUseCases.setPlannedActionStatus(task.id, actionUI.id, completed, endpoint)
+
+                when (result) {
+                    is ApiResult.Success -> {
+                        // Обновляем действие в локальном состоянии
+                        val updatedPlannedActions = task.plannedActions.map { action ->
+                            if (action.id == actionUI.id) {
+                                action.copy(
+                                    manuallyCompleted = completed,
+                                    manuallyCompletedAt = if (completed) LocalDateTime.now() else null
+                                )
+                            } else {
+                                action
+                            }
+                        }
+
+                        val updatedTask = task.copy(
+                            plannedActions = updatedPlannedActions,
+                            lastModifiedAt = LocalDateTime.now()
+                        )
+
+                        // Обновляем задание в TaskXDataHolderSingleton
+                        TaskXDataHolderSingleton.updateTask(updatedTask)
+
+                        // Создаем новые UI-модели для действий
+                        val actionUiModels = createActionUiModels(updatedTask)
+
+                        // Обновляем состояние ViewModel
+                        updateState {
+                            it.copy(
+                                task = updatedTask,
+                                actionUiModels = actionUiModels,
+                                isProcessingAction = false
+                            )
+                        }
+
+                        // Показываем уведомление
+                        val message = if (completed) "Действие отмечено как выполненное" else "Отметка о выполнении снята"
+                        sendEvent(TaskXDetailEvent.ShowSnackbar(message))
+                    }
+                    is ApiResult.Error -> {
+                        updateState { it.copy(isProcessingAction = false) }
+                        sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка: ${result.message}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при изменении статуса действия: ${e.message}")
+                updateState { it.copy(isProcessingAction = false) }
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка: ${e.message}"))
+            }
+        }
     }
 }

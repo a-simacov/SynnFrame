@@ -1,7 +1,12 @@
 package com.synngate.synnframe.presentation.ui.taskx.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -17,17 +22,31 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.RemoveDone
 import androidx.compose.material.icons.filled.ViewInAr
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,12 +62,131 @@ import com.synngate.synnframe.presentation.ui.taskx.enums.CompletionOrderType
 import com.synngate.synnframe.presentation.ui.taskx.model.PlannedActionUI
 import kotlin.math.absoluteValue
 
+/**
+ * Карточка действия, разворачивающаяся при долгом нажатии
+ */
 @Composable
-fun PlannedActionCard(
+fun ExpandableActionCard(
     actionUI: PlannedActionUI,
     onClick: () -> Unit,
+    onToggleStatus: (PlannedActionUI, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Состояние развернутости карточки
+    var isExpanded by remember { mutableStateOf(false) }
+
+    // Для тактильной обратной связи
+    val hapticFeedback = LocalHapticFeedback.current
+
+    // Проверяем, можно ли изменять статус вручную
+    val canToggleStatus = actionUI.canBeCompletedManually || actionUI.manuallyCompleted
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+    ) {
+        // Вместо использования PlannedActionCard, создадим собственную карточку
+        // с нужными обработчиками событий
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .pointerInput(actionUI.id) {
+                    detectTapGestures(
+                        onTap = { onClick() },
+                        onLongPress = {
+                            if (canToggleStatus) {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                isExpanded = !isExpanded
+                            }
+                        }
+                    )
+                },
+            elevation = CardDefaults.cardElevation(1.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            // Вставляем содержимое PlannedActionCard, но без его собственных обработчиков
+            PlannedActionCardContent(actionUI)
+        }
+
+        // Раскрывающаяся часть с действиями
+        AnimatedVisibility(
+            visible = isExpanded && canToggleStatus,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Divider()
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Кнопки действий
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (actionUI.manuallyCompleted) {
+                        // Кнопка для снятия отметки
+                        OutlinedButton(
+                            onClick = {
+                                onToggleStatus(actionUI, false)
+                                isExpanded = false
+                            },
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFFF44336)
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.RemoveDone,
+                                contentDescription = "Снять отметку",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Снять отметку")
+                        }
+                    } else if (actionUI.canBeCompletedManually) {
+                        // Кнопка для отметки о выполнении
+                        Button(
+                            onClick = {
+                                onToggleStatus(actionUI, true)
+                                isExpanded = false
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4CAF50)
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Отметить выполненным",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Отметить выполненным")
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+/**
+ * Внутреннее содержимое карточки без собственных обработчиков нажатий
+ * Извлечено из PlannedActionCard, но без модификатора clickable
+ */
+@Composable
+private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
     val action = actionUI.action
 
     // Определяем яркие, контрастные цвета для индикаторов
@@ -96,6 +234,8 @@ fun PlannedActionCard(
     // Прогресс по количеству
     val progressPercentage = if (hasQuantity && actionUI.quantity > 0f)
         (actionUI.completedQuantity / actionUI.quantity) * 100f
+    else if (actionUI.isCompleted)
+        100f // Если действие выполнено, но нет количества, показываем полную полосу
     else
         0f
 
@@ -106,237 +246,254 @@ fun PlannedActionCard(
     else
         Color(0xFF1976D2)  // Яркий синий
 
-    Card(
-        modifier = modifier
+    // Определяем, есть ли запланированные объекты
+    val hasPlannedObjects = action.storageProduct != null ||
+            action.storageProductClassifier != null ||
+            action.storageBin != null ||
+            action.placementBin != null ||
+            action.storagePallet != null ||
+            action.placementPallet != null
+
+    // Определяем размер шрифта для названия шаблона
+    val templateNameFontSize = if ((actionUI.isInitialAction || actionUI.isFinalAction) && !hasPlannedObjects) {
+        16.sp // Увеличенный размер для начальных/финальных действий без объектов
+    } else {
+        8.sp // Стандартный размер
+    }
+
+    Row(
+        modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = actionUI.isClickable) { onClick() },
-        elevation = CardDefaults.cardElevation(1.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(8.dp)
+            .height(IntrinsicSize.Min)
     ) {
-        Row(
+        // ЛЕВАЯ ПОЛОСА СТАТУСА
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
+                .width(4.dp)
+                .fillMaxHeight()
+                .background(statusBarColor)
+        )
+
+        // Основное содержимое в колонке с отступами
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(4.dp)
         ) {
-            // ЛЕВАЯ ПОЛОСА СТАТУСА - уменьшена ширина до 4dp
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(statusBarColor)
-            )
+            // Информация о товаре
+            if (action.storageProduct != null || action.storageProductClassifier != null) {
+                val productName = action.storageProduct?.product?.name
+                    ?: action.storageProductClassifier?.name
+                    ?: "Неизвестный товар"
 
-            // Основное содержимое в колонке с отступами
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(4.dp)
-            ) {
-                // Информация о товаре
-                if (action.storageProduct != null || action.storageProductClassifier != null) {
-                    val productName = action.storageProduct?.product?.name
-                        ?: action.storageProductClassifier?.name
-                        ?: "Неизвестный товар"
+                Text(
+                    text = productName,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
-                    Text(
-                        text = productName,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                // Информация о ячейках
-                if (action.storageBin != null || action.placementBin != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        action.storageBin?.let {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.LocationOn,
-                                    contentDescription = "Ячейка хранения",
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.ArrowUpward,
-                                    contentDescription = "Из",
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = it.code,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                                )
-                            }
-                        }
-
-                        action.placementBin?.let {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.LocationOn,
-                                    contentDescription = "Ячейка размещения",
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.ArrowDownward,
-                                    contentDescription = "В",
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = it.code,
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                                )
-                            }
+            // Информация о ячейках
+            if (action.storageBin != null || action.placementBin != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    action.storageBin?.let {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = "Ячейка хранения",
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ArrowUpward,
+                                contentDescription = "Из",
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = it.code,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                            )
                         }
                     }
-                }
 
-                // Информация о паллетах
-                if (action.storagePallet != null || action.placementPallet != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        action.storagePallet?.let {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.ViewInAr,
-                                    contentDescription = "Паллета хранения",
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.ArrowUpward,
-                                    contentDescription = "Из",
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = it.code,
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                                )
-                            }
-                        }
-
-                        action.placementPallet?.let {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.ViewInAr,
-                                    contentDescription = "Паллета размещения",
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.ArrowDownward,
-                                    contentDescription = "В",
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = it.code,
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                                )
-                            }
+                    action.placementBin?.let {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = "Ячейка размещения",
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ArrowDownward,
+                                contentDescription = "В",
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = it.code,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                            )
                         }
                     }
-                }
-
-                // Гибкий пробел, чтобы название было внизу
-                Spacer(modifier = Modifier.weight(1f, fill = true))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Номер действия - размер не изменяется
-                    Text(
-                        text = "#${actionUI.order}",
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
-
-                    // Название шаблона действия - размер не изменяется
-                    Text(
-                        text = actionUI.name,
-                        fontSize = 8.sp,
-                        color = MaterialTheme.colorScheme.outline,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
                 }
             }
 
-            // Блок количества (справа) - отображается, только если есть количество
-            if (hasQuantity) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
-                    modifier = Modifier
-                        .width(70.dp)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.98f))
-                        .padding(horizontal = 4.dp, vertical = 8.dp)
-                ) {
+            // Информация о паллетах
+            if (action.storagePallet != null || action.placementPallet != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    action.storagePallet?.let {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.ViewInAr,
+                                contentDescription = "Паллета хранения",
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ArrowUpward,
+                                contentDescription = "Из",
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = it.code,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+
+                    action.placementPallet?.let {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.ViewInAr,
+                                contentDescription = "Паллета размещения",
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ArrowDownward,
+                                contentDescription = "В",
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = it.code,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Гибкий пробел, чтобы название было внизу
+            Spacer(modifier = Modifier.weight(1f, fill = true))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Номер действия - размер не изменяется
+                Text(
+                    text = "#${actionUI.order}",
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+
+                // Название шаблона действия - размер может изменяться
+                Text(
+                    text = actionUI.name,
+                    fontSize = templateNameFontSize,
+                    fontWeight = if ((actionUI.isInitialAction || actionUI.isFinalAction) && !hasPlannedObjects)
+                        FontWeight.Bold else FontWeight.Normal,
+                    color = if ((actionUI.isInitialAction || actionUI.isFinalAction) && !hasPlannedObjects)
+                        MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Индикатор ручного выполнения
+                if (actionUI.manuallyCompleted) {
                     Text(
-                        text = quantityText,
+                        text = "✓",
+                        fontSize = 12.sp,
+                        color = Color(0xFF388E3C),
+                        modifier = Modifier.padding(start = 4.dp, end = 2.dp)
+                    )
+                }
+            }
+        }
+
+        // Блок количества (справа) - отображается, только если есть количество
+        if (hasQuantity) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                modifier = Modifier
+                    .width(70.dp)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.98f))
+                    .padding(horizontal = 4.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = quantityText,
+                    color = quantityColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                if (diffText.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = diffText,
                         color = quantityColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         textAlign = TextAlign.Center,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-
-                    if (diffText.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = diffText,
-                            color = quantityColor,
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
                 }
             }
+        }
 
-            // ПРАВАЯ ПОЛОСА ПРОГРЕССА - уменьшена ширина до 4dp
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(progressBackgroundColor)
-            ) {
-                if (hasQuantity) {
-                    Box(
-                        modifier = Modifier
-                            .width(4.dp)
-                            .fillMaxHeight(progressPercentage / 100f)
-                            .background(progressFillColor)
-                            .align(Alignment.BottomCenter)
-                    )
-                }
+        // ПРАВАЯ ПОЛОСА ПРОГРЕССА
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .fillMaxHeight()
+                .background(progressBackgroundColor)
+        ) {
+            if (progressPercentage > 0) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .fillMaxHeight(progressPercentage / 100f)
+                        .background(progressFillColor)
+                        .align(Alignment.BottomCenter)
+                )
             }
         }
     }
@@ -380,26 +537,48 @@ private fun formatQuantity(value: Float): String {
 @Composable
 private fun PlannedActionCardPreview() {
     SynnFrameTheme {
-        PlannedActionCard(
-            actionUI = PlannedActionUI(
-                PlannedAction(
-                    id = "",
-                    order = 2,
-                    actionTemplateId = "",
-                    actionTemplate = null,
-                    completionOrderType = CompletionOrderType.REGULAR,
-                    storageProductClassifier = Product(id = "", name = "Ночник 3D MOON LAMP CompletionOrderType.REGULAR storageProductClassifier"),
-                    storageBin = BinX(code = "A00111", zone = ""),
-                    placementBin = BinX(code = "A00112", zone = ""),
-                    storagePallet = Pallet("IN00000000009"),
-                    placementPallet = Pallet("IN00000000010"),
+        Column {
+            ExpandableActionCard(
+                actionUI = PlannedActionUI(
+                    PlannedAction(
+                        id = "",
+                        order = 2,
+                        actionTemplateId = "",
+                        actionTemplate = null,
+                        completionOrderType = CompletionOrderType.REGULAR,
+                        storageProductClassifier = Product(
+                            id = "",
+                            name = "Ночник 3D MOON LAMP CompletionOrderType.REGULAR storageProductClassifier"
+                        ),
+                        storageBin = BinX(code = "A00111", zone = ""),
+                        placementBin = BinX(code = "A00112", zone = ""),
+                        storagePallet = Pallet("IN00000000009"),
+                        placementPallet = Pallet("IN00000000010"),
+                        isCompleted = true,
+                        quantity = 2000f
+                    ),
                     isCompleted = true,
-                    quantity = 2000f
+                    completedQuantity = 1223f
                 ),
-                isCompleted = true,
-                completedQuantity = 1223f
-            ),
-            onClick = { /*TODO*/ }
-        )
+                onClick = { /*TODO*/ },
+                onToggleStatus = { _, _ -> }
+            )
+            ExpandableActionCard(
+                actionUI = PlannedActionUI(
+                    PlannedAction(
+                        id = "",
+                        order = 3,
+                        actionTemplateId = "",
+                        actionTemplate = null,
+                        completionOrderType = CompletionOrderType.FINAL,
+                        isCompleted = true,
+                    ),
+                    isCompleted = true,
+                    completedQuantity = 1223f
+                ),
+                onClick = { /*TODO*/ },
+                onToggleStatus = { _, _ -> }
+            )
+        }
     }
 }

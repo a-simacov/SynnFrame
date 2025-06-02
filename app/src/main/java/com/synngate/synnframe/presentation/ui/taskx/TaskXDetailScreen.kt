@@ -19,8 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -33,12 +35,14 @@ import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.taskx.components.ActionFilterChipList
 import com.synngate.synnframe.presentation.ui.taskx.components.ActionFilterChips
 import com.synngate.synnframe.presentation.ui.taskx.components.ActionSearchBar
+import com.synngate.synnframe.presentation.ui.taskx.components.ActionStatusConfirmationDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.BufferItemChipList
+import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableActionCard
 import com.synngate.synnframe.presentation.ui.taskx.components.ExpandableTaskInfoCard
-import com.synngate.synnframe.presentation.ui.taskx.components.PlannedActionCard
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskHeaderComponent
 import com.synngate.synnframe.presentation.ui.taskx.components.TaskXExitDialog
 import com.synngate.synnframe.presentation.ui.taskx.components.ValidationErrorDialog
+import com.synngate.synnframe.presentation.ui.taskx.model.PlannedActionUI
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import kotlinx.coroutines.launch
 
@@ -54,6 +58,11 @@ fun TaskXDetailScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val task = state.task
+
+    // Добавляем состояние для диалога подтверждения
+    var showStatusConfirmationDialog by remember { mutableStateOf(false) }
+    var selectedActionForStatus by remember { mutableStateOf<PlannedActionUI?>(null) }
+    var targetStatusCompleted by remember { mutableStateOf(false) }
 
     val scannerService = LocalScannerService.current
     if (scannerService?.hasRealScanner() == true) {
@@ -100,6 +109,22 @@ fun TaskXDetailScreen(
                 }
             }
         }
+    }
+
+    if (showStatusConfirmationDialog && selectedActionForStatus != null) {
+        ActionStatusConfirmationDialog(
+            action = selectedActionForStatus!!.action,
+            isCompleted = targetStatusCompleted,
+            onConfirm = {
+                viewModel.toggleActionStatus(selectedActionForStatus!!, targetStatusCompleted)
+                showStatusConfirmationDialog = false
+                selectedActionForStatus = null
+            },
+            onDismiss = {
+                showStatusConfirmationDialog = false
+                selectedActionForStatus = null
+            }
+        )
     }
 
     if (state.showValidationErrorDialog && state.validationErrorMessage != null) {
@@ -296,9 +321,12 @@ fun TaskXDetailScreen(
                         items = displayActions,
                         key = { it.id }
                     ) { actionUI ->
-                        PlannedActionCard(
+                        ExpandableActionCard(
                             actionUI = actionUI,
                             onClick = { viewModel.onActionClick(actionUI.id) },
+                            onToggleStatus = { action, completed ->
+                                viewModel.toggleActionStatus(action, completed)
+                            },
                             modifier = Modifier.padding(horizontal = 4.dp)
                         )
                     }
