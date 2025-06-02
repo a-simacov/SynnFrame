@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.operation.ScreenElementType
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
+import com.synngate.synnframe.presentation.common.search.SearchResultIndicator
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.di.ScreenContainer
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.createComponentGroups
@@ -132,6 +133,17 @@ fun DynamicTasksScreen(
                     // Отображаем компоненты без веса (обычно поиск, фильтры и т.д.)
                     componentGroups.fixedComponents.forEach { component ->
                         component.Render(Modifier.fillMaxWidth())
+                    }
+
+                    // Показываем индикатор результатов поиска, если есть результаты
+                    if (state.shouldShowSearchIndicator()) {
+                        state.searchResultType?.let { resultType ->
+                            SearchResultIndicator(
+                                resultType = resultType,
+                                count = state.tasks.size,
+                                query = state.lastSearchQuery
+                            )
+                        }
                     }
 
                     // Отображаем компоненты с весом (обычно списки, которые должны занимать оставшееся пространство)

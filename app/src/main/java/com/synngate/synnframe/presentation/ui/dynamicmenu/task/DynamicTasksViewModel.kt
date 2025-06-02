@@ -6,6 +6,7 @@ import com.synngate.synnframe.domain.entity.operation.ScreenSettings
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
+import com.synngate.synnframe.presentation.common.search.SearchResultType
 import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTasksEvent
 import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTasksState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
@@ -28,6 +29,8 @@ class DynamicTasksViewModel(
     )
 ) {
 
+    private var allLoadedTasks: List<DynamicTask> = emptyList()
+
     init {
         loadDynamicTasks()
     }
@@ -41,6 +44,7 @@ class DynamicTasksViewModel(
 
                 if (result.isSuccess()) {
                     val tasks = result.getOrNull() ?: emptyList()
+                    allLoadedTasks = tasks
                     updateState {
                         it.copy(
                             tasks = tasks,
@@ -122,6 +126,41 @@ class DynamicTasksViewModel(
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
+                // Сначала выполняем локальный поиск
+                val localSearchResults = performLocalSearch(searchValue)
+
+                if (localSearchResults.isNotEmpty()) {
+                    // Если локальный поиск дал результаты, используем их
+                    Timber.d("Локальный поиск успешно нашел ${localSearchResults.size} заданий")
+
+                    updateState {
+                        it.copy(
+                            tasks = localSearchResults,
+                            // Если найдено ровно одно задание, устанавливаем его как foundTask
+                            foundTask = if (localSearchResults.size == 1) localSearchResults.first() else null,
+                            isLoading = false,
+                            error = null,
+                            lastSearchQuery = searchValue,
+                            searchResultType = SearchResultType.LOCAL,
+                            isLocalSearch = true
+                        )
+                    }
+
+                    // Если найдено ровно одно задание и включена настройка openImmediately
+                    if (localSearchResults.size == 1 && uiState.value.screenSettings.openImmediately) {
+                        val task = localSearchResults.first()
+                        if (task.getTaskStatus() == TaskXStatus.TO_DO)
+                            navigateToTaskDetail(task.id)
+                        else
+                            navigateToTaskXDetail(task.id)
+                    }
+
+                    return@launchIO
+                }
+
+                // Если локальный поиск не дал результатов, выполняем удаленный поиск
+                Timber.d("Локальный поиск не дал результатов, выполняем удаленный поиск")
+
                 val searchEndpoint = endpoint
                 val result = dynamicMenuUseCases.searchDynamicTask(searchEndpoint, searchValue)
 
@@ -133,7 +172,10 @@ class DynamicTasksViewModel(
                                 tasks = listOf(task),
                                 foundTask = task,
                                 isLoading = false,
-                                error = null
+                                error = null,
+                                lastSearchQuery = searchValue,
+                                searchResultType = SearchResultType.REMOTE,
+                                isLocalSearch = false
                             )
                         }
 
@@ -149,7 +191,10 @@ class DynamicTasksViewModel(
                             it.copy(
                                 tasks = emptyList(),
                                 isLoading = false,
-                                error = "Задание не найдено"
+                                error = "Задание не найдено",
+                                lastSearchQuery = searchValue,
+                                searchResultType = null,
+                                isLocalSearch = false
                             )
                         }
                     }
@@ -170,6 +215,19 @@ class DynamicTasksViewModel(
                     )
                 }
             }
+        }
+    }
+
+    private fun performLocalSearch(searchValue: String): List<DynamicTask> {
+        if (searchValue.isBlank() || allLoadedTasks.isEmpty()) {
+            return emptyList()
+        }
+
+        val normalizedQuery = searchValue.trim().lowercase()
+
+        // Фильтруем задания по поисковому запросу
+        return allLoadedTasks.filter { task ->
+            task.matchesSearchQuery(normalizedQuery)
         }
     }
 
