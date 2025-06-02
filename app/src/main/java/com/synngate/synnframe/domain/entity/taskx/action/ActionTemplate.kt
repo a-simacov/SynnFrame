@@ -17,4 +17,9 @@ data class ActionTemplate(
     val actionCompletionMethod: ActionCompletionMethod = ActionCompletionMethod.AFTER_LAST_STEP,
     val actionCompletionCondition: ActionCompletionCondition = ActionCompletionCondition.ON_COMPLETION,
     val actionSteps: List<ActionStepTemplate> = emptyList()
-)
+) {
+
+    fun isAutoCompleteEnabled(): Boolean {
+        return actionCompletionMethod == ActionCompletionMethod.AFTER_LAST_STEP
+    }
+}

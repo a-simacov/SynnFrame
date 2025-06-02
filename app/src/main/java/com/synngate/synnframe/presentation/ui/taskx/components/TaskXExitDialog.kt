@@ -125,7 +125,7 @@ fun TaskXExitDialog(
                                 containerColor = MaterialTheme.colorScheme.primary
                             )
                         ) {
-                            Text("Продолжить работу")
+                            Text("Остаться")
                         }
 
                         // Приостановить задание
@@ -142,7 +142,7 @@ fun TaskXExitDialog(
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Приостановить задание")
+                            Text("Приостановить")
                         }
 
                         // Завершить задание
@@ -160,7 +160,7 @@ fun TaskXExitDialog(
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Завершить задание")
+                                Text("Завершить")
                             }
                         }
 
@@ -180,7 +180,7 @@ fun TaskXExitDialog(
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Выйти без сохранения")
+                            Text("Выйти")
                         }
                     }
                 }

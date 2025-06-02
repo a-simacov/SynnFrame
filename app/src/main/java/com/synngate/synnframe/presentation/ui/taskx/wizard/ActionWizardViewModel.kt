@@ -1,3 +1,4 @@
+// app/src/main/java/com/synngate/synnframe/presentation/ui/taskx/wizard/ActionWizardViewModel.kt
 package com.synngate.synnframe.presentation.ui.taskx.wizard
 
 import androidx.lifecycle.viewModelScope
@@ -153,14 +154,34 @@ class ActionWizardViewModel(
 
     fun confirmCurrentStep() {
         launchIO {
-            val result = controller.confirmCurrentStep(uiState.value) {
+            val currentState = uiState.value
+            val result = controller.confirmCurrentStep(currentState) {
                 validateCurrentStep()
             }
-            updateState { result.getNewState() }
 
-            // После перехода на новый шаг инициализируем его
-            initializeStepWithFiltersAndBuffer(result.getNewState().currentStepIndex)
+            val newState = result.getNewState()
+            updateState { newState }
+
+            // Проверяем, показывается ли итоговый экран и нужно ли автоматически завершать действие
+            if (newState.showSummary) {
+                if (shouldAutoComplete(newState)) {
+                    Timber.d("Автоматическое завершение действия после последнего шага")
+                    completeAction()
+                }
+            } else {
+                // После перехода на новый шаг инициализируем его (только если не итоговый экран)
+                initializeStepWithFiltersAndBuffer(newState.currentStepIndex)
+            }
         }
+    }
+
+    /**
+     * Проверяет, должно ли действие быть завершено автоматически
+     */
+    private fun shouldAutoComplete(state: ActionWizardState): Boolean {
+        val plannedAction = state.plannedAction ?: return false
+        val actionTemplate = plannedAction.actionTemplate ?: return false
+        return actionTemplate.isAutoCompleteEnabled()
     }
 
     fun previousStep() {
@@ -185,10 +206,19 @@ class ActionWizardViewModel(
             }
 
             if (result.isSuccess()) {
-                updateState { result.getNewState() }
+                val newState = result.getNewState()
+                updateState { newState }
 
-                // После автоперехода инициализируем новый шаг
-                initializeStepWithFiltersAndBuffer(result.getNewState().currentStepIndex)
+                // Проверяем, произошел ли переход на итоговый экран
+                if (newState.showSummary) {
+                    if (shouldAutoComplete(newState)) {
+                        Timber.d("Автоматическое завершение действия после автоперехода на итоговый экран")
+                        completeAction()
+                    }
+                } else {
+                    // После автоперехода инициализируем новый шаг (только если не итоговый экран)
+                    initializeStepWithFiltersAndBuffer(newState.currentStepIndex)
+                }
             }
         }
     }
@@ -201,10 +231,19 @@ class ActionWizardViewModel(
             val result = controller.tryAutoAdvanceFromBuffer(uiState.value)
 
             if (result.isSuccess()) {
-                updateState { result.getNewState() }
+                val newState = result.getNewState()
+                updateState { newState }
 
-                // Рекурсивно проверяем следующий шаг на наличие значений в буфере или фильтрах
-                initializeStepWithFiltersAndBuffer(result.getNewState().currentStepIndex)
+                // Проверяем, произошел ли переход на итоговый экран
+                if (newState.showSummary) {
+                    if (shouldAutoComplete(newState)) {
+                        Timber.d("Автоматическое завершение действия после автоперехода из буфера на итоговый экран")
+                        completeAction()
+                    }
+                } else {
+                    // Рекурсивно проверяем следующий шаг на наличие значений в буфере или фильтрах
+                    initializeStepWithFiltersAndBuffer(newState.currentStepIndex)
+                }
             }
         }
     }
