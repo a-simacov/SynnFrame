@@ -26,12 +26,18 @@ class TaskXDetailViewModel(
     private val taskXUseCases: TaskXUseCases,
     private val userUseCases: UserUseCases,
     private val productUseCases: ProductUseCases,
-) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(TaskXDetailState()) {
+) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(
+        initialState = TaskXDetailState(
+            actionFilter = ActionFilter.CURRENT
+        )
+) {
 
     private val actionValidator = ActionValidator()
     private val actionSearchService = ActionSearchService(productUseCases)
+
     // Отслеживание объектов, добавленных в буфер из фильтра
     private val filterObjectsAddedToBuffer = mutableSetOf<FactActionField>()
+
     // Отслеживание последнего добавленного фильтра
     private var lastAddedFilterField: FactActionField? = null
 
@@ -203,7 +209,13 @@ class TaskXDetailViewModel(
     ) {
         val task = uiState.value.task ?: return
 
-        updateState { it.copy(isProcessingAction = true, showExitDialog = false, showCompletionDialog = false) }
+        updateState {
+            it.copy(
+                isProcessingAction = true,
+                showExitDialog = false,
+                showCompletionDialog = false
+            )
+        }
 
         launchIO {
             try {
@@ -243,9 +255,11 @@ class TaskXDetailViewModel(
 
         val validationResult = actionValidator.canCompleteTask(task)
         if (!validationResult.isSuccess && !taskType.allowCompletionWithoutFactActions) {
-            sendEvent(TaskXDetailEvent.ShowSnackbar(
-                validationResult.errorMessage ?: "Невозможно завершить задание"
-            ))
+            sendEvent(
+                TaskXDetailEvent.ShowSnackbar(
+                    validationResult.errorMessage ?: "Невозможно завершить задание"
+                )
+            )
             return
         }
 

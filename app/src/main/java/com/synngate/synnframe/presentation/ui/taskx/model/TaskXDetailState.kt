@@ -57,6 +57,7 @@ data class TaskXDetailState(
             ActionFilter.INITIAL -> actionUiModels.filter { it.isInitialAction }
             ActionFilter.REGULAR -> actionUiModels.filter { !it.isInitialAction && !it.isFinalAction }
             ActionFilter.FINAL -> actionUiModels.filter { it.isFinalAction }
+            ActionFilter.CURRENT -> getCurrentActions()
         }
     }
 
@@ -105,6 +106,45 @@ data class TaskXDetailState(
             }
         }
     }
+
+    private fun getCurrentActions(): List<PlannedActionUI> {
+        // 1. Проверяем наличие невыполненных начальных действий
+        val incompleteInitialActions = actionUiModels.filter { it.isInitialAction && !it.isCompleted }
+        if (incompleteInitialActions.isNotEmpty()) {
+            return incompleteInitialActions
+        }
+
+        // 2. Проверяем наличие невыполненных обычных действий
+        val incompleteRegularActions = actionUiModels.filter {
+            !it.isInitialAction && !it.isFinalAction && !it.isCompleted
+        }
+        if (incompleteRegularActions.isNotEmpty()) {
+            // Если у нас строгий порядок выполнения, возвращаем только доступные для выполнения действия
+            if (task?.taskType?.isStrictActionOrder() == true) {
+                // Находим действие с минимальным порядковым номером
+                val firstAction = incompleteRegularActions.minByOrNull { it.order }
+                if (firstAction != null) {
+                    // Если есть действия с одинаковым порядковым номером, возвращаем их все
+                    return incompleteRegularActions.filter { it.order == firstAction.order }
+                }
+            }
+            return incompleteRegularActions
+        }
+
+        // 3. Проверяем наличие невыполненных финальных действий
+        val incompleteFinalActions = actionUiModels.filter { it.isFinalAction && !it.isCompleted }
+        if (incompleteFinalActions.isNotEmpty()) {
+            // Для финальных действий всегда возвращаем только первое невыполненное
+            val firstFinalAction = incompleteFinalActions.minByOrNull { it.order }
+            if (firstFinalAction != null) {
+                return incompleteFinalActions.filter { it.order == firstFinalAction.order }
+            }
+            return incompleteFinalActions
+        }
+
+        // 4. Если все действия выполнены, возвращаем пустой список
+        return emptyList()
+    }
 }
 
 enum class ActionFilter(val displayName: String) {
@@ -113,5 +153,6 @@ enum class ActionFilter(val displayName: String) {
     COMPLETED("Выполненные"),
     INITIAL("Начальные"),
     REGULAR("Обычные"),
-    FINAL("Завершающие")
+    FINAL("Завершающие"),
+    CURRENT("Текущие")
 }

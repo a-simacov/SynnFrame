@@ -27,6 +27,7 @@ fun ActionFilterChips(
 
     // Определяем доступные фильтры
     val availableFilters = buildList {
+        add(ActionFilter.CURRENT)
         add(ActionFilter.ALL)
         add(ActionFilter.PENDING)
         add(ActionFilter.COMPLETED)
