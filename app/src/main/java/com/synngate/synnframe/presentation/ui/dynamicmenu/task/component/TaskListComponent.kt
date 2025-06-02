@@ -1,12 +1,13 @@
 package com.synngate.synnframe.presentation.ui.dynamicmenu.task.component
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,7 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
-import com.synngate.synnframe.presentation.common.status.TaskXStatusIndicator
+import com.synngate.synnframe.presentation.common.status.TaskStatusVerticalBar
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.ScreenComponent
 import com.synngate.synnframe.util.html.HtmlUtils
 
@@ -74,7 +75,7 @@ class TaskListComponent<S>(
     ) {
         LazyColumn(
             modifier = modifier.fillMaxSize(),
-            contentPadding = PaddingValues(vertical = 8.dp)
+            contentPadding = PaddingValues(vertical = 4.dp)
         ) {
             items(tasks) { task ->
                 TaskItem(
@@ -82,7 +83,7 @@ class TaskListComponent<S>(
                     onClick = { onTaskClick(task) }
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(2.dp))
             }
         }
     }
@@ -99,31 +100,31 @@ class TaskListComponent<S>(
         Card(
             modifier = modifier
                 .fillMaxWidth()
+                .padding(vertical = 4.dp)
                 .clickable(onClick = onClick),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .height(IntrinsicSize.Min)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(8.dp)
                 ) {
                     Text(
-                        text = annotatedName,
+                        text = HtmlUtils.htmlToAnnotatedString(task.name),
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-
-                    TaskXStatusIndicator(status = taskStatus)
                 }
+
+                TaskStatusVerticalBar(
+                    status = task.getTaskStatus(),
+                    modifier = Modifier.fillMaxHeight()
+                )
             }
         }
     }
