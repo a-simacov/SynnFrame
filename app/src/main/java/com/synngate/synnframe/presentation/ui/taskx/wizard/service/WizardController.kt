@@ -9,6 +9,7 @@ import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.ui.taskx.enums.BufferUsage
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import com.synngate.synnframe.presentation.ui.taskx.wizard.result.NetworkResult
 import com.synngate.synnframe.presentation.ui.taskx.wizard.result.StateTransitionResult
 import com.synngate.synnframe.presentation.ui.taskx.wizard.state.WizardEvent
 import com.synngate.synnframe.presentation.ui.taskx.wizard.state.WizardStateMachine
@@ -136,6 +137,54 @@ class WizardController(
         return StateTransitionResult.success(newState)
     }
 
+    /**
+     * Обрабатывает результат запроса объекта с сервера
+     *
+     * @param state Текущее состояние визарда
+     * @param networkResult Результат сетевого запроса
+     * @return Результат перехода состояния с новым объектом или ошибкой
+     */
+    suspend fun handleServerObjectRequest(
+        state: ActionWizardState,
+        networkResult: NetworkResult<Any>
+    ): StateTransitionResult<ActionWizardState> {
+        // Сбрасываем флаг запроса
+        val stateWithoutLoading = state.copy(
+            isRequestingServerObject = false,
+            serverRequestCancellationToken = null
+        )
+
+        if (!networkResult.isSuccess()) {
+            val errorMessage = networkResult.getErrorMessage() ?: "Неизвестная ошибка"
+            val stateWithError = stateWithoutLoading.copy(error = errorMessage)
+            return StateTransitionResult.error(stateWithError, errorMessage)
+        }
+
+        val serverObject = networkResult.getResponseData() ?: return StateTransitionResult.error(
+            stateWithoutLoading,
+            "Нет данных в ответе сервера"
+        )
+
+        // Устанавливаем объект в текущий шаг
+        val currentStep = state.getCurrentStep() ?: return StateTransitionResult.error(
+            stateWithoutLoading,
+            "Текущий шаг не найден"
+        )
+
+        // Используем существующий метод для установки объекта
+        val stateWithObject = setObjectForCurrentStep(stateWithoutLoading, serverObject).getNewState()
+
+        // Если autoAdvance включен, пробуем перейти к следующему шагу
+        if (currentStep.autoAdvance) {
+            return tryAutoAdvance(stateWithObject) {
+                // Объекты с сервера не требуют дополнительной валидации
+                true
+            }
+        }
+
+        return StateTransitionResult.success(stateWithObject)
+    }
+
     suspend fun tryAutoAdvance(state: ActionWizardState, validateStep: suspend () -> Boolean): StateTransitionResult<ActionWizardState> {
         if (state.error != null) {
             return StateTransitionResult.error(state, "Автопереход отменен: есть ошибка в состоянии")
@@ -146,12 +195,12 @@ class WizardController(
 
         // Проверяем настройку автоперехода для текущего шага
         if (!currentStep.autoAdvance) {
-            Timber.d("Автопереход отключен в настройках шага ${currentStep.id}: ${currentStep.name}, factActionField: ${currentStep.factActionField}")
+            Timber.d("Автопереход отключен в настройках шага ${currentStep.id}: ${currentStep.name}")
             return StateTransitionResult.error(state, "Автопереход отключен в настройках")
         }
-        Timber.d("Проверка автоперехода для шага ${currentStep.id}: ${currentStep.name}, factActionField: ${currentStep.factActionField}, autoAdvance: ${currentStep.autoAdvance}")
 
-        // Логика для товаров с дополнительными свойствами
+        // Далее идет существующая логика с учетом особенностей различных типов полей...
+
         if (currentStep.factActionField == FactActionField.STORAGE_PRODUCT) {
             val needsAdditionalProps = state.shouldShowAdditionalProps(currentStep)
 
@@ -171,11 +220,8 @@ class WizardController(
                         return StateTransitionResult.error(state, "Автопереход отменен: товар требует заполнения срока годности")
                     }
 
-                    // Удаляем блокировку автоперехода для товаров с дополнительными свойствами,
-                    // если все необходимые свойства заполнены
                     Timber.d("Автопереход отменен: для товаров с дополнительными свойствами автопереход запрещен")
                     return StateTransitionResult.error(state, "Автопереход отменен: для товаров с дополнительными свойствами автопереход запрещен")
-                    //Timber.d("Автопереход разрешен для товара с дополнительными свойствами: ${taskProduct.product.name}")
                 }
             }
         }

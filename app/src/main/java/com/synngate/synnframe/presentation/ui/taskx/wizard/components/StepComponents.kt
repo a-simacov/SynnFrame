@@ -52,6 +52,8 @@ fun StorageProductStep(
     state: ActionWizardState,
     onObjectSelected: (Any) -> Unit,
     handleBarcode: (String) -> Unit,
+    onRequestServerObject: () -> Unit,
+    onCancelServerRequest: () -> Unit,
     isLocked: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -61,6 +63,9 @@ fun StorageProductStep(
     var barcodeValue by remember { mutableStateOf("") }
     var showScanner by remember { mutableStateOf(false) }
     var showProductSelector by remember { mutableStateOf(false) }
+
+    // Проверяем наличие serverSelectionEndpoint
+    val useServerRequest = step.serverSelectionEndpoint.isNotEmpty()
 
     Column(
         modifier = modifier.fillMaxWidth()
@@ -100,6 +105,19 @@ fun StorageProductStep(
                 }
             }
         } else {
+            // Если настроен серверный запрос, показываем кнопку для получения объекта
+            if (useServerRequest) {
+                LoadingButton(
+                    onClick = onRequestServerObject,
+                    isLoading = state.isRequestingServerObject,
+                    onCancel = onCancelServerRequest,
+                    text = "Получить товар задания с сервера",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             WizardBarcodeField(
                 value = barcodeValue,
                 onValueChange = { barcodeValue = it },
@@ -112,7 +130,8 @@ fun StorageProductStep(
                 onScannerClick = { showScanner = true },
                 onSelectFromList = { showProductSelector = true },
                 label = "Штрихкод, ID, артикул",
-                placeholder = "Введите или отсканируйте"
+                placeholder = "Введите или отсканируйте",
+                enabled = !useServerRequest && !state.isRequestingServerObject // Блокируем поле, если используется серверный запрос
             )
 
             if (selectedProduct != null) {
@@ -393,6 +412,8 @@ fun ProductClassifierStep(
     state: ActionWizardState,
     onObjectSelected: (Any) -> Unit,
     handleBarcode: (String) -> Unit,
+    onRequestServerObject: () -> Unit,
+    onCancelServerRequest: () -> Unit,
     isLocked: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -402,6 +423,9 @@ fun ProductClassifierStep(
     var barcodeValue by remember { mutableStateOf("") }
     var showScanner by remember { mutableStateOf(false) }
     var showProductSelector by remember { mutableStateOf(false) }
+
+    // Проверяем наличие serverSelectionEndpoint
+    val useServerRequest = step.serverSelectionEndpoint.isNotEmpty()
 
     Column(
         modifier = modifier.fillMaxWidth()
@@ -424,6 +448,19 @@ fun ProductClassifierStep(
                 }
             }
         } else {
+            // Если настроен серверный запрос, показываем кнопку для получения объекта
+            if (useServerRequest) {
+                LoadingButton(
+                    onClick = onRequestServerObject,
+                    isLoading = state.isRequestingServerObject,
+                    onCancel = onCancelServerRequest,
+                    text = "Получить товар с сервера",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             WizardBarcodeField(
                 value = barcodeValue,
                 onValueChange = { barcodeValue = it },
@@ -436,7 +473,8 @@ fun ProductClassifierStep(
                 onScannerClick = { showScanner = true },
                 onSelectFromList = { showProductSelector = true },
                 label = "Штрихкод, ID, артикул",
-                placeholder = "Введите или отсканируйте"
+                placeholder = "Введите или отсканируйте",
+                enabled = !useServerRequest && !state.isRequestingServerObject // Блокируем поле, если используется серверный запрос
             )
 
             if (selectedProduct != null) {
@@ -517,6 +555,8 @@ fun BinStep(
     state: ActionWizardState,
     onObjectSelected: (Any) -> Unit,
     handleBarcode: (String) -> Unit,
+    onRequestServerObject: () -> Unit,
+    onCancelServerRequest: () -> Unit,
     isStorage: Boolean,
     isLocked: Boolean = false,
     modifier: Modifier = Modifier
@@ -529,6 +569,9 @@ fun BinStep(
     val selectedBin = state.selectedObjects[step.id] as? BinX
     var barcodeValue by remember { mutableStateOf("") }
     var showScanner by remember { mutableStateOf(false) }
+
+    // Проверяем наличие serverSelectionEndpoint
+    val useServerRequest = step.serverSelectionEndpoint.isNotEmpty()
 
     Column(
         modifier = modifier.fillMaxWidth()
@@ -552,6 +595,19 @@ fun BinStep(
                 }
             }
         } else {
+            // Если настроен серверный запрос, показываем кнопку для получения объекта
+            if (useServerRequest) {
+                LoadingButton(
+                    onClick = onRequestServerObject,
+                    isLoading = state.isRequestingServerObject,
+                    onCancel = onCancelServerRequest,
+                    text = "Получить ${if (isStorage) "ячейку хранения" else "ячейку размещения"} с сервера",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             WizardBarcodeField(
                 value = barcodeValue,
                 onValueChange = { barcodeValue = it },
@@ -563,7 +619,8 @@ fun BinStep(
                 },
                 onScannerClick = { showScanner = true },
                 label = if (isStorage) "Код ячейки хранения" else "Код ячейки размещения",
-                placeholder = "Введите или отсканируйте код ячейки"
+                placeholder = "Введите или отсканируйте код ячейки",
+                enabled = !useServerRequest && !state.isRequestingServerObject // Блокируем поле, если используется серверный запрос
             )
 
             if (selectedBin != null) {
@@ -617,6 +674,8 @@ fun PalletStep(
     state: ActionWizardState,
     onObjectSelected: (Any) -> Unit,
     handleBarcode: (String) -> Unit,
+    onRequestServerObject: () -> Unit,
+    onCancelServerRequest: () -> Unit,
     isStorage: Boolean,
     isLocked: Boolean = false,
     modifier: Modifier = Modifier
@@ -629,6 +688,9 @@ fun PalletStep(
     val selectedPallet = state.selectedObjects[step.id] as? Pallet
     var barcodeValue by remember { mutableStateOf("") }
     var showScanner by remember { mutableStateOf(false) }
+
+    // Проверяем наличие serverSelectionEndpoint
+    val useServerRequest = step.serverSelectionEndpoint.isNotEmpty()
 
     Column(
         modifier = modifier.fillMaxWidth()
@@ -652,6 +714,19 @@ fun PalletStep(
                 }
             }
         } else {
+            // Если настроен серверный запрос, показываем кнопку для получения объекта
+            if (useServerRequest) {
+                LoadingButton(
+                    onClick = onRequestServerObject,
+                    isLoading = state.isRequestingServerObject,
+                    onCancel = onCancelServerRequest,
+                    text = "Получить ${if (isStorage) "паллету хранения" else "паллету размещения"} с сервера",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             WizardBarcodeField(
                 value = barcodeValue,
                 onValueChange = { barcodeValue = it },
@@ -663,7 +738,8 @@ fun PalletStep(
                 },
                 onScannerClick = { showScanner = true },
                 label = if (isStorage) "Код паллеты хранения" else "Код паллеты размещения",
-                placeholder = "Введите или отсканируйте код паллеты"
+                placeholder = "Введите или отсканируйте код паллеты",
+                enabled = !useServerRequest && !state.isRequestingServerObject // Блокируем поле, если используется серверный запрос
             )
 
             if (selectedPallet != null) {
@@ -714,6 +790,8 @@ fun QuantityStep(
     step: ActionStepTemplate,
     state: ActionWizardState,
     onQuantityChanged: (Float, Boolean) -> Unit,
+    onRequestServerObject: () -> Unit,
+    onCancelServerRequest: () -> Unit,
     isLocked: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -728,6 +806,9 @@ fun QuantityStep(
     val remainingAfterInput = (plannedQuantity - projectedTotalQuantity).coerceAtLeast(0f)
     val willExceedPlan = projectedTotalQuantity > plannedQuantity
 
+    // Проверяем наличие serverSelectionEndpoint
+    val useServerRequest = step.serverSelectionEndpoint.isNotEmpty()
+
     val focusRequester = remember { FocusRequester() }
     var inputValue by remember {
         mutableStateOf(if (selectedQuantity > 0) selectedQuantity.toString() else "")
@@ -735,7 +816,7 @@ fun QuantityStep(
 
     // Устанавливаем фокус на поле ввода при первом отображении, если не заблокировано
     LaunchedEffect(Unit) {
-        if (!isLocked) {
+        if (!isLocked && !useServerRequest) {
             try {
                 delay(100)
                 focusRequester.requestFocus()
@@ -796,6 +877,19 @@ fun QuantityStep(
                 }
             }
         } else {
+            // Если настроен серверный запрос, показываем кнопку для получения объекта
+            if (useServerRequest) {
+                LoadingButton(
+                    onClick = onRequestServerObject,
+                    isLoading = state.isRequestingServerObject,
+                    onCancel = onCancelServerRequest,
+                    text = "Получить количество с сервера",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             WizardQuantityInput(
                 value = inputValue,
                 onValueChange = { newValue ->
@@ -834,7 +928,8 @@ fun QuantityStep(
                 textAlign = TextAlign.Center,
                 fontSize = 24.sp,
                 label = step.promptText,
-                focusRequester = focusRequester
+                focusRequester = focusRequester,
+                enabled = !useServerRequest && !state.isRequestingServerObject // Блокируем поле, если используется серверный запрос
             )
         }
 

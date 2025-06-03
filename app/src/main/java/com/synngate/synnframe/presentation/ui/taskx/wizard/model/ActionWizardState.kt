@@ -27,9 +27,13 @@ data class ActionWizardState(
     val isLoadingProductInfo: Boolean = false,
     val productInfoError: String? = null,
 
-    // Новые поля для работы с буфером
+    // Поля для работы с буфером
     val bufferObjectSources: Map<String, String> = emptyMap(), // stepId -> source
-    val lockedObjectSteps: Set<String> = emptySet()  // stepId заблокированных объектов (ALWAYS)
+    val lockedObjectSteps: Set<String> = emptySet(),  // stepId заблокированных объектов (ALWAYS)
+
+    // Новые поля для запроса объекта с сервера
+    val isRequestingServerObject: Boolean = false,
+    val serverRequestCancellationToken: String? = null
 ) {
 
     fun getCurrentStep(): ActionStepTemplate? {
@@ -70,7 +74,7 @@ data class ActionWizardState(
                 step.factActionField == FactActionField.STORAGE_PRODUCT
     }
 
-    // Новые вспомогательные функции для буфера
+    // Вспомогательные функции для буфера
 
     /**
      * Проверяет, заблокирован ли текущий шаг буфером (режим ALWAYS)
@@ -86,5 +90,13 @@ data class ActionWizardState(
     fun getBufferSourceForCurrentStep(): String? {
         val currentStep = getCurrentStep() ?: return null
         return bufferObjectSources[currentStep.id]
+    }
+
+    /**
+     * Проверяет, нужно ли использовать серверный запрос для текущего шага
+     */
+    fun shouldUseServerRequest(): Boolean {
+        val currentStep = getCurrentStep() ?: return false
+        return currentStep.serverSelectionEndpoint.isNotEmpty()
     }
 }

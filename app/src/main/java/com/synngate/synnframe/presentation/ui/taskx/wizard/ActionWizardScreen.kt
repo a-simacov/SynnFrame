@@ -170,7 +170,9 @@ fun ActionWizardScreen(
                     onObjectSelected = { obj, autoAdvance ->
                         viewModel.setObjectForCurrentStep(obj, autoAdvance)
                     },
-                    handleBarcode = { barcode -> viewModel.handleBarcode(barcode) }
+                    handleBarcode = { barcode -> viewModel.handleBarcode(barcode) },
+                    onRequestServerObject = { viewModel.requestServerObject() },
+                    onCancelServerRequest = { viewModel.cancelServerRequest() }
                 )
             }
         }

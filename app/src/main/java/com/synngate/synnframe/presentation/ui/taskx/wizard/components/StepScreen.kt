@@ -2,16 +2,20 @@ package com.synngate.synnframe.presentation.ui.taskx.wizard.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
@@ -22,6 +26,8 @@ fun StepScreen(
     onConfirm: () -> Unit,
     onObjectSelected: (Any, Boolean) -> Unit,
     handleBarcode: (String) -> Unit,
+    onRequestServerObject: () -> Unit,
+    onCancelServerRequest: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val currentStep = state.getCurrentStep() ?: return
@@ -44,10 +50,27 @@ fun StepScreen(
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Text(
-            text = currentStep.promptText,
-            style = MaterialTheme.typography.bodyLarge
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = currentStep.promptText,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f)
+            )
+
+            // Если для шага используется serverSelectionEndpoint, показываем индикатор
+            if (currentStep.serverSelectionEndpoint.isNotEmpty()) {
+                Text(
+                    text = "С сервера",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+        }
 
         if (bufferSource != null) {
             BufferIndicator(
@@ -63,6 +86,8 @@ fun StepScreen(
                     state = state,
                     onObjectSelected = { obj -> onObjectSelected(obj, true) },
                     handleBarcode = handleBarcode,
+                    onRequestServerObject = onRequestServerObject,
+                    onCancelServerRequest = onCancelServerRequest,
                     isLocked = isLocked
                 )
             }
@@ -72,6 +97,8 @@ fun StepScreen(
                     state = state,
                     onObjectSelected = { obj -> onObjectSelected(obj, true) },
                     handleBarcode = handleBarcode,
+                    onRequestServerObject = onRequestServerObject,
+                    onCancelServerRequest = onCancelServerRequest,
                     isLocked = isLocked
                 )
             }
@@ -81,6 +108,8 @@ fun StepScreen(
                     state = state,
                     onObjectSelected = { obj -> onObjectSelected(obj, true) },
                     handleBarcode = handleBarcode,
+                    onRequestServerObject = onRequestServerObject,
+                    onCancelServerRequest = onCancelServerRequest,
                     isStorage = true,
                     isLocked = isLocked
                 )
@@ -91,6 +120,8 @@ fun StepScreen(
                     state = state,
                     onObjectSelected = { obj -> onObjectSelected(obj, true) },
                     handleBarcode = handleBarcode,
+                    onRequestServerObject = onRequestServerObject,
+                    onCancelServerRequest = onCancelServerRequest,
                     isStorage = false,
                     isLocked = isLocked
                 )
@@ -101,6 +132,8 @@ fun StepScreen(
                     state = state,
                     onObjectSelected = { obj -> onObjectSelected(obj, true) },
                     handleBarcode = handleBarcode,
+                    onRequestServerObject = onRequestServerObject,
+                    onCancelServerRequest = onCancelServerRequest,
                     isStorage = true,
                     isLocked = isLocked
                 )
@@ -111,6 +144,8 @@ fun StepScreen(
                     state = state,
                     onObjectSelected = { obj -> onObjectSelected(obj, true) },
                     handleBarcode = handleBarcode,
+                    onRequestServerObject = onRequestServerObject,
+                    onCancelServerRequest = onCancelServerRequest,
                     isStorage = false,
                     isLocked = isLocked
                 )
@@ -122,6 +157,8 @@ fun StepScreen(
                     onQuantityChanged = { value, autoAdvance ->
                         onObjectSelected(value, autoAdvance)
                     },
+                    onRequestServerObject = onRequestServerObject,
+                    onCancelServerRequest = onCancelServerRequest,
                     isLocked = isLocked
                 )
             }
@@ -138,7 +175,7 @@ fun StepScreen(
         Button(
             onClick = onConfirm,
             modifier = Modifier.fillMaxWidth(),
-            enabled = isButtonEnabled
+            enabled = isButtonEnabled && !state.isRequestingServerObject
         ) {
             Text("Далее")
         }

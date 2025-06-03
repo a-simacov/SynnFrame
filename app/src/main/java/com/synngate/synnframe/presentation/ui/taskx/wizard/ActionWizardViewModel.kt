@@ -17,16 +17,19 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.state.WizardState
 import com.synngate.synnframe.presentation.ui.taskx.wizard.state.WizardStateMachine
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.UUID
 
 class ActionWizardViewModel(
     private val taskId: String,
     private val actionId: String,
     taskXRepository: TaskXRepository,
     validationService: ValidationService,
-    private val productUseCases: ProductUseCases
+    private val productUseCases: ProductUseCases,
+    private val networkService: WizardNetworkService
 ) : BaseViewModel<ActionWizardState, ActionWizardEvent>(
     ActionWizardState(
         taskId = taskId,
@@ -40,10 +43,12 @@ class ActionWizardViewModel(
     private val validator = WizardValidator(validationService, handlerFactory)
     private val controller = WizardController(stateMachine)
     private val objectSearchService = ObjectSearchService(productUseCases, validationService)
-    private val networkService = WizardNetworkService(taskXRepository)
 
     private var isProcessingBarcode = false
     private var resetProcessingJob: Job? = null
+
+    // Новый Job для запроса объекта с сервера
+    private var serverRequestJob: Job? = null
 
     // Новый callback для навигации
     private var navigateBackCallback: (() -> Unit)? = null
@@ -115,6 +120,15 @@ class ActionWizardViewModel(
             if (bufferApplied && applyBufferResult.getNewState().isCurrentStepLockedByBuffer()) {
                 delay(300) // Небольшая задержка для UI
                 tryAutoAdvanceFromBuffer()
+            }
+
+            // 4. Если для шага настроен serverSelectionEndpoint и ни буфер, ни фильтр не применились,
+            // автоматически запрашиваем объект с сервера
+            val updatedState = uiState.value
+            if (updatedState.shouldUseServerRequest() &&
+                !updatedState.selectedObjects.containsKey(updatedState.getCurrentStep()?.id ?: "")) {
+                delay(300) // Небольшая задержка для UI
+                requestServerObject()
             }
         }
     }
@@ -275,6 +289,13 @@ class ActionWizardViewModel(
             return
         }
 
+        // Если для шага используется serverSelectionEndpoint, не обрабатываем сканирования
+        if (uiState.value.shouldUseServerRequest()) {
+            Timber.d("Шаг использует serverSelectionEndpoint, сканирование игнорируется")
+            sendEvent(ActionWizardEvent.ShowSnackbar("Для этого шага объекты получаются с сервера"))
+            return
+        }
+
         // Показываем индикатор загрузки
         updateState { it.copy(isLoading = true) }
 
@@ -306,6 +327,131 @@ class ActionWizardViewModel(
                     )
                 }
                 sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка при обработке штрих-кода: ${e.message}"))
+            }
+        }
+    }
+
+    /**
+     * Запрашивает объект с сервера для текущего шага
+     */
+    fun requestServerObject() {
+        val currentState = uiState.value
+        val currentStep = currentState.getCurrentStep() ?: return
+
+        if (currentStep.serverSelectionEndpoint.isEmpty()) {
+            sendEvent(ActionWizardEvent.ShowSnackbar("Endpoint не настроен для этого шага"))
+            return
+        }
+
+        // Если шаг заблокирован буфером, не запрашиваем объект
+        if (currentState.isCurrentStepLockedByBuffer()) {
+            Timber.d("Шаг заблокирован буфером (режим ALWAYS), запрос объекта игнорируется")
+            sendEvent(ActionWizardEvent.ShowSnackbar("Поле заблокировано буфером"))
+            return
+        }
+
+        val factAction = currentState.factAction ?: return
+        val cancellationToken = UUID.randomUUID().toString()
+
+        updateState {
+            it.copy(
+                isRequestingServerObject = true,
+                serverRequestCancellationToken = cancellationToken,
+                error = null
+            )
+        }
+
+        // Отменяем предыдущий запрос, если он был
+        serverRequestJob?.cancel()
+
+        serverRequestJob = launchIO {
+            try {
+                Timber.d("Запрос объекта с сервера: ${currentStep.serverSelectionEndpoint}")
+
+                // Проверяем, не отменен ли запрос
+                if (uiState.value.serverRequestCancellationToken != cancellationToken) {
+                    Timber.d("Запрос отменен: токен изменился")
+                    return@launchIO
+                }
+
+                val result = networkService.getStepObject(
+                    endpoint = currentStep.serverSelectionEndpoint,
+                    factAction = factAction,
+                    fieldType = currentStep.factActionField
+                )
+
+                // Проверяем, не отменен ли запрос
+                if (uiState.value.serverRequestCancellationToken != cancellationToken) {
+                    Timber.d("Запрос отменен после получения результата: токен изменился")
+                    return@launchIO
+                }
+
+                // Сбрасываем флаг запроса перед обработкой результата
+                updateState {
+                    it.copy(
+                        isRequestingServerObject = false,
+                        serverRequestCancellationToken = null
+                    )
+                }
+
+                if (result.isSuccess()) {
+                    val serverObject = result.getResponseData()
+                    if (serverObject != null) {
+                        Timber.d("Объект успешно получен с сервера: ${serverObject.javaClass.simpleName}")
+
+                        // Устанавливаем полученный объект в текущий шаг
+                        val stateResult = controller.handleServerObjectRequest(uiState.value, result)
+                        updateState { stateResult.getNewState() }
+                    } else {
+                        Timber.w("Сервер вернул успешный ответ, но объект не был получен")
+                        updateState {
+                            it.copy(error = "Не удалось получить объект с сервера")
+                        }
+                        sendEvent(ActionWizardEvent.ShowSnackbar("Не удалось получить объект с сервера"))
+                    }
+                } else {
+                    Timber.w("Ошибка при запросе объекта с сервера: ${result.getErrorMessage()}")
+                    updateState {
+                        it.copy(error = result.getErrorMessage())
+                    }
+                    sendEvent(ActionWizardEvent.ShowSnackbar(
+                        result.getErrorMessage() ?: "Ошибка при получении объекта с сервера"
+                    ))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Исключение при запросе объекта с сервера")
+
+                updateState {
+                    it.copy(
+                        isRequestingServerObject = false,
+                        serverRequestCancellationToken = null,
+                        error = "Ошибка: ${e.message}"
+                    )
+                }
+
+                sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: ${e.message}"))
+            }
+        }
+    }
+
+    /**
+     * Отменяет текущий запрос объекта с сервера
+     */
+    fun cancelServerRequest() {
+        launchIO {
+            try {
+                serverRequestJob?.cancelAndJoin()
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при отмене запроса объекта с сервера")
+            } finally {
+                serverRequestJob = null
+
+                updateState {
+                    it.copy(
+                        isRequestingServerObject = false,
+                        serverRequestCancellationToken = null
+                    )
+                }
             }
         }
     }

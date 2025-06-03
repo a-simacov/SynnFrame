@@ -37,7 +37,8 @@ fun WizardBarcodeField(
     isError: Boolean = false,
     errorText: String? = null,
     onSelectFromList: (() -> Unit)? = null,
-    placeholder: String? = null
+    placeholder: String? = null,
+    enabled: Boolean = true
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         OutlinedTextField(
@@ -47,6 +48,7 @@ fun WizardBarcodeField(
             modifier = Modifier.fillMaxWidth(),
             isError = isError,
             singleLine = true,
+            enabled = enabled,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Search
