@@ -17,6 +17,7 @@ import com.synngate.synnframe.data.remote.api.DynamicMenuApi
 import com.synngate.synnframe.data.remote.api.DynamicMenuApiImpl
 import com.synngate.synnframe.data.remote.api.ProductApi
 import com.synngate.synnframe.data.remote.api.ProductApiImpl
+import com.synngate.synnframe.data.remote.api.StepCommandApiImpl
 import com.synngate.synnframe.data.remote.api.StepObjectApiImpl
 import com.synngate.synnframe.data.remote.api.TaskXApi
 import com.synngate.synnframe.data.remote.api.TaskXApiImpl
@@ -310,6 +311,10 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         WizardNetworkService(
             taskXRepository = taskXRepository,
             stepObjectApi = StepObjectApiImpl(
+                httpClient = httpClient,
+                serverProvider = serverProvider
+            ),
+            stepCommandApi = StepCommandApiImpl(
                 httpClient = httpClient,
                 serverProvider = serverProvider
             ),

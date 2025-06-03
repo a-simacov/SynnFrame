@@ -33,7 +33,12 @@ data class ActionWizardState(
 
     // Новые поля для запроса объекта с сервера
     val isRequestingServerObject: Boolean = false,
-    val serverRequestCancellationToken: String? = null
+    val serverRequestCancellationToken: String? = null,
+
+    val lastCommandResultData: Map<String, String> = emptyMap(),
+    val showResultDialog: Boolean = false,
+    val resultDialogTitle: String = "",
+    val resultDialogContent: List<Pair<String, String>> = emptyList()
 ) {
 
     fun getCurrentStep(): ActionStepTemplate? {

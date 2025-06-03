@@ -1,11 +1,14 @@
 package com.synngate.synnframe.presentation.ui.taskx.wizard.service
 
 import com.synngate.synnframe.data.remote.api.ApiResult
+import com.synngate.synnframe.data.remote.api.StepCommandApi
 import com.synngate.synnframe.data.remote.api.StepObjectApi
+import com.synngate.synnframe.data.remote.dto.CommandExecutionRequestDto
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.service.StepObjectMapperService
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
+import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.result.NetworkResult
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +19,7 @@ import java.time.LocalDateTime
 class WizardNetworkService(
     private val taskXRepository: TaskXRepository,
     private val stepObjectApi: StepObjectApi,
+    private val stepCommandApi: StepCommandApi, // Добавлен stepCommandApi
     private val stepObjectMapperService: StepObjectMapperService
 ) {
     suspend fun completeAction(
@@ -51,11 +55,6 @@ class WizardNetworkService(
 
     /**
      * Получает объект шага с сервера через конфигурируемый endpoint
-     *
-     * @param endpoint Конечная точка API для получения объекта
-     * @param factAction Текущий объект фактического действия (уже содержит все данные предыдущих шагов)
-     * @param fieldType Тип поля, для которого запрашивается объект
-     * @return Результат сетевого запроса с объектом или ошибкой
      */
     suspend fun getStepObject(
         endpoint: String,
@@ -101,6 +100,61 @@ class WizardNetworkService(
             }
         } catch (e: Exception) {
             Timber.e(e, "Исключение при запросе объекта с сервера: $endpoint")
+            NetworkResult.error("Ошибка: ${e.message}")
+        }
+    }
+
+    /**
+     * Выполняет команду с указанными параметрами
+     */
+    suspend fun executeCommand(
+        command: StepCommand,
+        stepId: String,
+        factAction: FactAction,
+        parameters: Map<String, String> = emptyMap(),
+        additionalContext: Map<String, String> = emptyMap()
+    ): NetworkResult<CommandExecutionResult> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Выполнение команды: ${command.name} (${command.id})")
+
+            val requestDto = CommandExecutionRequestDto(
+                commandId = command.id,
+                stepId = stepId,
+                factAction = com.synngate.synnframe.data.remote.dto.FactActionRequestDto.fromDomain(factAction),
+                parameters = parameters,
+                additionalContext = additionalContext
+            )
+
+            val result = stepCommandApi.executeCommand(command.endpoint, requestDto)
+
+            when (result) {
+                is ApiResult.Success -> {
+                    val response = result.data
+
+                    val executionResult = CommandExecutionResult(
+                        success = response.success,
+                        message = response.message,
+                        resultData = response.resultData ?: emptyMap(),
+                        nextAction = response.nextAction,
+                        updatedFactAction = response.updatedFactAction,
+                        commandBehavior = command.executionBehavior
+                    )
+
+                    if (response.success) {
+                        Timber.d("Команда ${command.id} выполнена успешно")
+                        NetworkResult.success(executionResult)
+                    } else {
+                        Timber.w("Команда ${command.id} завершилась с ошибкой: ${response.message}")
+                        NetworkResult.error(response.message ?: "Команда завершилась с ошибкой")
+                    }
+                }
+                is ApiResult.Error -> {
+                    Timber.e("Ошибка API при выполнении команды ${command.id}: ${result.message}")
+                    NetworkResult.error(result.message)
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Исключение при выполнении команды ${command.id}")
             NetworkResult.error("Ошибка: ${e.message}")
         }
     }

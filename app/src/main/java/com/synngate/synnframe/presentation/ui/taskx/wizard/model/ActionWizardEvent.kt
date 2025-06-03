@@ -7,4 +7,5 @@ sealed class ActionWizardEvent {
 
     // Активно используемое событие
     data class ShowSnackbar(val message: String) : ActionWizardEvent()
+    data object DismissResultDialog : ActionWizardEvent()
 }
