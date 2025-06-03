@@ -17,5 +17,6 @@ data class ActionStepTemplate(
     val inputAdditionalProps: Boolean = false,
     val bufferUsage: BufferUsage = BufferUsage.NEVER,
     val saveToTaskBuffer: Boolean = false,
-    val validationRules: ValidationRule? = null
+    val validationRules: ValidationRule? = null,
+    val autoAdvance: Boolean = true
 )

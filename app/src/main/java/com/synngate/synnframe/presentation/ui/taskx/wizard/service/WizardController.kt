@@ -141,7 +141,16 @@ class WizardController(
             return StateTransitionResult.error(state, "Автопереход отменен: есть ошибка в состоянии")
         }
 
-        val currentStep = state.getCurrentStep() ?: return StateTransitionResult.error(state, "Текущий шаг не найден")
+        val currentStep = state.getCurrentStep() ?:
+        return StateTransitionResult.error(state, "Текущий шаг не найден")
+
+        // Проверяем настройку автоперехода для текущего шага
+        if (!currentStep.autoAdvance) {
+            Timber.d("Автопереход отключен в настройках шага ${currentStep.id}: ${currentStep.name}")
+            return StateTransitionResult.error(state, "Автопереход отключен в настройках")
+        }
+
+        // Далее идет существующая логика с учетом особенностей различных типов полей...
 
         if (currentStep.factActionField == FactActionField.STORAGE_PRODUCT) {
             val needsAdditionalProps = state.shouldShowAdditionalProps(currentStep)
@@ -168,14 +177,14 @@ class WizardController(
             }
         }
 
+        // Валидация шага
         if (!validateStep()) {
             Timber.d("Автопереход отменен: ошибка валидации")
             return StateTransitionResult.error(state, "Автопереход отменен: ошибка валидации")
         }
 
-        // Перед переходом сохраняем объект в буфер, если нужно
+        // Сохраняем в буфер и переходим к следующему шагу...
         val stateAfterBuffer = saveToBufferIfNeeded(state).getNewState()
-
         val newState = stateMachine.transition(stateAfterBuffer, WizardEvent.NextStep)
 
         val success = newState != state
