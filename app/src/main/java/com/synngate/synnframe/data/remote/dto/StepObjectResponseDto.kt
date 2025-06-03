@@ -3,10 +3,27 @@ package com.synngate.synnframe.data.remote.dto
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/**
+ * DTO для ответа сервера на запрос объекта шага
+ *
+ * Возможные значения objectType:
+ * - "BIN" - ячейка (используются поля binCode, binZone)
+ * - "PALLET" - паллета (используются поля palletCode, palletIsClosed)
+ * - "PRODUCT" - товар из классификатора (используется поле productId)
+ * - "TASK_PRODUCT" - товар задания (используются поля taskProductId, expirationDate, productStatus)
+ * - "QUANTITY" - количество (используется поле quantity)
+ */
 @Serializable
 data class StepObjectResponseDto(
+    // Общие поля
     @SerialName("objectType")
-    val objectType: String,
+    val objectType: String? = null,
+
+    @SerialName("success")
+    val success: Boolean = true,
+
+    @SerialName("errorMessage")
+    val errorMessage: String? = null,
 
     // Поля для ячеек
     @SerialName("binCode")
@@ -18,6 +35,9 @@ data class StepObjectResponseDto(
     // Поля для паллет
     @SerialName("palletCode")
     val palletCode: String? = null,
+
+    @SerialName("palletIsClosed")
+    val palletIsClosed: Boolean? = null,
 
     // Поля для товара из классификатора
     @SerialName("productId")
@@ -37,10 +57,7 @@ data class StepObjectResponseDto(
     @SerialName("quantity")
     val quantity: Float? = null,
 
-    // Дополнительные поля для потенциальных ошибок
-    @SerialName("success")
-    val success: Boolean = true,
-
-    @SerialName("errorMessage")
-    val errorMessage: String? = null
+    // Дополнительные поля для расширения
+    @SerialName("additionalInfo")
+    val additionalInfo: Map<String, String>? = null
 )

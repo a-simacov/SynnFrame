@@ -402,6 +402,11 @@ class ActionWizardViewModel(
                         // Устанавливаем полученный объект в текущий шаг
                         val stateResult = controller.handleServerObjectRequest(uiState.value, result)
                         updateState { stateResult.getNewState() }
+
+                        // Если объект успешно установлен и нет ошибок, показываем уведомление
+                        if (stateResult.isSuccess() && stateResult.getNewState().error == null) {
+                            sendEvent(ActionWizardEvent.ShowSnackbar("Объект успешно получен с сервера"))
+                        }
                     } else {
                         Timber.w("Сервер вернул успешный ответ, но объект не был получен")
                         updateState {

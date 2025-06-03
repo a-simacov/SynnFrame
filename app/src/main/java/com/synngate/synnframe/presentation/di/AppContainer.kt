@@ -17,6 +17,7 @@ import com.synngate.synnframe.data.remote.api.DynamicMenuApi
 import com.synngate.synnframe.data.remote.api.DynamicMenuApiImpl
 import com.synngate.synnframe.data.remote.api.ProductApi
 import com.synngate.synnframe.data.remote.api.ProductApiImpl
+import com.synngate.synnframe.data.remote.api.StepObjectApiImpl
 import com.synngate.synnframe.data.remote.api.TaskXApi
 import com.synngate.synnframe.data.remote.api.TaskXApiImpl
 import com.synngate.synnframe.data.remote.api.ValidationApiServiceImpl
@@ -55,6 +56,7 @@ import com.synngate.synnframe.domain.service.FileService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.service.SoundService
+import com.synngate.synnframe.domain.service.StepObjectMapperService
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.UpdateInstallerImpl
@@ -87,6 +89,7 @@ import com.synngate.synnframe.presentation.ui.settings.SettingsViewModel
 import com.synngate.synnframe.presentation.ui.sync.SyncHistoryViewModel
 import com.synngate.synnframe.presentation.ui.taskx.TaskXDetailViewModel
 import com.synngate.synnframe.presentation.ui.taskx.wizard.ActionWizardViewModel
+import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardNetworkService
 import com.synngate.synnframe.util.network.NetworkMonitor
 import com.synngate.synnframe.util.resources.ResourceProvider
 import com.synngate.synnframe.util.resources.ResourceProviderImpl
@@ -300,6 +303,17 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         ActionSearchServiceImpl(
             actionSearchApi = actionSearchApi,
             productRepository = productRepository
+        )
+    }
+
+    val networkService by lazy {
+        WizardNetworkService(
+            taskXRepository = taskXRepository,
+            stepObjectApi = StepObjectApiImpl(
+                httpClient = httpClient,
+                serverProvider = serverProvider
+            ),
+            stepObjectMapperService = StepObjectMapperService(productUseCases)
         )
     }
 
@@ -584,7 +598,8 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 actionId = actionId,
                 taskXRepository = appContainer.taskXRepository,
                 validationService = appContainer.validationService,
-                productUseCases = appContainer.productUseCases
+                productUseCases = appContainer.productUseCases,
+                networkService = appContainer.networkService
             )
         }
     }

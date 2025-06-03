@@ -53,7 +53,7 @@ class WizardNetworkService(
      * Получает объект шага с сервера через конфигурируемый endpoint
      *
      * @param endpoint Конечная точка API для получения объекта
-     * @param factAction Текущий объект фактического действия
+     * @param factAction Текущий объект фактического действия (уже содержит все данные предыдущих шагов)
      * @param fieldType Тип поля, для которого запрашивается объект
      * @return Результат сетевого запроса с объектом или ошибкой
      */
@@ -79,8 +79,15 @@ class WizardNetworkService(
                     } else {
                         val mappedObject = stepObjectMapperService.mapResponseToObject(data, fieldType)
                         if (mappedObject != null) {
-                            Timber.d("Объект успешно получен с сервера: ${mappedObject.javaClass.simpleName}")
-                            NetworkResult.success(mappedObject)
+                            // Проверяем, соответствует ли тип объекта ожидаемому типу поля
+                            val isCompatible = isObjectCompatibleWithField(mappedObject, fieldType)
+                            if (isCompatible) {
+                                Timber.d("Объект успешно получен с сервера: ${mappedObject.javaClass.simpleName}")
+                                NetworkResult.success(mappedObject)
+                            } else {
+                                Timber.w("Сервер вернул объект несовместимого типа: ${mappedObject.javaClass.simpleName}")
+                                NetworkResult.error("Сервер вернул объект неверного типа")
+                            }
                         } else {
                             Timber.w("Не удалось преобразовать объект из ответа сервера")
                             NetworkResult.error("Не удалось преобразовать объект из ответа сервера")
@@ -95,6 +102,30 @@ class WizardNetworkService(
         } catch (e: Exception) {
             Timber.e(e, "Исключение при запросе объекта с сервера: $endpoint")
             NetworkResult.error("Ошибка: ${e.message}")
+        }
+    }
+
+    /**
+     * Проверяет, соответствует ли полученный объект ожидаемому типу поля
+     */
+    private fun isObjectCompatibleWithField(obj: Any, fieldType: FactActionField): Boolean {
+        return when (fieldType) {
+            FactActionField.STORAGE_BIN, FactActionField.ALLOCATION_BIN ->
+                obj is com.synngate.synnframe.domain.entity.taskx.BinX
+
+            FactActionField.STORAGE_PALLET, FactActionField.ALLOCATION_PALLET ->
+                obj is com.synngate.synnframe.domain.entity.taskx.Pallet
+
+            FactActionField.STORAGE_PRODUCT_CLASSIFIER ->
+                obj is com.synngate.synnframe.domain.entity.Product
+
+            FactActionField.STORAGE_PRODUCT ->
+                obj is com.synngate.synnframe.domain.entity.taskx.TaskProduct
+
+            FactActionField.QUANTITY ->
+                obj is Number || obj is Float
+
+            else -> false
         }
     }
 }
