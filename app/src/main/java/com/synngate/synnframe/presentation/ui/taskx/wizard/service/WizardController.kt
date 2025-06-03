@@ -146,12 +146,12 @@ class WizardController(
 
         // Проверяем настройку автоперехода для текущего шага
         if (!currentStep.autoAdvance) {
-            Timber.d("Автопереход отключен в настройках шага ${currentStep.id}: ${currentStep.name}")
+            Timber.d("Автопереход отключен в настройках шага ${currentStep.id}: ${currentStep.name}, factActionField: ${currentStep.factActionField}")
             return StateTransitionResult.error(state, "Автопереход отключен в настройках")
         }
+        Timber.d("Проверка автоперехода для шага ${currentStep.id}: ${currentStep.name}, factActionField: ${currentStep.factActionField}, autoAdvance: ${currentStep.autoAdvance}")
 
-        // Далее идет существующая логика с учетом особенностей различных типов полей...
-
+        // Логика для товаров с дополнительными свойствами
         if (currentStep.factActionField == FactActionField.STORAGE_PRODUCT) {
             val needsAdditionalProps = state.shouldShowAdditionalProps(currentStep)
 
@@ -171,8 +171,11 @@ class WizardController(
                         return StateTransitionResult.error(state, "Автопереход отменен: товар требует заполнения срока годности")
                     }
 
+                    // Удаляем блокировку автоперехода для товаров с дополнительными свойствами,
+                    // если все необходимые свойства заполнены
                     Timber.d("Автопереход отменен: для товаров с дополнительными свойствами автопереход запрещен")
                     return StateTransitionResult.error(state, "Автопереход отменен: для товаров с дополнительными свойствами автопереход запрещен")
+                    //Timber.d("Автопереход разрешен для товара с дополнительными свойствами: ${taskProduct.product.name}")
                 }
             }
         }

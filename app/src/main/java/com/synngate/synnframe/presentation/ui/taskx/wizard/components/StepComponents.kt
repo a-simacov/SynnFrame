@@ -320,11 +320,8 @@ fun AdditionalPropsProductForm(
                 expirationDate = taskProduct.expirationDate,
                 onDateSelected = { date ->
                     hasExpirationDate = date != null
-                    onObjectSelected(taskProduct.copy(expirationDate = date))
-
-                    if (date != null && hasStatusSelected) {
-                        Timber.d("Автоматический переход после выбора срока годности")
-                    }
+                    val updatedProduct = taskProduct.copy(expirationDate = date)
+                    onObjectSelected(updatedProduct)
                 },
                 isRequired = true
             )
@@ -336,11 +333,8 @@ fun AdditionalPropsProductForm(
             selectedStatus = taskProduct.status,
             onStatusSelected = { status ->
                 hasStatusSelected = true
-                onObjectSelected(taskProduct.copy(status = status))
-
-                if (!needsExpirationDate || hasExpirationDate) {
-                    Timber.d("Автоматический переход после выбора статуса")
-                }
+                val updatedProduct = taskProduct.copy(status = status)
+                onObjectSelected(updatedProduct)
             },
             modifier = Modifier.fillMaxWidth()
         )
