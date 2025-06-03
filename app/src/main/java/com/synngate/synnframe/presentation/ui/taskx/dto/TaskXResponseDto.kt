@@ -93,7 +93,8 @@ data class ActionStepDto(
     val bufferUsage: String? = null,
     val saveToTaskBuffer: Boolean = false,
     val validationRules: ValidationRuleDto? = null,
-    val autoAdvance: Boolean? = null
+    val autoAdvance: Boolean? = null,
+    val commands: List<StepCommandDto> = emptyList()
 )
 
 @Serializable

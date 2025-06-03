@@ -18,5 +18,26 @@ data class ActionStepTemplate(
     val bufferUsage: BufferUsage = BufferUsage.NEVER,
     val saveToTaskBuffer: Boolean = false,
     val validationRules: ValidationRule? = null,
-    val autoAdvance: Boolean = true
-)
+    val autoAdvance: Boolean = true,
+
+    // Новое поле для команд
+    val commands: List<StepCommand> = emptyList()
+) {
+    /**
+     * Возвращает команды, которые должны отображаться в текущих условиях
+     */
+    fun getVisibleCommands(
+        isObjectSelected: Boolean,
+        isStepCompleted: Boolean
+    ): List<StepCommand> {
+        return commands.filter { command ->
+            when (command.displayCondition) {
+                CommandDisplayCondition.ALWAYS -> true
+                CommandDisplayCondition.WHEN_OBJECT_SELECTED -> isObjectSelected
+                CommandDisplayCondition.WHEN_OBJECT_NOT_SELECTED -> !isObjectSelected
+                CommandDisplayCondition.WHEN_STEP_COMPLETED -> isStepCompleted
+                CommandDisplayCondition.WHEN_STEP_NOT_COMPLETED -> !isStepCompleted
+            }
+        }.sortedBy { it.order }
+    }
+}

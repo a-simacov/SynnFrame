@@ -172,7 +172,10 @@ fun ActionWizardScreen(
                     },
                     handleBarcode = { barcode -> viewModel.handleBarcode(barcode) },
                     onRequestServerObject = { viewModel.requestServerObject() },
-                    onCancelServerRequest = { viewModel.cancelServerRequest() }
+                    onCancelServerRequest = { viewModel.cancelServerRequest() },
+                    onCommandExecute = { command, parameters -> // Новый параметр
+                        viewModel.executeStepCommand(command, parameters)
+                    }
                 )
             }
         }

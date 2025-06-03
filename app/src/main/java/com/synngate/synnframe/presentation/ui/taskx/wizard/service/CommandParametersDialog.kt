@@ -1,0 +1,193 @@
+package com.synngate.synnframe.presentation.ui.taskx.wizard.components
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
+
+@Composable
+fun CommandParametersDialog(
+    command: StepCommand,
+    onExecute: (Map<String, String>) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val scrollState = rememberScrollState()
+    var parameterValues by remember {
+        mutableStateOf(
+            command.parameters.associate { param ->
+                param.id to (param.defaultValue ?: "")
+            }
+        )
+    }
+
+    var validationErrors by remember { mutableStateOf(emptyMap<String, String>()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = command.name,
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                if (command.description.isNotEmpty()) {
+                    Text(
+                        text = command.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                command.parameters.sortedBy { it.order }.forEach { parameter ->
+                    val currentValue = parameterValues[parameter.id] ?: ""
+                    val errorMessage = validationErrors[parameter.id]
+
+                    ParameterInputField(
+                        parameter = parameter,
+                        value = currentValue,
+                        onValueChange = { newValue ->
+                            parameterValues = parameterValues.toMutableMap().apply {
+                                put(parameter.id, newValue)
+                            }
+                            // Очищаем ошибку валидации при изменении значения
+                            if (errorMessage != null) {
+                                validationErrors = validationErrors.toMutableMap().apply {
+                                    remove(parameter.id)
+                                }
+                            }
+                        },
+                        isError = errorMessage != null,
+                        errorMessage = errorMessage
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val errors = validateParameters(command.parameters, parameterValues)
+                    if (errors.isEmpty()) {
+                        onExecute(parameterValues)
+                    } else {
+                        validationErrors = errors
+                    }
+                }
+            ) {
+                Text("Выполнить")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        },
+        modifier = modifier
+    )
+}
+
+/**
+ * Валидация параметров команды
+ */
+private fun validateParameters(
+    parameters: List<com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameter>,
+    values: Map<String, String>
+): Map<String, String> {
+    val errors = mutableMapOf<String, String>()
+
+    parameters.forEach { parameter ->
+        val value = values[parameter.id] ?: ""
+
+        // Проверка обязательности
+        if (parameter.isRequired && value.isEmpty()) {
+            errors[parameter.id] = "Поле \"${parameter.displayName}\" обязательно для заполнения"
+            return@forEach
+        }
+
+        // Если значение пустое и не обязательное, пропускаем дальнейшую валидацию
+        if (value.isEmpty()) return@forEach
+
+        val validation = parameter.validation
+        if (validation != null) {
+            // Проверка длины
+            validation.minLength?.let { minLength ->
+                if (value.length < minLength) {
+                    errors[parameter.id] = "Минимальная длина: $minLength символов"
+                    return@forEach
+                }
+            }
+
+            validation.maxLength?.let { maxLength ->
+                if (value.length > maxLength) {
+                    errors[parameter.id] = "Максимальная длина: $maxLength символов"
+                    return@forEach
+                }
+            }
+
+            // Проверка числовых значений
+            if (parameter.type in listOf(
+                    com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameterType.NUMBER,
+                    com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameterType.INTEGER,
+                    com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameterType.DECIMAL
+                )) {
+                val numValue = value.toDoubleOrNull()
+                if (numValue == null) {
+                    errors[parameter.id] = "Некорректное числовое значение"
+                    return@forEach
+                }
+
+                validation.minValue?.let { minValue ->
+                    if (numValue < minValue) {
+                        errors[parameter.id] = "Минимальное значение: $minValue"
+                        return@forEach
+                    }
+                }
+
+                validation.maxValue?.let { maxValue ->
+                    if (numValue > maxValue) {
+                        errors[parameter.id] = "Максимальное значение: $maxValue"
+                        return@forEach
+                    }
+                }
+            }
+
+            // Проверка регулярного выражения
+            validation.pattern?.let { pattern ->
+                try {
+                    if (!value.matches(Regex(pattern))) {
+                        errors[parameter.id] = validation.errorMessage ?: "Некорректный формат"
+                        return@forEach
+                    }
+                } catch (e: Exception) {
+                    // Игнорируем некорректные регулярные выражения
+                }
+            }
+        }
+    }
+
+    return errors
+}

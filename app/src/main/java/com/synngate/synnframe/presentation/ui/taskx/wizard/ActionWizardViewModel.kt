@@ -2,13 +2,21 @@
 package com.synngate.synnframe.presentation.ui.taskx.wizard
 
 import androidx.lifecycle.viewModelScope
+import com.synngate.synnframe.data.remote.dto.CommandNextAction
+import com.synngate.synnframe.domain.entity.taskx.BinX
+import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
+import com.synngate.synnframe.presentation.ui.taskx.entity.CommandExecutionBehavior
+import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
+import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.handler.FieldHandlerFactory
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardEvent
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import com.synngate.synnframe.presentation.ui.taskx.wizard.service.CommandExecutionResult
+import com.synngate.synnframe.presentation.ui.taskx.wizard.service.CommandExecutionService
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.ObjectSearchService
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardController
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardNetworkService
@@ -43,6 +51,12 @@ class ActionWizardViewModel(
     private val validator = WizardValidator(validationService, handlerFactory)
     private val controller = WizardController(stateMachine)
     private val objectSearchService = ObjectSearchService(productUseCases, validationService)
+
+    private val commandExecutionService = CommandExecutionService(stepCommandApi) // Нужно добавить в конструктор
+
+    // Добавить новое состояние для команд
+    private var executingCommands = mutableSetOf<String>()
+
 
     private var isProcessingBarcode = false
     private var resetProcessingJob: Job? = null
@@ -565,4 +579,174 @@ class ActionWizardViewModel(
             )
         }
     }
+
+    fun executeStepCommand(command: StepCommand, parameters: Map<String, String>) {
+        val currentState = uiState.value
+        val currentStep = currentState.getCurrentStep() ?: return
+        val factAction = currentState.factAction ?: return
+
+        // Предотвращаем множественное выполнение одной команды
+        if (executingCommands.contains(command.id)) {
+            Timber.d("Команда ${command.id} уже выполняется, игнорируем")
+            return
+        }
+
+        executingCommands.add(command.id)
+
+        // Устанавливаем состояние загрузки (можно добавить отдельное поле для каждой команды)
+        updateState { it.copy(isLoading = true, error = null) }
+
+        launchIO {
+            try {
+                Timber.d("Выполнение команды: ${command.name} (${command.id})")
+
+                val result = commandExecutionService.executeCommand(
+                    command = command,
+                    stepId = currentStep.id,
+                    factAction = factAction,
+                    parameters = parameters,
+                    additionalContext = buildAdditionalContext(currentState)
+                )
+
+                // Убираем состояние загрузки
+                updateState { it.copy(isLoading = false) }
+
+                if (result.isSuccess()) {
+                    val executionResult = result.getResponseData()
+                    if (executionResult != null) {
+                        handleCommandExecutionResult(executionResult)
+                    }
+                } else {
+                    val errorMessage = result.getErrorMessage() ?: "Ошибка выполнения команды"
+                    updateState { it.copy(error = errorMessage) }
+                    sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Исключение при выполнении команды ${command.id}")
+                updateState {
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка: ${e.message}"
+                    )
+                }
+                sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: ${e.message}"))
+            } finally {
+                executingCommands.remove(command.id)
+            }
+        }
+    }
+
+    /**
+     * Строит дополнительный контекст для команды
+     */
+    private fun buildAdditionalContext(state: ActionWizardState): Map<String, String> {
+        val context = mutableMapOf<String, String>()
+
+        // Добавляем информацию о текущем состоянии
+        context["currentStepIndex"] = state.currentStepIndex.toString()
+        context["totalSteps"] = state.steps.size.toString()
+
+        // Добавляем информацию о выбранных объектах
+        state.selectedObjects.forEach { (stepId, obj) ->
+            context["selectedObject_$stepId"] = obj.toString()
+        }
+
+        // Добавляем информацию о плановом действии
+        state.plannedAction?.let { plannedAction ->
+            context["plannedActionId"] = plannedAction.id
+            context["plannedQuantity"] = plannedAction.quantity.toString()
+        }
+
+        return context
+    }
+
+    /**
+     * Обрабатывает результат выполнения команды
+     */
+    private fun handleCommandExecutionResult(result: CommandExecutionResult) {
+        Timber.d("Обработка результата команды: success=${result.success}")
+
+        // Показываем сообщение, если нужно
+        if (result.commandBehavior == CommandExecutionBehavior.SHOW_RESULT && result.message != null) {
+            sendEvent(ActionWizardEvent.ShowSnackbar(result.message))
+        }
+
+        // Обновляем factAction, если сервер вернул обновленные данные
+        result.updatedFactAction?.let { updatedFactActionDto ->
+            // Здесь нужно преобразовать DTO в доменную модель
+            // Можно добавить метод в маппер или создать новый сервис для этого
+            // updateFactActionFromDto(updatedFactActionDto)
+        }
+
+        // Обрабатываем nextAction или используем поведение команды
+        val actionToPerform = result.nextAction ?: when (result.commandBehavior) {
+            CommandExecutionBehavior.SHOW_RESULT -> CommandNextAction.NONE
+            CommandExecutionBehavior.REFRESH_STEP -> CommandNextAction.REFRESH_STEP
+            CommandExecutionBehavior.GO_TO_NEXT_STEP -> CommandNextAction.GO_TO_NEXT_STEP
+            CommandExecutionBehavior.GO_TO_PREVIOUS_STEP -> CommandNextAction.GO_TO_PREVIOUS_STEP
+            CommandExecutionBehavior.COMPLETE_ACTION -> CommandNextAction.COMPLETE_ACTION
+            CommandExecutionBehavior.SILENT -> CommandNextAction.NONE
+        }
+
+        when (actionToPerform) {
+            CommandNextAction.NONE -> {
+                // Ничего не делаем
+            }
+            CommandNextAction.REFRESH_STEP -> {
+                // Обновляем текущий шаг
+                initializeStepWithFiltersAndBuffer(uiState.value.currentStepIndex)
+            }
+            CommandNextAction.GO_TO_NEXT_STEP -> {
+                confirmCurrentStep()
+            }
+            CommandNextAction.GO_TO_PREVIOUS_STEP -> {
+                previousStep()
+            }
+            CommandNextAction.COMPLETE_ACTION -> {
+                completeAction()
+            }
+            CommandNextAction.SET_OBJECT -> {
+                // Обрабатываем установку объекта из resultData
+                handleSetObjectFromCommand(result.resultData)
+            }
+            CommandNextAction.SHOW_DIALOG -> {
+                // Показываем диалог с результатом
+                val message = result.resultData["dialogMessage"] ?: result.message ?: "Команда выполнена"
+                sendEvent(ActionWizardEvent.ShowSnackbar(message))
+            }
+        }
+    }
+
+    /**
+     * Обрабатывает установку объекта из результата команды
+     */
+    private fun handleSetObjectFromCommand(resultData: Map<String, String>) {
+        val currentStep = uiState.value.getCurrentStep() ?: return
+
+        // Пытаемся создать объект из данных результата
+        val obj = when (currentStep.factActionField) {
+            FactActionField.STORAGE_BIN, FactActionField.ALLOCATION_BIN -> {
+                val code = resultData["binCode"]
+                val zone = resultData["binZone"] ?: ""
+                if (code != null) BinX(code, zone) else null
+            }
+            FactActionField.STORAGE_PALLET, FactActionField.ALLOCATION_PALLET -> {
+                val code = resultData["palletCode"]
+                val isClosed = resultData["palletIsClosed"]?.toBooleanStrictOrNull() ?: false
+                if (code != null) Pallet(code, isClosed) else null
+            }
+            FactActionField.QUANTITY -> {
+                resultData["quantity"]?.toFloatOrNull()
+            }
+            // Для продуктов нужна более сложная логика с поиском в базе
+            else -> null
+        }
+
+        if (obj != null) {
+            setObjectForCurrentStep(obj, true)
+        } else {
+            Timber.w("Не удалось создать объект из результата команды: $resultData")
+        }
+    }
+
 }

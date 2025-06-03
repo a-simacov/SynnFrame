@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
 
@@ -28,6 +30,7 @@ fun StepScreen(
     handleBarcode: (String) -> Unit,
     onRequestServerObject: () -> Unit,
     onCancelServerRequest: () -> Unit,
+    onCommandExecute: (StepCommand, Map<String, String>) -> Unit, // Новый параметр
     modifier: Modifier = Modifier
 ) {
     val currentStep = state.getCurrentStep() ?: return
@@ -168,6 +171,20 @@ fun StepScreen(
                     color = MaterialTheme.colorScheme.error
                 )
             }
+        }
+
+        // Секция команд - добавляем между основным контентом и кнопкой "Далее"
+        StepCommandsSection(
+            state = state,
+            onCommandExecute = onCommandExecute
+        )
+
+        // Разделитель, если есть команды
+        if (currentStep.commands.isNotEmpty()) {
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp),
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
         }
 
         Spacer(modifier = Modifier.weight(1f))
