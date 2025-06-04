@@ -10,16 +10,28 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDefaults
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,8 +45,12 @@ import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.presentation.ui.taskx.entity.BooleanParameterOptions
 import com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameter
 import com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameterType
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun ParameterInputField(
@@ -304,21 +320,62 @@ private fun DateParameterField(
         }
     } else null
 
-//    DatePicker(
-//        selectedDate = dateValue,
-//        onDateSelected = { date ->
-//            onValueChange(date?.toString() ?: "")
-//        },
-//        label = parameter.displayName,
-//        isRequired = parameter.isRequired,
-//        modifier = Modifier.fillMaxWidth()
-//    )
+    var showDatePicker by remember { mutableStateOf(false) }
+    val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+
+    OutlinedTextField(
+        value = dateValue?.format(dateFormatter) ?: "",
+        onValueChange = { /* Обрабатывается через DatePicker */ },
+        label = { ParameterLabel(parameter) },
+        modifier = Modifier.fillMaxWidth(),
+        isError = isError,
+        readOnly = true,
+        trailingIcon = {
+            IconButton(onClick = { showDatePicker = true }) {
+                Icon(
+                    Icons.Default.DateRange,
+                    contentDescription = "Выбрать дату"
+                )
+            }
+        }
+    )
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = dateValue?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                Button(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val selectedDate = Instant.ofEpochMilli(millis)
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDate()
+                        onValueChange(selectedDate.toString())
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("ОК")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showDatePicker = false }) {
+                    Text("Отмена")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     if (isError && errorMessage != null) {
         ParameterErrorMessage(errorMessage)
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DateTimeParameterField(
     parameter: CommandParameter,
@@ -327,6 +384,7 @@ private fun DateTimeParameterField(
     isError: Boolean,
     errorMessage: String?
 ) {
+    // Пытаемся распарсить значение в LocalDateTime
     val dateTimeValue = if (value.isNotEmpty()) {
         try {
             LocalDateTime.parse(value)
@@ -335,19 +393,144 @@ private fun DateTimeParameterField(
         }
     } else null
 
-//    DateTimePicker(
-//        selectedDateTime = dateTimeValue,
-//        onDateTimeSelected = { dateTime ->
-//            onValueChange(dateTime?.toString() ?: "")
-//        },
-//        label = parameter.displayName,
-//        isRequired = parameter.isRequired,
-//        modifier = Modifier.fillMaxWidth()
-//    )
-//
-//    if (isError && errorMessage != null) {
-//        ParameterErrorMessage(errorMessage)
-//    }
+    // Определяем состояния для диалогов выбора даты и времени
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    // Временное хранение выбранной даты до выбора времени
+    var selectedDate by remember { mutableStateOf<LocalDate?>(dateTimeValue?.toLocalDate()) }
+
+    // Форматтер для отображения даты и времени в поле
+    val dateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+
+    OutlinedTextField(
+        value = dateTimeValue?.format(dateTimeFormatter) ?: "",
+        onValueChange = { /* Обрабатывается через диалоги выбора */ },
+        label = { ParameterLabel(parameter) },
+        modifier = Modifier.fillMaxWidth(),
+        isError = isError,
+        readOnly = true,
+        trailingIcon = {
+            Row {
+                IconButton(onClick = { showDatePicker = true }) {
+                    Icon(
+                        Icons.Default.DateRange,
+                        contentDescription = "Выбрать дату"
+                    )
+                }
+                IconButton(onClick = {
+                    // Если дата уже выбрана, открываем выбор времени, иначе сначала выбираем дату
+                    if (selectedDate != null) {
+                        showTimePicker = true
+                    } else {
+                        showDatePicker = true
+                    }
+                }) {
+                    Icon(
+                        Icons.Default.Schedule,
+                        contentDescription = "Выбрать время"
+                    )
+                }
+            }
+        }
+    )
+
+    // Диалог выбора даты
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+                ?: dateTimeValue?.atZone(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                Button(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        selectedDate = Instant.ofEpochMilli(millis)
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDate()
+
+                        // После выбора даты сразу переходим к выбору времени
+                        showDatePicker = false
+                        showTimePicker = true
+                    } ?: run {
+                        showDatePicker = false
+                    }
+                }) {
+                    Text("Далее")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Отмена")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // Диалог выбора времени
+    if (showTimePicker) {
+        val initialHour = dateTimeValue?.hour ?: LocalTime.now().hour
+        val initialMinute = dateTimeValue?.minute ?: LocalTime.now().minute
+
+        val timePickerState = rememberTimePickerState(
+            initialHour = initialHour,
+            initialMinute = initialMinute,
+            is24Hour = true
+        )
+
+        TimePickerDialog(
+            onDismissRequest = { showTimePicker = false },
+            onConfirm = {
+                if (selectedDate != null) {
+                    val newDateTime = LocalDateTime.of(
+                        selectedDate,
+                        LocalTime.of(timePickerState.hour, timePickerState.minute)
+                    )
+                    onValueChange(newDateTime.toString())
+                }
+                showTimePicker = false
+            },
+            onCancel = { showTimePicker = false }
+        ) {
+            TimePicker(
+                state = timePickerState,
+                colors = TimePickerDefaults.colors(
+                    timeSelectorSelectedContainerColor = MaterialTheme.colorScheme.primary
+                )
+            )
+        }
+    }
+
+    if (isError && errorMessage != null) {
+        ParameterErrorMessage(errorMessage)
+    }
+}
+
+@Composable
+private fun TimePickerDialog(
+    onDismissRequest: () -> Unit,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("ОК")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) {
+                Text("Отмена")
+            }
+        },
+        text = { content() }
+    )
 }
 
 @Composable

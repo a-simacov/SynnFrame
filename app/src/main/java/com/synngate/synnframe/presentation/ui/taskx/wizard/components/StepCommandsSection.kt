@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.taskx.components
+package com.synngate.synnframe.presentation.ui.taskx.wizard.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,8 +16,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
-import com.synngate.synnframe.presentation.ui.taskx.wizard.components.CommandButton
-import com.synngate.synnframe.presentation.ui.taskx.wizard.components.CommandParametersDialog
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
 
 @Composable
