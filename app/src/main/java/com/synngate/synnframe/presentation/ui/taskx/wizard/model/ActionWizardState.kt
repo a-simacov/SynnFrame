@@ -104,4 +104,19 @@ data class ActionWizardState(
         val currentStep = getCurrentStep() ?: return false
         return currentStep.serverSelectionEndpoint.isNotEmpty()
     }
+
+    fun isStepFieldCompleted(factActionField: FactActionField): Boolean {
+        val factAction = this.factAction ?: return false
+
+        return when (factActionField) {
+            FactActionField.STORAGE_BIN -> factAction.storageBin != null
+            FactActionField.ALLOCATION_BIN -> factAction.placementBin != null
+            FactActionField.STORAGE_PALLET -> factAction.storagePallet != null
+            FactActionField.ALLOCATION_PALLET -> factAction.placementPallet != null
+            FactActionField.STORAGE_PRODUCT_CLASSIFIER -> factAction.storageProductClassifier != null
+            FactActionField.STORAGE_PRODUCT -> factAction.storageProduct != null
+            FactActionField.QUANTITY -> factAction.quantity > 0f
+            else -> false
+        }
+    }
 }

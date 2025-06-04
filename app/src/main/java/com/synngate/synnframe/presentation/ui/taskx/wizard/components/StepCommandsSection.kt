@@ -1,4 +1,4 @@
-package com.synngate.synnframe.presentation.ui.taskx.wizard.components
+package com.synngate.synnframe.presentation.ui.taskx.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,7 +17,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
+import com.synngate.synnframe.presentation.ui.taskx.wizard.components.CommandButton
+import com.synngate.synnframe.presentation.ui.taskx.wizard.components.CommandParametersDialog
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import timber.log.Timber
 
 @Composable
 fun StepCommandsSection(
@@ -26,15 +29,38 @@ fun StepCommandsSection(
     modifier: Modifier = Modifier
 ) {
     val currentStep = state.getCurrentStep() ?: return
-    val isObjectSelected = state.selectedObjects.containsKey(currentStep.id)
-    val isStepCompleted = isObjectSelected && currentStep.isRequired
 
+    // ОТЛАДКА: Проверяем список команд шага
+    Timber.d("ОТЛАДКА: Шаг ${currentStep.id}, всего команд: ${currentStep.commands.size}")
+    currentStep.commands.forEachIndexed { index, command ->
+        Timber.d("ОТЛАДКА: Команда #$index: id=${command.id}, name=${command.name}, condition=${command.displayCondition}")
+    }
+
+    // Проверяем, выбран ли объект для текущего шага
+    val isObjectSelected = state.selectedObjects.containsKey(currentStep.id)
+
+    // Используем расширение для проверки завершенности шага
+    val isStepCompleted = state.isStepFieldCompleted(currentStep.factActionField)
+
+    // Для отладки логируем состояние
+    Timber.d("Шаг ${currentStep.id}: поле=${currentStep.factActionField}, " +
+            "isObjectSelected=$isObjectSelected, isStepCompleted=$isStepCompleted")
+
+    // Используем проверку для фильтрации команд
     val visibleCommands = currentStep.getVisibleCommands(
         isObjectSelected = isObjectSelected,
         isStepCompleted = isStepCompleted
     )
 
-    if (visibleCommands.isEmpty()) return
+    Timber.d("ОТЛАДКА: После фильтрации для шага ${currentStep.id}: осталось ${visibleCommands.size} команд")
+    visibleCommands.forEachIndexed { index, command ->
+        Timber.d("ОТЛАДКА: Видимая команда #$index: id=${command.id}, name=${command.name}")
+    }
+
+    if (visibleCommands.isEmpty()) {
+        Timber.d("ОТЛАДКА: Нет видимых команд для шага ${currentStep.id}, выходим из секции команд")
+        return
+    }
 
     var selectedCommand by remember { mutableStateOf<StepCommand?>(null) }
     var showParametersDialog by remember { mutableStateOf(false) }
@@ -69,7 +95,7 @@ fun StepCommandsSection(
                         }
                     }
                 },
-                isLoading = state.isLoading, // Можно добавить отдельное состояние для каждой команды
+                isLoading = state.isLoading,
                 enabled = !state.isLoading
             )
         }
