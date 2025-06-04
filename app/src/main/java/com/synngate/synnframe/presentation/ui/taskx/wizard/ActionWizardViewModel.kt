@@ -11,6 +11,7 @@ import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
 import com.synngate.synnframe.presentation.ui.taskx.wizard.handler.FieldHandlerFactory
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardEvent
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
+import com.synngate.synnframe.presentation.ui.taskx.wizard.model.CommandExecutionStatus
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.CommandExecutionResult
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.ObjectSearchService
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardController
@@ -605,15 +606,23 @@ class ActionWizardViewModel(
                 if (result.isSuccess()) {
                     val executionResult = result.getResponseData()
                     if (executionResult != null) {
+                        updateCommandStatus(command, true, executionResult.message)
+
                         handleCommandExecutionResult(executionResult)
                     }
                 } else {
                     val errorMessage = result.getErrorMessage() ?: "Ошибка выполнения команды"
+
+                    updateCommandStatus(command, false, errorMessage)
+
                     updateState { it.copy(error = errorMessage) }
                     sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Исключение при выполнении команды ${command.id}")
+
+                updateCommandStatus(command, false, e.message)
+
                 updateState {
                     it.copy(
                         isLoading = false,
@@ -781,5 +790,21 @@ class ActionWizardViewModel(
                 Pair(displayName, it.value)
             }
             .sortedBy { it.first }
+    }
+
+    private fun updateCommandStatus(command: StepCommand, success: Boolean, message: String? = null) {
+        val currentStep = uiState.value.getCurrentStep() ?: return
+
+        updateState { state ->
+            val updatedCommands = state.executedCommands.toMutableMap()
+            updatedCommands[command.id] = CommandExecutionStatus(
+                commandId = command.id,
+                stepId = currentStep.id,
+                success = success,
+                timestamp = System.currentTimeMillis(),
+                message = message
+            )
+            state.copy(executedCommands = updatedCommands)
+        }
     }
 }

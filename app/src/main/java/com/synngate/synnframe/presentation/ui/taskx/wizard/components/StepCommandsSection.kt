@@ -19,7 +19,6 @@ import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.CommandButton
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.CommandParametersDialog
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
-import timber.log.Timber
 
 @Composable
 fun StepCommandsSection(
@@ -29,35 +28,15 @@ fun StepCommandsSection(
 ) {
     val currentStep = state.getCurrentStep() ?: return
 
-    // ОТЛАДКА: Проверяем список команд шага
-    Timber.d("ОТЛАДКА: Шаг ${currentStep.id}, всего команд: ${currentStep.commands.size}")
-    currentStep.commands.forEachIndexed { index, command ->
-        Timber.d("ОТЛАДКА: Команда #$index: id=${command.id}, name=${command.name}, condition=${command.displayCondition}")
-    }
-
-    // Проверяем, выбран ли объект для текущего шага
     val isObjectSelected = state.selectedObjects.containsKey(currentStep.id)
-
-    // Используем расширение для проверки завершенности шага
     val isStepCompleted = state.isStepFieldCompleted(currentStep.factActionField)
 
-    // Для отладки логируем состояние
-    Timber.d("Шаг ${currentStep.id}: поле=${currentStep.factActionField}, " +
-            "isObjectSelected=$isObjectSelected, isStepCompleted=$isStepCompleted")
-
-    // Используем проверку для фильтрации команд
     val visibleCommands = currentStep.getVisibleCommands(
         isObjectSelected = isObjectSelected,
         isStepCompleted = isStepCompleted
     )
 
-    Timber.d("ОТЛАДКА: После фильтрации для шага ${currentStep.id}: осталось ${visibleCommands.size} команд")
-    visibleCommands.forEachIndexed { index, command ->
-        Timber.d("ОТЛАДКА: Видимая команда #$index: id=${command.id}, name=${command.name}")
-    }
-
     if (visibleCommands.isEmpty()) {
-        Timber.d("ОТЛАДКА: Нет видимых команд для шага ${currentStep.id}, выходим из секции команд")
         return
     }
 
@@ -73,6 +52,8 @@ fun StepCommandsSection(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         visibleCommands.forEach { command ->
+            val executionStatus = state.getCommandStatus(command.id)
+
             CommandButton(
                 command = command,
                 onClick = {
@@ -89,7 +70,8 @@ fun StepCommandsSection(
                     }
                 },
                 isLoading = state.isLoading,
-                enabled = !state.isLoading
+                enabled = !state.isLoading,
+                executionStatus = executionStatus
             )
         }
     }

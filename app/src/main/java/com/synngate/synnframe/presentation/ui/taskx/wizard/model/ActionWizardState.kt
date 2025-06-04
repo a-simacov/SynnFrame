@@ -38,7 +38,9 @@ data class ActionWizardState(
     val lastCommandResultData: Map<String, String> = emptyMap(),
     val showResultDialog: Boolean = false,
     val resultDialogTitle: String = "",
-    val resultDialogContent: List<Pair<String, String>> = emptyList()
+    val resultDialogContent: List<Pair<String, String>> = emptyList(),
+
+    val executedCommands: Map<String, CommandExecutionStatus> = emptyMap()
 ) {
 
     fun getCurrentStep(): ActionStepTemplate? {
@@ -122,5 +124,9 @@ data class ActionWizardState(
             FactActionField.QUANTITY -> factAction.quantity > 0f
             else -> false
         }
+    }
+
+    fun getCommandStatus(commandId: String): CommandExecutionStatus? {
+        return executedCommands[commandId]
     }
 }
