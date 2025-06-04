@@ -2,18 +2,12 @@ package com.synngate.synnframe.presentation.ui.taskx.wizard
 
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.data.remote.dto.CommandNextAction
-import com.synngate.synnframe.data.remote.dto.FactActionRequestDto
-import com.synngate.synnframe.domain.entity.taskx.BinX
-import com.synngate.synnframe.domain.entity.taskx.Pallet
-import com.synngate.synnframe.domain.entity.taskx.ProductStatus
-import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.ui.taskx.entity.CommandExecutionBehavior
 import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
-import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.handler.FieldHandlerFactory
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardEvent
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
@@ -30,7 +24,6 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.time.LocalDateTime
 import java.util.UUID
 
 class ActionWizardViewModel(
@@ -56,7 +49,6 @@ class ActionWizardViewModel(
 
     // Добавить новое состояние для команд
     private var executingCommands = mutableSetOf<String>()
-
 
     private var isProcessingBarcode = false
     private var resetProcessingJob: Job? = null
@@ -666,8 +658,10 @@ class ActionWizardViewModel(
         Timber.d("Обработка результата команды: success=${result.success}")
 
         // 1. Обновляем factAction, если сервер вернул обновленные данные
-        result.updatedFactAction?.let { updatedFactActionDto ->
-            updateFactActionFromDto(updatedFactActionDto)
+        result.updatedFactAction?.let { updatedFactAction ->
+            updateState { state ->
+                state.copy(factAction = updatedFactAction)
+            }
         }
 
         // 2. Обрабатываем дополнительные данные результата
@@ -720,141 +714,35 @@ class ActionWizardViewModel(
         }
     }
 
-    private fun updateFactActionFromDto(updatedFactActionDto: FactActionRequestDto) {
-        try {
-            // Получаем текущий factAction
-            val currentFactAction = uiState.value.factAction ?: return
-
-            // Создаем обновленный factAction, сохраняя ID и другие важные поля
-            val updatedFactAction = currentFactAction.copy(
-                // Обновляем базовые поля
-                quantity = updatedFactActionDto.quantity,
-
-                // Обновляем объекты, если они есть в DTO
-                storageProduct = updatedFactActionDto.storageProduct?.let { dtoMapper.mapToTaskProduct(it) }
-                    ?: currentFactAction.storageProduct,
-
-                storageProductClassifier = updatedFactActionDto.storageProductClassifier?.let { dtoMapper.mapToProduct(it) }
-                    ?: currentFactAction.storageProductClassifier,
-
-                storageBin = updatedFactActionDto.storageBin?.let { dtoMapper.mapToBinX(it) }
-                    ?: currentFactAction.storageBin,
-
-                storagePallet = updatedFactActionDto.storagePallet?.let { dtoMapper.mapToPallet(it) }
-                    ?: currentFactAction.storagePallet,
-
-                placementBin = updatedFactActionDto.placementBin?.let { dtoMapper.mapToBinX(it) }
-                    ?: currentFactAction.placementBin,
-
-                placementPallet = updatedFactActionDto.placementPallet?.let { dtoMapper.mapToPallet(it) }
-                    ?: currentFactAction.placementPallet
-
-                // Остальные поля оставляем без изменений
-            )
-
-            // Обновляем состояние с новым factAction
-            updateState { state ->
-                state.copy(factAction = updatedFactAction)
-            }
-
-            Timber.d("FactAction успешно обновлен из DTO")
-        } catch (e: Exception) {
-            Timber.e(e, "Ошибка при обновлении factAction из DTO")
-        }
-    }
-
     /**
      * Обрабатывает установку объекта из результата команды
      */
     private fun handleSetObjectFromCommand(resultData: Map<String, String>) {
         val currentStep = uiState.value.getCurrentStep() ?: return
 
-        try {
-            // Пытаемся создать объект из данных результата в зависимости от типа поля
-            val obj = when (currentStep.factActionField) {
-                FactActionField.STORAGE_BIN, FactActionField.ALLOCATION_BIN -> {
-                    val code = resultData["binCode"] ?: return
-                    val zone = resultData["binZone"] ?: ""
-                    BinX(code, zone)
-                }
+        launchIO {
+            try {
+                val obj = networkService.createObjectFromResultData(
+                    resultData = resultData,
+                    fieldType = currentStep.factActionField
+                )
 
-                FactActionField.STORAGE_PALLET, FactActionField.ALLOCATION_PALLET -> {
-                    val code = resultData["palletCode"] ?: return
-                    val isClosed = resultData["palletIsClosed"]?.toBooleanStrictOrNull() ?: false
-                    Pallet(code, isClosed)
-                }
-
-                FactActionField.QUANTITY -> {
-                    val quantity = resultData["quantity"]?.toFloatOrNull() ?: return
-                    quantity
-                }
-
-                FactActionField.STORAGE_PRODUCT_CLASSIFIER -> {
-                    val productId = resultData["productId"] ?: return
-                    // Для товара необходимо получить объект из базы данных
-                    launchIO {
-                        val product = productUseCases.getProductById(productId)
-                        if (product != null) {
-                            // В IO-контексте запускаем обновление UI в главном потоке
-                            launchMain {
-                                setObjectForCurrentStep(product, true)
-                            }
-                        } else {
-                            Timber.w("Не удалось найти товар по ID: $productId")
-                        }
+                // Если объект создан, устанавливаем его в текущий шаг
+                if (obj != null) {
+                    launchMain {
+                        setObjectForCurrentStep(obj, true)
                     }
-                    return // Выходим, так как установка объекта будет выполнена асинхронно
+                } else {
+                    Timber.w("Не удалось создать объект из результата команды для поля ${currentStep.factActionField}")
                 }
-
-                FactActionField.STORAGE_PRODUCT -> {
-                    val productId = resultData["productId"] ?: return
-                    val expirationDateStr = resultData["expirationDate"]
-                    val productStatus = resultData["productStatus"] ?: "STANDARD"
-
-                    // Для товара задания необходимо получить базовый товар из БД
-                    launchIO {
-                        val product = productUseCases.getProductById(productId)
-                        if (product != null) {
-                            // Создаем TaskProduct с полученными данными
-                            val expirationDate = expirationDateStr?.let {
-                                try {
-                                    LocalDateTime.parse(it)
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Ошибка парсинга даты: $it")
-                                    null
-                                }
-                            }
-
-                            val taskProduct = TaskProduct(
-                                id = resultData["taskProductId"] ?: UUID.randomUUID().toString(),
-                                product = product,
-                                expirationDate = expirationDate,
-                                status = ProductStatus.fromString(productStatus)
-                            )
-
-                            // В IO-контексте запускаем обновление UI в главном потоке
-                            launchMain {
-                                setObjectForCurrentStep(taskProduct, true)
-                            }
-                        } else {
-                            Timber.w("Не удалось найти товар по ID: $productId")
-                        }
-                    }
-                    return // Выходим, так как установка объекта будет выполнена асинхронно
-                }
-
-                else -> null
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при обработке объекта из результата команды")
             }
-
-            // Если объект создан, устанавливаем его в текущий шаг
-            if (obj != null) {
-                setObjectForCurrentStep(obj, true)
-            } else {
-                Timber.w("Не удалось создать объект из результата команды для поля ${currentStep.factActionField}")
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Ошибка при обработке объекта из результата команды")
         }
+    }
+
+    fun dismissResultDialog() {
+        updateState { it.copy(showResultDialog = false) }
     }
 
     private fun showResultDialog(result: CommandExecutionResult) {

@@ -28,6 +28,7 @@ import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scanner.ScannerListener
 import com.synngate.synnframe.presentation.common.status.StatusType
+import com.synngate.synnframe.presentation.ui.taskx.wizard.components.CommandResultDialog
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.ExitConfirmationDialog
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.StepScreen
 import com.synngate.synnframe.presentation.ui.taskx.wizard.components.SummaryScreen
@@ -108,6 +109,14 @@ fun ActionWizardScreen(
         onDispose {
             Timber.d("ActionWizardScreen: уничтожен")
         }
+    }
+
+    if (state.showResultDialog) {
+        CommandResultDialog(
+            title = state.resultDialogTitle,
+            content = state.resultDialogContent,
+            onDismiss = { viewModel.dismissResultDialog() }
+        )
     }
 
     if (state.showExitDialog) {

@@ -4,10 +4,20 @@ import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.api.StepCommandApi
 import com.synngate.synnframe.data.remote.api.StepObjectApi
 import com.synngate.synnframe.data.remote.dto.CommandExecutionRequestDto
+import com.synngate.synnframe.data.remote.dto.FactActionRequestDto
+import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.taskx.BinX
+import com.synngate.synnframe.domain.entity.taskx.Pallet
+import com.synngate.synnframe.domain.entity.taskx.ProductStatus
+import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.service.StepObjectMapperService
+import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
+import com.synngate.synnframe.presentation.ui.taskx.dto.BinDto
+import com.synngate.synnframe.presentation.ui.taskx.dto.PalletDto
+import com.synngate.synnframe.presentation.ui.taskx.dto.TaskProductDto
 import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.result.NetworkResult
@@ -15,12 +25,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.time.LocalDateTime
+import java.util.UUID
 
 class WizardNetworkService(
     private val taskXRepository: TaskXRepository,
     private val stepObjectApi: StepObjectApi,
-    private val stepCommandApi: StepCommandApi, // Добавлен stepCommandApi
-    private val stepObjectMapperService: StepObjectMapperService
+    private val stepCommandApi: StepCommandApi,
+    private val stepObjectMapperService: StepObjectMapperService,
+    private val productUseCases: ProductUseCases // Добавлен для создания объектов из командных результатов
 ) {
     suspend fun completeAction(
         factAction: FactAction,
@@ -120,7 +132,7 @@ class WizardNetworkService(
             val requestDto = CommandExecutionRequestDto(
                 commandId = command.id,
                 stepId = stepId,
-                factAction = com.synngate.synnframe.data.remote.dto.FactActionRequestDto.fromDomain(factAction),
+                factAction = FactActionRequestDto.fromDomain(factAction),
                 parameters = parameters,
                 additionalContext = additionalContext
             )
@@ -136,7 +148,7 @@ class WizardNetworkService(
                         message = response.message,
                         resultData = response.resultData ?: emptyMap(),
                         nextAction = response.nextAction,
-                        updatedFactAction = response.updatedFactAction,
+                        updatedFactAction = mapUpdatedFactAction(response.updatedFactAction, factAction),
                         commandBehavior = command.executionBehavior
                     )
 
@@ -160,21 +172,160 @@ class WizardNetworkService(
     }
 
     /**
+     * Создает объект из данных результата команды
+     */
+    suspend fun createObjectFromResultData(
+        resultData: Map<String, String>,
+        fieldType: FactActionField
+    ): Any? {
+        try {
+            return when (fieldType) {
+                FactActionField.STORAGE_BIN, FactActionField.ALLOCATION_BIN -> {
+                    val code = resultData["binCode"] ?: return null
+                    val zone = resultData["binZone"] ?: ""
+                    BinX(code, zone)
+                }
+
+                FactActionField.STORAGE_PALLET, FactActionField.ALLOCATION_PALLET -> {
+                    val code = resultData["palletCode"] ?: return null
+                    val isClosed = resultData["palletIsClosed"]?.toBooleanStrictOrNull() ?: false
+                    Pallet(code, isClosed)
+                }
+
+                FactActionField.QUANTITY -> {
+                    val quantity = resultData["quantity"]?.toFloatOrNull() ?: return null
+                    quantity
+                }
+
+                FactActionField.STORAGE_PRODUCT_CLASSIFIER -> {
+                    val productId = resultData["productId"] ?: return null
+                    productUseCases.getProductById(productId)
+                }
+
+                FactActionField.STORAGE_PRODUCT -> {
+                    val productId = resultData["productId"] ?: return null
+                    val product = productUseCases.getProductById(productId) ?: return null
+
+                    val expirationDate = resultData["expirationDate"]?.let {
+                        try {
+                            LocalDateTime.parse(it)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Ошибка парсинга даты: $it")
+                            null
+                        }
+                    }
+
+                    TaskProduct(
+                        id = resultData["taskProductId"] ?: UUID.randomUUID().toString(),
+                        product = product,
+                        expirationDate = expirationDate,
+                        status = ProductStatus.fromString(resultData["productStatus"] ?: "STANDARD")
+                    )
+                }
+
+                else -> null
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при создании объекта из результата команды")
+            return null
+        }
+    }
+
+    /**
+     * Преобразует DTO в доменную модель FactAction
+     */
+    private fun mapUpdatedFactAction(
+        dto: FactActionRequestDto?,
+        currentFactAction: FactAction
+    ): FactAction? {
+        if (dto == null) return null
+
+        try {
+            return currentFactAction.copy(
+                // Обновляем базовые поля
+                quantity = dto.quantity,
+
+                // Обновляем объекты, если они есть в DTO
+                storageProduct = dto.storageProduct?.let { mapToTaskProduct(it) }
+                    ?: currentFactAction.storageProduct,
+
+                storageProductClassifier = dto.storageProductClassifier?.let { mapToProduct(it) }
+                    ?: currentFactAction.storageProductClassifier,
+
+                storageBin = dto.storageBin?.let { mapToBinX(it) }
+                    ?: currentFactAction.storageBin,
+
+                storagePallet = dto.storagePallet?.let { mapToPallet(it) }
+                    ?: currentFactAction.storagePallet,
+
+                placementBin = dto.placementBin?.let { mapToBinX(it) }
+                    ?: currentFactAction.placementBin,
+
+                placementPallet = dto.placementPallet?.let { mapToPallet(it) }
+                    ?: currentFactAction.placementPallet
+            )
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при маппинге FactActionRequestDto в FactAction")
+            return null
+        }
+    }
+
+    /**
+     * Вспомогательные методы маппинга DTO в доменные объекты
+     */
+    private fun mapToProduct(dto: com.synngate.synnframe.data.remote.dto.ProductDto): Product {
+        return Product(
+            id = dto.id,
+            name = dto.name,
+            articleNumber = dto.articleNumber ?: ""
+        )
+    }
+
+    private fun mapToTaskProduct(dto: TaskProductDto): TaskProduct {
+        return TaskProduct(
+            id = dto.id,
+            product = mapToProduct(dto.product),
+            expirationDate = dto.expirationDate?.let {
+                try {
+                    LocalDateTime.parse(it)
+                } catch (e: Exception) {
+                    null
+                }
+            },
+            status = ProductStatus.fromString(dto.status)
+        )
+    }
+
+    private fun mapToBinX(dto: BinDto): BinX {
+        return BinX(
+            code = dto.code,
+            zone = dto.zone
+        )
+    }
+
+    private fun mapToPallet(dto: PalletDto): Pallet {
+        return Pallet(
+            code = dto.code,
+            isClosed = dto.isClosed
+        )
+    }
+
+    /**
      * Проверяет, соответствует ли полученный объект ожидаемому типу поля
      */
     private fun isObjectCompatibleWithField(obj: Any, fieldType: FactActionField): Boolean {
         return when (fieldType) {
             FactActionField.STORAGE_BIN, FactActionField.ALLOCATION_BIN ->
-                obj is com.synngate.synnframe.domain.entity.taskx.BinX
+                obj is BinX
 
             FactActionField.STORAGE_PALLET, FactActionField.ALLOCATION_PALLET ->
-                obj is com.synngate.synnframe.domain.entity.taskx.Pallet
+                obj is Pallet
 
             FactActionField.STORAGE_PRODUCT_CLASSIFIER ->
-                obj is com.synngate.synnframe.domain.entity.Product
+                obj is Product
 
             FactActionField.STORAGE_PRODUCT ->
-                obj is com.synngate.synnframe.domain.entity.taskx.TaskProduct
+                obj is TaskProduct
 
             FactActionField.QUANTITY ->
                 obj is Number || obj is Float

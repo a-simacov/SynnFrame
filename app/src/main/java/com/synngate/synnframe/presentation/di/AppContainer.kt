@@ -307,21 +307,6 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         )
     }
 
-    val networkService by lazy {
-        WizardNetworkService(
-            taskXRepository = taskXRepository,
-            stepObjectApi = StepObjectApiImpl(
-                httpClient = httpClient,
-                serverProvider = serverProvider
-            ),
-            stepCommandApi = StepCommandApiImpl(
-                httpClient = httpClient,
-                serverProvider = serverProvider
-            ),
-            stepObjectMapperService = StepObjectMapperService(productUseCases)
-        )
-    }
-
     val taskXApi: TaskXApi by lazy {
         TaskXApiImpl(httpClient, serverProvider)
     }
@@ -360,6 +345,22 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
     }
 
     val taskXDataHolder get() = TaskXDataHolderSingleton
+
+    val networkService by lazy {
+        WizardNetworkService(
+            taskXRepository = taskXRepository,
+            stepObjectApi = StepObjectApiImpl(
+                httpClient = httpClient,
+                serverProvider = serverProvider
+            ),
+            stepCommandApi = StepCommandApiImpl(
+                httpClient = httpClient,
+                serverProvider = serverProvider
+            ),
+            stepObjectMapperService = StepObjectMapperService(productUseCases),
+            productUseCases = productUseCases
+        )
+    }
 
     // Создание контейнера для уровня навигации
     fun createNavigationContainer(): NavigationContainer {
