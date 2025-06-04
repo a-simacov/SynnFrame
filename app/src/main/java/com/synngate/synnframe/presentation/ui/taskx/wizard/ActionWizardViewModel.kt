@@ -658,9 +658,20 @@ class ActionWizardViewModel(
         Timber.d("Обработка результата команды: success=${result.success}")
 
         // 1. Обновляем factAction, если сервер вернул обновленные данные
-        result.updatedFactAction?.let { updatedFactAction ->
-            updateState { state ->
-                state.copy(factAction = updatedFactAction)
+        result.updatedFactAction?.let { updatedFactActionDto ->
+            val currentFactAction = uiState.value.factAction
+            if (currentFactAction != null) {
+                // Используем метод из networkService для преобразования DTO в доменную модель
+                val updatedDomainFactAction = networkService.mapDtoToFactAction(
+                    updatedFactActionDto,
+                    currentFactAction
+                )
+
+                if (updatedDomainFactAction != null) {
+                    updateState { state ->
+                        state.copy(factAction = updatedDomainFactAction)
+                    }
+                }
             }
         }
 

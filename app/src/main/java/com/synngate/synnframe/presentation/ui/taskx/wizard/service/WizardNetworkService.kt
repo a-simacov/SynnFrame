@@ -15,9 +15,6 @@ import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.service.StepObjectMapperService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
-import com.synngate.synnframe.presentation.ui.taskx.dto.BinDto
-import com.synngate.synnframe.presentation.ui.taskx.dto.PalletDto
-import com.synngate.synnframe.presentation.ui.taskx.dto.TaskProductDto
 import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.result.NetworkResult
@@ -148,7 +145,7 @@ class WizardNetworkService(
                         message = response.message,
                         resultData = response.resultData ?: emptyMap(),
                         nextAction = response.nextAction,
-                        updatedFactAction = mapUpdatedFactAction(response.updatedFactAction, factAction),
+                        updatedFactAction = response.updatedFactAction,
                         commandBehavior = command.executionBehavior
                     )
 
@@ -232,6 +229,17 @@ class WizardNetworkService(
     }
 
     /**
+     * Публичный метод для преобразования DTO в доменную модель FactAction
+     * Используется из ViewModel
+     */
+    fun mapDtoToFactAction(
+        dto: FactActionRequestDto,
+        currentFactAction: FactAction
+    ): FactAction? {
+        return mapUpdatedFactAction(dto, currentFactAction)
+    }
+
+    /**
      * Преобразует DTO в доменную модель FactAction
      */
     private fun mapUpdatedFactAction(
@@ -241,73 +249,64 @@ class WizardNetworkService(
         if (dto == null) return null
 
         try {
+            // Получаем доменные объекты из DTO
+            val storageProduct = dto.storageProduct?.let { dtoTaskProduct ->
+                // Сначала нужно получить доменный Product из ProductDto
+                val productDto = dtoTaskProduct.product
+                val product = Product(
+                    id = productDto.id,
+                    name = productDto.name,
+                    articleNumber = productDto.articleNumber ?: ""
+                )
+
+                // Теперь создаем TaskProduct
+                TaskProduct(
+                    id = dtoTaskProduct.id,
+                    product = product,
+                    expirationDate = dtoTaskProduct.expirationDate?.let {
+                        try { LocalDateTime.parse(it.toString()) } catch (e: Exception) { null }
+                    },
+                    status = ProductStatus.fromString(dtoTaskProduct.status.toString())
+                )
+            }
+
+            val storageProductClassifier = dto.storageProductClassifier?.let { productDto ->
+                Product(
+                    id = productDto.id,
+                    name = productDto.name,
+                    articleNumber = productDto.articleNumber ?: ""
+                )
+            }
+
+            val storageBin = dto.storageBin?.let { binDto ->
+                BinX(code = binDto.code, zone = binDto.zone)
+            }
+
+            val storagePallet = dto.storagePallet?.let { palletDto ->
+                Pallet(code = palletDto.code, isClosed = palletDto.isClosed)
+            }
+
+            val placementBin = dto.placementBin?.let { binDto ->
+                BinX(code = binDto.code, zone = binDto.zone)
+            }
+
+            val placementPallet = dto.placementPallet?.let { palletDto ->
+                Pallet(code = palletDto.code, isClosed = palletDto.isClosed)
+            }
+
             return currentFactAction.copy(
-                // Обновляем базовые поля
                 quantity = dto.quantity,
-
-                // Обновляем объекты, если они есть в DTO
-                storageProduct = dto.storageProduct?.let { mapToTaskProduct(it) }
-                    ?: currentFactAction.storageProduct,
-
-                storageProductClassifier = dto.storageProductClassifier?.let { mapToProduct(it) }
-                    ?: currentFactAction.storageProductClassifier,
-
-                storageBin = dto.storageBin?.let { mapToBinX(it) }
-                    ?: currentFactAction.storageBin,
-
-                storagePallet = dto.storagePallet?.let { mapToPallet(it) }
-                    ?: currentFactAction.storagePallet,
-
-                placementBin = dto.placementBin?.let { mapToBinX(it) }
-                    ?: currentFactAction.placementBin,
-
-                placementPallet = dto.placementPallet?.let { mapToPallet(it) }
-                    ?: currentFactAction.placementPallet
+                storageProduct = storageProduct ?: currentFactAction.storageProduct,
+                storageProductClassifier = storageProductClassifier ?: currentFactAction.storageProductClassifier,
+                storageBin = storageBin ?: currentFactAction.storageBin,
+                storagePallet = storagePallet ?: currentFactAction.storagePallet,
+                placementBin = placementBin ?: currentFactAction.placementBin,
+                placementPallet = placementPallet ?: currentFactAction.placementPallet
             )
         } catch (e: Exception) {
             Timber.e(e, "Ошибка при маппинге FactActionRequestDto в FactAction")
             return null
         }
-    }
-
-    /**
-     * Вспомогательные методы маппинга DTO в доменные объекты
-     */
-    private fun mapToProduct(dto: com.synngate.synnframe.data.remote.dto.ProductDto): Product {
-        return Product(
-            id = dto.id,
-            name = dto.name,
-            articleNumber = dto.articleNumber ?: ""
-        )
-    }
-
-    private fun mapToTaskProduct(dto: TaskProductDto): TaskProduct {
-        return TaskProduct(
-            id = dto.id,
-            product = mapToProduct(dto.product),
-            expirationDate = dto.expirationDate?.let {
-                try {
-                    LocalDateTime.parse(it)
-                } catch (e: Exception) {
-                    null
-                }
-            },
-            status = ProductStatus.fromString(dto.status)
-        )
-    }
-
-    private fun mapToBinX(dto: BinDto): BinX {
-        return BinX(
-            code = dto.code,
-            zone = dto.zone
-        )
-    }
-
-    private fun mapToPallet(dto: PalletDto): Pallet {
-        return Pallet(
-            code = dto.code,
-            isClosed = dto.isClosed
-        )
     }
 
     /**
