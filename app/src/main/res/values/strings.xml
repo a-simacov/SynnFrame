@@ -565,7 +565,7 @@
 
     <string name="select_product_from_plan">Выбор товара из плана</string>
     <string name="search_by_name_article_barcode">Поиск по имени, артикулу или штрихкоду</string>
-    <string name="search_product_hint">Введите имя, артикул или штрихкод товара</string>
+    <string name="search_product_hint">Артикул, имя, штрихкод</string>
     <string name="no_products_found">Нет товаров по вашему запросу</string>
     <string name="filtering_by_plan">Отображаются только товары из плана задания</string>
     <string name="article_fmt">Артикул: %s</string>

@@ -43,7 +43,7 @@ fun StepScreen(
     val bufferSource = state.bufferObjectSources[currentStep.id]
 
     val isButtonEnabled = if (currentStep.isRequired) {
-        isObjectSelected
+        currentStep.factActionField == FactActionField.NONE || isObjectSelected
     } else {
         true
     }
@@ -85,11 +85,7 @@ fun StepScreen(
 
         when (currentStep.factActionField) {
             FactActionField.NONE -> {
-                Text(
-                    text = currentStep.promptText,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(vertical = 16.dp)
-                )
+
             }
             FactActionField.STORAGE_PRODUCT -> {
                 StorageProductStep(
