@@ -177,7 +177,8 @@ object TaskXMapper {
             } ?: BufferUsage.NEVER,
             saveToTaskBuffer = dto.saveToTaskBuffer,
             validationRules = dto.validationRules?.let { mapValidationRule(it) },
-            autoAdvance = dto.autoAdvance ?: true
+            autoAdvance = dto.autoAdvance ?: true,
+            commands = dto.commands.map { CommandMapper.mapStepCommand(it) }
         )
     }
 
