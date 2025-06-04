@@ -4,6 +4,9 @@ import com.synngate.synnframe.presentation.ui.taskx.dto.CommandParameterDto
 import com.synngate.synnframe.presentation.ui.taskx.dto.ParameterOptionDto
 import com.synngate.synnframe.presentation.ui.taskx.dto.ParameterValidationDto
 import com.synngate.synnframe.presentation.ui.taskx.dto.StepCommandDto
+import com.synngate.synnframe.presentation.ui.taskx.entity.BooleanDisplayType
+import com.synngate.synnframe.presentation.ui.taskx.entity.BooleanLabelPair
+import com.synngate.synnframe.presentation.ui.taskx.entity.BooleanParameterOptions
 import com.synngate.synnframe.presentation.ui.taskx.entity.CommandButtonStyle
 import com.synngate.synnframe.presentation.ui.taskx.entity.CommandDisplayCondition
 import com.synngate.synnframe.presentation.ui.taskx.entity.CommandExecutionBehavior
@@ -33,6 +36,13 @@ object CommandMapper {
     }
 
     private fun mapCommandParameter(dto: CommandParameterDto): CommandParameter {
+        val booleanOptions = dto.booleanOptions?.let {
+            BooleanParameterOptions(
+                displayType = BooleanDisplayType.valueOf(it.displayType),
+                labelPair = BooleanLabelPair(it.trueLabel, it.falseLabel)
+            )
+        }
+
         return CommandParameter(
             id = dto.id,
             name = dto.name,
@@ -43,7 +53,8 @@ object CommandMapper {
             placeholder = dto.placeholder,
             validation = dto.validation?.let { mapParameterValidation(it) },
             options = dto.options?.map { mapParameterOption(it) },
-            order = dto.order
+            order = dto.order,
+            booleanOptions = booleanOptions
         )
     }
 

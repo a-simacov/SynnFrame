@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.presentation.ui.taskx.entity.BooleanParameterOptions
 import com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameter
 import com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameterType
 import java.time.LocalDate
@@ -70,7 +71,8 @@ fun ParameterInputField(
                 BooleanParameterField(
                     parameter = parameter,
                     value = value,
-                    onValueChange = onValueChange
+                    onValueChange = onValueChange,
+                    booleanOptions = parameter.booleanOptions ?: BooleanParameterOptions()
                 )
             }
             CommandParameterType.SELECT -> {

@@ -29,7 +29,8 @@ data class CommandParameterDto(
     val placeholder: String? = null,
     val validation: ParameterValidationDto? = null,
     val options: List<ParameterOptionDto>? = null,
-    val order: Int = 0
+    val order: Int = 0,
+    val booleanOptions: BooleanParameterOptionsDto? = null
 )
 
 @Serializable

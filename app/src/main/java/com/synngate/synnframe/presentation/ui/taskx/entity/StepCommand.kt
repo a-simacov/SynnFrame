@@ -35,7 +35,8 @@ data class CommandParameter(
     val placeholder: String? = null,
     val validation: ParameterValidation? = null,
     val options: List<ParameterOption>? = null, // Для SELECT типа
-    val order: Int = 0
+    val order: Int = 0,
+    val booleanOptions: BooleanParameterOptions? = null
 )
 
 /**
@@ -116,3 +117,9 @@ enum class CommandExecutionBehavior {
     COMPLETE_ACTION,        // Завершить действие
     SILENT                  // Не показывать результат
 }
+
+@Serializable
+data class BooleanParameterOptions(
+    val displayType: BooleanDisplayType = BooleanDisplayType.CHECKBOX,
+    val labelPair: BooleanLabelPair = BooleanLabelPair.DEFAULT
+)
