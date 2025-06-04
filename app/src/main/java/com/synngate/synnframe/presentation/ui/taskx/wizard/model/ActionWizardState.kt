@@ -106,6 +106,10 @@ data class ActionWizardState(
     }
 
     fun isStepFieldCompleted(factActionField: FactActionField): Boolean {
+        if (factActionField == FactActionField.NONE) {
+            return true
+        }
+
         val factAction = this.factAction ?: return false
 
         return when (factActionField) {

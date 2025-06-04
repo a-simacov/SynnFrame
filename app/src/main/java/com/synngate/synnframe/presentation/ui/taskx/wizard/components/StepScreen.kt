@@ -84,6 +84,13 @@ fun StepScreen(
         }
 
         when (currentStep.factActionField) {
+            FactActionField.NONE -> {
+                Text(
+                    text = currentStep.promptText,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            }
             FactActionField.STORAGE_PRODUCT -> {
                 StorageProductStep(
                     step = currentStep,

@@ -619,7 +619,7 @@ fun BinStep(
                 },
                 onScannerClick = { showScanner = true },
                 label = if (isStorage) "Код ячейки хранения" else "Код ячейки размещения",
-                placeholder = "Введите или отсканируйте код ячейки",
+                placeholder = "Код ячейки",
                 enabled = !useServerRequest && !state.isRequestingServerObject // Блокируем поле, если используется серверный запрос
             )
 
@@ -738,7 +738,7 @@ fun PalletStep(
                 },
                 onScannerClick = { showScanner = true },
                 label = if (isStorage) "Код паллеты хранения" else "Код паллеты размещения",
-                placeholder = "Введите или отсканируйте код паллеты",
+                placeholder = "Код паллеты",
                 enabled = !useServerRequest && !state.isRequestingServerObject // Блокируем поле, если используется серверный запрос
             )
 

@@ -2,6 +2,7 @@ package com.synngate.synnframe.presentation.ui.taskx.wizard.service
 
 import com.synngate.synnframe.domain.service.ValidationResult
 import com.synngate.synnframe.domain.service.ValidationService
+import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.handler.FieldHandlerFactory
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
 import timber.log.Timber
@@ -13,6 +14,10 @@ class WizardValidator(
 
     suspend fun validateCurrentStep(state: ActionWizardState): Boolean {
         val currentStep = state.steps.getOrNull(state.currentStepIndex) ?: return false
+
+        if (currentStep.factActionField == FactActionField.NONE) {
+            return true
+        }
 
         if (!currentStep.isRequired) {
             return true

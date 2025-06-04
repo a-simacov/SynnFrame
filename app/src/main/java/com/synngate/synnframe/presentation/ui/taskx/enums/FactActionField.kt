@@ -7,5 +7,6 @@ enum class FactActionField {
     STORAGE_PALLET,
     ALLOCATION_BIN,
     ALLOCATION_PALLET,
-    QUANTITY
+    QUANTITY,
+    NONE
 }
