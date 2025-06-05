@@ -16,7 +16,6 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 interface DownloadProgressListener {
-
     fun onProgressUpdate(bytesDownloaded: Long, totalBytes: Long)
 }
 
@@ -32,7 +31,8 @@ class AppUpdateApiImpl(
         )
 
         return try {
-            val url = "${server.apiUrl}/app/lastversion"
+            // Прямой запрос к JSON-файлу с информацией о версии
+            val url = "${server.updateUrl}/synnframe/update"
             val response = client.get(url) {
                 header("Authorization", "Basic ${ApiUtils.getBasicAuth(server.login, server.password)}")
             }
@@ -59,7 +59,10 @@ class AppUpdateApiImpl(
         )
 
         return try {
-            val url = "${server.apiUrl}/app/file?version=$version"
+            // Запрос для скачивания APK с указанной версией
+            val url = "${server.updateUrl}/synnframe/update?version=${version}"
+
+            Timber.d("Downloading update from: $url")
 
             // Используем prepareGet для возможности работы с потоком данных
             val call = client.prepareGet(url) {
@@ -71,6 +74,7 @@ class AppUpdateApiImpl(
             if (response.status == HttpStatusCode.OK) {
                 // Получаем общий размер файла из заголовка Content-Length
                 val contentLength = response.contentLength() ?: -1L
+                Timber.d("Update file size: $contentLength bytes")
 
                 // Получаем канал для чтения данных
                 val channel = response.bodyAsChannel()
