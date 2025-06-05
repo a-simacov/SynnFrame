@@ -102,7 +102,7 @@ class DefaultBarcodeScanner(
                                 scanListener?.onScanSuccess(
                                     ScanResult(
                                         barcode = barcode,
-                                        type = BarcodeType.UNKNOWN // По умолчанию неизвестный тип
+                                        type = BarcodeType.UNKNOWN
                                     )
                                 )
                             }

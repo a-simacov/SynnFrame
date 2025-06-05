@@ -1,4 +1,4 @@
-package com.synngate.synnframe.domain.service
+package com.synngate.synnframe.data.remote.service
 
 import com.synngate.synnframe.data.remote.dto.StepObjectResponseDto
 import com.synngate.synnframe.domain.entity.taskx.BinX

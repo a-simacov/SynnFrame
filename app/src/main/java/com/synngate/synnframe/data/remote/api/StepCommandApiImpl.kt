@@ -16,8 +16,6 @@ class StepCommandApiImpl(
         request: CommandExecutionRequestDto
     ): ApiResult<CommandExecutionResponseDto> {
         try {
-            Timber.d("Выполнение команды ${request.commandId} на endpoint: $endpoint")
-
             return executeApiRequest<CommandExecutionResponseDto>(
                 endpoint = "POST $endpoint",
                 body = request

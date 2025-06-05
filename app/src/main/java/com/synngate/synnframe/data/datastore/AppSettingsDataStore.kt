@@ -29,8 +29,6 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
         private val LANGUAGE_CODE = stringPreferencesKey("language_code")
         private val NAVIGATION_BUTTON_HEIGHT = floatPreferencesKey("navigation_button_height")
         private val CURRENT_USER_ID = stringPreferencesKey("current_user_id")
-        private val ALLOW_MOBILE_UPLOAD = booleanPreferencesKey("allow_mobile_upload")
-        private val MOBILE_SIZE_LIMIT = intPreferencesKey("mobile_size_limit")
         private val BIN_CODE_PATTERN = stringPreferencesKey("bin_code_pattern")
         const val DEFAULT_BIN_PATTERN = "^[a-zA-Z][0-9][0-9]{2}[1-9][1-9]$"
         private val LOG_LEVEL = stringPreferencesKey("log_level")
@@ -72,7 +70,6 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
         preferences[NAVIGATION_BUTTON_HEIGHT] ?: 72f
     }
 
-    // Шаблон кода ячейки
     val binCodePattern: Flow<String> = dataStore.data.map { preferences ->
         preferences[BIN_CODE_PATTERN] ?: DEFAULT_BIN_PATTERN
     }
@@ -167,7 +164,6 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
         }
     }
 
-    // Методы для установки настроек ячеек и порядка сканирования
     suspend fun setBinCodePattern(pattern: String) {
         dataStore.edit { preferences ->
             preferences[BIN_CODE_PATTERN] = pattern

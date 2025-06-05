@@ -5,6 +5,7 @@ import com.synngate.synnframe.data.remote.api.StepCommandApi
 import com.synngate.synnframe.data.remote.api.StepObjectApi
 import com.synngate.synnframe.data.remote.dto.CommandExecutionRequestDto
 import com.synngate.synnframe.data.remote.dto.FactActionRequestDto
+import com.synngate.synnframe.data.remote.service.StepObjectMapperService
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
@@ -12,7 +13,6 @@ import com.synngate.synnframe.domain.entity.taskx.ProductStatus
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
 import com.synngate.synnframe.domain.repository.TaskXRepository
-import com.synngate.synnframe.domain.service.StepObjectMapperService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand

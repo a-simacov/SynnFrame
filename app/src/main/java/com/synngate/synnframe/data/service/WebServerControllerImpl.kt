@@ -1,5 +1,3 @@
-// File: com.synngate.synnframe.data.service.WebServerControllerImpl.kt
-
 package com.synngate.synnframe.data.service
 
 import android.content.Context

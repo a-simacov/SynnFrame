@@ -16,6 +16,9 @@ data class Server(
     val apiUrl: String
         get() = "https://$host:$port$apiEndpoint"
 
+    val updateUrl: String
+        get() = "https://$host:$port"
+
     val echoUrl: String
         get() = "$apiUrl/echo"
 }

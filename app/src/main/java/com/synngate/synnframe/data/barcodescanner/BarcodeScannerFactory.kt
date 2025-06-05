@@ -30,7 +30,7 @@ class BarcodeScannerFactory(
 }
 
 enum class DeviceType {
-    STANDARD,        // Обычное Android-устройство без автоматического сканирования
-    ZEBRA_DATAWEDGE, // Устройство Zebra с DataWedge
-    CAMERA_SCANNER   // Устройство, где камера используется как сканер
+    STANDARD,
+    ZEBRA_DATAWEDGE,
+    CAMERA_SCANNER
 }

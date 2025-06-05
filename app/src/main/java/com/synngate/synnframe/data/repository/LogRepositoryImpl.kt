@@ -25,12 +25,10 @@ class LogRepositoryImpl(
         dateFromFilter: LocalDateTime?,
         dateToFilter: LocalDateTime?
     ): Flow<List<Log>> {
-        // Определяем параметры фильтрации
         val hasMessageFilter = !messageFilter.isNullOrEmpty()
         val hasTypeFilter = !typeFilter.isNullOrEmpty()
         val hasDateFilter = dateFromFilter != null && dateToFilter != null
 
-        // Применяем соответствующий запрос в зависимости от комбинации фильтров
         return when {
             hasMessageFilter && hasTypeFilter && hasDateFilter -> {
                 val types = typeFilter!!.map { it.name }

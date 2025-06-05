@@ -25,6 +25,7 @@ import com.synngate.synnframe.data.remote.api.ValidationApiServiceImpl
 import com.synngate.synnframe.data.remote.service.ApiService
 import com.synngate.synnframe.data.remote.service.ApiServiceImpl
 import com.synngate.synnframe.data.remote.service.ServerProvider
+import com.synngate.synnframe.data.remote.service.StepObjectMapperService
 import com.synngate.synnframe.data.repository.DynamicMenuRepositoryImpl
 import com.synngate.synnframe.data.repository.LogRepositoryImpl
 import com.synngate.synnframe.data.repository.ProductRepositoryImpl
@@ -57,7 +58,6 @@ import com.synngate.synnframe.domain.service.FileService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
 import com.synngate.synnframe.domain.service.SoundService
-import com.synngate.synnframe.domain.service.StepObjectMapperService
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.service.UpdateInstaller
 import com.synngate.synnframe.domain.service.UpdateInstallerImpl

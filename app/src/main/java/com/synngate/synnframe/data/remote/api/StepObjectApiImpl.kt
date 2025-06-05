@@ -17,17 +17,15 @@ class StepObjectApiImpl(
         factAction: FactAction
     ): ApiResult<StepObjectResponseDto> {
         try {
-            // Преобразуем factAction в DTO для запроса
             val requestDto = FactActionRequestDto.fromDomain(factAction)
 
-            // Выполняем POST-запрос с передачей factAction в теле
             return executeApiRequest<StepObjectResponseDto>(
                 endpoint = "POST $endpoint",
                 body = requestDto
             )
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка получения объекта шага с сервера: $endpoint")
-            return createApiError("Ошибка получения объекта: ${e.message}")
+            Timber.e(e, "Error getting step object from server: $endpoint")
+            return createApiError("Error getting step object from server: ${e.message}")
         }
     }
 }

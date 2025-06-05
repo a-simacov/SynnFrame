@@ -3,8 +3,6 @@ package com.synngate.synnframe.data.service
 import com.synngate.synnframe.domain.entity.LogType
 import com.synngate.synnframe.domain.repository.LogRepository
 import com.synngate.synnframe.domain.service.LoggingService
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import java.time.LocalDateTime
 import java.util.concurrent.ConcurrentHashMap
 
@@ -15,9 +13,6 @@ class LoggingServiceImpl(
     // Кэш для дедупликации логов
     private val recentLogCache = ConcurrentHashMap<String, Long>()
     private val DEDUPLICATION_WINDOW_MS = 1000L // 1 секунда
-
-    // Общий кортин-скоуп для логирования
-    private val logScope = CoroutineScope(Dispatchers.IO)
 
     private fun shouldLog(message: String): Boolean {
         val now = System.currentTimeMillis()
