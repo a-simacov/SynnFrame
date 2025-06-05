@@ -185,7 +185,7 @@ fun validateParameters(
             // Проверка регулярного выражения
             validation.pattern?.let { pattern ->
                 try {
-                    if (!value.matches(Regex(pattern))) {
+                    if (pattern.isNotEmpty() && !value.matches(Regex(pattern))) {
                         errors[parameter.id] = validation.errorMessage ?: "Некорректный формат"
                         return@forEach
                     }

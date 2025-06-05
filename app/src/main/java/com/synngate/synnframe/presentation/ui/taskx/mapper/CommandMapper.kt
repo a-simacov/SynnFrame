@@ -33,7 +33,15 @@ object CommandMapper {
             confirmationRequired = dto.confirmationRequired,
             confirmationMessage = dto.confirmationMessage,
             order = dto.order,
-            parametersDisplayMode = ParametersDisplayMode.valueOf(dto.parametersDisplayMode)
+            parametersDisplayMode = try {
+                if (dto.parametersDisplayMode.isNullOrBlank()) {
+                    ParametersDisplayMode.DIALOG // Значение по умолчанию
+                } else {
+                    ParametersDisplayMode.valueOf(dto.parametersDisplayMode)
+                }
+            } catch (e: IllegalArgumentException) {
+                ParametersDisplayMode.DIALOG // Значение по умолчанию при ошибке
+            }
         )
     }
 
