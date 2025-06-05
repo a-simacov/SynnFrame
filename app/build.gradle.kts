@@ -151,6 +151,8 @@ dependencies {
 
     implementation("androidx.work:work-runtime-ktx:2.8.1")
 
+    implementation("org.mvel:mvel2:2.4.14.Final")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")

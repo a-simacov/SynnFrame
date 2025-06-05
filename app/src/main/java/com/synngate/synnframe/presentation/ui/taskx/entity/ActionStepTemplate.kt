@@ -19,9 +19,8 @@ data class ActionStepTemplate(
     val saveToTaskBuffer: Boolean = false,
     val validationRules: ValidationRule? = null,
     val autoAdvance: Boolean = true,
-
-    // Новое поле для команд
-    val commands: List<StepCommand> = emptyList()
+    val commands: List<StepCommand> = emptyList(),
+    val visibilityCondition: String? = null
 ) {
     /**
      * Возвращает команды, которые должны отображаться в текущих условиях

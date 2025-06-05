@@ -19,7 +19,8 @@ import java.util.UUID
 
 // Контроллер для управления жизненным циклом визарда
 class WizardController(
-    private val stateMachine: WizardStateMachine = WizardStateMachine()
+    private val stateMachine: WizardStateMachine = WizardStateMachine(),
+    private val expressionEvaluator: ExpressionEvaluator = ExpressionEvaluator()
 ) {
 
     fun initializeWizard(taskId: String, actionId: String): StateTransitionResult<ActionWizardState> {
@@ -79,7 +80,16 @@ class WizardController(
                 factAction = newFactAction
             )
 
-            val updatedState = stateMachine.transition(initialState, WizardEvent.LoadSuccess)
+            // Находим первый видимый шаг
+            val firstVisibleStepIndex = expressionEvaluator.findFirstVisibleStepIndex(initialState)
+            val stateWithVisibleStep = if (firstVisibleStepIndex != null) {
+                initialState.copy(currentStepIndex = firstVisibleStepIndex)
+            } else {
+                // Если нет видимых шагов, сразу переходим к итоговому экрану
+                initialState.copy(showSummary = true)
+            }
+
+            val updatedState = stateMachine.transition(stateWithVisibleStep, WizardEvent.LoadSuccess)
             return StateTransitionResult.success(updatedState)
 
         } catch (e: Exception) {
@@ -111,13 +121,52 @@ class WizardController(
         // Перед переходом сохраняем объект в буфер, если нужно
         val stateAfterBuffer = saveToBufferIfNeeded(state).getNewState()
 
-        val newState = stateMachine.transition(stateAfterBuffer, WizardEvent.NextStep)
-        return StateTransitionResult.success(newState)
+        // Используем nextVisibleStep вместо обычного перехода
+        return nextVisibleStep(stateAfterBuffer)
+    }
+
+    /**
+     * Переходит к следующему видимому шагу с учетом условий видимости
+     */
+    fun nextVisibleStep(state: ActionWizardState): StateTransitionResult<ActionWizardState> {
+        val nextIndex = expressionEvaluator.findNextVisibleStepIndex(state)
+
+        // Если нет видимых шагов впереди, переходим к экрану итогов
+        if (nextIndex == null) {
+            val stateWithSummary = state.copy(showSummary = true)
+            return StateTransitionResult.success(stateWithSummary)
+        }
+
+        // Переходим к найденному видимому шагу
+        return StateTransitionResult.success(state.copy(currentStepIndex = nextIndex))
     }
 
     fun previousStep(state: ActionWizardState): StateTransitionResult<ActionWizardState> {
-        val newState = stateMachine.transition(state, WizardEvent.PreviousStep)
-        return StateTransitionResult.success(newState)
+        return previousVisibleStep(state)
+    }
+
+    /**
+     * Переходит к предыдущему видимому шагу с учетом условий видимости
+     */
+    fun previousVisibleStep(state: ActionWizardState): StateTransitionResult<ActionWizardState> {
+        val prevIndex = expressionEvaluator.findPreviousVisibleStepIndex(state)
+
+        // Если нет видимых шагов позади, показываем диалог выхода
+        if (prevIndex == null) {
+            val newState = stateMachine.transition(state, WizardEvent.ShowExitDialog)
+            return StateTransitionResult.success(newState)
+        }
+
+        // Переходим к найденному видимому шагу
+        return StateTransitionResult.success(state.copy(currentStepIndex = prevIndex))
+    }
+
+    /**
+     * Проверяет, виден ли текущий шаг
+     */
+    fun isCurrentStepVisible(state: ActionWizardState): Boolean {
+        val currentStep = state.getCurrentStep() ?: return false
+        return expressionEvaluator.evaluateVisibilityCondition(currentStep.visibilityCondition, state)
     }
 
     fun setObjectForCurrentStep(state: ActionWizardState, obj: Any): StateTransitionResult<ActionWizardState> {
@@ -232,18 +281,9 @@ class WizardController(
             return StateTransitionResult.error(state, "Автопереход отменен: ошибка валидации")
         }
 
-        // Сохраняем в буфер и переходим к следующему шагу...
+        // Сохраняем в буфер и переходим к следующему видимому шагу
         val stateAfterBuffer = saveToBufferIfNeeded(state).getNewState()
-        val newState = stateMachine.transition(stateAfterBuffer, WizardEvent.NextStep)
-
-        val success = newState != state
-        Timber.d("Результат автоперехода: success=$success")
-
-        return if (success) {
-            StateTransitionResult.success(newState)
-        } else {
-            StateTransitionResult.error(state, "Автопереход не выполнен: состояние не изменилось")
-        }
+        return nextVisibleStep(stateAfterBuffer)
     }
 
     /**

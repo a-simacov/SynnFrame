@@ -178,7 +178,8 @@ object TaskXMapper {
             saveToTaskBuffer = dto.saveToTaskBuffer,
             validationRules = dto.validationRules?.let { mapValidationRule(it) },
             autoAdvance = dto.autoAdvance ?: true,
-            commands = dto.commands.map { CommandMapper.mapStepCommand(it) }
+            commands = dto.commands.map { CommandMapper.mapStepCommand(it) },
+            visibilityCondition = dto.visibilityCondition
         )
     }
 
@@ -196,6 +197,7 @@ object TaskXMapper {
             id = dto.id,
             name = dto.name,
             articleNumber = dto.articleNumber ?: "",
+            weight = dto.weight
         )
     }
 

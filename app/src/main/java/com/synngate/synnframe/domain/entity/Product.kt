@@ -10,6 +10,7 @@ data class Product(
     val accountingModel: AccountingModel = AccountingModel.QTY,
     val articleNumber: String = "",
     val mainUnitId: String = "",
+    val weight: Float = 0.0f,
     val units: List<ProductUnit> = emptyList()
 ) {
 

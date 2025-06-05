@@ -9,11 +9,17 @@ import timber.log.Timber
 
 class WizardValidator(
     private val validationService: ValidationService,
-    private val handlerFactory: FieldHandlerFactory? = null
+    private val handlerFactory: FieldHandlerFactory? = null,
+    private val expressionEvaluator: ExpressionEvaluator = ExpressionEvaluator()
 ) {
 
     suspend fun validateCurrentStep(state: ActionWizardState): Boolean {
         val currentStep = state.steps.getOrNull(state.currentStepIndex) ?: return false
+
+        // Проверяем видимость шага - если шаг невидим, считаем его валидным
+        if (!expressionEvaluator.evaluateVisibilityCondition(currentStep.visibilityCondition, state)) {
+            return true
+        }
 
         if (currentStep.factActionField == FactActionField.NONE) {
             return true
@@ -30,22 +36,22 @@ class WizardValidator(
         }
 
         if (handlerFactory != null) {
+            // Используем createHandlerForObject вместо createHandlerForStep для правильной типизации
             val handler = handlerFactory.createHandlerForObject(stepObject)
             if (handler != null) {
-                val validationResult = runCatching {
-                    @Suppress("UNCHECKED_CAST")
-                    val result = handler.validateObject(stepObject as Any, state, currentStep)
-                    if (!result.isSuccess()) {
-                        Timber.d("Шаг ${currentStep.name} не прошел валидацию обработчика: ${result.getErrorMessage()}")
+                try {
+                    // Теперь handler имеет правильный тип для работы с stepObject
+                    val validationResult = handler.validateObject(stepObject, state, currentStep)
+
+                    if (!validationResult.isSuccess()) {
+                        Timber.d("Шаг ${currentStep.name} не прошел валидацию обработчика: ${validationResult.getErrorMessage()}")
                         return false
                     }
-                    true
-                }.getOrElse { e ->
+                    return true
+                } catch (e: Exception) {
                     Timber.e(e, "Ошибка при валидации объекта через обработчик")
-                    false
+                    return false
                 }
-
-                return validationResult
             }
         }
 
@@ -66,8 +72,14 @@ class WizardValidator(
     }
 
     fun canComplete(state: ActionWizardState): Boolean {
-        val allRequiredStepsCompleted = state.steps
-            .filter { it.isRequired }
+        // Фильтруем только видимые обязательные шаги
+        val visibleRequiredSteps = state.steps
+            .filter { step ->
+                step.isRequired &&
+                        expressionEvaluator.evaluateVisibilityCondition(step.visibilityCondition, state)
+            }
+
+        val allRequiredStepsCompleted = visibleRequiredSteps
             .all { step -> state.selectedObjects.containsKey(step.id) }
 
         if (!allRequiredStepsCompleted) {

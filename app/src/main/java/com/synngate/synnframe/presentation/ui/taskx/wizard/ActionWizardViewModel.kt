@@ -2,7 +2,6 @@ package com.synngate.synnframe.presentation.ui.taskx.wizard
 
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.data.remote.dto.CommandNextAction
-import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
@@ -13,6 +12,7 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardEve
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.CommandExecutionStatus
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.CommandExecutionResult
+import com.synngate.synnframe.presentation.ui.taskx.wizard.service.ExpressionEvaluator
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.ObjectSearchService
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardController
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardNetworkService
@@ -30,7 +30,6 @@ import java.util.UUID
 class ActionWizardViewModel(
     private val taskId: String,
     private val actionId: String,
-    taskXRepository: TaskXRepository,
     validationService: ValidationService,
     private val productUseCases: ProductUseCases,
     private val networkService: WizardNetworkService
@@ -42,10 +41,10 @@ class ActionWizardViewModel(
 ) {
 
     private val handlerFactory = FieldHandlerFactory(validationService, productUseCases)
-
+    private val expressionEvaluator = ExpressionEvaluator()
     private val stateMachine = WizardStateMachine()
-    private val validator = WizardValidator(validationService, handlerFactory)
-    private val controller = WizardController(stateMachine)
+    private val validator = WizardValidator(validationService, handlerFactory, expressionEvaluator)
+    private val controller = WizardController(stateMachine, expressionEvaluator)
     private val objectSearchService = ObjectSearchService(productUseCases, validationService)
 
     // Добавить новое состояние для команд
@@ -76,14 +75,27 @@ class ActionWizardViewModel(
         objectSearchService.clearCache()
 
         val initResult = controller.initializeWizard(taskId, actionId)
-        updateState { initResult.getNewState() }
+        val initialState = initResult.getNewState()
 
-        initResult.getNewState().plannedAction?.storageProductClassifier?.let { product ->
+        if (initialState.error != null) {
+            updateState { initialState }
+            return
+        }
+
+        if (initialState.showSummary) {
+            updateState { initialState }
+            return
+        }
+
+        updateState { initialState }
+
+        initialState.plannedAction?.storageProductClassifier?.let { product ->
             loadClassifierProductInfo(product.id)
         }
 
-        // Проверяем не только буфер, но и активные фильтры
-        initializeStepWithFiltersAndBuffer(initResult.getNewState().currentStepIndex)
+        if (initialState.currentStepIndex >= 0 && initialState.currentStepIndex < initialState.steps.size) {
+            initializeStepWithFiltersAndBuffer(initialState.currentStepIndex)
+        }
     }
 
     /**
@@ -94,46 +106,75 @@ class ActionWizardViewModel(
         if (stepIndex < 0 || stepIndex >= state.steps.size) return
 
         launchIO {
-            // 1. Сначала проверяем и применяем значения из буфера
-            val applyBufferResult = controller.applyBufferValueIfNeeded(state)
-            updateState { applyBufferResult.getNewState() }
+            // 1. Проверяем видимость текущего шага
+            val stepToCheck = state.steps[stepIndex]
+            if (!expressionEvaluator.evaluateVisibilityCondition(stepToCheck.visibilityCondition, state)) {
+                Timber.d("Шаг ${stepToCheck.id} (${stepToCheck.name}) невидим, ищем следующий видимый шаг")
+                // Если шаг невидим, ищем следующий видимый
+                val nextVisibleIndex = expressionEvaluator.findNextVisibleStepIndex(state, stepIndex)
+                if (nextVisibleIndex != null) {
+                    Timber.d("Найден следующий видимый шаг с индексом $nextVisibleIndex")
+                    updateState { it.copy(currentStepIndex = nextVisibleIndex) }
+                    // Рекурсивно инициализируем следующий видимый шаг
+                    initializeStepWithFiltersAndBuffer(nextVisibleIndex)
+                } else {
+                    Timber.d("Нет видимых шагов впереди, переходим к итоговому экрану")
+                    // Если нет видимых шагов впереди, переходим к экрану итогов
+                    updateState { it.copy(showSummary = true) }
+                }
+                return@launchIO
+            }
+
+            // 2. Сначала проверяем и применяем значения из буфера
+            val updatedState = uiState.value // Получаем актуальное состояние после возможного изменения
+            val applyBufferResult = controller.applyBufferValueIfNeeded(updatedState)
+            val stateAfterBuffer = applyBufferResult.getNewState()
+            updateState { stateAfterBuffer }
 
             // Проверяем, было ли изменено состояние после применения буфера
-            val bufferApplied = applyBufferResult.getNewState() != state
+            val bufferApplied = stateAfterBuffer != updatedState
 
-            // 2. Затем проверяем и применяем значения из фильтров (если есть)
-            val activeFilters = TaskXDataHolderSingleton.actionsFilter.getActiveFilters()
+            // 3. Затем проверяем и применяем значения из фильтров (если есть и буфер не применился)
+            if (!bufferApplied) {
+                val activeFilters = TaskXDataHolderSingleton.actionsFilter.getActiveFilters()
 
-            // Получаем текущий шаг после применения буфера
-            val currentStep = applyBufferResult.getNewState().getCurrentStep()
+                // Получаем текущий шаг из актуального состояния
+                val currentStepAfterBuffer = stateAfterBuffer.getCurrentStep()
 
-            if (currentStep != null && !bufferApplied) {
-                // Ищем фильтр, соответствующий текущему шагу
-                val matchingFilter = activeFilters.find { it.field == currentStep.factActionField }
+                if (currentStepAfterBuffer != null) {
+                    // Ищем фильтр, соответствующий текущему шагу
+                    val matchingFilter = activeFilters.find { it.field == currentStepAfterBuffer.factActionField }
 
-                if (matchingFilter != null) {
-                    Timber.d("Найден соответствующий фильтр для шага ${currentStep.id}: ${matchingFilter.field}")
+                    if (matchingFilter != null) {
+                        Timber.d("Найден соответствующий фильтр для шага ${currentStepAfterBuffer.id}: ${matchingFilter.field}")
 
-                    // Устанавливаем значение из фильтра
-                    setObjectForCurrentStep(matchingFilter.data, true)
+                        // Устанавливаем значение из фильтра
+                        setObjectForCurrentStep(matchingFilter.data, true)
 
-                    // Для логирования
-                    Timber.d("Значение из фильтра ${matchingFilter.field} установлено в шаг ${currentStep.id}")
-                    return@launchIO
+                        // Для логирования
+                        Timber.d("Значение из фильтра ${matchingFilter.field} установлено в шаг ${currentStepAfterBuffer.id}")
+                        return@launchIO
+                    }
                 }
             }
 
-            // 3. Если объект из буфера успешно применен, выполняем автопереход для заблокированных полей
-            if (bufferApplied && applyBufferResult.getNewState().isCurrentStepLockedByBuffer()) {
+            // 4. Если объект из буфера успешно применен, выполняем автопереход для заблокированных полей
+            val finalState = uiState.value // Получаем окончательное состояние после всех изменений
+            if (bufferApplied && finalState.isCurrentStepLockedByBuffer()) {
+                Timber.d("Выполняем автопереход из буфера для заблокированного поля")
                 delay(300) // Небольшая задержка для UI
                 tryAutoAdvanceFromBuffer()
             }
 
-            // 4. Если для шага настроен serverSelectionEndpoint и ни буфер, ни фильтр не применились,
-            // автоматически запрашиваем объект с сервера
-            val updatedState = uiState.value
-            if (updatedState.shouldUseServerRequest() &&
-                !updatedState.selectedObjects.containsKey(updatedState.getCurrentStep()?.id ?: "")) {
+            // 5. Если для шага настроен serverSelectionEndpoint, автоматически запрашиваем объект с сервера
+            val stateForServerRequest = uiState.value
+            val currentStepForServerRequest = stateForServerRequest.getCurrentStep()
+
+            if (currentStepForServerRequest != null &&
+                stateForServerRequest.shouldUseServerRequest() &&
+                !stateForServerRequest.selectedObjects.containsKey(currentStepForServerRequest.id)) {
+
+                Timber.d("Автоматически запрашиваем объект с сервера для шага ${currentStepForServerRequest.id}")
                 delay(300) // Небольшая задержка для UI
                 requestServerObject()
             }
@@ -176,6 +217,27 @@ class ActionWizardViewModel(
     fun confirmCurrentStep() {
         launchIO {
             val currentState = uiState.value
+
+            // Если текущий шаг не виден, автоматически переходим к следующему видимому
+            val currentStep = currentState.getCurrentStep()
+            if (currentStep != null && !expressionEvaluator.evaluateVisibilityCondition(
+                    currentStep.visibilityCondition,
+                    currentState
+                )) {
+                Timber.d("Текущий шаг ${currentStep.id} невидим, ищем следующий видимый")
+
+                val nextVisibleIndex = expressionEvaluator.findNextVisibleStepIndex(currentState)
+                if (nextVisibleIndex != null) {
+                    updateState { it.copy(currentStepIndex = nextVisibleIndex) }
+                    initializeStepWithFiltersAndBuffer(nextVisibleIndex)
+                } else {
+                    // Если нет видимых шагов впереди, переходим к экрану итогов
+                    updateState { it.copy(showSummary = true) }
+                }
+                return@launchIO
+            }
+
+            // Стандартная логика подтверждения шага
             val result = controller.confirmCurrentStep(currentState) {
                 validateCurrentStep()
             }
@@ -190,7 +252,7 @@ class ActionWizardViewModel(
                     completeAction()
                 }
             } else {
-                // После перехода на новый шаг инициализируем его (только если не итоговый экран)
+                // После перехода инициализируем новый шаг
                 initializeStepWithFiltersAndBuffer(newState.currentStepIndex)
             }
         }
@@ -206,7 +268,29 @@ class ActionWizardViewModel(
     }
 
     fun previousStep() {
-        val result = controller.previousStep(uiState.value)
+        val currentState = uiState.value
+
+        // Если текущий шаг не виден, автоматически переходим к предыдущему видимому
+        val currentStep = currentState.getCurrentStep()
+        if (currentStep != null && !expressionEvaluator.evaluateVisibilityCondition(
+                currentStep.visibilityCondition,
+                currentState
+            )) {
+            Timber.d("Текущий шаг ${currentStep.id} невидим, ищем предыдущий видимый")
+
+            val prevVisibleIndex = expressionEvaluator.findPreviousVisibleStepIndex(currentState)
+            if (prevVisibleIndex != null) {
+                updateState { it.copy(currentStepIndex = prevVisibleIndex) }
+                // Не инициализируем шаг при возврате назад
+            } else {
+                // Если нет видимых шагов позади, показываем диалог выхода
+                updateState { it.copy(showExitDialog = true) }
+            }
+            return
+        }
+
+        // Стандартная логика возврата к предыдущему шагу
+        val result = controller.previousStep(currentState)
         updateState { result.getNewState() }
     }
 
@@ -222,7 +306,29 @@ class ActionWizardViewModel(
 
     private fun tryAutoAdvance() {
         launchIO {
-            val result = controller.tryAutoAdvance(uiState.value) {
+            val currentState = uiState.value
+
+            // Если текущий шаг не виден, автоматически переходим к следующему видимому
+            val currentStep = currentState.getCurrentStep()
+            if (currentStep != null && !expressionEvaluator.evaluateVisibilityCondition(
+                    currentStep.visibilityCondition,
+                    currentState
+                )) {
+                Timber.d("Текущий шаг ${currentStep.id} невидим, ищем следующий видимый для автоперехода")
+
+                val nextVisibleIndex = expressionEvaluator.findNextVisibleStepIndex(currentState)
+                if (nextVisibleIndex != null) {
+                    updateState { it.copy(currentStepIndex = nextVisibleIndex) }
+                    initializeStepWithFiltersAndBuffer(nextVisibleIndex)
+                } else {
+                    // Если нет видимых шагов впереди, переходим к экрану итогов
+                    updateState { it.copy(showSummary = true) }
+                }
+                return@launchIO
+            }
+
+            // Стандартная логика автоперехода
+            val result = controller.tryAutoAdvance(currentState) {
                 validateCurrentStep()
             }
 
@@ -270,7 +376,10 @@ class ActionWizardViewModel(
     }
 
     private suspend fun validateCurrentStep(): Boolean {
-        val isValid = validator.validateCurrentStep(uiState.value)
+        val currentState = uiState.value
+
+        // Проверка видимости теперь полностью делегирована в validator
+        val isValid = validator.validateCurrentStep(currentState)
 
         if (!isValid) {
             sendEvent(ActionWizardEvent.ShowSnackbar("Необходимо заполнить все обязательные поля"))

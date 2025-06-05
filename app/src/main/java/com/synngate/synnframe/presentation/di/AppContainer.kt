@@ -602,7 +602,6 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
             ActionWizardViewModel(
                 taskId = taskId,
                 actionId = actionId,
-                taskXRepository = appContainer.taskXRepository,
                 validationService = appContainer.validationService,
                 productUseCases = appContainer.productUseCases,
                 networkService = appContainer.networkService

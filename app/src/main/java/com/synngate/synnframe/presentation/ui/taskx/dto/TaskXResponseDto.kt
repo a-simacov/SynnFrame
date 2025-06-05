@@ -94,7 +94,8 @@ data class ActionStepDto(
     val saveToTaskBuffer: Boolean = false,
     val validationRules: ValidationRuleDto? = null,
     val autoAdvance: Boolean? = null,
-    val commands: List<StepCommandDto> = emptyList()
+    val commands: List<StepCommandDto> = emptyList(),
+    val visibilityCondition: String? = null
 )
 
 @Serializable
@@ -109,7 +110,8 @@ data class SearchActionFieldTypeDto(
 data class ProductDto(
     val id: String,
     val name: String,
-    val articleNumber: String? = null
+    val articleNumber: String? = null,
+    val weight: Float = 0.0f
 )
 
 @Serializable
