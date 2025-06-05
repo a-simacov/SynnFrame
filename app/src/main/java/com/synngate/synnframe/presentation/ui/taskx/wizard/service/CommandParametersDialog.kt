@@ -19,6 +19,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameter
+import com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameterType.DECIMAL
+import com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameterType.INTEGER
+import com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameterType.NUMBER
 import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
 
 @Composable
@@ -114,7 +118,7 @@ fun CommandParametersDialog(
  * Валидация параметров команды
  */
 private fun validateParameters(
-    parameters: List<com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameter>,
+    parameters: List<CommandParameter>,
     values: Map<String, String>
 ): Map<String, String> {
     val errors = mutableMapOf<String, String>()
@@ -133,26 +137,11 @@ private fun validateParameters(
 
         val validation = parameter.validation
         if (validation != null) {
-            // Проверка длины
-            validation.minLength?.let { minLength ->
-                if (value.length < minLength) {
-                    errors[parameter.id] = "Минимальная длина: $minLength символов"
-                    return@forEach
-                }
-            }
-
-            validation.maxLength?.let { maxLength ->
-                if (value.length > maxLength) {
-                    errors[parameter.id] = "Максимальная длина: $maxLength символов"
-                    return@forEach
-                }
-            }
-
-            // Проверка числовых значений
+            // Проверка числовых значений приоритетнее для числовых типов
             if (parameter.type in listOf(
-                    com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameterType.NUMBER,
-                    com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameterType.INTEGER,
-                    com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameterType.DECIMAL
+                    NUMBER,
+                    INTEGER,
+                    DECIMAL
                 )) {
                 val numValue = value.toDoubleOrNull()
                 if (numValue == null) {
@@ -162,14 +151,32 @@ private fun validateParameters(
 
                 validation.minValue?.let { minValue ->
                     if (numValue < minValue) {
-                        errors[parameter.id] = "Минимальное значение: $minValue"
+                        errors[parameter.id] = validation.errorMessage ?: "Минимальное значение: $minValue"
                         return@forEach
                     }
                 }
 
                 validation.maxValue?.let { maxValue ->
                     if (numValue > maxValue) {
-                        errors[parameter.id] = "Максимальное значение: $maxValue"
+                        errors[parameter.id] = validation.errorMessage ?: "Максимальное значение: $maxValue"
+                        return@forEach
+                    }
+                }
+
+                // Для числовых типов пропускаем проверку minLength/maxLength
+                // Или можно проверять длину с учетом форматирования числа, если это нужно
+            } else {
+                // Проверка длины для не-числовых типов
+                validation.minLength?.let { minLength ->
+                    if (value.length < minLength) {
+                        errors[parameter.id] = validation.errorMessage ?: "Минимальная длина: $minLength символов"
+                        return@forEach
+                    }
+                }
+
+                validation.maxLength?.let { maxLength ->
+                    if (value.length > maxLength) {
+                        errors[parameter.id] = validation.errorMessage ?: "Максимальная длина: $maxLength символов"
                         return@forEach
                     }
                 }
