@@ -27,8 +27,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.model.buffer.BufferDisplayItem
 
@@ -55,7 +55,7 @@ fun BufferItemChipList(
                 FilterChip(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(32.dp),
+                        .height(52.dp),
                     selected = true,
                     onClick = { /* Чип уже выбран, ничего не делаем */ },
                     label = {
@@ -66,7 +66,9 @@ fun BufferItemChipList(
                         ) {
                             Text(
                                 text = item.value,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             // Добавляем иконку в зависимости от типа поля
@@ -86,12 +88,7 @@ fun BufferItemChipList(
                                     )
                                 }
                                 else -> {
-                                    // Для других типов полей оставляем текстовое обозначение
-                                    Text(
-                                        text = "(${item.displayName.first().uppercase()})",
-                                        fontSize = 12.sp,
-                                        modifier = Modifier.padding(start = 2.dp)
-                                    )
+
                                 }
                             }
                         }

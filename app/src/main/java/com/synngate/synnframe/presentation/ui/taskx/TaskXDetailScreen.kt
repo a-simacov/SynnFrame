@@ -190,7 +190,7 @@ fun TaskXDetailScreen(
             if (task != null && state.getDisplayActions().isNotEmpty()) {
                 FloatingActionButton(
                     onClick = { viewModel.onFastForwardClick() },
-                    modifier = Modifier.alpha(0.85f), // Полупрозрачность
+                    modifier = Modifier.alpha(0.5f), // Полупрозрачность
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
