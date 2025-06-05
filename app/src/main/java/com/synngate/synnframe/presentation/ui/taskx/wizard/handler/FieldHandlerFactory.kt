@@ -46,10 +46,10 @@ class FieldHandlerFactory(
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun <T : Any> createHandlerForObject(obj: T): FieldHandler<T>? {
+    fun <T : Any> createHandlerForObject(obj: T, isStorage: Boolean): FieldHandler<T>? {
         return when (obj) {
-            is BinX -> BinFieldHandler(validationService, true) as FieldHandler<T>
-            is Pallet -> PalletFieldHandler(validationService, true) as FieldHandler<T>
+            is BinX -> BinFieldHandler(validationService, isStorage) as FieldHandler<T>
+            is Pallet -> PalletFieldHandler(validationService, isStorage) as FieldHandler<T>
             is Product -> ProductClassifierHandler(validationService, productUseCases) as FieldHandler<T>
             is TaskProduct -> TaskProductHandler(validationService, productUseCases) as FieldHandler<T>
             is Float -> QuantityFieldHandler(validationService) as FieldHandler<T>

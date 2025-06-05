@@ -37,7 +37,8 @@ class WizardValidator(
 
         if (handlerFactory != null) {
             // Используем createHandlerForObject вместо createHandlerForStep для правильной типизации
-            val handler = handlerFactory.createHandlerForObject(stepObject)
+            val isStorage = currentStep.factActionField in listOf(FactActionField.STORAGE_BIN, FactActionField.STORAGE_PALLET)
+            val handler = handlerFactory.createHandlerForObject(stepObject, isStorage)
             if (handler != null) {
                 try {
                     // Теперь handler имеет правильный тип для работы с stepObject
