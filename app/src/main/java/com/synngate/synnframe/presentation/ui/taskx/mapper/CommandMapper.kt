@@ -14,6 +14,7 @@ import com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameter
 import com.synngate.synnframe.presentation.ui.taskx.entity.CommandParameterType
 import com.synngate.synnframe.presentation.ui.taskx.entity.ParameterOption
 import com.synngate.synnframe.presentation.ui.taskx.entity.ParameterValidation
+import com.synngate.synnframe.presentation.ui.taskx.entity.ParametersDisplayMode
 import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
 
 object CommandMapper {
@@ -31,7 +32,8 @@ object CommandMapper {
             parameters = dto.parameters.map { mapCommandParameter(it) },
             confirmationRequired = dto.confirmationRequired,
             confirmationMessage = dto.confirmationMessage,
-            order = dto.order
+            order = dto.order,
+            parametersDisplayMode = ParametersDisplayMode.valueOf(dto.parametersDisplayMode)
         )
     }
 

@@ -117,7 +117,7 @@ fun CommandParametersDialog(
 /**
  * Валидация параметров команды
  */
-private fun validateParameters(
+fun validateParameters(
     parameters: List<CommandParameter>,
     values: Map<String, String>
 ): Map<String, String> {

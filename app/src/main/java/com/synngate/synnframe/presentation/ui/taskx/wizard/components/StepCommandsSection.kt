@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.presentation.ui.taskx.entity.ParametersDisplayMode
 import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
 
@@ -38,10 +39,14 @@ fun StepCommandsSection(
         return
     }
 
+    // Состояния для диалогов и выбранной команды
     var selectedCommand by remember { mutableStateOf<StepCommand?>(null) }
     var showParametersDialog by remember { mutableStateOf(false) }
     var showConfirmationDialog by remember { mutableStateOf(false) }
     var commandToExecute by remember { mutableStateOf<Pair<StepCommand, Map<String, String>>?>(null) }
+
+    // Для инлайн-параметров мы отслеживаем, какая команда сейчас отображает свои параметры
+    var activeInlineCommand by remember { mutableStateOf<StepCommand?>(null) }
 
     Column(
         modifier = modifier
@@ -49,32 +54,101 @@ fun StepCommandsSection(
             .padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // Для всех режимов отображения, кроме INLINE, показываем кнопки команд
         visibleCommands.forEach { command ->
             val executionStatus = state.getCommandStatus(command.id)
 
-            CommandButton(
+            when (command.parametersDisplayMode) {
+                ParametersDisplayMode.DIALOG -> {
+                    // Стандартная кнопка с диалогом параметров
+                    CommandButton(
+                        command = command,
+                        onClick = {
+                            selectedCommand = command
+                            if (command.parameters.isNotEmpty()) {
+                                showParametersDialog = true
+                            } else {
+                                if (command.confirmationRequired) {
+                                    commandToExecute = command to emptyMap()
+                                    showConfirmationDialog = true
+                                } else {
+                                    onCommandExecute(command, emptyMap())
+                                }
+                            }
+                        },
+                        isLoading = state.isLoading,
+                        enabled = !state.isLoading,
+                        executionStatus = executionStatus
+                    )
+                }
+
+                ParametersDisplayMode.EXPANDABLE -> {
+                    // Кнопка с раскрывающейся панелью параметров
+                    ExpandableParametersForm(
+                        command = command,
+                        onExecute = { parameters ->
+                            if (command.confirmationRequired) {
+                                commandToExecute = command to parameters
+                                showConfirmationDialog = true
+                            } else {
+                                onCommandExecute(command, parameters)
+                            }
+                        },
+                        isLoading = state.isLoading,
+                        enabled = !state.isLoading,
+                        executionStatus = executionStatus
+                    )
+                }
+
+                ParametersDisplayMode.INLINE -> {
+                    // Для INLINE режима показываем кнопку только если команда не активна
+                    if (activeInlineCommand != command) {
+                        CommandButton(
+                            command = command,
+                            onClick = {
+                                if (command.parameters.isEmpty()) {
+                                    // Если параметров нет, выполняем сразу
+                                    if (command.confirmationRequired) {
+                                        commandToExecute = command to emptyMap()
+                                        showConfirmationDialog = true
+                                    } else {
+                                        onCommandExecute(command, emptyMap())
+                                    }
+                                } else {
+                                    // Если есть параметры, активируем отображение формы
+                                    activeInlineCommand = command
+                                }
+                            },
+                            isLoading = state.isLoading,
+                            enabled = !state.isLoading,
+                            executionStatus = executionStatus
+                        )
+                    }
+                }
+            }
+        }
+
+        // Отображаем активную инлайн-форму, если такая есть
+        activeInlineCommand?.let { command ->
+            InlineParametersForm(
                 command = command,
-                onClick = {
-                    selectedCommand = command
-                    if (command.parameters.isNotEmpty()) {
-                        showParametersDialog = true
+                onExecute = { parameters ->
+                    activeInlineCommand = null
+                    if (command.confirmationRequired) {
+                        commandToExecute = command to parameters
+                        showConfirmationDialog = true
                     } else {
-                        if (command.confirmationRequired) {
-                            commandToExecute = command to emptyMap()
-                            showConfirmationDialog = true
-                        } else {
-                            onCommandExecute(command, emptyMap())
-                        }
+                        onCommandExecute(command, parameters)
                     }
                 },
-                isLoading = state.isLoading,
-                enabled = !state.isLoading,
-                executionStatus = executionStatus
+                onCancel = {
+                    activeInlineCommand = null
+                }
             )
         }
     }
 
-    // Диалог ввода параметров
+    // Диалог ввода параметров (для режима DIALOG)
     if (showParametersDialog && selectedCommand != null) {
         CommandParametersDialog(
             command = selectedCommand!!,

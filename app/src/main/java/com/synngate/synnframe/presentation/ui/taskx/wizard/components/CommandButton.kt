@@ -130,7 +130,7 @@ fun CommandButton(
 }
 
 @Composable
-private fun CommandButtonContent(
+fun CommandButtonContent(
     text: String,
     icon: ImageVector?,
     isLoading: Boolean
@@ -164,7 +164,7 @@ private fun CommandButtonContent(
     }
 }
 
-private fun getCommandIcon(iconName: String?): ImageVector? {
+fun getCommandIcon(iconName: String?): ImageVector? {
     return when (iconName) {
         "edit" -> Icons.Default.Edit
         "delete" -> Icons.Default.Delete
