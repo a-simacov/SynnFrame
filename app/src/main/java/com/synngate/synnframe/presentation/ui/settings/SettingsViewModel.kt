@@ -451,104 +451,128 @@ class SettingsViewModel(
             return
         }
 
-        // Отменяем предыдущую загрузку, если она активна
-        cancelDownload()
+        viewModelScope.launch {
+            // 1. Отменяем предыдущую загрузку, если она активна
+            try {
+                downloadJob?.let {
+                    if (it.isActive) {
+                        it.cancelAndJoin()
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error cancelling previous download")
+            }
 
-        downloadJob = launchIO {
+            // Сбрасываем downloadJob
+            downloadJob = null
+
+            // 2. Явно сбрасываем состояние загрузки
             updateState {
                 it.copy(
-                    isDownloadingUpdate = true,
-                    showUpdateConfirmDialog = false,
-                    error = null,
+                    isDownloadingUpdate = false,
                     downloadProgress = 0,
                     downloadError = null,
-                    canCancelDownload = true
+                    canCancelDownload = false
                 )
             }
 
-            try {
-                // Создаем прогресс-листенер для обновления UI
-                val progressListener = object : DownloadProgressListener {
-                    override fun onProgressUpdate(bytesDownloaded: Long, totalBytes: Long) {
-                        val progress = if (totalBytes > 0) {
-                            (bytesDownloaded * 100 / totalBytes).toInt()
-                        } else {
-                            -1
-                        }
-
-                        updateState {
-                            it.copy(downloadProgress = progress)
-                        }
-                    }
+            // 3. Запускаем новую загрузку
+            downloadJob = launchIO {
+                updateState {
+                    it.copy(
+                        isDownloadingUpdate = true,
+                        showUpdateConfirmDialog = false,
+                        error = null,
+                        downloadProgress = 0,
+                        downloadError = null,
+                        canCancelDownload = true
+                    )
                 }
 
-                // Используем UseCase для загрузки обновления
-                val result = settingsUseCases.downloadUpdate(
-                    version = version,
-                    progressListener = progressListener,
-                    downloadJob = downloadJob
-                )
+                try {
+                    // Создаем прогресс-листенер для обновления UI
+                    val progressListener = object : DownloadProgressListener {
+                        override fun onProgressUpdate(bytesDownloaded: Long, totalBytes: Long) {
+                            val progress = if (totalBytes > 0) {
+                                (bytesDownloaded * 100 / totalBytes).toInt()
+                            } else {
+                                -1
+                            }
 
-                if (result.isSuccess) {
-                    val filePath = result.getOrNull()!!
-                    updateState {
-                        it.copy(
-                            isDownloadingUpdate = false,
-                            downloadedUpdatePath = filePath,
-                            error = null,
-                            downloadProgress = 100,
-                            canCancelDownload = false
-                        )
+                            updateState {
+                                it.copy(downloadProgress = progress)
+                            }
+                        }
                     }
 
-                    // Автоматически начинаем установку
-                    installUpdate(filePath)
-                } else {
-                    val exception = result.exceptionOrNull()
+                    // Используем UseCase для загрузки обновления
+                    val result = settingsUseCases.downloadUpdate(
+                        version = version,
+                        progressListener = progressListener,
+                        downloadJob = downloadJob
+                    )
+
+                    if (result.isSuccess) {
+                        val filePath = result.getOrNull()!!
+                        updateState {
+                            it.copy(
+                                isDownloadingUpdate = false,
+                                downloadedUpdatePath = filePath,
+                                error = null,
+                                downloadProgress = 100,
+                                canCancelDownload = false
+                            )
+                        }
+
+                        // Автоматически начинаем установку
+                        installUpdate(filePath)
+                    } else {
+                        val exception = result.exceptionOrNull()
+                        updateState {
+                            it.copy(
+                                isDownloadingUpdate = false,
+                                downloadError = "Ошибка загрузки обновления: ${exception?.message}",
+                                error = "Ошибка загрузки обновления: ${exception?.message}",
+                                downloadProgress = 0,
+                                canCancelDownload = false
+                            )
+                        }
+                        sendEvent(SettingsEvent.ShowSnackbar("Ошибка загрузки обновления"))
+                    }
+                } catch (e: CancellationException) {
+                    // Загрузка была отменена пользователем
+                    Timber.d("Download cancelled by user")
                     updateState {
                         it.copy(
                             isDownloadingUpdate = false,
-                            downloadError = "Ошибка загрузки обновления: ${exception?.message}",
-                            error = "Ошибка загрузки обновления: ${exception?.message}",
+                            downloadProgress = 0,
+                            canCancelDownload = false,
+                            error = null
+                        )
+                    }
+                    sendEvent(SettingsEvent.ShowSnackbar("Загрузка обновления отменена"))
+                } catch (e: Exception) {
+                    Timber.e(e, "Error downloading update")
+                    updateState {
+                        it.copy(
+                            isDownloadingUpdate = false,
+                            downloadError = "Ошибка загрузки обновления: ${e.message}",
+                            error = "Ошибка загрузки обновления: ${e.message}",
                             downloadProgress = 0,
                             canCancelDownload = false
                         )
                     }
                     sendEvent(SettingsEvent.ShowSnackbar("Ошибка загрузки обновления"))
+                } finally {
+                    downloadJob = null
                 }
-            } catch (e: CancellationException) {
-                // Загрузка была отменена пользователем
-                Timber.d("Download cancelled by user")
-                updateState {
-                    it.copy(
-                        isDownloadingUpdate = false,
-                        downloadProgress = 0,
-                        canCancelDownload = false,
-                        error = null
-                    )
-                }
-                sendEvent(SettingsEvent.ShowSnackbar("Загрузка обновления отменена"))
-            } catch (e: Exception) {
-                Timber.e(e, "Error downloading update")
-                updateState {
-                    it.copy(
-                        isDownloadingUpdate = false,
-                        downloadError = "Ошибка загрузки обновления: ${e.message}",
-                        error = "Ошибка загрузки обновления: ${e.message}",
-                        downloadProgress = 0,
-                        canCancelDownload = false
-                    )
-                }
-                sendEvent(SettingsEvent.ShowSnackbar("Ошибка загрузки обновления"))
-            } finally {
-                downloadJob = null
             }
         }
     }
 
     // Метод для отмены загрузки
     fun cancelDownload() {
-        launchIO {
+        viewModelScope.launch {
             downloadJob?.let {
                 if (it.isActive) {
                     Timber.d("Cancelling download...")
@@ -562,6 +586,7 @@ class SettingsViewModel(
                             canCancelDownload = false
                         )
                     }
+                    downloadJob = null
                 }
             }
         }
