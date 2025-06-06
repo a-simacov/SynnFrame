@@ -739,4 +739,15 @@
 
     <string name="download_failed">Ошибка загрузки</string>
     <string name="download_cancelled">Загрузка отменена</string>
+
+    <string name="scan_qr_code">Сканировать QR-код</string>
+    <string name="generate_qr_code">Создать QR-код</string>
+    <string name="qr_code_title">QR-код сервера</string>
+    <string name="qr_code_description">Отсканируйте этот QR-код для быстрого добавления сервера в другом устройстве</string>
+    <string name="generating_qr_code">Генерация QR-кода...</string>
+    <string name="qr_code_scan_error">Ошибка при сканировании QR-кода</string>
+    <string name="qr_code_scan_success">QR-код успешно считан</string>
+
+    <string name="qr_code_scan_instruction">Наведите камеру на QR-код с данными сервера</string>
+    <string name="scan_qr_code_instruction">Отсканируйте QR-код, содержащий конфигурацию сервера</string>
 </resources>

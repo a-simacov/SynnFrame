@@ -73,4 +73,7 @@ sealed class ServerDetailEvent {
 
     // Ошибка подключения к серверу
     data class ConnectionError(val message: String) : ServerDetailEvent()
+
+    // Отображение QR-кода
+    data class ShowQrCode(val content: String) : ServerDetailEvent()
 }

@@ -38,6 +38,7 @@ import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
 import com.synngate.synnframe.data.service.FileServiceImpl
 import com.synngate.synnframe.data.service.LoggingServiceImpl
 import com.synngate.synnframe.data.service.ServerCoordinatorImpl
+import com.synngate.synnframe.data.service.ServerQrServiceImpl
 import com.synngate.synnframe.data.service.SoundServiceImpl
 import com.synngate.synnframe.data.service.SynchronizationControllerImpl
 import com.synngate.synnframe.data.service.WebServerControllerImpl
@@ -57,6 +58,7 @@ import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.service.FileService
 import com.synngate.synnframe.domain.service.LoggingService
 import com.synngate.synnframe.domain.service.ServerCoordinator
+import com.synngate.synnframe.domain.service.ServerQrService
 import com.synngate.synnframe.domain.service.SoundService
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.service.UpdateInstaller
@@ -251,6 +253,10 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         ClipboardServiceImpl(applicationContext)
     }
 
+    val serverQrService: ServerQrService by lazy {
+        ServerQrServiceImpl()
+    }
+
     val serverCoordinator: ServerCoordinator by lazy {
         ServerCoordinatorImpl(
             serverRepository,
@@ -442,6 +448,7 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
             ServerDetailViewModel(
                 serverId = serverId,
                 serverUseCases = appContainer.serverUseCases,
+                serverQrService = appContainer.serverQrService
             )
         }
     }

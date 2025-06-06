@@ -1,6 +1,7 @@
 package com.synngate.synnframe.presentation.ui.server
 
 import com.synngate.synnframe.domain.entity.Server
+import com.synngate.synnframe.domain.service.ServerQrService
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.presentation.ui.server.model.ServerDetailEvent
 import com.synngate.synnframe.presentation.ui.server.model.ServerDetailState
@@ -10,6 +11,7 @@ import timber.log.Timber
 class ServerDetailViewModel(
     private val serverId: Int?,
     private val serverUseCases: ServerUseCases,
+    private val serverQrService: ServerQrService
 ) : BaseViewModel<ServerDetailState, ServerDetailEvent>(
     ServerDetailState(serverId = serverId, isEditMode = serverId != null)
 ) {
@@ -206,6 +208,72 @@ class ServerDetailViewModel(
             state.apiEndpoint.isBlank() -> "Точка подключения к API не может быть пустой"
             state.login.isBlank() -> "Логин не может быть пустым"
             else -> null
+        }
+    }
+
+    /**
+     * Обрабатывает результат сканирования QR-кода
+     */
+    fun handleQrCodeScan(scannedValue: String) {
+        try {
+            val server = serverQrService.qrStringToServer(scannedValue)
+
+            if (server != null) {
+                updateState { state ->
+                    state.copy(
+                        name = server.name,
+                        host = server.host,
+                        port = server.port.toString(),
+                        apiEndpoint = server.apiEndpoint,
+                        login = server.login,
+                        password = server.password
+                    )
+                }
+                sendEvent(ServerDetailEvent.ShowSnackbar("Данные сервера успешно загружены из QR-кода"))
+            } else {
+                sendEvent(ServerDetailEvent.ShowSnackbar("Не удалось распознать данные сервера из QR-кода"))
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error parsing QR code")
+            sendEvent(ServerDetailEvent.ShowSnackbar("Ошибка при обработке QR-кода: ${e.message}"))
+        }
+    }
+
+    /**
+     * Генерирует QR-код для текущего сервера
+     */
+    fun generateQrCode() {
+        val state = uiState.value
+
+        // Проверяем, что все необходимые поля заполнены
+        val validationError = validateFields()
+        if (validationError != null) {
+            updateState { it.copy(validationError = validationError) }
+            sendEvent(ServerDetailEvent.ShowSnackbar(validationError))
+            return
+        }
+
+        try {
+            // Создаем объект сервера из текущего состояния
+            val server = Server(
+                id = state.serverId ?: 0,
+                name = state.name,
+                host = state.host,
+                port = state.port.toInt(),
+                apiEndpoint = state.apiEndpoint,
+                login = state.login,
+                password = state.password,
+                isActive = state.isActive
+            )
+
+            // Преобразуем сервер в строку для QR-кода
+            val qrString = serverQrService.serverToQrString(server)
+
+            // Отправляем событие для отображения QR-кода
+            sendEvent(ServerDetailEvent.ShowQrCode(qrString))
+        } catch (e: Exception) {
+            Timber.e(e, "Error generating QR code")
+            sendEvent(ServerDetailEvent.ShowSnackbar("Ошибка при генерации QR-кода: ${e.message}"))
         }
     }
 

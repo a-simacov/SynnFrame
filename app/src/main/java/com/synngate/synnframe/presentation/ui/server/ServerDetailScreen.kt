@@ -1,13 +1,20 @@
 package com.synngate.synnframe.presentation.ui.server
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.QrCode2
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -16,8 +23,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -27,12 +37,15 @@ import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.buttons.BooleanButton
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.dialog.ProgressDialog
+import com.synngate.synnframe.presentation.common.dialog.QrCodeDialog
 import com.synngate.synnframe.presentation.common.inputs.AppTextField
 import com.synngate.synnframe.presentation.common.inputs.NumberTextField
 import com.synngate.synnframe.presentation.common.inputs.PasswordTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.InfoCard
 import com.synngate.synnframe.presentation.common.scaffold.ScrollableScreenContent
+import com.synngate.synnframe.presentation.common.scanner.ScannerListener
+import com.synngate.synnframe.presentation.common.scanner.UniversalScannerDialog
 import com.synngate.synnframe.presentation.ui.server.model.ServerDetailEvent
 import com.synngate.synnframe.presentation.ui.server.model.ServerDetailState
 import kotlinx.coroutines.launch
@@ -53,6 +66,13 @@ fun ServerDetailScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+
+    // Состояние для отображения QR-кода
+    var showQrCodeDialog by remember { mutableStateOf(false) }
+    var qrCodeContent by remember { mutableStateOf("") }
+
+    // Состояние для отображения диалога сканирования
+    var showScannerDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = viewModel) {
         events.collect { event ->
@@ -92,6 +112,11 @@ fun ServerDetailScreen(
                         )
                     }
                 }
+
+                is ServerDetailEvent.ShowQrCode -> {
+                    qrCodeContent = event.content
+                    showQrCodeDialog = true
+                }
             }
         }
     }
@@ -104,6 +129,34 @@ fun ServerDetailScreen(
             else -> stringResource(id = R.string.loading)
         }
         ProgressDialog(message = message)
+    }
+
+    ScannerListener(
+        onBarcodeScanned = { barcode ->
+            viewModel.updatePassword(barcode)
+            viewModel.handleQrCodeScan(barcode)
+        }
+    )
+
+    // Диалог отображения QR-кода
+    if (showQrCodeDialog) {
+        QrCodeDialog(
+            content = qrCodeContent,
+            onDismiss = { showQrCodeDialog = false }
+        )
+    }
+
+    // Диалог сканирования QR-кода
+    if (showScannerDialog) {
+        UniversalScannerDialog(
+            onBarcodeScanned = { barcode ->
+                viewModel.handleQrCodeScan(barcode)
+                showScannerDialog = false
+            },
+            onClose = { showScannerDialog = false },
+            instructionText = stringResource(id = R.string.scan_qr_code_instruction),
+            title = stringResource(id = R.string.scan_qr_code)
+        )
     }
 
     // Основной экран
@@ -130,6 +183,8 @@ fun ServerDetailScreen(
             onTestConnection = viewModel::testConnection,
             onSave = viewModel::saveServer,
             onBack = viewModel::navigateBack,
+            onScanQrCode = { showScannerDialog = true },
+            onGenerateQrCode = viewModel::generateQrCode,
             modifier = Modifier.padding(paddingValues)
         )
     }
@@ -148,6 +203,8 @@ private fun ServerDetailContent(
     onTestConnection: () -> Unit,
     onSave: () -> Unit,
     onBack: () -> Unit,
+    onScanQrCode: () -> Unit,
+    onGenerateQrCode: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     ScrollableScreenContent(
@@ -285,6 +342,49 @@ private fun ServerDetailContent(
 
             Spacer(modifier = Modifier.height(24.dp))
         }
+
+        // QR-код действия
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Кнопка сканирования QR-кода
+            Button(
+                onClick = onScanQrCode,
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.QrCodeScanner,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text(stringResource(id = R.string.scan_qr_code))
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Кнопка генерации QR-кода
+            Button(
+                onClick = onGenerateQrCode,
+                modifier = Modifier.weight(1f),
+                enabled = state.name.isNotBlank() && state.host.isNotBlank() &&
+                        state.port.isNotBlank() && state.apiEndpoint.isNotBlank() &&
+                        state.login.isNotBlank() && state.password.isNotBlank()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.QrCode2,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text(stringResource(id = R.string.generate_qr_code))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Кнопки действий
         ActionButton(
