@@ -4,14 +4,18 @@ import android.content.Context
 import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.data.remote.api.ApiResult
+import com.synngate.synnframe.data.remote.api.DownloadProgressListener
 import com.synngate.synnframe.domain.repository.SettingsRepository
 import com.synngate.synnframe.domain.service.FileService
 import com.synngate.synnframe.domain.usecase.BaseUseCase
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import com.synngate.synnframe.util.logging.LogLevel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
+import java.io.File
 import java.io.IOException
+import kotlin.coroutines.cancellation.CancellationException
 
 class SettingsUseCases(
     private val settingsRepository: SettingsRepository,
@@ -110,10 +114,14 @@ class SettingsUseCases(
         }
     }
 
-    suspend fun downloadUpdate(version: String): Result<String> {
+    suspend fun downloadUpdate(
+        version: String,
+        progressListener: DownloadProgressListener? = null,
+        downloadJob: Job? = null
+    ): Result<String> {
         return try {
-            // Проверяем наличие свободного места (примерно 50 МБ для APK)
-            if (!fileService.hasEnoughStorage(50 * 1024 * 1024L)) {
+            // Проверяем наличие свободного места (примерно 150 МБ для APK)
+            if (!fileService.hasEnoughStorage(150 * 1024 * 1024L)) {
                 return Result.failure(IOException("Insufficient storage space"))
             }
 
@@ -122,27 +130,29 @@ class SettingsUseCases(
                 return Result.failure(IOException("Failed to create updates directory"))
             }
 
+            // Подготавливаем файл для сохранения обновления
+            val fileName = "app-update-$version.apk"
+            val destinationFile = File(applicationContext.filesDir, "updates/$fileName")
+
             // Загружаем обновление
-            val response = settingsRepository.downloadAppUpdate(version)
+            val result = settingsRepository.downloadUpdateToFile(
+                version = version,
+                destinationFile = destinationFile,
+                progressListener = progressListener,
+                downloadJob = downloadJob
+            )
 
-            when (response) {
+            when (result) {
                 is ApiResult.Success -> {
-                    val responseBody = response.data
-
-                    // Сохраняем файл
-                    val fileName = "app-update-$version.apk"
-                    val filePath = fileService.saveFile(fileName, responseBody)
-
-                    if (filePath != null) {
-                        Result.success(filePath)
-                    } else {
-                        Result.failure(IOException("Failed to save update file"))
-                    }
+                    Result.success(destinationFile.absolutePath)
                 }
                 is ApiResult.Error -> {
-                    Result.failure(IOException("Failed to download update: ${response.code}"))
+                    Result.failure(IOException("Failed to download update: ${result.message}"))
                 }
             }
+        } catch (e: CancellationException) {
+            // Пробрасываем исключение отмены для корректной обработки выше
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "Exception during update download")
             Result.failure(e)

@@ -42,6 +42,11 @@ data class SettingsState(
     val releaseDate: String? = null,
     val downloadedUpdatePath: String? = null,
 
+    // Состояние загрузки
+    val downloadProgress: Int = 0,
+    val downloadError: String? = null,
+    val canCancelDownload: Boolean = false,
+
     // Сообщение об ошибке
     val error: String? = null,
 
@@ -58,15 +63,13 @@ data class SettingsState(
     val syncIntervalSeconds: Int = 300, // 5 минут
     val nextScheduledSync: LocalDateTime? = null,
 
-    val downloadProgress: Int = 0,
-
     // Настройки повторных попыток
     val retrySettings: Map<OperationType, RetrySettings> = mapOf(
         OperationType.DOWNLOAD_PRODUCTS to RetrySettings(5, 60, 3600, 2.0),
         OperationType.FULL_SYNC to RetrySettings(5, 60, 3600, 2.0)
     ),
 
-// Отображение раздела с настройками повторных попыток
+    // Отображение раздела с настройками повторных попыток
     val showRetrySettings: Boolean = false,
 
     val binCodePattern: String = AppSettingsDataStore.DEFAULT_BIN_PATTERN,

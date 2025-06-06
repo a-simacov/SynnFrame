@@ -52,6 +52,7 @@ import com.synngate.synnframe.presentation.common.buttons.BooleanButton
 import com.synngate.synnframe.presentation.common.buttons.CarouselValueButton
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
+import com.synngate.synnframe.presentation.common.dialog.EnhancedProgressDialog
 import com.synngate.synnframe.presentation.common.dialog.ProgressDialog
 import com.synngate.synnframe.presentation.common.inputs.NumberTextField
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
@@ -188,10 +189,24 @@ fun SettingsScreen(
         )
     }
 
-    if (isLoading) {
+    // Диалог прогресса загрузки с возможностью отмены
+    if (state.isDownloadingUpdate || state.downloadError != null) {
+        EnhancedProgressDialog(
+            message = if (state.isDownloadingUpdate)
+                stringResource(id = R.string.downloading_update)
+            else
+                stringResource(id = R.string.download_failed),
+            progress = if (state.downloadProgress > 0) state.downloadProgress else null,
+            error = state.downloadError,
+            onCancel = { viewModel.cancelDownload() },
+            onRetry = { viewModel.downloadUpdate() },
+            onDismiss = { viewModel.resetDownloadError() }
+        )
+    }
+
+    if (state.isCheckingForUpdates || state.isInstallingUpdate) {
         val message = when {
             state.isCheckingForUpdates -> stringResource(id = R.string.checking_for_updates)
-            state.isDownloadingUpdate -> stringResource(id = R.string.downloading_update)
             state.isInstallingUpdate -> stringResource(id = R.string.installing_update)
             else -> ""
         }
@@ -835,9 +850,7 @@ fun UpdateSection(
                 }
             },
             icon = Icons.Default.SystemUpdate,
-            isLoading = state.isCheckingForUpdates ||
-                    state.isDownloadingUpdate ||
-                    state.isInstallingUpdate,
+            isLoading = state.isCheckingForUpdates || state.isInstallingUpdate,
             modifier = Modifier.fillMaxWidth()
         )
     }

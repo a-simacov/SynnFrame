@@ -2,10 +2,13 @@ package com.synngate.synnframe.domain.repository
 
 import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.data.remote.api.ApiResult
+import com.synngate.synnframe.data.remote.api.DownloadProgressListener
 import com.synngate.synnframe.data.remote.dto.AppVersionDto
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import com.synngate.synnframe.util.logging.LogLevel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import java.io.File
 
 interface SettingsRepository {
 
@@ -25,7 +28,17 @@ interface SettingsRepository {
 
     // Низкоуровневые операции без бизнес-логики
     suspend fun getLatestAppVersion(): ApiResult<AppVersionDto>
-    suspend fun downloadAppUpdate(version: String): ApiResult<ByteArray>
+
+    /**
+     * Загружает обновление приложения напрямую в файл
+     * Это предпочтительный метод для загрузки больших файлов обновлений
+     */
+    suspend fun downloadUpdateToFile(
+        version: String,
+        destinationFile: File,
+        progressListener: DownloadProgressListener? = null,
+        downloadJob: Job? = null
+    ): ApiResult<Unit>
 
     fun getBinCodePattern(): Flow<String>
 
