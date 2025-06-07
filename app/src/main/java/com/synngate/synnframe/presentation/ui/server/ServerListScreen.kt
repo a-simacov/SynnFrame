@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,12 +20,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -37,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +49,7 @@ import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
 import com.synngate.synnframe.presentation.common.scaffold.LoadingScreenContent
 import com.synngate.synnframe.presentation.ui.server.model.ServerListEvent
+import kotlinx.coroutines.launch
 
 @Composable
 fun ServerListScreen(
@@ -58,9 +59,13 @@ fun ServerListScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var serverToDelete by remember { mutableStateOf<Pair<Int, String>?>(null) }
+
+    // Добавляем map для хранения состояний swipe для каждого сервера
+    val swipeStates = remember { mutableMapOf<Int, SwipeToDismissBoxState>() }
 
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
@@ -88,6 +93,14 @@ fun ServerListScreen(
                 serverToDelete = null
             },
             onDismiss = {
+                // При нажатии "Отмена" сбрасываем состояние свайпа для этого сервера
+                serverToDelete?.first?.let { serverId ->
+                    swipeStates[serverId]?.let { state ->
+                        coroutineScope.launch {
+                            state.reset()
+                        }
+                    }
+                }
                 showDeleteDialog = false
                 serverToDelete = null
             }
@@ -100,7 +113,7 @@ fun ServerListScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.onAddServerClick() },
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(8.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
@@ -154,12 +167,28 @@ fun ServerListScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+                //contentPadding = PaddingValues(4.dp)
             ) {
                 items(
                     items = state.servers,
                     key = { server -> server.id }
                 ) { server ->
+                    // Получаем или создаем состояние свайпа для этого сервера
+                    val swipeState = swipeStates.getOrPut(server.id) {
+                        rememberSwipeToDismissBoxState(
+                            initialValue = SwipeToDismissBoxValue.Settled,
+                            positionalThreshold = { totalDistance -> totalDistance * 0.5f },
+                            confirmValueChange = {
+                                if (it == SwipeToDismissBoxValue.EndToStart) {
+                                    viewModel.onDeleteServerClick(server.id, server.name)
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+                        )
+                    }
+
                     ServerListItem(
                         name = server.name,
                         id = server.id.toString(),
@@ -167,7 +196,7 @@ fun ServerListScreen(
                         port = server.port.toString(),
                         isActive = server.isActive,
                         onClick = { viewModel.onServerClick(server.id) },
-                        onDelete = { viewModel.onDeleteServerClick(server.id, server.name) }
+                        dismissState = swipeState
                     )
                 }
             }
@@ -182,7 +211,6 @@ fun ServerListScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerListItem(
     name: String,
@@ -191,22 +219,9 @@ fun ServerListItem(
     port: String,
     isActive: Boolean,
     onClick: () -> Unit,
-    onDelete: () -> Unit,
+    dismissState: SwipeToDismissBoxState,
     modifier: Modifier = Modifier
 ) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        initialValue = SwipeToDismissBoxValue.Settled,
-        positionalThreshold = { totalDistance -> totalDistance * 0.5f },
-        confirmValueChange = {
-            if (it == SwipeToDismissBoxValue.EndToStart) {
-                onDelete()
-                true
-            } else {
-                false
-            }
-        }
-    )
-
     SwipeToDismissBox(
         state = dismissState,
         backgroundContent = {
@@ -218,7 +233,7 @@ fun ServerListItem(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(4.dp)
                     .background(color, MaterialTheme.shapes.medium)
                     .padding(end = 16.dp),
                 contentAlignment = Alignment.CenterEnd
@@ -235,7 +250,7 @@ fun ServerListItem(
             Card(
                 modifier = modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(4.dp)
                     .clickable(onClick = onClick),
                 colors = CardDefaults.cardColors(
                     containerColor = if (isActive)
@@ -246,11 +261,8 @@ fun ServerListItem(
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
+                    modifier = Modifier.padding(16.dp)
                 ) {
-                    // Имя и ID
                     Text(
                         text = "$name ($id)",
                         style = MaterialTheme.typography.titleMedium,
@@ -259,10 +271,7 @@ fun ServerListItem(
                         else
                             MaterialTheme.colorScheme.onSurface
                     )
-
                     Spacer(modifier = Modifier.height(4.dp))
-
-                    // Хост и порт
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -278,7 +287,6 @@ fun ServerListItem(
 
                         Spacer(modifier = Modifier.weight(1f))
 
-                        // Метка активного сервера
                         if (isActive) {
                             Text(
                                 text = stringResource(id = R.string.active),
@@ -289,8 +297,6 @@ fun ServerListItem(
                     }
                 }
             }
-        },
-        enableDismissFromStartToEnd = false,
-        enableDismissFromEndToStart = true
+        }
     )
 }

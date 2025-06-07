@@ -255,7 +255,7 @@
     <string name="active_server_info">Активный сервер: %1$s</string>
     <string name="server_host_port_info">%1$s:%2$d</string>
     <string name="no_active_server">Нет активного сервера</string>
-    <string name="server_show_on_startup">Показывать экран серверов при запуске</string>
+    <string name="server_show_on_startup">Показывать при запуске</string>
     <string name="periodic_upload_enabled">Выполнять периодическую выгрузку</string>
     <string name="upload_interval_seconds">Периодичность выгрузки (в секундах)</string>
     <string name="interval_seconds">Интервал</string>
