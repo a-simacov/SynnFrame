@@ -49,7 +49,6 @@ class SettingsViewModel(
             //todo зедсь можно было использовать combine
             try {
                 // Загружаем настройки последовательно
-                val showServers = settingsUseCases.showServersOnStartup.first()
                 val periodicUpload = settingsUseCases.periodicUploadEnabled.first()
                 val uploadInterval = settingsUseCases.uploadIntervalSeconds.first()
                 val themeMode = settingsUseCases.themeMode.first()
@@ -63,7 +62,6 @@ class SettingsViewModel(
                 // Обновляем состояние с загруженными данными
                 updateState {
                     it.copy(
-                        showServersOnStartup = showServers,
                         periodicUploadEnabled = periodicUpload,
                         uploadIntervalSeconds = uploadInterval,
                         themeMode = themeMode,
@@ -101,12 +99,6 @@ class SettingsViewModel(
     }
 
     private fun observeSettingsChanges() {
-        viewModelScope.launch {
-            settingsUseCases.showServersOnStartup.collect { showServers ->
-                updateState { it.copy(showServersOnStartup = showServers) }
-            }
-        }
-
         viewModelScope.launch {
             settingsUseCases.periodicUploadEnabled.collect { enabled ->
                 updateState { it.copy(periodicUploadEnabled = enabled) }
@@ -156,46 +148,6 @@ class SettingsViewModel(
         }
     }
 
-    fun updateShowServersOnStartup(show: Boolean) {
-        if (uiState.value.showServersOnStartup == show) return
-
-        launchIO {
-            updateState { it.copy(isLoading = true, error = null) }
-
-            try {
-                val result = settingsUseCases.setShowServersOnStartup(show)
-
-                if (result.isSuccess) {
-                    updateState {
-                        it.copy(
-                            showServersOnStartup = show,
-                            isLoading = false,
-                            error = null
-                        )
-                    }
-                    sendEvent(SettingsEvent.SettingsUpdated)
-                } else {
-                    val exception = result.exceptionOrNull()
-                    updateState {
-                        it.copy(
-                            isLoading = false,
-                            error = "Ошибка обновления настройки: ${exception?.message}"
-                        )
-                    }
-                    sendEvent(SettingsEvent.ShowSnackbar("Ошибка обновления настройки"))
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error updating showServersOnStartup setting")
-                updateState {
-                    it.copy(
-                        isLoading = false,
-                        error = "Ошибка обновления настройки: ${e.message}"
-                    )
-                }
-                sendEvent(SettingsEvent.ShowSnackbar("Ошибка обновления настройки"))
-            }
-        }
-    }
 
     fun updatePeriodicUpload(enabled: Boolean, intervalSeconds: Int? = null) {
         launchIO {

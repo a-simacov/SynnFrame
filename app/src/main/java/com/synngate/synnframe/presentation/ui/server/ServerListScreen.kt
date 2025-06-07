@@ -1,9 +1,9 @@
 package com.synngate.synnframe.presentation.ui.server
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -27,7 +26,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -43,7 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
-import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.dialog.ConfirmationDialog
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.scaffold.EmptyScreenContent
@@ -55,7 +52,7 @@ import kotlinx.coroutines.launch
 fun ServerListScreen(
     viewModel: ServerListViewModel,
     navigateToServerDetail: (Int?) -> Unit,
-    navigateToLogin: () -> Unit
+    navigateBack: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -67,11 +64,14 @@ fun ServerListScreen(
     // Добавляем map для хранения состояний swipe для каждого сервера
     val swipeStates = remember { mutableMapOf<Int, SwipeToDismissBoxState>() }
 
+    BackHandler {
+        navigateBack()
+    }
+
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 is ServerListEvent.NavigateToServerDetail -> navigateToServerDetail(event.serverId)
-                is ServerListEvent.NavigateToLogin -> navigateToLogin()
                 is ServerListEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
                 is ServerListEvent.ShowDeleteConfirmation -> {
                     serverToDelete = Pair(event.serverId, event.serverName)
@@ -120,36 +120,6 @@ fun ServerListScreen(
                     contentDescription = stringResource(id = R.string.add_server)
                 )
             }
-        },
-        bottomBar = {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                // Переключатель "Показывать при запуске"
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Switch(
-                        checked = state.showServersOnStartup,
-                        onCheckedChange = { viewModel.setShowServersOnStartup(it) }
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(id = R.string.server_show_on_startup),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-
-                NavigationButton(
-                    text = stringResource(id = R.string.continue_button),
-                    onClick = { viewModel.navigateToLogin() },
-                    enabled = state.activeServerId != null
-                )
-            }
         }
     ) { paddingValues ->
         if (state.isLoading) {
@@ -167,7 +137,6 @@ fun ServerListScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                //contentPadding = PaddingValues(4.dp)
             ) {
                 items(
                     items = state.servers,

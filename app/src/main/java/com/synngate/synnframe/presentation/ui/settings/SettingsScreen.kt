@@ -72,7 +72,6 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
-    navigateToServerList: () -> Unit,
     navigateToSyncHistory: () -> Unit,
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier
@@ -106,10 +105,6 @@ fun SettingsScreen(
 
                 is SettingsEvent.NavigateBack -> {
                     navigateBack()
-                }
-
-                is SettingsEvent.NavigateToServerList -> {
-                    navigateToServerList()
                 }
 
                 is SettingsEvent.SettingsUpdated -> {
@@ -226,8 +221,6 @@ fun SettingsScreen(
         ) {
             ActiveServerSection(
                 state = state,
-                onNavigateToServerList = navigateToServerList,
-                onShowServersOnStartupChange = viewModel::updateShowServersOnStartup,
                 onPeriodicUploadEnabledChange = viewModel::updatePeriodicUpload,
                 onUploadIntervalChange = viewModel::updateUploadInterval
             )
@@ -313,8 +306,6 @@ fun SettingsScreen(
 @Composable
 fun ActiveServerSection(
     state: SettingsState,
-    onNavigateToServerList: () -> Unit,
-    onShowServersOnStartupChange: (Boolean) -> Unit,
     onPeriodicUploadEnabledChange: (Boolean) -> Unit,
     onUploadIntervalChange: (Int) -> Unit,
     modifier: Modifier = Modifier
@@ -327,51 +318,6 @@ fun ActiveServerSection(
         title = stringResource(id = R.string.active_server_settings),
         modifier = modifier
     ) {
-        NavigationButton(
-            text = stringResource(id = R.string.servers_title),
-            onClick = onNavigateToServerList,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (state.activeServer != null) {
-            val server = state.activeServer
-            Text(
-                text = stringResource(id = R.string.active_server_info, server.name),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-
-            Text(
-                text = stringResource(
-                    id = R.string.server_host_port_info,
-                    server.host,
-                    server.port
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-        } else {
-            Text(
-                text = stringResource(id = R.string.no_active_server),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(vertical = 16.dp)
-            )
-        }
-
-        HorizontalDivider()
-
-        Spacer(modifier = Modifier.height(16.dp))
-        BooleanButton(
-            currentValue = state.showServersOnStartup,
-            onValueChange = onShowServersOnStartupChange,
-            modifier = Modifier.fillMaxWidth(),
-            labelText = stringResource(id = R.string.server_show_on_startup)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
         BooleanButton(
             currentValue = state.periodicUploadEnabled,
             onValueChange = onPeriodicUploadEnabledChange,
@@ -711,7 +657,7 @@ fun InterfaceSettingsSection(
                 value = sliderPosition,
                 onValueChange = onNavigationButtonHeightChange,
                 valueRange = 48f..96f,
-                steps = 8,
+                steps = 7,
                 modifier = Modifier
                     .fillMaxWidth()
                     .semantics {

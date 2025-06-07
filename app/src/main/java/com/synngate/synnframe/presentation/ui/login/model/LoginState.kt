@@ -17,8 +17,6 @@ sealed class LoginEvent {
 
     data object NavigateToMainMenu : LoginEvent()
 
-    data object NavigateToServerList : LoginEvent()
-
     data class ShowSnackbar(val message: String) : LoginEvent()
 
     data object ShowExitConfirmation : LoginEvent()

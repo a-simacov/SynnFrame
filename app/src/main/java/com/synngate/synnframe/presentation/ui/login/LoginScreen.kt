@@ -57,7 +57,6 @@ fun LoginScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is LoginEvent.NavigateToMainMenu -> navigateToMainMenu()
-                is LoginEvent.NavigateToServerList -> navigateToServersList()
                 is LoginEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
                 is LoginEvent.ShowExitConfirmation -> {
                     // Обрабатывается через showExitConfirmation в state
@@ -128,21 +127,6 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                if (!state.hasActiveServer) {
-                    Text(
-                        text = stringResource(id = R.string.no_active_server),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    NavigationButton(
-                        text = stringResource(id = R.string.navigate_to_servers),
-                        onClick = { viewModel.navigateToServerList() }
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-
                 PasswordTextField(
                     value = state.password,
                     onValueChange = { viewModel.updatePassword(it) },
@@ -159,7 +143,7 @@ fun LoginScreen(
                     text = stringResource(id = R.string.login),
                     onClick = { viewModel.login() },
                     isLoading = state.isLoading,
-                    enabled = !state.isLoading && state.password.isNotEmpty(),
+                    enabled = !state.isLoading && state.password.isNotEmpty() && state.hasActiveServer,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -169,6 +153,14 @@ fun LoginScreen(
                     text = stringResource(id = R.string.exit),
                     onClick = { viewModel.showExitConfirmation() },
                     enabled = !state.isLoading,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                NavigationButton(
+                    text = stringResource(id = R.string.servers_title),
+                    onClick = navigateToServersList,
                     modifier = Modifier.fillMaxWidth()
                 )
 

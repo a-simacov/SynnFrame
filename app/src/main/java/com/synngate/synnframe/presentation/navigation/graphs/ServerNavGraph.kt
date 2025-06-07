@@ -42,7 +42,7 @@ fun NavGraphBuilder.serverNavGraph(
                 navigateToServerDetail = { serverId ->
                     navController.navigate(ServerRoutes.ServerDetail.createRoute(serverId))
                 },
-                navigateToLogin = navigateToLogin
+                navigateBack = { navController.popBackStack() }
             )
         }
 

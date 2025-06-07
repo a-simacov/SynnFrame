@@ -9,8 +9,6 @@ sealed class SettingsEvent {
 
     data object NavigateBack : SettingsEvent()
 
-    data object NavigateToServerList : SettingsEvent()
-
     data object SettingsUpdated : SettingsEvent()
 
     data class RequestInstallPermission(val intent: Intent?) : SettingsEvent()

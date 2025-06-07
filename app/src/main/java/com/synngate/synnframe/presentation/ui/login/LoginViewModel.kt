@@ -55,11 +55,6 @@ class LoginViewModel(
             return
         }
 
-        if (!state.hasActiveServer) {
-            sendEvent(LoginEvent.NavigateToServerList)
-            return
-        }
-
         launchIO {
             updateState { it.copy(isLoading = true, error = null) }
 
@@ -98,9 +93,5 @@ class LoginViewModel(
 
     fun exitApp() {
         sendEvent(LoginEvent.ExitApp)
-    }
-
-    fun navigateToServerList() {
-        sendEvent(LoginEvent.NavigateToServerList)
     }
 }

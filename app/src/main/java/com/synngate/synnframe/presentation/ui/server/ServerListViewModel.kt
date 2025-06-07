@@ -120,20 +120,4 @@ class ServerListViewModel(
             updateState { it.copy(isLoading = false) }
         }
     }
-
-    fun setShowServersOnStartup(show: Boolean) {
-        launchIO {
-            val result = settingsUseCases.setShowServersOnStartup(show)
-
-            if (result.isFailure) {
-                val error = result.exceptionOrNull()?.message ?: "Не удалось изменить настройку"
-                sendEvent(ServerListEvent.ShowSnackbar(error))
-                Timber.e(result.exceptionOrNull(), "Error setting show on startup")
-            }
-        }
-    }
-
-    fun navigateToLogin() {
-        sendEvent(ServerListEvent.NavigateToLogin)
-    }
 }

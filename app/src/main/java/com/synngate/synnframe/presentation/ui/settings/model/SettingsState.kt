@@ -14,9 +14,6 @@ data class SettingsState(
     // Активный сервер
     val activeServer: Server? = null,
 
-    // Опция отображения экрана серверов при запуске
-    val showServersOnStartup: Boolean = true,
-
     // Настройки периодической выгрузки
     val periodicUploadEnabled: Boolean = false,
     val uploadIntervalSeconds: Int = 300, // 5 минут по умолчанию

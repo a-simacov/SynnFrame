@@ -35,11 +35,6 @@ fun NavGraphBuilder.settingsNavGraph(
 
             SettingsScreen(
                 viewModel = viewModel,
-                navigateToServerList = {
-                    navController.navigate(com.synngate.synnframe.presentation.navigation.routes.ServerRoutes.ServerList.route) {
-                        popUpTo(SettingsRoutes.Settings.route) { inclusive = false }
-                    }
-                },
                 navigateToSyncHistory = {
                     navController.navigate(SettingsRoutes.SyncHistory.route)
                 },
