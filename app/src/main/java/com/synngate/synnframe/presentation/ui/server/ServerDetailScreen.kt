@@ -8,13 +8,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -27,17 +24,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.buttons.BooleanButton
 import com.synngate.synnframe.presentation.common.buttons.CarouselValueButton
-import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.dialog.ProgressDialog
 import com.synngate.synnframe.presentation.common.dialog.QrCodeDialog
 import com.synngate.synnframe.presentation.common.inputs.AppTextField
@@ -169,7 +165,6 @@ fun ServerDetailScreen(
             else
                 R.string.server_add_title
         ),
-        subtitle = state.name.takeIf { it.isNotEmpty() },
         onNavigateBack = { viewModel.navigateBack() },
         snackbarHostState = snackbarHostState
     ) { paddingValues ->
@@ -214,6 +209,37 @@ private fun ServerDetailContent(
     ScrollableScreenContent(
         modifier = modifier
     ) {
+        // QR-код действия
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Кнопка сканирования QR-кода
+            ActionButton(
+                text = "Прочитать",
+                onClick = onScanQrCode,
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.QrCodeScanner,
+                buttonHeight = 36f,
+                textStyle = MaterialTheme.typography.titleSmall
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Кнопка генерации QR-кода
+            ActionButton(
+                text = "Показать",
+                onClick = onGenerateQrCode,
+                icon = Icons.Default.QrCode2,
+                modifier = Modifier.weight(1f),
+                buttonHeight = 36f,
+                textStyle = MaterialTheme.typography.titleSmall,
+                enabled = state.name.isNotBlank() && state.host.isNotBlank() &&
+                        state.port.isNotBlank() && state.apiEndpoint.isNotBlank() &&
+                        state.login.isNotBlank() && state.password.isNotBlank()
+            )
+        }
+
         // Карточка с основными данными сервера
         InfoCard(
             title = stringResource(id = R.string.server_connection_settings)
@@ -230,7 +256,7 @@ private fun ServerDetailContent(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Поле хоста
             AppTextField(
@@ -244,7 +270,7 @@ private fun ServerDetailContent(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Поле порта
             NumberTextField(
@@ -258,7 +284,7 @@ private fun ServerDetailContent(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Поле точки подключения API
             AppTextField(
@@ -273,7 +299,7 @@ private fun ServerDetailContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Карточка с учетными данными
         InfoCard(
@@ -291,7 +317,7 @@ private fun ServerDetailContent(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Поле пароля
             PasswordTextField(
@@ -306,7 +332,7 @@ private fun ServerDetailContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Проверка подключения
         ActionButton(
@@ -325,12 +351,13 @@ private fun ServerDetailContent(
             text = state.connectionStatus,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 4.dp)
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         if (state.isEditMode) {
             BooleanButton(
@@ -344,7 +371,7 @@ private fun ServerDetailContent(
                 }
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         if (state.showScannerTypeOptions) {
@@ -360,54 +387,11 @@ private fun ServerDetailContent(
                         DeviceType.CAMERA_SCANNER -> "Камера"
                     }
                 },
-                modifier = modifier
             )
         }
 
-        // QR-код действия
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Кнопка сканирования QR-кода
-            Button(
-                onClick = onScanQrCode,
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.QrCodeScanner,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                    Text(stringResource(id = R.string.scan_qr_code))
-                }
-            }
+        Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Кнопка генерации QR-кода
-            Button(
-                onClick = onGenerateQrCode,
-                modifier = Modifier.weight(1f),
-                enabled = state.name.isNotBlank() && state.host.isNotBlank() &&
-                        state.port.isNotBlank() && state.apiEndpoint.isNotBlank() &&
-                        state.login.isNotBlank() && state.password.isNotBlank()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.QrCode2,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                    Text(stringResource(id = R.string.generate_qr_code))
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Кнопки действий
         ActionButton(
             text = stringResource(id = R.string.save),
             onClick = onSave,
@@ -417,15 +401,6 @@ private fun ServerDetailContent(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        NavigationButton(
-            text = stringResource(id = R.string.back),
-            onClick = onBack,
-            icon = Icons.AutoMirrored.Filled.ArrowBack,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
     }
 }

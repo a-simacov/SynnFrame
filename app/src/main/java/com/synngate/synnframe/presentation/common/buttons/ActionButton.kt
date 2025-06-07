@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
@@ -30,7 +31,8 @@ fun ActionButton(
     buttonHeight: Float = 72f,
     icon: ImageVector? = null,
     contentDescription: String? = null,
-    buttonColors: ButtonColors = ButtonDefaults.buttonColors()
+    buttonColors: ButtonColors = ButtonDefaults.buttonColors(),
+    textStyle: TextStyle = MaterialTheme.typography.titleLarge,
 ) {
     Button(
         onClick = onClick,
@@ -62,7 +64,7 @@ fun ActionButton(
             }
             Text(
                 text = text,
-                style = MaterialTheme.typography.titleLarge,
+                style = textStyle,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.align(Alignment.Center)
             )

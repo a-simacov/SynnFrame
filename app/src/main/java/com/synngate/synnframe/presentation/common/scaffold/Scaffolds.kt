@@ -455,7 +455,7 @@ fun ErrorScreenContent(
 @Composable
 fun ScrollableScreenContent(
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(16.dp),
+    contentPadding: PaddingValues = PaddingValues(2.dp),
     content: @Composable () -> Unit
 ) {
     Box(
@@ -513,7 +513,7 @@ fun SectionHeader(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(vertical = 8.dp)
+            modifier = Modifier.padding(vertical = 4.dp)
         )
 
         HorizontalDivider(
@@ -521,7 +521,7 @@ fun SectionHeader(
             color = MaterialTheme.colorScheme.outlineVariant
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
     }
 }
 
@@ -534,27 +534,20 @@ fun InfoCard(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 4.dp),
         shape = MaterialTheme.shapes.medium,
         tonalElevation = 1.dp
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(4.dp)
         ) {
             if (title != null) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 4.dp)
                 )
-
-                HorizontalDivider(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.outlineVariant
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
             }
 
             content()
