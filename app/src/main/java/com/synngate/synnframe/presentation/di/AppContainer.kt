@@ -34,6 +34,7 @@ import com.synngate.synnframe.data.repository.SettingsRepositoryImpl
 import com.synngate.synnframe.data.repository.TaskXRepositoryImpl
 import com.synngate.synnframe.data.repository.UserRepositoryImpl
 import com.synngate.synnframe.data.service.ClipboardServiceImpl
+import com.synngate.synnframe.data.service.DeviceDetectionService
 import com.synngate.synnframe.data.service.DeviceInfoServiceImpl
 import com.synngate.synnframe.data.service.FileServiceImpl
 import com.synngate.synnframe.data.service.LoggingServiceImpl
@@ -373,9 +374,17 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         return createChildContainer { NavigationContainer(this) }
     }
 
+    val deviceDetectionService by lazy {
+        DeviceDetectionService(applicationContext)
+    }
+
     // Фабрика для создания сканеров
     val barcodeScannerFactory by lazy {
-        BarcodeScannerFactory(applicationContext, settingsRepository)
+        BarcodeScannerFactory(
+            applicationContext,
+            settingsRepository,
+            deviceDetectionService
+        )
     }
 
     // Сервис управления сканером
@@ -448,7 +457,9 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
             ServerDetailViewModel(
                 serverId = serverId,
                 serverUseCases = appContainer.serverUseCases,
-                serverQrService = appContainer.serverQrService
+                serverQrService = appContainer.serverQrService,
+                settingsUseCases = appContainer.settingsUseCases,
+                scannerService = appContainer.scannerService
             )
         }
     }
@@ -506,7 +517,8 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 appContainer.serverUseCases,
                 appContainer.webServerManager,
                 appContainer.synchronizationController,
-                appContainer.updateInstaller
+                appContainer.updateInstaller,
+                appContainer.scannerService
             )
         }
     }

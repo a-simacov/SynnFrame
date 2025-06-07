@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.server.model
 
+import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.domain.entity.Server
 
 /**
@@ -52,7 +53,16 @@ data class ServerDetailState(
     val validationError: String? = null,
 
     // Общая ошибка
-    val error: String? = null
+    val error: String? = null,
+
+    // Текущий тип сканера
+    val currentScannerType: DeviceType = DeviceType.STANDARD,
+
+    // Доступен ли сканер
+    val isScannerAvailable: Boolean = false,
+
+    // Показывать ли опции выбора типа сканера
+    val showScannerTypeOptions: Boolean = false
 )
 
 /**

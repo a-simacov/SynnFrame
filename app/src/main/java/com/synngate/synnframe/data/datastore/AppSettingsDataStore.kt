@@ -34,6 +34,7 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
         private val LOG_LEVEL = stringPreferencesKey("log_level")
         const val DEFAULT_LOG_LEVEL = "FULL"
         private val deviceTypeKey = stringPreferencesKey("device_type")
+        private val DEVICE_TYPE_MANUALLY_SET = booleanPreferencesKey("device_type_manually_set")
     }
 
     val showServersOnStartup: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -101,9 +102,29 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
             }
         }
 
-    suspend fun setDeviceType(type: DeviceType) {
+    val deviceTypeManuallySet: Flow<Boolean> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                Timber.e(exception, "Error reading settings")
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[DEVICE_TYPE_MANUALLY_SET] ?: false
+        }
+
+    suspend fun setDeviceType(type: DeviceType, isManuallySet: Boolean = true) {
         dataStore.edit { preferences ->
             preferences[deviceTypeKey] = type.name
+            preferences[DEVICE_TYPE_MANUALLY_SET] = isManuallySet
+        }
+    }
+
+    suspend fun resetDeviceTypeManualFlag() {
+        dataStore.edit { preferences ->
+            preferences[DEVICE_TYPE_MANUALLY_SET] = false
         }
     }
 

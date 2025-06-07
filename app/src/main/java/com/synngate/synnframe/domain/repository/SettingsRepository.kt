@@ -47,5 +47,9 @@ interface SettingsRepository {
 
     fun getDeviceType(): Flow<DeviceType>
 
-    suspend fun setDeviceType(type: DeviceType)
+    fun getDeviceTypeManuallySet(): Flow<Boolean>
+
+    suspend fun setDeviceType(type: DeviceType, isManuallySet: Boolean = true)
+
+    suspend fun resetDeviceTypeManualFlag()
 }

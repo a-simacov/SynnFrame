@@ -79,6 +79,33 @@ class ScannerService(
         return scanner != null && scanner !is NullBarcodeScanner
     }
 
+    fun restart() {
+        coroutineScope.launch {
+            Timber.i("Перезапуск сканера...")
+            val oldListeners = listeners.toList()
+
+            // Сохраняем текущее состояние сканера
+            val wasEnabled = isEnabled()
+
+            // Отключаем и освобождаем ресурсы текущего сканера
+            disable()
+            dispose()
+
+            // Инициализируем новый экземпляр сканера
+            initialize()
+
+            // Восстанавливаем слушателей
+            oldListeners.forEach { addListener(it) }
+
+            // Если сканер был включен, включаем его снова
+            if (wasEnabled) {
+                enable()
+            }
+
+            Timber.i("Сканер успешно перезапущен")
+        }
+    }
+
     // Композабл для простой подписки в Compose-экранах
     @Composable
     fun ScannerEffect(

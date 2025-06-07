@@ -1,17 +1,23 @@
 package com.synngate.synnframe.presentation.ui.server
 
+import com.synngate.synnframe.data.barcodescanner.DeviceType
+import com.synngate.synnframe.data.barcodescanner.ScannerService
 import com.synngate.synnframe.domain.entity.Server
 import com.synngate.synnframe.domain.service.ServerQrService
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
+import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.presentation.ui.server.model.ServerDetailEvent
 import com.synngate.synnframe.presentation.ui.server.model.ServerDetailState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
+import kotlinx.coroutines.flow.first
 import timber.log.Timber
 
 class ServerDetailViewModel(
     private val serverId: Int?,
     private val serverUseCases: ServerUseCases,
-    private val serverQrService: ServerQrService
+    private val serverQrService: ServerQrService,
+    private val settingsUseCases: SettingsUseCases? = null,
+    private val scannerService: ScannerService? = null
 ) : BaseViewModel<ServerDetailState, ServerDetailEvent>(
     ServerDetailState(serverId = serverId, isEditMode = serverId != null)
 ) {
@@ -20,6 +26,8 @@ class ServerDetailViewModel(
         if (serverId != null) {
             loadServer(serverId)
         }
+
+        loadScannerType()
     }
 
     private fun loadServer(id: Int) {
@@ -274,6 +282,56 @@ class ServerDetailViewModel(
         } catch (e: Exception) {
             Timber.e(e, "Error generating QR code")
             sendEvent(ServerDetailEvent.ShowSnackbar("Ошибка при генерации QR-кода: ${e.message}"))
+        }
+    }
+
+    private fun loadScannerType() {
+        settingsUseCases?.let { useCases ->
+            launchIO {
+                try {
+                    val deviceType = useCases.deviceType.first()
+                    val scannerAvailable = scannerService?.hasRealScanner() ?: false
+
+                    updateState { state ->
+                        state.copy(
+                            currentScannerType = deviceType,
+                            isScannerAvailable = scannerAvailable,
+                            // Показываем опции выбора сканера только если:
+                            // 1. Нет добавленных серверов (первый запуск)
+                            // 2. Сканер доступен
+                            showScannerTypeOptions = !state.isEditMode && scannerAvailable
+                        )
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Ошибка при загрузке типа сканера")
+                    // Если не удалось загрузить тип сканера, скрываем опции выбора
+                    updateState { state ->
+                        state.copy(showScannerTypeOptions = false)
+                    }
+                }
+            }
+        }
+    }
+
+    fun updateScannerType(deviceType: DeviceType) {
+        updateState { it.copy(currentScannerType = deviceType) }
+
+        settingsUseCases?.let { useCases ->
+            launchIO {
+                try {
+                    // Сохраняем выбранный тип сканера
+                    useCases.setDeviceType(deviceType, true)
+
+                    // Перезапускаем сканер для применения изменений
+                    scannerService?.restart()
+
+                    // Уведомляем пользователя
+                    sendEvent(ServerDetailEvent.ShowSnackbar("Тип сканера изменен на ${deviceType.name}"))
+                } catch (e: Exception) {
+                    Timber.e(e, "Ошибка при изменении типа сканера: ${e.message}")
+                    sendEvent(ServerDetailEvent.ShowSnackbar("Ошибка при изменении типа сканера"))
+                }
+            }
         }
     }
 

@@ -3,6 +3,7 @@ package com.synngate.synnframe.presentation.ui.settings
 import android.content.Intent
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.data.barcodescanner.DeviceType
+import com.synngate.synnframe.data.barcodescanner.ScannerService
 import com.synngate.synnframe.data.remote.api.DownloadProgressListener
 import com.synngate.synnframe.domain.service.SynchronizationController
 import com.synngate.synnframe.domain.service.UpdateInstaller
@@ -29,7 +30,8 @@ class SettingsViewModel(
     private val serverUseCases: ServerUseCases,
     private val webServerManager: WebServerManager,
     private val synchronizationController: SynchronizationController,
-    private val updateInstaller: UpdateInstaller
+    private val updateInstaller: UpdateInstaller,
+    private val scannerService: ScannerService
 ) : BaseViewModel<SettingsState, SettingsEvent>(SettingsState()) {
 
     private var downloadJob: Job? = null
@@ -940,11 +942,44 @@ class SettingsViewModel(
     fun setDeviceType(deviceType: DeviceType) {
         launchIO {
             try {
-                settingsUseCases.setDeviceType(deviceType)
+                // Получаем текущий тип устройства для сравнения
+                val currentType = settingsUseCases.deviceType.first()
+
+                // Сохраняем новый тип устройства с флагом ручной настройки
+                settingsUseCases.setDeviceType(deviceType, true)
+
+                // Обновляем состояние
+                updateState { it.copy(deviceType = deviceType) }
+
                 Timber.i("Device type set to: $deviceType")
 
-                // Уведомляем пользователя о необходимости перезапуска
-                sendEvent(SettingsEvent.ShowSnackbar("Тип сканера изменен. Требуется перезапуск приложения для применения изменений."))
+                // Если тип устройства изменился, предлагаем варианты применения изменений
+                if (currentType != deviceType) {
+                    // Проверяем, может ли сканер быть перезапущен без перезагрузки приложения
+                    val canRestartScanner = try {
+                        // Если сканер не инициализирован или не имеет активных слушателей,
+                        // то его можно перезапустить безопасно
+                        !scannerService.isEnabled() || scannerService.hasRealScanner()
+                    } catch (e: Exception) {
+                        Timber.e(e, "Ошибка при проверке состояния сканера")
+                        false
+                    }
+
+                    if (canRestartScanner) {
+                        // Перезапускаем сканер без перезагрузки приложения
+                        try {
+                            Timber.i("Перезапуск сканера для применения нового типа устройства")
+                            scannerService.restart()
+                            sendEvent(SettingsEvent.ShowSnackbar("Тип сканера изменен и применен"))
+                        } catch (e: Exception) {
+                            Timber.e(e, "Ошибка при перезапуске сканера")
+                            sendEvent(SettingsEvent.ShowSnackbar("Ошибка при перезапуске сканера. Требуется перезапуск приложения."))
+                        }
+                    } else {
+                        // Если сканер нельзя безопасно перезапустить, сообщаем о необходимости перезапуска приложения
+                        sendEvent(SettingsEvent.ShowSnackbar("Тип сканера изменен. Требуется перезапуск приложения для применения изменений."))
+                    }
+                }
             } catch (e: Exception) {
                 Timber.e(e, "Error setting device type")
                 sendEvent(SettingsEvent.ShowSnackbar("Ошибка при установке типа устройства: ${e.message}"))

@@ -33,8 +33,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
+import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.presentation.common.buttons.ActionButton
 import com.synngate.synnframe.presentation.common.buttons.BooleanButton
+import com.synngate.synnframe.presentation.common.buttons.CarouselValueButton
 import com.synngate.synnframe.presentation.common.buttons.NavigationButton
 import com.synngate.synnframe.presentation.common.dialog.ProgressDialog
 import com.synngate.synnframe.presentation.common.dialog.QrCodeDialog
@@ -185,6 +187,7 @@ fun ServerDetailScreen(
             onBack = viewModel::navigateBack,
             onScanQrCode = { showScannerDialog = true },
             onGenerateQrCode = viewModel::generateQrCode,
+            onUpdateScannerType = viewModel::updateScannerType,
             modifier = Modifier.padding(paddingValues)
         )
     }
@@ -205,6 +208,7 @@ private fun ServerDetailContent(
     onBack: () -> Unit,
     onScanQrCode: () -> Unit,
     onGenerateQrCode: () -> Unit,
+    onUpdateScannerType: (DeviceType) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     ScrollableScreenContent(
@@ -341,6 +345,23 @@ private fun ServerDetailContent(
             )
 
             Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        if (state.showScannerTypeOptions) {
+            val types = DeviceType.entries
+            CarouselValueButton(
+                values = types,
+                currentValue = state.currentScannerType,
+                onValueChange = { onUpdateScannerType(it) },
+                valueToString = { deviceType ->
+                    when (deviceType) {
+                        DeviceType.STANDARD -> "Стандарт (без авто-скана)"
+                        DeviceType.ZEBRA_DATAWEDGE -> stringResource(R.string.scanner_type_datawedge)
+                        DeviceType.CAMERA_SCANNER -> "Камера"
+                    }
+                },
+                modifier = modifier
+            )
         }
 
         // QR-код действия

@@ -71,5 +71,11 @@ class SettingsRepositoryImpl(
 
     override fun getDeviceType(): Flow<DeviceType> = appSettingsDataStore.deviceType
 
-    override suspend fun setDeviceType(type: DeviceType) = appSettingsDataStore.setDeviceType(type)
+    override fun getDeviceTypeManuallySet(): Flow<Boolean> = appSettingsDataStore.deviceTypeManuallySet
+
+    override suspend fun setDeviceType(type: DeviceType, isManuallySet: Boolean) =
+        appSettingsDataStore.setDeviceType(type, isManuallySet)
+
+    override suspend fun resetDeviceTypeManualFlag() =
+        appSettingsDataStore.resetDeviceTypeManualFlag()
 }

@@ -1,6 +1,7 @@
 package com.synngate.synnframe
 
 import android.app.Application
+import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.presentation.di.AppContainer
 import com.synngate.synnframe.util.logging.AppTree
 import com.synngate.synnframe.util.logging.LogLevelProvider
@@ -42,6 +43,37 @@ class SynnFrameApplication : Application() {
         launchInBackground {
             val languageCode = appContainer.appSettingsDataStore.languageCode.first()
             setAppLocale(languageCode)
+        }
+
+        launchInBackground {
+            try {
+                // Проверяем, был ли тип устройства установлен вручную
+                val manuallySet = appContainer.settingsRepository.getDeviceTypeManuallySet().first()
+
+                if (!manuallySet) {
+                    // Получаем текущий тип устройства
+                    val currentDeviceType = appContainer.settingsUseCases.deviceType.first()
+
+                    // Если тип устройства не установлен или стандартный, выполняем автоопределение
+                    if (currentDeviceType == DeviceType.STANDARD) {
+                        Timber.i("Выполняется автоматическое определение типа устройства при первом запуске")
+                        val detectedType = appContainer.deviceDetectionService.detectDeviceType(false)
+
+                        if (detectedType != DeviceType.STANDARD) {
+                            Timber.i("Обнаружен тип устройства: $detectedType, применяем настройку")
+                            // Устанавливаем тип устройства БЕЗ флага ручной настройки
+                            appContainer.settingsUseCases.setDeviceType(detectedType, false)
+
+                            // Перезапускаем сканер с новым типом устройства
+                            appContainer.scannerService.restart()
+                        }
+                    }
+                } else {
+                    Timber.i("Тип устройства установлен вручную, пропускаем автоопределение")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при автоматическом определении типа устройства")
+            }
         }
 
         initializeAppInsets()

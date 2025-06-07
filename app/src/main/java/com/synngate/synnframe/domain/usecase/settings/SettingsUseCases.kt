@@ -190,7 +190,12 @@ class SettingsUseCases(
         }
     }
 
-    suspend fun setDeviceType(type: DeviceType) {
-        settingsRepository.setDeviceType(type)
+    suspend fun setDeviceType(type: DeviceType, isManuallySet: Boolean = true) {
+        settingsRepository.setDeviceType(type, isManuallySet)
+    }
+
+    // Добавить новый метод для сброса флага ручной настройки:
+    suspend fun resetDeviceTypeManualFlag() {
+        settingsRepository.resetDeviceTypeManualFlag()
     }
 }
