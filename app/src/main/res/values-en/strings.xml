@@ -661,4 +661,77 @@
     <string name="scanner_type_emdk">Zebra EMDK</string>
     <string name="scanner_type_datawedge">Zebra DataWedge</string>
     <string name="scanner_restart_notice">After changing scanner type, app restart is required</string>
+
+    <!-- Строки для UniversalScannerDialog -->
+    <string name="expected_barcode">Expected barcode: %s</string>
+    <string name="enter_barcode">Enter barcode</string>
+    <string name="use_camera">Use camera</string>
+    <string name="manual_input">Manual input</string>
+    <string name="barcode_mismatch">Scanned barcode does not match expected</string>
+
+    <!-- Строки для сканирования в мастере действий -->
+    <string name="scan_product_expected">Scan product: %s</string>
+    <string name="scan_bin_expected">Scan bin: %s</string>
+    <string name="scan_pallet">Scan pallet</string>
+    <string name="scan_pallet_expected">Scan pallet: %s</string>
+    <string name="select_from_list">Select from list</string>
+    <string name="scan_with_camera">Scan with camera</string>
+    <string name="scan_with_scanner">Scan with scanner</string>
+    <string name="choose_scan_method">Choose input method</string>
+    <string name="search_bins">Search bins</string>
+    <string name="search_bins_hint">Enter bin code</string>
+    <string name="search_pallets">Search pallets</string>
+    <string name="search_pallets_hint">Enter pallet code</string>
+    <string name="no_bins_found">No bins found</string>
+    <string name="no_pallets_found">No pallets found</string>
+    <string name="barcode_scanner_error">Scanning error</string>
+    <string name="bins_count">Showing bins: %1$d of %2$d</string>
+    <string name="pallets_count">Showing pallets: %1$d of %2$d</string>
+    <string name="select_bin">Select bin</string>
+    <string name="select_pallet">Select pallet</string>
+    <string name="enter_pallet_code">Pallet barcode</string>
+    <string name="enter_bin_code">Bin code</string>
+    <string name="enter_product_barcode">Product barcode</string>
+    <string name="search_product">Search product</string>
+    <string name="filter_by_status">Filter by status</string>
+
+    <!-- Строки для работы с операциями -->
+    <string name="operations">Operations</string>
+    <string name="operations_menu_title">Operations list</string>
+    <string name="operation_tasks_title">Operation tasks</string>
+    <string name="operation_tasks_subtitle">Available tasks</string>
+    <string name="available_operations">Available operations</string>
+    <string name="no_operations_available">No operations available</string>
+    <string name="no_tasks_available">No tasks available</string>
+    <string name="error_loading_operations">Error loading operations</string>
+    <string name="error_loading_tasks">Error loading tasks</string>
+    <string name="task_id_fmt">ID: %s</string>
+
+    <string name="search_value">Search</string>
+    <string name="task_name">Task name</string>
+    <string name="start_task_execution">Start working with task</string>
+    <string name="search_task_hint">Enter barcode or other value</string>
+    <string name="no_task_found">Task not found</string>
+
+    <!-- Строки для динамического меню -->
+    <string name="submenu_title">Submenu</string>
+
+    <string name="task_executor_fmt">Executor: %s</string>
+    <string name="continue_task_execution">Continue execution</string>
+    <string name="error_loading_task_details">Error loading task details</string>
+
+    <string name="download_failed">Download failed</string>
+    <string name="download_cancelled">Download cancelled</string>
+
+    <string name="scan_qr_code">Scan QR code</string>
+    <string name="generate_qr_code">Generate QR code</string>
+    <string name="qr_code_title">Server QR code</string>
+    <string name="qr_code_description">Scan this QR code to quickly add the server to another device</string>
+    <string name="generating_qr_code">Generating QR code...</string>
+    <string name="qr_code_scan_error">Error scanning QR code</string>
+    <string name="qr_code_scan_success">QR code successfully scanned</string>
+
+    <string name="qr_code_scan_instruction">Point the camera at the QR code with server data</string>
+    <string name="scan_qr_code_instruction">Scan the QR code containing server configuration</string>
+    <string name="barcode_expected_fmt">Scan %s</string>
 </resources>
