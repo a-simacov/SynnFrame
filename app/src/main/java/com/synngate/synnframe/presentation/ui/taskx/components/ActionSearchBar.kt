@@ -31,8 +31,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.R
 
 @Composable
 fun ActionSearchBar(
@@ -102,7 +104,7 @@ private fun SearchField(
                     onValueChange = {
                         onQueryChange(it)
                     },
-                    placeholder = { Text("Поиск действия...") },
+                    placeholder = { Text(stringResource(R.string.search_action)) },
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = Color.Transparent,
                         focusedBorderColor = Color.Transparent
@@ -124,7 +126,7 @@ private fun SearchField(
                             IconButton(onClick = onClear) {
                                 Icon(
                                     imageVector = Icons.Default.Clear,
-                                    contentDescription = "Очистить"
+                                    contentDescription = null
                                 )
                             }
                         }
@@ -144,7 +146,7 @@ private fun SearchField(
                                 }) {
                                     Icon(
                                         imageVector = Icons.Default.Search,
-                                        contentDescription = "Поиск",
+                                        contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -159,7 +161,7 @@ private fun SearchField(
                 ) {
                     Icon(
                         imageVector = Icons.Default.QrCodeScanner,
-                        contentDescription = "Сканировать",
+                        contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }

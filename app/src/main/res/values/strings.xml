@@ -751,4 +751,12 @@
     <string name="qr_code_scan_instruction">Наведите камеру на QR-код с данными сервера</string>
     <string name="scan_qr_code_instruction">Отсканируйте QR-код, содержащий конфигурацию сервера</string>
     <string name="barcode_expected_fmt">Сканируйте %s</string>
+    <string name="action_filter_all">Все</string>
+    <string name="action_filter_toexecute">К выполнению</string>
+    <string name="action_filter_executed">Выполненные</string>
+    <string name="action_filter_initial">Начальные</string>
+    <string name="action_filter_regular">Обычные</string>
+    <string name="action_filter_final">Завершающие</string>
+    <string name="action_filter_current">Текущие</string>
+    <string name="search_action">Поиск действия...</string>
 </resources>

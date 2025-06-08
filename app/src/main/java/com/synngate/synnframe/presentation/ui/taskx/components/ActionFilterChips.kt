@@ -12,6 +12,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.presentation.ui.taskx.model.ActionFilter
 
@@ -55,7 +56,7 @@ fun ActionFilterChips(
                 modifier = Modifier.height(32.dp),
                 selected = currentFilter == filter,
                 onClick = { onFilterChange(filter) },
-                label = { Text(filter.displayName) },
+                label = { Text(stringResource(id = filter.stringResId)) },
                 colors = FilterChipDefaults.filterChipColors()
             )
         }

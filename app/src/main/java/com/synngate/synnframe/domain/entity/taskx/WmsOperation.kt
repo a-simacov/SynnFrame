@@ -14,12 +14,12 @@ enum class WmsOperation {
     companion object {
         fun fromString(value: String): WmsOperation {
             return when (value.uppercase()) {
-                "RECEIPT", "ПРИЕМКА" -> RECEIPT
-                "PUTAWAY", "РАЗМЕЩЕНИЕ" -> PUTAWAY
-                "REPLENISHMENT", "ПОПОЛНЕНИЕ" -> REPLENISHMENT
-                "PICKING", "ОТБОР" -> PICKING
-                "MOVEMENT", "ПЕРЕМЕЩЕНИЕ" -> MOVEMENT
-                "RECALCULATION", "ИНВЕНТАРИЗАЦИЯ" -> RECALCULATION
+                "RECEIPT" -> RECEIPT
+                "PUTAWAY" -> PUTAWAY
+                "REPLENISHMENT" -> REPLENISHMENT
+                "PICKING" -> PICKING
+                "MOVEMENT" -> MOVEMENT
+                "RECALCULATION" -> RECALCULATION
                 "PACKING" -> PACKING
                 "VERIFICATION" -> VERIFICATION
                 "SHIPMENT" -> SHIPMENT

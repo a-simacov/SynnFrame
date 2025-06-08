@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.taskx.model
 
+import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
@@ -147,12 +148,12 @@ data class TaskXDetailState(
     }
 }
 
-enum class ActionFilter(val displayName: String) {
-    ALL("Все"),
-    PENDING("К выполнению"),
-    COMPLETED("Выполненные"),
-    INITIAL("Начальные"),
-    REGULAR("Обычные"),
-    FINAL("Завершающие"),
-    CURRENT("Текущие")
+enum class ActionFilter(val stringResId: Int) {
+    ALL(R.string.action_filter_all),
+    PENDING(R.string.action_filter_toexecute),
+    COMPLETED(R.string.action_filter_executed),
+    INITIAL(R.string.action_filter_initial),
+    REGULAR(R.string.action_filter_regular),
+    FINAL(R.string.action_filter_final),
+    CURRENT(R.string.action_filter_current)
 }

@@ -7,8 +7,8 @@ enum class AccountingModel {
     companion object {
         fun fromString(value: String): AccountingModel {
             return when (value.uppercase()) {
-                "BATCH", "ПО ПАРТИЯМ" -> BATCH
-                "QTY", "QUANTITY", "ПО КОЛИЧЕСТВУ" -> QTY
+                "BATCH" -> BATCH
+                "QTY", "QUANTITY" -> QTY
                 else -> QTY
             }
         }

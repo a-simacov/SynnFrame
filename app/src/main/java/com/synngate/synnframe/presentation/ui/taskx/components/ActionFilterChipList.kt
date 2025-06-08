@@ -75,14 +75,14 @@ fun ActionFilterChipList(
                                 FactActionField.STORAGE_BIN, FactActionField.ALLOCATION_BIN -> {
                                     Icon(
                                         imageVector = Icons.Default.LocationOn,
-                                        contentDescription = "Ячейка",
+                                        contentDescription = null,
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
                                 FactActionField.STORAGE_PALLET, FactActionField.ALLOCATION_PALLET -> {
                                     Icon(
                                         imageVector = Icons.Default.ViewInAr,
-                                        contentDescription = "Паллета",
+                                        contentDescription = null,
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
@@ -100,7 +100,7 @@ fun ActionFilterChipList(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Outlined.FilterAlt,
-                            contentDescription = "Фильтр",
+                            contentDescription = null,
                             tint = MaterialTheme.colorScheme.secondary,
                         )
                     },
@@ -111,7 +111,7 @@ fun ActionFilterChipList(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Удалить фильтр"
+                                contentDescription = null
                             )
                         }
                     },
