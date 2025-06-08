@@ -8,6 +8,7 @@ import com.synngate.synnframe.domain.common.BarcodeScanner
 import com.synngate.synnframe.domain.common.ScanError
 import com.synngate.synnframe.domain.common.ScanResult
 import com.synngate.synnframe.domain.common.ScanResultListener
+import com.synngate.synnframe.domain.common.ScannerManufacturer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +26,9 @@ class ScannerService(
     private val _scannerState = MutableStateFlow<ScannerState>(ScannerState.Uninitialized)
     val scannerState = _scannerState.asStateFlow()
 
+    // Флаг, указывающий, является ли сканер камерой устройства
+    private var isCameraScanner = false
+
     private val globalScanListener = object : ScanResultListener {
         override fun onScanSuccess(result: ScanResult) {
             listeners.forEach { it.onScanSuccess(result) }
@@ -40,9 +44,11 @@ class ScannerService(
             (scanner as DefaultBarcodeScanner).setLifecycleOwner(lifecycleOwner)
         }
 
+        // Активируем сканер только если это не камера устройства или явно вызван диалог сканирования
         if (listeners.isNotEmpty() &&
             (_scannerState.value == ScannerState.Initialized ||
-                    _scannerState.value == ScannerState.Disabled)) {
+                    _scannerState.value == ScannerState.Disabled) &&
+            !isCameraScanner) {
             enable()
         }
     }
@@ -57,10 +63,12 @@ class ScannerService(
         if (!listeners.contains(listener)) {
             listeners.add(listener)
 
+            // Активируем сканер только если это не камера устройства или явно вызван диалог сканирования
             if (listeners.isNotEmpty() &&
                 hasRealScanner() &&
                 (_scannerState.value == ScannerState.Initialized ||
-                        _scannerState.value == ScannerState.Disabled)) {
+                        _scannerState.value == ScannerState.Disabled) &&
+                !isCameraScanner) {
                 enable()
             }
         }
@@ -77,6 +85,20 @@ class ScannerService(
 
     fun hasRealScanner(): Boolean {
         return scanner != null && scanner !is NullBarcodeScanner
+    }
+
+    /**
+     * Принудительно активирует сканер, даже если это камера.
+     * Используется для диалогов явного сканирования.
+     */
+    fun triggerScan() {
+        // Если это камера, показываем диалог сканирования
+        if (isCameraScanner) {
+            // Отправляем событие для показа диалога (должен быть реализован на уровне UI)
+            Timber.d("Запрошен диалог сканирования камерой")
+            // Здесь должна быть реализация для уведомления UI о необходимости показать диалог
+        }
+        // Для других типов сканеров можно добавить специфическую логику
     }
 
     fun restart() {
@@ -97,8 +119,8 @@ class ScannerService(
             // Восстанавливаем слушателей
             oldListeners.forEach { addListener(it) }
 
-            // Если сканер был включен, включаем его снова
-            if (wasEnabled) {
+            // Если сканер был включен и это не камера, включаем его снова
+            if (wasEnabled && !isCameraScanner) {
                 enable()
             }
 
@@ -109,7 +131,8 @@ class ScannerService(
     // Композабл для простой подписки в Compose-экранах
     @Composable
     fun ScannerEffect(
-        onScanResult: (String) -> Unit
+        onScanResult: (String) -> Unit,
+        forceCameraActivation: Boolean = false
     ) {
         val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -126,7 +149,16 @@ class ScannerService(
 
             if (hasRealScanner()) {
                 attachToScreen(lifecycleOwner)
-                addListener(listener)
+
+                // Добавляем слушатель, но активируем камеру только если forceCameraActivation=true
+                if (!isCameraScanner || forceCameraActivation) {
+                    addListener(listener)
+                } else {
+                    // Только регистрируем слушатель без активации камеры
+                    if (!listeners.contains(listener)) {
+                        listeners.add(listener)
+                    }
+                }
             }
 
             onDispose {
@@ -148,53 +180,65 @@ class ScannerService(
                 val scanner = scannerFactory.createScanner(lifecycleOwner)
                 val result = scanner.initialize()
 
+                // Определяем, является ли сканер камерой устройства
+                isCameraScanner = scanner.getManufacturer() == ScannerManufacturer.DEFAULT
+
                 if (result.isSuccess) {
                     this@ScannerService.scanner = scanner
                     _scannerState.value = ScannerState.Initialized
 
-                    if (listeners.isNotEmpty() && hasRealScanner()) {
+                    // Если есть слушатели и это не камера устройства - включаем сканер
+                    if (listeners.isNotEmpty() && hasRealScanner() && !isCameraScanner) {
                         enable()
                     }
                 } else {
                     _scannerState.value = ScannerState.Error(result.exceptionOrNull()?.message ?: "Unknown error")
-                    Timber.e(result.exceptionOrNull(), "Failed to initialize scanner")
                 }
             } catch (e: Exception) {
+                Timber.e(e, "Failed to initialize scanner")
                 _scannerState.value = ScannerState.Error(e.message ?: "Unknown error")
-                Timber.e(e, "Exception during scanner initialization")
             }
         }
     }
 
+    fun dispose() {
+        coroutineScope.launch {
+            if (scanner != null) {
+                try {
+                    scanner?.dispose()
+                } catch (e: Exception) {
+                    Timber.e(e, "Error disposing scanner")
+                }
+            }
+            scanner = null
+            _scannerState.value = ScannerState.Uninitialized
+        }
+    }
+
     fun enable() {
-        if (_scannerState.value != ScannerState.Initialized &&
-            _scannerState.value != ScannerState.Disabled) return
+        if (_scannerState.value == ScannerState.Enabled) return
+
+        _scannerState.value = ScannerState.Enabling
 
         coroutineScope.launch {
             try {
-                scanner?.let { scanner ->
-                        if (scanner is NullBarcodeScanner) {
-                        _scannerState.value = ScannerState.Enabled
-                        return@launch
-                    }
+                if (scanner == null) {
+                    Timber.e("Cannot enable scanner: Scanner is null")
+                    _scannerState.value = ScannerState.Error("Scanner is not initialized")
+                    return@launch
+                }
 
-                    _scannerState.value = ScannerState.Enabling
-
-                    val result = scanner.enable(globalScanListener)
-
-                    if (result.isSuccess) {
-                        _scannerState.value = ScannerState.Enabled
-                    } else {
-                        _scannerState.value = ScannerState.Error(result.exceptionOrNull()?.message ?: "Unknown error")
-                        Timber.e(result.exceptionOrNull(), "Failed to enable scanner")
-                    }
-                } ?: run {
-                    _scannerState.value = ScannerState.Error("Scanner not initialized")
-                    Timber.e("Tried to enable uninitialized scanner")
+                val result = scanner?.enable(globalScanListener)
+                if (result?.isSuccess == true) {
+                    _scannerState.value = ScannerState.Enabled
+                } else {
+                    val errorMessage = result?.exceptionOrNull()?.message ?: "Unknown error"
+                    Timber.e("Failed to enable scanner: $errorMessage")
+                    _scannerState.value = ScannerState.Error(errorMessage)
                 }
             } catch (e: Exception) {
+                Timber.e(e, "Error enabling scanner")
                 _scannerState.value = ScannerState.Error(e.message ?: "Unknown error")
-                Timber.e(e, "Exception during scanner enabling")
             }
         }
     }
@@ -204,44 +248,22 @@ class ScannerService(
 
         coroutineScope.launch {
             try {
-                if (scanner is NullBarcodeScanner) {
-                    _scannerState.value = ScannerState.Disabled
-                    return@launch
-                }
-
                 scanner?.disable()
                 _scannerState.value = ScannerState.Disabled
             } catch (e: Exception) {
-                _scannerState.value = ScannerState.Error(e.message ?: "Unknown error")
-                Timber.e(e, "Exception during scanner disabling")
+                Timber.e(e, "Error disabling scanner")
+                // При ошибке отключения, все равно устанавливаем состояние "отключен"
+                _scannerState.value = ScannerState.Disabled
             }
         }
     }
 
     fun isEnabled(): Boolean {
-        return scannerState.value == ScannerState.Enabled
+        return _scannerState.value == ScannerState.Enabled
     }
 
-    fun triggerScan() {
-        scanner?.let {
-            if (it is DataWedgeBarcodeScanner) {
-                it.triggerScan()
-            }
-        }
-    }
-
-    fun dispose() {
-        coroutineScope.launch {
-            listeners.clear()
-            try {
-                scanner?.disable()
-                scanner?.dispose()
-                scanner = null
-                _scannerState.value = ScannerState.Uninitialized
-            } catch (e: Exception) {
-                Timber.e(e, "Exception during scanner disposal")
-            }
-        }
+    fun isCameraScanner(): Boolean {
+        return isCameraScanner
     }
 }
 

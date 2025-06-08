@@ -1,6 +1,5 @@
 package com.synngate.synnframe.presentation.common.scanner
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,29 +11,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,47 +39,72 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.synngate.synnframe.R
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @Composable
 fun UniversalScannerDialog(
     onBarcodeScanned: (String) -> Unit,
     onClose: () -> Unit,
-    instructionText: String,
+    instructionText: String = stringResource(id = R.string.scan_barcode_instruction),
     expectedBarcode: String? = null,
     title: String = stringResource(id = R.string.scan_barcode),
-    allowManualInput: Boolean = true,
-    modifier: Modifier = Modifier
+    allowManualInput: Boolean = false
 ) {
-    var isManualInputMode by remember { mutableStateOf(false) }
+    // Состояние ошибки сканирования
+    var errorState by remember { mutableStateOf<Pair<String, String>?>(null) }
+    // Генерируем уникальный ключ для пересоздания сканера при ошибке
+    var scannerKey by remember { mutableIntStateOf(0) }
+    // Текст ручного ввода штрихкода
     var manualBarcode by remember { mutableStateOf("") }
-    var scannerKey by remember { mutableStateOf(0) } // Ключ для пересоздания сканера
-
+    // Состояние режима ввода (камера или ручной)
+    var inputMode by remember { mutableStateOf(if (allowManualInput) "camera" else "camera") }
+    // Индикатор обработки
     var isProcessing by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        isProcessing = false
-    }
+    // Сообщение об ошибке при несоответствии штрихкода
+    val barcodeMismatchMessage = expectedBarcode?.let {
+        stringResource(id = R.string.barcode_expected_fmt, it)
+    } ?: stringResource(id = R.string.barcode_mismatch)
 
-    var errorState by remember { mutableStateOf<ErrorState?>(null) }
-    val coroutineScope = rememberCoroutineScope()
-
-    val showTemporaryError = { message: String, barcode: String ->
-        errorState = ErrorState(message, barcode)
-        coroutineScope.launch {
+    // Автоматически скрывать сообщение об ошибке через 3 секунды
+    LaunchedEffect(errorState) {
+        if (errorState != null) {
             delay(3000)
-            if (errorState?.message == message) {
-                errorState = null
-            }
+            errorState = null
         }
     }
 
-    val handleSuccessfulScan = { barcode: String ->
-        if (!isProcessing) {
-            isProcessing = true
-            onBarcodeScanned(barcode)
-            onClose()
+    // Временно показать сообщение об ошибке
+    fun showTemporaryError(message: String, scannedBarcode: String) {
+        errorState = Pair(message, scannedBarcode)
+    }
+
+    // Обработка успешного сканирования
+    fun handleSuccessfulScan(barcode: String) {
+        onBarcodeScanned(barcode)
+    }
+
+    // Явно указываем, что это диалог сканирования, поэтому forceCameraActivation=true
+    ScannerListener(
+        onBarcodeScanned = { barcode ->
+            if (inputMode == "external_scanner") {
+                // Проверяем, соответствует ли штрихкод ожидаемому
+                if (expectedBarcode != null && barcode != expectedBarcode) {
+                    showTemporaryError(barcodeMismatchMessage, barcode)
+                } else {
+                    // Успешное сканирование
+                    handleSuccessfulScan(barcode)
+                }
+            }
+        },
+        forceCameraActivation = true // Явно активируем камеру в диалоге сканирования
+    )
+
+    // Эффект для закрытия ресурсов при закрытии диалога
+    DisposableEffect(Unit) {
+        onDispose {
+            // Освобождаем ресурсы при закрытии диалога
+            Timber.d("Освобождение ресурсов сканера при закрытии диалога")
         }
     }
 
@@ -94,124 +112,98 @@ fun UniversalScannerDialog(
         onDismissRequest = onClose,
         properties = DialogProperties(
             dismissOnBackPress = true,
-            dismissOnClickOutside = false,
+            dismissOnClickOutside = true,
             usePlatformDefaultWidth = false
         )
     ) {
-        Surface(
-            modifier = modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
+        Card(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(0.dp),
+            shape = RoundedCornerShape(0.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp)
+                    .padding(0.dp)
             ) {
+                // Заголовок и кнопка закрытия
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp),
+                        .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleLarge,
+                        text = instructionText,
+                        style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f)
                     )
 
-                    IconButton(onClick = onClose) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = stringResource(id = R.string.close)
-                        )
+                    TextButton(onClick = onClose) {
+                        Text(stringResource(R.string.close))
                     }
                 }
 
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                ) {
-                    Text(
-                        text = instructionText,
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
+                // Переключатель режима ввода (если разрешен ручной ввод)
+                if (allowManualInput) {
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
-                    )
-                }
-
-                if (expectedBarcode != null) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                     ) {
-                        Text(
-                            text = stringResource(R.string.expected_barcode, expectedBarcode),
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        )
+                        Button(
+                            onClick = { inputMode = "camera" },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(stringResource(R.string.use_camera))
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Button(
+                            onClick = { inputMode = "manual" },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(stringResource(R.string.manual_input))
+                        }
                     }
                 }
 
+                // Основная область для сканирования или ручного ввода
                 Box(
                     modifier = Modifier
+                        .fillMaxSize()
                         .weight(1f)
-                        .fillMaxWidth()
                 ) {
-                    val barcodeMismatchMessage = stringResource(id = R.string.barcode_mismatch)
-                    if (isManualInputMode) {
-                        // Режим ручного ввода
+                    if (inputMode == "manual") {
+                        // Ручной ввод
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             OutlinedTextField(
                                 value = manualBarcode,
-                                onValueChange = {
-                                    manualBarcode = it
-                                    // Сбрасываем ошибку при изменении ввода
-                                    errorState = null
-                                },
+                                onValueChange = { manualBarcode = it },
                                 label = { Text(stringResource(R.string.enter_barcode)) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp),
-                                singleLine = true,
-                                isError = errorState != null
+                                modifier = Modifier.fillMaxWidth()
                             )
 
-                            errorState?.let {
-                                Text(
-                                    text = "${it.message}\nОтсканирован: ${it.barcode}",
-                                    color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                )
-                            }
+                            Spacer(modifier = Modifier.height(16.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Button(
-                                    onClick = { isManualInputMode = false },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    ),
+                                    onClick = { inputMode = "camera" },
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(stringResource(R.string.use_camera))
@@ -293,93 +285,24 @@ fun UniversalScannerDialog(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        text = "${it.message}\nОтсканирован: ${it.barcode}",
+                                        text = it.first,
                                         color = MaterialTheme.colorScheme.onErrorContainer,
                                         style = MaterialTheme.typography.bodyMedium,
                                         textAlign = TextAlign.Center
                                     )
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    // Кнопка для обновления сканера вручную
-                                    Button(
-                                        onClick = {
-                                            errorState = null
-                                            scannerKey++ // Пересоздаем сканер
-                                        },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary
-                                        )
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Refresh,
-                                            contentDescription = "Обновить",
-                                            modifier = Modifier.padding(end = 4.dp)
-                                        )
-                                        Text("Обновить сканер")
-                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = it.second,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        textAlign = TextAlign.Center
+                                    )
                                 }
                             }
                         }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Нижние кнопки
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Кнопка переключения режима ввода (если разрешен ручной ввод)
-                    if (allowManualInput) {
-                        Button(
-                            onClick = {
-                                isManualInputMode = !isManualInputMode
-                                errorState = null // Сбросить ошибки при смене режима
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            ),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    if (isManualInputMode)
-                                        stringResource(R.string.use_camera)
-                                    else
-                                        stringResource(R.string.manual_input)
-                                )
-                                Icon(
-                                    imageVector = if (isManualInputMode)
-                                        Icons.Default.KeyboardArrowDown
-                                    else
-                                        Icons.Default.KeyboardArrowUp,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(start = 4.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(16.dp))
-                    }
-
-                    // Кнопка закрытия
-                    Button(
-                        onClick = onClose,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(id = R.string.cancel))
                     }
                 }
             }
         }
     }
 }
-
-private data class ErrorState(
-    val message: String,
-    val barcode: String
-)

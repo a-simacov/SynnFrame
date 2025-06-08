@@ -25,9 +25,10 @@ fun BarcodeHandlerWithState(
         isProcessingBarcode = false
 
         if (hasRealScanner) {
-            scannerService?.let {
-                if (!it.isEnabled()) {
-                    it.enable()
+            scannerService?.let { service ->
+                // Проверяем, что это не камера устройства, прежде чем активировать
+                if (!service.isEnabled() && !service.isCameraScanner()) {
+                    service.enable()
                 }
             }
         }
