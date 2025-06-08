@@ -197,7 +197,7 @@ private fun ErrorPanel(
         ) {
             Icon(
                 imageVector = Icons.Default.Error,
-                contentDescription = "Ошибка",
+                contentDescription = null,
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(24.dp)
             )

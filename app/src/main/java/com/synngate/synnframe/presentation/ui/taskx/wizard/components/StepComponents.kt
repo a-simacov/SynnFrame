@@ -863,7 +863,7 @@ fun QuantityStep(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Lock,
-                            contentDescription = "Заблокировано",
+                            contentDescription = null,
                             tint = Color(0xFFEC407A),
                             modifier = Modifier.size(16.dp)
                         )
@@ -1045,7 +1045,7 @@ fun PlannedObjectCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = icon ?: Icons.Default.Lock,
-                            contentDescription = "Заблокировано",
+                            contentDescription = null,
                             tint = Color(0xFFEC407A),
                             modifier = Modifier.size(16.dp)
                         )

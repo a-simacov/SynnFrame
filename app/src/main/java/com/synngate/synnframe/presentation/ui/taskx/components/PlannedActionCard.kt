@@ -150,7 +150,7 @@ fun ExpandableActionCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.RemoveDone,
-                                contentDescription = "Снять отметку",
+                                contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -170,7 +170,7 @@ fun ExpandableActionCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Отметить выполненным",
+                                contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -309,13 +309,13 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.LocationOn,
-                                contentDescription = "Ячейка хранения",
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                                 modifier = Modifier.size(16.dp)
                             )
                             Icon(
                                 imageVector = Icons.Default.ArrowUpward,
-                                contentDescription = "Из",
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                                 modifier = Modifier.size(16.dp)
                             )
@@ -334,13 +334,13 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.LocationOn,
-                                contentDescription = "Ячейка размещения",
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                                 modifier = Modifier.size(16.dp)
                             )
                             Icon(
                                 imageVector = Icons.Default.ArrowDownward,
-                                contentDescription = "В",
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                                 modifier = Modifier.size(16.dp)
                             )
@@ -363,13 +363,13 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.ViewInAr,
-                                contentDescription = "Паллета хранения",
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                                 modifier = Modifier.size(16.dp)
                             )
                             Icon(
                                 imageVector = Icons.Default.ArrowUpward,
-                                contentDescription = "Из",
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                                 modifier = Modifier.size(16.dp)
                             )
@@ -387,13 +387,13 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.ViewInAr,
-                                contentDescription = "Паллета размещения",
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                                 modifier = Modifier.size(16.dp)
                             )
                             Icon(
                                 imageVector = Icons.Default.ArrowDownward,
-                                contentDescription = "В",
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                                 modifier = Modifier.size(16.dp)
                             )

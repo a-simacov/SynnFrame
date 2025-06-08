@@ -70,7 +70,7 @@ fun LoadingButton(
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         imageVector = Icons.Default.Cancel,
-                        contentDescription = "Отменить",
+                        contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
                 }

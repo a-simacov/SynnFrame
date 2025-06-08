@@ -12,13 +12,13 @@ enum class WmsAction {
     companion object {
         fun fromString(value: String): WmsAction {
             return when (value.uppercase()) {
-                "PUT_INTO", "ПОЛОЖИТЬ" -> PUT_INTO
-                "TAKE_FROM", "ВЗЯТЬ" -> TAKE_FROM
-                "RECEIPT", "ОПРИХОДОВАТЬ" -> RECEIPT
-                "EXPENSE", "СПИСАТЬ" -> EXPENSE
-                "RECOUNT", "ПЕРЕСЧИТАТЬ" -> RECOUNT
-                "USE", "ИСПОЛЬЗОВАТЬ" -> USE
-                "ASSERT", "ПОДТВЕРЖДЕНИЕ" -> ASSERT
+                "PUT_INTO" -> PUT_INTO
+                "TAKE_FROM" -> TAKE_FROM
+                "RECEIPT" -> RECEIPT
+                "EXPENSE" -> EXPENSE
+                "RECOUNT" -> RECOUNT
+                "USE" -> USE
+                "ASSERT" -> ASSERT
                 else -> PUT_INTO
             }
         }

@@ -104,7 +104,7 @@ fun QrCodeDialog(
                     ) {
                         Image(
                             bitmap = bitmap!!.asImageBitmap(),
-                            contentDescription = "QR Code",
+                            contentDescription = null,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }

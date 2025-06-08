@@ -66,7 +66,7 @@ fun WizardBarcodeField(
                     IconButton(onClick = onSelectFromList) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.List,
-                            contentDescription = "Выбрать из списка"
+                            contentDescription = null
                         )
                     }
                 }
@@ -75,7 +75,7 @@ fun WizardBarcodeField(
                 IconButton(onClick = onScannerClick) {
                     Icon(
                         imageVector = Icons.Default.QrCodeScanner,
-                        contentDescription = "Сканировать"
+                        contentDescription = null
                     )
                 }
             },
@@ -89,7 +89,7 @@ fun WizardBarcodeField(
             ) {
                 Icon(
                     imageVector = Icons.Default.Error,
-                    contentDescription = "Ошибка",
+                    contentDescription = null,
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(16.dp)
                 )

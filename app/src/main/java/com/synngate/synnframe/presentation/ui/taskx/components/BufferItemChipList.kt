@@ -76,14 +76,14 @@ fun BufferItemChipList(
                                 FactActionField.STORAGE_BIN, FactActionField.ALLOCATION_BIN -> {
                                     Icon(
                                         imageVector = Icons.Default.LocationOn,
-                                        contentDescription = "Ячейка",
+                                        contentDescription = null,
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
                                 FactActionField.STORAGE_PALLET, FactActionField.ALLOCATION_PALLET -> {
                                     Icon(
                                         imageVector = Icons.Default.ViewInAr,
-                                        contentDescription = "Паллета",
+                                        contentDescription = null,
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
@@ -96,7 +96,7 @@ fun BufferItemChipList(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Storage,
-                            contentDescription = "Фильтр",
+                            contentDescription = null,
                             tint = MaterialTheme.colorScheme.secondary,
                         )
                     },
@@ -107,7 +107,7 @@ fun BufferItemChipList(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Удалить из буфера"
+                                contentDescription = null
                             )
                         }
                     },

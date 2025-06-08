@@ -45,7 +45,7 @@ fun ScanButton(
     ) {
         Icon(
             imageVector = Icons.Default.QrCodeScanner,
-            contentDescription = "Scan Barcode"
+            contentDescription = null
         )
     }
 }

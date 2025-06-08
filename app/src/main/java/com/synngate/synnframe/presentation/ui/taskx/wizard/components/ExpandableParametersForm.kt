@@ -351,7 +351,7 @@ private fun ExpandableButtonContent(
                 // Показываем иконку раскрытия/скрытия
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (isExpanded) "Скрыть параметры" else "Показать параметры"
+                    contentDescription = null
                 )
             }
         }

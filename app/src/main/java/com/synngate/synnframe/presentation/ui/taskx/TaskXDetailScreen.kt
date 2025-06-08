@@ -196,7 +196,7 @@ fun TaskXDetailScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.FastForward,
-                        contentDescription = "Выполнить текущее действие"
+                        contentDescription = null
                     )
                 }
             }

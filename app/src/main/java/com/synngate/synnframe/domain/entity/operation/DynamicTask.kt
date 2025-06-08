@@ -13,11 +13,11 @@ data class DynamicTask(
 ) {
     fun getTaskStatus(): TaskXStatus {
         return when (status.uppercase()) {
-            "TO_DO", "К ВЫПОЛНЕНИЮ" -> TaskXStatus.TO_DO
-            "IN_PROGRESS", "ВЫПОЛНЯЕТСЯ" -> TaskXStatus.IN_PROGRESS
-            "PAUSED", "ПРИОСТАНОВЛЕНО" -> TaskXStatus.PAUSED
-            "COMPLETED", "ЗАВЕРШЕНО" -> TaskXStatus.COMPLETED
-            "CANCELLED", "ОТМЕНЕНО" -> TaskXStatus.CANCELLED
+            "TO_DO" -> TaskXStatus.TO_DO
+            "IN_PROGRESS" -> TaskXStatus.IN_PROGRESS
+            "PAUSED" -> TaskXStatus.PAUSED
+            "COMPLETED" -> TaskXStatus.COMPLETED
+            "CANCELLED" -> TaskXStatus.CANCELLED
             else -> TaskXStatus.TO_DO
         }
     }

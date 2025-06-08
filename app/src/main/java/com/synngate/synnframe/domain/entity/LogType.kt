@@ -8,9 +8,9 @@ enum class LogType {
     companion object {
         fun fromString(value: String): LogType {
             return when (value.uppercase()) {
-                "INFO", "ИНФОРМАЦИЯ" -> INFO
-                "WARNING", "WARN", "ПРЕДУПРЕЖДЕНИЕ" -> WARNING
-                "ERROR", "ERR", "ОШИБКА" -> ERROR
+                "INFO" -> INFO
+                "WARNING" -> WARNING
+                "ERROR" -> ERROR
                 else -> INFO
             }
         }

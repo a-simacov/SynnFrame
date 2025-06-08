@@ -19,7 +19,6 @@ fun SearchButton(
     modifier: Modifier = Modifier
 ) {
     val icon = if (isSearchActive) Icons.Default.SearchOff else Icons.Default.Search
-    val description = if (isSearchActive) "Выключить поиск" else "Включить поиск"
 
     IconButton(
         onClick = onToggleSearch,
@@ -27,7 +26,7 @@ fun SearchButton(
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = description,
+            contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurface
         )
     }

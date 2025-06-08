@@ -179,7 +179,7 @@ fun AppScaffold(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Menu,
-                                        contentDescription = "Menu"
+                                        contentDescription = null
                                     )
                                 }
                             }
@@ -191,7 +191,7 @@ fun AppScaffold(
                                 IconButton(onClick = { menuExpanded = true }) {
                                     Icon(
                                         imageVector = Icons.Default.MoreVert,
-                                        contentDescription = "More options"
+                                        contentDescription = null
                                     )
                                 }
 

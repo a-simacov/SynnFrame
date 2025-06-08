@@ -159,7 +159,7 @@ fun WizardQuantityInput(
                         ) {
                             Icon(
                                 Icons.Default.Clear,
-                                contentDescription = "Очистить",
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -184,7 +184,7 @@ fun WizardQuantityInput(
             ) {
                 Icon(
                     imageVector = Icons.Default.Error,
-                    contentDescription = "Ошибка",
+                    contentDescription = null,
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(end = 4.dp)
                 )

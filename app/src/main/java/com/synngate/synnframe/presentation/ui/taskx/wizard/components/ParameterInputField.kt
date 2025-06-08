@@ -415,7 +415,7 @@ private fun DateTimeParameterField(
                 IconButton(onClick = { showDatePicker = true }) {
                     Icon(
                         Icons.Default.DateRange,
-                        contentDescription = "Выбрать дату"
+                        contentDescription = null
                     )
                 }
                 IconButton(onClick = {
@@ -428,7 +428,7 @@ private fun DateTimeParameterField(
                 }) {
                     Icon(
                         Icons.Default.Schedule,
-                        contentDescription = "Выбрать время"
+                        contentDescription = null
                     )
                 }
             }
@@ -656,7 +656,7 @@ private fun ParameterErrorMessage(message: String) {
     ) {
         Icon(
             imageVector = Icons.Default.Error,
-            contentDescription = "Ошибка",
+            contentDescription = null,
             tint = MaterialTheme.colorScheme.error,
             modifier = Modifier.size(16.dp)
         )

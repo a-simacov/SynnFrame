@@ -106,7 +106,7 @@ fun NotificationBar(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Закрыть",
+                            contentDescription = null,
                             tint = textColor
                         )
                     }

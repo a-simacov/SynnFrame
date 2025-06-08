@@ -181,7 +181,7 @@ fun ExpirationDatePicker(
                         }) {
                             Icon(
                                 imageVector = Icons.Default.Clear,
-                                contentDescription = "Очистить"
+                                contentDescription = null
                             )
                         }
                     }
@@ -189,7 +189,7 @@ fun ExpirationDatePicker(
                     IconButton(onClick = { showDatePicker = true }) {
                         Icon(
                             imageVector = Icons.Default.CalendarMonth,
-                            contentDescription = "Выбрать дату"
+                            contentDescription = null
                         )
                     }
                 }
@@ -201,7 +201,7 @@ fun ExpirationDatePicker(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
-                                contentDescription = "Предупреждение",
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -213,7 +213,7 @@ fun ExpirationDatePicker(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
-                                contentDescription = "Предупреждение",
+                                contentDescription = null,
                                 tint = Color(0xFFFF9800), // Оранжевый
                                 modifier = Modifier.size(16.dp)
                             )
@@ -225,7 +225,7 @@ fun ExpirationDatePicker(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
-                                contentDescription = "Предупреждение",
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(16.dp)
                             )

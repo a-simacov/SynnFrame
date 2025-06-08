@@ -106,7 +106,7 @@ fun <T> CarouselValueButton(
                     Spacer(modifier = Modifier.width(2.dp))
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = "Следующее",
+                        contentDescription = null,
                         modifier = Modifier.size(16.dp),
                         tint = LocalContentColor.current.copy(alpha = 0.5f)
                     )

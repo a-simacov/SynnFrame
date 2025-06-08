@@ -46,7 +46,7 @@ fun TaskHeaderComponent(
             ) {
                 Icon(
                     imageVector = if (showSearchBar) Icons.Default.SearchOff else Icons.Default.Search,
-                    contentDescription = if (showSearchBar) "Скрыть поиск" else "Показать поиск",
+                    contentDescription = null,
                     tint = if (showSearchBar) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -59,7 +59,7 @@ fun TaskHeaderComponent(
             ) {
                 Icon(
                     imageVector = Icons.Default.FilterList,
-                    contentDescription = if (showFilters) "Скрыть фильтры" else "Показать фильтры",
+                    contentDescription = null,
                     tint = if (showFilters) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -72,7 +72,7 @@ fun TaskHeaderComponent(
             ) {
                 Icon(
                     imageVector = Icons.Default.Storage,
-                    contentDescription = if (showBufferItems) "Скрыть буфер" else "Показать буфер",
+                    contentDescription = null,
                     tint = if (showBufferItems) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface
                 )
             }
