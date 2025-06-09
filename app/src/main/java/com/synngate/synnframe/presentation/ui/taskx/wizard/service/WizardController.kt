@@ -30,9 +30,9 @@ class WizardController(
                 val errorState = ActionWizardState(
                     taskId = taskId,
                     actionId = actionId,
-                    error = "Задание не найдено"
+                    error = "Task not found"
                 )
-                return StateTransitionResult.error(errorState, "Задание не найдено")
+                return StateTransitionResult.error(errorState, "Task not found")
             }
 
             val plannedAction = task.plannedActions.find { it.id == actionId }
@@ -40,9 +40,9 @@ class WizardController(
                 val errorState = ActionWizardState(
                     taskId = taskId,
                     actionId = actionId,
-                    error = "Действие не найдено"
+                    error = "Action not found"
                 )
-                return StateTransitionResult.error(errorState, "Действие не найдено")
+                return StateTransitionResult.error(errorState, "Action not found")
             }
 
             val actionTemplate = plannedAction.actionTemplate
@@ -50,9 +50,9 @@ class WizardController(
                 val errorState = ActionWizardState(
                     taskId = taskId,
                     actionId = actionId,
-                    error = "Шаблон действия не найден"
+                    error = "Action template not found"
                 )
-                return StateTransitionResult.error(errorState, "Шаблон действия не найден")
+                return StateTransitionResult.error(errorState, "Action template not found")
             }
 
             val sortedSteps = actionTemplate.actionSteps.sortedBy { it.order }
@@ -70,7 +70,7 @@ class WizardController(
                 completedAt = LocalDateTime.now()
             )
 
-            Timber.d("Визард успешно инициализирован для задания ${task.id}, действие $actionId")
+            Timber.d("Wizard successfully initialized for task ${task.id}, action $actionId")
 
             val initialState = ActionWizardState(
                 taskId = taskId,
@@ -93,16 +93,16 @@ class WizardController(
             return StateTransitionResult.success(updatedState)
 
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка инициализации визарда: ${e.message}")
+            Timber.e(e, "Error initializing wizard: ${e.message}")
 
             val initialState = ActionWizardState(
                 taskId = taskId,
                 actionId = actionId,
-                error = "Ошибка: ${e.message}"
+                error = "Error: ${e.message}"
             )
 
-            val errorState = stateMachine.transition(initialState, WizardEvent.LoadFailure(e.message ?: "Неизвестная ошибка"))
-            return StateTransitionResult.error(errorState, "Ошибка инициализации визарда: ${e.message}")
+            val errorState = stateMachine.transition(initialState, WizardEvent.LoadFailure(e.message ?: "Unknown error"))
+            return StateTransitionResult.error(errorState, "Error initializing wizard: ${e.message}")
         }
     }
 
@@ -111,11 +111,11 @@ class WizardController(
         val steps = state.steps
 
         if (currentStepIndex >= steps.size) {
-            return StateTransitionResult.error(state, "Индекс шага вне диапазона")
+            return StateTransitionResult.error(state, "Step index out of range")
         }
 
         if (!validateStep()) {
-            return StateTransitionResult.error(state, "Валидация шага не пройдена")
+            return StateTransitionResult.error(state, "Step validation failed")
         }
 
         // Перед переходом сохраняем объект в буфер, если нужно
@@ -170,11 +170,11 @@ class WizardController(
     }
 
     fun setObjectForCurrentStep(state: ActionWizardState, obj: Any): StateTransitionResult<ActionWizardState> {
-        val currentStep = state.getCurrentStep() ?: return StateTransitionResult.error(state, "Текущий шаг не найден")
+        val currentStep = state.getCurrentStep() ?: return StateTransitionResult.error(state, "Current step not found")
 
         // Если шаг заблокирован буфером (режим ALWAYS), не позволяем изменять значение
         if (state.lockedObjectSteps.contains(currentStep.id)) {
-            return StateTransitionResult.error(state, "Шаг заблокирован буфером (режим ALWAYS)")
+            return StateTransitionResult.error(state, "Step is locked by buffer (ALWAYS mode)")
         }
 
         var updatedState = state
@@ -204,20 +204,20 @@ class WizardController(
         )
 
         if (!networkResult.isSuccess()) {
-            val errorMessage = networkResult.getErrorMessage() ?: "Неизвестная ошибка"
+            val errorMessage = networkResult.getErrorMessage() ?: "Unknown error"
             val stateWithError = stateWithoutLoading.copy(error = errorMessage)
             return StateTransitionResult.error(stateWithError, errorMessage)
         }
 
         val serverObject = networkResult.getResponseData() ?: return StateTransitionResult.error(
             stateWithoutLoading,
-            "Нет данных в ответе сервера"
+            "No data in server response"
         )
 
         // Устанавливаем объект в текущий шаг
         val currentStep = state.getCurrentStep() ?: return StateTransitionResult.error(
             stateWithoutLoading,
-            "Текущий шаг не найден"
+            "Current step not found"
         )
 
         // Используем существующий метод для установки объекта
@@ -236,16 +236,16 @@ class WizardController(
 
     suspend fun tryAutoAdvance(state: ActionWizardState, validateStep: suspend () -> Boolean): StateTransitionResult<ActionWizardState> {
         if (state.error != null) {
-            return StateTransitionResult.error(state, "Автопереход отменен: есть ошибка в состоянии")
+            return StateTransitionResult.error(state, "Auto-advance canceled: there is an error in the state")
         }
 
         val currentStep = state.getCurrentStep() ?:
-        return StateTransitionResult.error(state, "Текущий шаг не найден")
+        return StateTransitionResult.error(state, "Current step not found")
 
         // Проверяем настройку автоперехода для текущего шага
         if (!currentStep.autoAdvance) {
-            Timber.d("Автопереход отключен в настройках шага ${currentStep.id}: ${currentStep.name}")
-            return StateTransitionResult.error(state, "Автопереход отключен в настройках")
+            Timber.d("Auto-advance disabled in step settings ${currentStep.id}: ${currentStep.name}")
+            return StateTransitionResult.error(state, "Auto-advance disabled in settings")
         }
 
         // Далее идет существующая логика с учетом особенностей различных типов полей...
@@ -256,8 +256,8 @@ class WizardController(
             if (needsAdditionalProps) {
                 val selectedObj = state.selectedObjects[currentStep.id]
                 if (selectedObj == null) {
-                    Timber.d("Автопереход отменен: не выбран объект для шага товара")
-                    return StateTransitionResult.error(state, "Автопереход отменен: не выбран объект для шага товара")
+                    Timber.d("Auto-advance canceled: no object selected for product step")
+                    return StateTransitionResult.error(state, "Auto-advance canceled: no object selected for product step")
                 }
 
                 val taskProduct = selectedObj as? TaskProduct
@@ -265,20 +265,20 @@ class WizardController(
                     val needsExpDate = state.shouldShowExpirationDate()
 
                     if (needsExpDate && taskProduct.expirationDate == null) {
-                        Timber.d("Автопереход отменен: товар требует заполнения срока годности")
-                        return StateTransitionResult.error(state, "Автопереход отменен: товар требует заполнения срока годности")
+                        Timber.d("Auto-advance canceled: product requires expiration date")
+                        return StateTransitionResult.error(state, "Auto-advance canceled: product requires expiration date")
                     }
 
-                    Timber.d("Автопереход отменен: для товаров с дополнительными свойствами автопереход запрещен")
-                    return StateTransitionResult.error(state, "Автопереход отменен: для товаров с дополнительными свойствами автопереход запрещен")
+                    Timber.d("Auto-advance canceled: auto-advance is forbidden for products with additional properties")
+                    return StateTransitionResult.error(state, "Auto-advance canceled: auto-advance is forbidden for products with additional properties")
                 }
             }
         }
 
         // Валидация шага
         if (!validateStep()) {
-            Timber.d("Автопереход отменен: ошибка валидации")
-            return StateTransitionResult.error(state, "Автопереход отменен: ошибка валидации")
+            Timber.d("Auto-advance canceled: validation error")
+            return StateTransitionResult.error(state, "Auto-advance canceled: validation error")
         }
 
         // Сохраняем в буфер и переходим к следующему видимому шагу
@@ -296,13 +296,13 @@ class WizardController(
         // Проверяем, можно ли использовать буфер для текущего шага
         val bufferUsage = currentStep.bufferUsage
         if (bufferUsage == BufferUsage.NEVER) {
-            Timber.d("Буфер не используется для шага ${currentStep.id} (режим NEVER)")
+            Timber.d("Buffer not used for step ${currentStep.id} (NEVER mode)")
             return StateTransitionResult.success(state)
         }
 
         // Если уже выбран объект для этого шага, не применяем буфер
         if (state.selectedObjects.containsKey(currentStep.id)) {
-            Timber.d("Объект уже выбран для шага ${currentStep.id}, буфер не применяется")
+            Timber.d("Object already selected for step ${currentStep.id}, buffer not applied")
             return StateTransitionResult.success(state)
         }
 
@@ -311,14 +311,14 @@ class WizardController(
         val bufferValue = taskBuffer.getObjectForField(currentStep.factActionField)
 
         if (bufferValue == null) {
-            Timber.d("Объект не найден в буфере для поля ${currentStep.factActionField}")
+            Timber.d("Object not found in buffer for field ${currentStep.factActionField}")
             return StateTransitionResult.success(state)
         }
 
         val (obj, source) = bufferValue
         val isBufferObjectLocked = bufferUsage == BufferUsage.ALWAYS
 
-        Timber.d("Применяем объект из буфера для шага ${currentStep.id}: $obj, source: $source, locked: $isBufferObjectLocked")
+        Timber.d("Applying object from buffer for step ${currentStep.id}: $obj, source: $source, locked: $isBufferObjectLocked")
 
         // Применяем значение из буфера
         val updatedState = stateMachine.transition(
@@ -338,7 +338,7 @@ class WizardController(
             return StateTransitionResult.success(state)
         }
 
-        Timber.d("Автопереход из буфера для шага ${currentStep.id}")
+        Timber.d("Auto-advance from buffer for step ${currentStep.id}")
 
         // Для заблокированных полей (режим ALWAYS) автоматически переходим к следующему шагу
         val updatedState = stateMachine.transition(state, WizardEvent.AutoAdvanceFromBuffer)
@@ -359,7 +359,7 @@ class WizardController(
 
             val taskBuffer = TaskXDataHolderSingleton.taskBuffer
 
-            Timber.d("Сохранение объекта ${selectedObject.javaClass.simpleName} в буфер из шага ${currentStep.name}")
+            Timber.d("Saving object ${selectedObject.javaClass.simpleName} to buffer from step ${currentStep.name}")
 
             // Сохраняем объект в буфер с указанием источника "wizard"
             when (currentStep.factActionField) {
@@ -381,7 +381,7 @@ class WizardController(
 
         // Если для шага установлен режим CLEAR, очищаем соответствующее поле в буфере
         if (currentStep.bufferUsage == BufferUsage.CLEAR) {
-            Timber.d("Очистка поля ${currentStep.factActionField} в буфере (режим CLEAR)")
+            Timber.d("Clearing field ${currentStep.factActionField} in buffer (CLEAR mode)")
             TaskXDataHolderSingleton.taskBuffer.clearField(currentStep.factActionField)
         }
 
@@ -440,7 +440,7 @@ class WizardController(
 
         // Дополнительная проверка, что isLoading точно сброшен
         val finalState = if (newState.isLoading) {
-            Timber.w("isLoading все еще true после SendFailure, принудительно сбрасываем")
+            Timber.w("isLoading is still true after SendFailure, forcefully resetting")
             newState.copy(isLoading = false, sendingFailed = true)
         } else {
             newState

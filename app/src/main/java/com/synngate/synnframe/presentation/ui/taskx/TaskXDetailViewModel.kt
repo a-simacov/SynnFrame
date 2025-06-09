@@ -28,9 +28,9 @@ class TaskXDetailViewModel(
     private val userUseCases: UserUseCases,
     private val productUseCases: ProductUseCases,
 ) : BaseViewModel<TaskXDetailState, TaskXDetailEvent>(
-        initialState = TaskXDetailState(
-            actionFilter = ActionFilter.CURRENT
-        )
+    initialState = TaskXDetailState(
+        actionFilter = ActionFilter.CURRENT
+    )
 ) {
 
     private val actionValidator = ActionValidator()
@@ -76,25 +76,25 @@ class TaskXDetailViewModel(
                             )
                         }
                     } else {
-                        Timber.e("Задание или его тип не определены после загрузки")
+                        Timber.e("Task or its type not defined after loading")
                         updateState {
                             it.copy(
                                 isLoading = false,
-                                error = "Не удалось загрузить данные задания"
+                                error = "Failed to load task data"
                             )
                         }
-                        sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка загрузки данных задания"))
+                        sendEvent(TaskXDetailEvent.ShowSnackbar("Error loading task data"))
                     }
                 } else {
-                    val error = (taskResult as? ApiResult.Error)?.message ?: "Неизвестная ошибка"
-                    Timber.e("Ошибка при загрузке задания: $error")
+                    val error = (taskResult as? ApiResult.Error)?.message ?: "Unknown error"
+                    Timber.e("Error loading task: $error")
                     updateState { it.copy(isLoading = false, error = error) }
-                    sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка загрузки: $error"))
+                    sendEvent(TaskXDetailEvent.ShowSnackbar("Loading error: $error"))
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Исключение при загрузке задания $taskId")
+                Timber.e(e, "Exception when loading task $taskId")
                 updateState { it.copy(isLoading = false, error = e.message) }
-                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка: ${e.message}"))
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Error: ${e.message}"))
             }
         }
     }
@@ -124,18 +124,18 @@ class TaskXDetailViewModel(
         val actionUiModel = uiState.value.actionUiModels.find { it.id == actionId } ?: return
 
         if (!actionUiModel.isClickable) {
-            sendEvent(TaskXDetailEvent.ShowSnackbar("Действие уже выполнено"))
+            sendEvent(TaskXDetailEvent.ShowSnackbar("Action already completed"))
             return
         }
 
         if (task.status != TaskXStatus.IN_PROGRESS) {
-            sendEvent(TaskXDetailEvent.ShowSnackbar("Задание должно быть в статусе 'Выполняется'"))
+            sendEvent(TaskXDetailEvent.ShowSnackbar("Task must be in 'In Progress' status"))
             return
         }
 
         val validationResult = actionValidator.canExecuteAction(task, actionId)
         if (!validationResult.isSuccess) {
-            showValidationError(validationResult.errorMessage ?: "Невозможно выполнить действие")
+            showValidationError(validationResult.errorMessage ?: "Unable to execute action")
             return
         }
 
@@ -143,7 +143,7 @@ class TaskXDetailViewModel(
             TaskXDataHolderSingleton.setTaskData(task, task.taskType!!, endpoint)
 
             if (!TaskXDataHolderSingleton.hasData()) {
-                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка: невозможно запустить визард. Данные недоступны."))
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Error: cannot start wizard. Data unavailable."))
                 return
             }
         }
@@ -236,7 +236,7 @@ class TaskXDetailViewModel(
             } catch (e: Exception) {
                 Timber.e(e, "$loadingMessage: ${e.message}")
                 updateState { it.copy(isProcessingAction = false) }
-                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка: ${e.message}"))
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Error: ${e.message}"))
             }
         }
     }
@@ -244,9 +244,9 @@ class TaskXDetailViewModel(
     fun pauseTask() {
         processTaskAction(
             action = { taskId, endpoint -> taskXUseCases.pauseTask(taskId, endpoint) },
-            loadingMessage = "Приостановка задания...",
-            successMessage = "Задание приостановлено",
-            errorMessage = "Ошибка при приостановке задания"
+            loadingMessage = "Pausing task...",
+            successMessage = "Task paused",
+            errorMessage = "Error pausing task"
         )
     }
 
@@ -258,7 +258,7 @@ class TaskXDetailViewModel(
         if (!validationResult.isSuccess && !taskType.allowCompletionWithoutFactActions) {
             sendEvent(
                 TaskXDetailEvent.ShowSnackbar(
-                    validationResult.errorMessage ?: "Невозможно завершить задание"
+                    validationResult.errorMessage ?: "Unable to complete task"
                 )
             )
             return
@@ -266,12 +266,12 @@ class TaskXDetailViewModel(
 
         processTaskAction(
             action = { taskId, endpoint -> taskXUseCases.completeTask(taskId, endpoint) },
-            loadingMessage = "Завершение задания...",
-            successMessage = "Задание завершено",
-            errorMessage = "Ошибка при завершении задания",
+            loadingMessage = "Completing task...",
+            successMessage = "Task completed",
+            errorMessage = "Error completing task",
             onSuccess = {
                 TaskXDataHolderSingleton.forceClean()
-                sendEvent(TaskXDetailEvent.NavigateBackWithMessage("Задание завершено"))
+                sendEvent(TaskXDetailEvent.NavigateBackWithMessage("Task completed"))
             }
         )
     }
@@ -337,7 +337,7 @@ class TaskXDetailViewModel(
      */
     fun searchByText(value: String) {
         if (value.isBlank()) {
-            updateState { it.copy(searchError = "Введите значение для поиска") }
+            updateState { it.copy(searchError = "Enter a search value") }
             return
         }
 
@@ -369,11 +369,11 @@ class TaskXDetailViewModel(
 
                 handleSearchResult(result)
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при поиске: $value")
+                Timber.e(e, "Error searching: $value")
                 updateState {
                     it.copy(
                         isSearching = false,
-                        searchError = "Ошибка: ${e.message}"
+                        searchError = "Error: ${e.message}"
                     )
                 }
             }
@@ -383,7 +383,7 @@ class TaskXDetailViewModel(
     private fun handleSearchResult(result: SearchResult) {
         when (result) {
             is SearchResult.Success -> {
-                Timber.d("Найдено ${result.actionIds.size} действий по полю ${result.field}")
+                Timber.d("Found ${result.actionIds.size} actions for field ${result.field}")
 
                 // Сохраняем последний добавленный фильтр
                 lastAddedFilterField = result.field
@@ -564,7 +564,7 @@ class TaskXDetailViewModel(
         val task = uiState.value.task ?: return
 
         if (task.status != TaskXStatus.IN_PROGRESS) {
-            sendEvent(TaskXDetailEvent.ShowSnackbar("Задание должно быть в статусе 'Выполняется'"))
+            sendEvent(TaskXDetailEvent.ShowSnackbar("Task must be in 'In Progress' status"))
             return
         }
 
@@ -609,18 +609,18 @@ class TaskXDetailViewModel(
                         }
 
                         // Показываем уведомление
-                        val message = if (completed) "Действие отмечено как выполненное" else "Отметка о выполнении снята"
+                        val message = if (completed) "Action marked as completed" else "Completion mark removed"
                         sendEvent(TaskXDetailEvent.ShowSnackbar(message))
                     }
                     is ApiResult.Error -> {
                         updateState { it.copy(isProcessingAction = false) }
-                        sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка: ${result.message}"))
+                        sendEvent(TaskXDetailEvent.ShowSnackbar("Error: ${result.message}"))
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при изменении статуса действия: ${e.message}")
+                Timber.e(e, "Error changing action status: ${e.message}")
                 updateState { it.copy(isProcessingAction = false) }
-                sendEvent(TaskXDetailEvent.ShowSnackbar("Ошибка: ${e.message}"))
+                sendEvent(TaskXDetailEvent.ShowSnackbar("Error: ${e.message}"))
             }
         }
     }
@@ -639,11 +639,11 @@ class TaskXDetailViewModel(
         if (currentActions.isNotEmpty()) {
             // Открываем визард для первого текущего действия
             val firstAction = currentActions.first()
-            Timber.d("Открытие текущего действия через FAB: ${firstAction.name}")
+            Timber.d("Opening current action via FAB: ${firstAction.name}")
             onActionClick(firstAction.id)
         } else {
             // Если нет текущих действий, показываем сообщение
-            sendEvent(TaskXDetailEvent.ShowSnackbar("Нет доступных текущих действий"))
+            sendEvent(TaskXDetailEvent.ShowSnackbar("No available current actions"))
         }
     }
 }

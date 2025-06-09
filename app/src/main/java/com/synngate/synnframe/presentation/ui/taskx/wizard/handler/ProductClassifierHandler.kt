@@ -31,7 +31,7 @@ class ProductClassifierHandler(
 
     override suspend fun createFromString(value: String): CreationResult<Product> {
         if (value.isBlank()) {
-            return CreationResult.error("Значение не может быть пустым")
+            return CreationResult.error("Value cannot be empty")
         }
 
         try {
@@ -45,10 +45,10 @@ class ProductClassifierHandler(
                 return CreationResult.success(product)
             }
 
-            return CreationResult.error("Товар не найден по штрихкоду или ID: $value")
+            return CreationResult.error("Product not found by barcode or ID: $value")
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при поиске товара: $value")
-            return CreationResult.error("Ошибка при поиске товара: ${e.message}")
+            Timber.e(e, "Error searching for product: $value")
+            return CreationResult.error("Error searching for product: ${e.message}")
         }
     }
 
@@ -61,7 +61,7 @@ class ProductClassifierHandler(
         val plannedObject = getPlannedObject(state, step)
         if (plannedObject != null) {
             if (obj.id != plannedObject.id) {
-                return ValidationResult.error("Товар не соответствует плану. Ожидается: ${plannedObject.name} (${plannedObject.id})")
+                return ValidationResult.error("Product does not match plan. Expected: ${plannedObject.name} (${plannedObject.id})")
             }
         }
 

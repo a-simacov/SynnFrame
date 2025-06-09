@@ -28,7 +28,7 @@ class BinFieldHandler(
 
     override suspend fun createFromString(value: String): CreationResult<BinX> {
         if (value.isBlank()) {
-            return CreationResult.error("Код ячейки не может быть пустым")
+            return CreationResult.error("Bin code cannot be empty")
         }
 
         try {
@@ -36,8 +36,8 @@ class BinFieldHandler(
             val bin = BinX(code = value, zone = "")
             return CreationResult.success(bin)
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при создании ячейки из строки: $value")
-            return CreationResult.error("Ошибка при создании ячейки: ${e.message}")
+            Timber.e(e, "Error creating bin from string: $value")
+            return CreationResult.error("Error creating bin: ${e.message}")
         }
     }
 
@@ -50,8 +50,8 @@ class BinFieldHandler(
         val plannedObject = getPlannedObject(state, step)
         if (plannedObject != null) {
             if (obj.code != plannedObject.code) {
-                val binType = if (isStorage) "хранения" else "размещения"
-                return ValidationResult.error("Ячейка $binType не соответствует плану. Ожидается: ${plannedObject.code}")
+                val binType = if (isStorage) "storage" else "placement"
+                return ValidationResult.error("Bin $binType does not match plan. Expected: ${plannedObject.code}")
             }
         }
 

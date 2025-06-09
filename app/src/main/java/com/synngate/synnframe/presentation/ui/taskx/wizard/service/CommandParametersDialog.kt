@@ -102,12 +102,12 @@ fun CommandParametersDialog(
                     }
                 }
             ) {
-                Text("Выполнить")
+                Text("Execute")
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text("Cancel")
             }
         },
         modifier = modifier
@@ -128,7 +128,7 @@ fun validateParameters(
 
         // Проверка обязательности
         if (parameter.isRequired && value.isEmpty()) {
-            errors[parameter.id] = "Поле \"${parameter.displayName}\" обязательно для заполнения"
+            errors[parameter.id] = "Field \"${parameter.displayName}\" is required"
             return@forEach
         }
 
@@ -145,20 +145,20 @@ fun validateParameters(
                 )) {
                 val numValue = value.toDoubleOrNull()
                 if (numValue == null) {
-                    errors[parameter.id] = "Некорректное числовое значение"
+                    errors[parameter.id] = "Invalid numeric value"
                     return@forEach
                 }
 
                 validation.minValue?.let { minValue ->
                     if (numValue < minValue) {
-                        errors[parameter.id] = validation.errorMessage ?: "Минимальное значение: $minValue"
+                        errors[parameter.id] = validation.errorMessage ?: "Minimum value: $minValue"
                         return@forEach
                     }
                 }
 
                 validation.maxValue?.let { maxValue ->
                     if (numValue > maxValue) {
-                        errors[parameter.id] = validation.errorMessage ?: "Максимальное значение: $maxValue"
+                        errors[parameter.id] = validation.errorMessage ?: "Maximum value: $maxValue"
                         return@forEach
                     }
                 }
@@ -169,14 +169,14 @@ fun validateParameters(
                 // Проверка длины для не-числовых типов
                 validation.minLength?.let { minLength ->
                     if (value.length < minLength) {
-                        errors[parameter.id] = validation.errorMessage ?: "Минимальная длина: $minLength символов"
+                        errors[parameter.id] = validation.errorMessage ?: "Minimum length: $minLength characters"
                         return@forEach
                     }
                 }
 
                 validation.maxLength?.let { maxLength ->
                     if (value.length > maxLength) {
-                        errors[parameter.id] = validation.errorMessage ?: "Максимальная длина: $maxLength символов"
+                        errors[parameter.id] = validation.errorMessage ?: "Maximum length: $maxLength characters"
                         return@forEach
                     }
                 }
@@ -186,7 +186,7 @@ fun validateParameters(
             validation.pattern?.let { pattern ->
                 try {
                     if (pattern.isNotEmpty() && !value.matches(Regex(pattern))) {
-                        errors[parameter.id] = validation.errorMessage ?: "Некорректный формат"
+                        errors[parameter.id] = validation.errorMessage ?: "Invalid format"
                         return@forEach
                     }
                 } catch (e: Exception) {

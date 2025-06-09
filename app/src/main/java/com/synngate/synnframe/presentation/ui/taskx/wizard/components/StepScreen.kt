@@ -66,7 +66,7 @@ fun StepScreen(
             // Если для шага используется serverSelectionEndpoint, показываем индикатор
             if (currentStep.serverSelectionEndpoint.isNotEmpty()) {
                 Text(
-                    text = "С сервера",
+                    text = "From server",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.End,
@@ -170,7 +170,7 @@ fun StepScreen(
             }
             else -> {
                 Text(
-                    text = "Тип шага не поддерживается: ${currentStep.factActionField}",
+                    text = "Step type is not supported: ${currentStep.factActionField}",
                     color = MaterialTheme.colorScheme.error
                 )
             }
@@ -197,7 +197,7 @@ fun StepScreen(
             modifier = Modifier.fillMaxWidth(),
             enabled = isButtonEnabled && !state.isRequestingServerObject
         ) {
-            Text("Далее")
+            Text("Next")
         }
     }
 }

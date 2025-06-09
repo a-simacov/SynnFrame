@@ -64,7 +64,7 @@ class TaskProductHandler(
 
     override suspend fun createFromString(value: String): CreationResult<TaskProduct> {
         if (value.isBlank()) {
-            return CreationResult.error("Значение не может быть пустым")
+            return CreationResult.error("Value cannot be empty")
         }
 
         try {
@@ -80,10 +80,10 @@ class TaskProductHandler(
                 return CreationResult.success(taskProduct)
             }
 
-            return CreationResult.error("Товар не найден по штрихкоду или ID: $value")
+            return CreationResult.error("Product not found by barcode or ID: $value")
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при поиске товара задания: $value")
-            return CreationResult.error("Ошибка при поиске товара: ${e.message}")
+            Timber.e(e, "Error searching for task product: $value")
+            return CreationResult.error("Error searching for product: ${e.message}")
         }
     }
 
@@ -100,7 +100,7 @@ class TaskProductHandler(
         val plannedObject = getPlannedObject(state, step)
         if (plannedObject != null) {
             if (obj.product.id != plannedObject.product.id) {
-                return ValidationResult.error("Товар не соответствует плану. Ожидается: ${plannedObject.product.name} (${plannedObject.product.id})")
+                return ValidationResult.error("Product does not match plan. Expected: ${plannedObject.product.name} (${plannedObject.product.id})")
             }
         }
 
@@ -114,11 +114,11 @@ class TaskProductHandler(
         step: ActionStepTemplate
     ): SearchResult<TaskProduct> {
         if (value.isBlank()) {
-            return SearchResult.error("Значение не может быть пустым")
+            return SearchResult.error("Value cannot be empty")
         }
 
         if (matchesProduct(value, classifierProduct)) {
-            Timber.d("Штрихкод $value соответствует товару классификатора ${classifierProduct.id}")
+            Timber.d("Barcode $value matches classifier product ${classifierProduct.id}")
 
             val taskProduct = TaskProduct(
                 id = UUID.randomUUID().toString(),
@@ -128,24 +128,24 @@ class TaskProductHandler(
 
             val validationResult = validateObject(taskProduct, state, step)
             if (!validationResult.isSuccess()) {
-                return SearchResult.error(validationResult.getErrorMessage() ?: "Ошибка валидации")
+                return SearchResult.error(validationResult.getErrorMessage() ?: "Validation error")
             }
 
             return SearchResult.success(taskProduct)
         }
 
-        Timber.d("Штрихкод $value не соответствует товару классификатора ${classifierProduct.id}, выполняем стандартный поиск")
+        Timber.d("Barcode $value does not match classifier product ${classifierProduct.id}, performing standard search")
 
         val creationResult = createFromString(value)
         if (!creationResult.isSuccess()) {
-            return SearchResult.error(creationResult.getErrorMessage() ?: "Не удалось создать объект")
+            return SearchResult.error(creationResult.getErrorMessage() ?: "Failed to create object")
         }
 
-        val product = creationResult.getCreatedData() ?: return SearchResult.error("Не удалось создать объект")
+        val product = creationResult.getCreatedData() ?: return SearchResult.error("Failed to create object")
 
         val validationResult = validateObject(product, state, step)
         if (!validationResult.isSuccess()) {
-            return SearchResult.error(validationResult.getErrorMessage() ?: "Ошибка валидации")
+            return SearchResult.error(validationResult.getErrorMessage() ?: "Validation error")
         }
 
         return SearchResult.success(product)

@@ -80,7 +80,7 @@ fun StorageProductStep(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            "Выбранный товар (заблокирован):",
+                            "Selected product (locked):",
                             style = MaterialTheme.typography.titleSmall
                         )
                         Text(
@@ -88,17 +88,17 @@ fun StorageProductStep(
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "Артикул: ${product.product.articleNumber}",
+                            text = "Article: ${product.product.articleNumber}",
                             style = MaterialTheme.typography.bodyMedium
                         )
                         if (product.hasExpirationDate()) {
                             Text(
-                                text = "Срок годности: ${product.expirationDate?.toLocalDate()}",
+                                text = "Expiration date: ${product.expirationDate?.toLocalDate()}",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
                         Text(
-                            text = "Статус: ${product.status.format()}",
+                            text = "Status: ${product.status.format()}",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -111,7 +111,7 @@ fun StorageProductStep(
                     onClick = onRequestServerObject,
                     isLoading = state.isRequestingServerObject,
                     onCancel = onCancelServerRequest,
-                    text = "Получить товар задания с сервера",
+                    text = "Get task product from server",
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -123,14 +123,14 @@ fun StorageProductStep(
                 onValueChange = { barcodeValue = it },
                 onSearch = {
                     if (barcodeValue.isNotEmpty()) {
-                        Timber.d("Поиск по введенному штрихкоду: $barcodeValue")
+                        Timber.d("Searching by entered barcode: $barcodeValue")
                         handleBarcode(barcodeValue)
                     }
                 },
                 onScannerClick = { showScanner = true },
                 onSelectFromList = { showProductSelector = true },
-                label = "Штрихкод, ID, артикул",
-                placeholder = "Введите или отсканируйте",
+                label = "Barcode, ID, article",
+                placeholder = "Enter or scan",
                 enabled = !useServerRequest && !state.isRequestingServerObject // Блокируем поле, если используется серверный запрос
             )
 
@@ -145,7 +145,7 @@ fun StorageProductStep(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            "Выбранный товар:",
+                            "Selected product:",
                             style = MaterialTheme.typography.titleSmall
                         )
                         Text(
@@ -153,17 +153,17 @@ fun StorageProductStep(
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "Артикул: ${selectedProduct.product.articleNumber}",
+                            text = "Article: ${selectedProduct.product.articleNumber}",
                             style = MaterialTheme.typography.bodyMedium
                         )
                         if (selectedProduct.hasExpirationDate()) {
                             Text(
-                                text = "Срок годности: ${selectedProduct.expirationDate?.toLocalDate()}",
+                                text = "Expiration date: ${selectedProduct.expirationDate?.toLocalDate()}",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
                         Text(
-                            text = "Статус: ${selectedProduct.status.format()}",
+                            text = "Status: ${selectedProduct.status.format()}",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -220,7 +220,7 @@ fun StorageProductStep(
                 handleBarcode(barcode)
             },
             onClose = { showScanner = false },
-            instructionText = "Отсканируйте штрихкод товара"
+            instructionText = "Scan product barcode"
         )
     }
 
@@ -265,15 +265,15 @@ fun StorageProductCard(
     PlannedObjectCard(
         title = product.product.name,
         subtitle = buildString {
-            append("Артикул: ${product.product.articleNumber}")
+            append("Article: ${product.product.articleNumber}")
             if (product.hasExpirationDate()) {
                 append(
-                    "\nСрок годности: ${
-                        product.expirationDate?.toLocalDate()?.format(dateFormatter) ?: "Не указан"
+                    "\nExpiration date: ${
+                        product.expirationDate?.toLocalDate()?.format(dateFormatter) ?: "Not specified"
                     }"
                 )
             }
-            append("\nСтатус: ${product.status.format()}")
+            append("\nStatus: ${product.status.format()}")
         },
         isSelected = isSelected,
         onClick = onSelect,
@@ -309,21 +309,21 @@ fun AdditionalPropsProductForm(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = classifierProduct?.name ?: "Товар",
+                    text = classifierProduct?.name ?: "Product",
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = "Артикул: ${classifierProduct?.articleNumber ?: ""}",
+                    text = "Article: ${classifierProduct?.articleNumber ?: ""}",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 if (taskProduct.hasExpirationDate()) {
                     Text(
-                        text = "Срок годности: ${taskProduct.expirationDate?.toLocalDate()}",
+                        text = "Expiration date: ${taskProduct.expirationDate?.toLocalDate()}",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
                 Text(
-                    text = "Статус: ${taskProduct.status.format()}",
+                    text = "Status: ${taskProduct.status.format()}",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -371,7 +371,7 @@ fun AdditionalPropsProductForm(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Загрузка информации о товаре...",
+                    text = "Loading product information...",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -392,7 +392,7 @@ fun AdditionalPropsProductForm(
                         style = MaterialTheme.typography.titleMedium
                     )
                     Text(
-                        text = "Артикул: ${classifierProduct.articleNumber}",
+                        text = "Article: ${classifierProduct.articleNumber}",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
@@ -454,7 +454,7 @@ fun ProductClassifierStep(
                     onClick = onRequestServerObject,
                     isLoading = state.isRequestingServerObject,
                     onCancel = onCancelServerRequest,
-                    text = "Получить товар с сервера",
+                    text = "Get product from server",
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -466,14 +466,14 @@ fun ProductClassifierStep(
                 onValueChange = { barcodeValue = it },
                 onSearch = {
                     if (barcodeValue.isNotEmpty()) {
-                        Timber.d("Поиск по введенному штрихкоду: $barcodeValue")
+                        Timber.d("Searching by entered barcode: $barcodeValue")
                         handleBarcode(barcodeValue)
                     }
                 },
                 onScannerClick = { showScanner = true },
                 onSelectFromList = { showProductSelector = true },
-                label = "Штрихкод, ID, артикул",
-                placeholder = "Введите или отсканируйте",
+                label = "Barcode, ID, article",
+                placeholder = "Enter or scan",
                 enabled = !useServerRequest && !state.isRequestingServerObject // Блокируем поле, если используется серверный запрос
             )
 
@@ -489,7 +489,7 @@ fun ProductClassifierStep(
                     ProductClassifierCard(
                         product = selectedProduct,
                         isSelected = true,
-                        onClick = { /* Уже выбрано */ }
+                        onClick = { /* Already selected */ }
                     )
                 }
             } else if (plannedProduct != null) {
@@ -513,7 +513,7 @@ fun ProductClassifierStep(
                 handleBarcode(barcode)
             },
             onClose = { showScanner = false },
-            instructionText = "Отсканируйте штрихкод товара"
+            instructionText = "Scan product barcode"
         )
     }
 
@@ -540,7 +540,7 @@ fun ProductClassifierCard(
 ) {
     PlannedObjectCard(
         title = product.name,
-        subtitle = "Артикул: ${product.articleNumber}\nID: ${product.id}",
+        subtitle = "Article: ${product.articleNumber}\nID: ${product.id}",
         isSelected = isSelected,
         onClick = onClick,
         isLocked = isLocked,
@@ -585,10 +585,10 @@ fun BinStep(
                     )
                 ) {
                     PlannedObjectCard(
-                        title = "Ячейка: ${bin.code}",
-                        subtitle = bin.zone.takeIf { it.isNotEmpty() }?.let { "Зона: $it" },
+                        title = "Bin: ${bin.code}",
+                        subtitle = bin.zone.takeIf { it.isNotEmpty() }?.let { "Zone: $it" },
                         isSelected = true,
-                        onClick = { /* Ничего не делаем, поле заблокировано */ },
+                        onClick = { /* Nothing to do, field is locked */ },
                         isLocked = true,
                         icon = Icons.Default.Lock
                     )
@@ -601,7 +601,7 @@ fun BinStep(
                     onClick = onRequestServerObject,
                     isLoading = state.isRequestingServerObject,
                     onCancel = onCancelServerRequest,
-                    text = "Получить ${if (isStorage) "ячейку хранения" else "ячейку размещения"} с сервера",
+                    text = "Get ${if (isStorage) "storage bin" else "placement bin"} from server",
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -613,13 +613,13 @@ fun BinStep(
                 onValueChange = { barcodeValue = it },
                 onSearch = {
                     if (barcodeValue.isNotEmpty()) {
-                        Timber.d("Поиск ячейки по коду: $barcodeValue")
+                        Timber.d("Searching bin by code: $barcodeValue")
                         handleBarcode(barcodeValue)
                     }
                 },
                 onScannerClick = { showScanner = true },
-                label = if (isStorage) "Код ячейки хранения" else "Код ячейки размещения",
-                placeholder = "Код ячейки",
+                label = if (isStorage) "Storage bin code" else "Placement bin code",
+                placeholder = "Bin code",
                 enabled = !useServerRequest && !state.isRequestingServerObject // Блокируем поле, если используется серверный запрос
             )
 
@@ -633,10 +633,10 @@ fun BinStep(
                     )
                 ) {
                     PlannedObjectCard(
-                        title = "Ячейка: ${selectedBin.code}",
-                        subtitle = selectedBin.zone.takeIf { it.isNotEmpty() }?.let { "Зона: $it" },
+                        title = "Bin: ${selectedBin.code}",
+                        subtitle = selectedBin.zone.takeIf { it.isNotEmpty() }?.let { "Zone: $it" },
                         isSelected = true,
-                        onClick = { /* Уже выбрано */ }
+                        onClick = { /* Already selected */ }
                     )
                 }
             }
@@ -645,8 +645,8 @@ fun BinStep(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 PlannedObjectCard(
-                    title = "Ячейка: ${plannedBin.code}",
-                    subtitle = "Зона: ${plannedBin.zone}",
+                    title = "Bin: ${plannedBin.code}",
+                    subtitle = "Zone: ${plannedBin.zone}",
                     isSelected = false,
                     onClick = { onObjectSelected(plannedBin) },
                     isPlanned = true
@@ -663,7 +663,7 @@ fun BinStep(
                 handleBarcode(barcode)
             },
             onClose = { showScanner = false },
-            instructionText = if (isStorage) "Отсканируйте код ячейки хранения" else "Отсканируйте код ячейки размещения"
+            instructionText = if (isStorage) "Scan storage bin code" else "Scan placement bin code"
         )
     }
 }
@@ -704,10 +704,10 @@ fun PalletStep(
                     )
                 ) {
                     PlannedObjectCard(
-                        title = "Паллета: ${pallet.code}",
-                        subtitle = if (pallet.isClosed) "Закрыта" else "Открыта",
+                        title = "Pallet: ${pallet.code}",
+                        subtitle = if (pallet.isClosed) "Closed" else "Open",
                         isSelected = true,
-                        onClick = { /* Ничего не делаем, поле заблокировано */ },
+                        onClick = { /* Nothing to do, field is locked */ },
                         isLocked = true,
                         icon = Icons.Default.Lock
                     )
@@ -720,7 +720,7 @@ fun PalletStep(
                     onClick = onRequestServerObject,
                     isLoading = state.isRequestingServerObject,
                     onCancel = onCancelServerRequest,
-                    text = "Получить ${if (isStorage) "паллету хранения" else "паллету размещения"} с сервера",
+                    text = "Get ${if (isStorage) "storage pallet" else "placement pallet"} from server",
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -732,13 +732,13 @@ fun PalletStep(
                 onValueChange = { barcodeValue = it },
                 onSearch = {
                     if (barcodeValue.isNotEmpty()) {
-                        Timber.d("Поиск паллеты по коду: $barcodeValue")
+                        Timber.d("Searching pallet by code: $barcodeValue")
                         handleBarcode(barcodeValue)
                     }
                 },
                 onScannerClick = { showScanner = true },
-                label = if (isStorage) "Код паллеты хранения" else "Код паллеты размещения",
-                placeholder = "Код паллеты",
+                label = if (isStorage) "Storage pallet code" else "Placement pallet code",
+                placeholder = "Pallet code",
                 enabled = !useServerRequest && !state.isRequestingServerObject // Блокируем поле, если используется серверный запрос
             )
 
@@ -752,18 +752,18 @@ fun PalletStep(
                     )
                 ) {
                     PlannedObjectCard(
-                        title = "Паллета: ${selectedPallet.code}",
-                        subtitle = if (selectedPallet.isClosed) "Закрыта" else "Открыта",
+                        title = "Pallet: ${selectedPallet.code}",
+                        subtitle = if (selectedPallet.isClosed) "Closed" else "Open",
                         isSelected = true,
-                        onClick = { /* Уже выбрано */ }
+                        onClick = { /* Already selected */ }
                     )
                 }
             } else if (plannedPallet != null) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 PlannedObjectCard(
-                    title = "Паллета: ${plannedPallet.code}",
-                    subtitle = if (plannedPallet.isClosed) "Закрыта" else "Открыта",
+                    title = "Pallet: ${plannedPallet.code}",
+                    subtitle = if (plannedPallet.isClosed) "Closed" else "Open",
                     isSelected = false,
                     onClick = { onObjectSelected(plannedPallet) },
                     isPlanned = true
@@ -780,7 +780,7 @@ fun PalletStep(
                 handleBarcode(barcode)
             },
             onClose = { showScanner = false },
-            instructionText = if (isStorage) "Отсканируйте код паллеты хранения" else "Отсканируйте код паллеты размещения"
+            instructionText = if (isStorage) "Scan storage pallet code" else "Scan placement pallet code"
         )
     }
 }
@@ -821,7 +821,7 @@ fun QuantityStep(
                 delay(100)
                 focusRequester.requestFocus()
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при установке фокуса на поле ввода количества")
+                Timber.e(e, "Error setting focus on quantity input field")
             }
         }
     }
@@ -848,7 +848,7 @@ fun QuantityStep(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Количество (заблокировано):",
+                        text = "Quantity (locked):",
                         style = MaterialTheme.typography.titleSmall
                     )
                     Text(
@@ -869,7 +869,7 @@ fun QuantityStep(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Значение заблокировано",
+                            text = "Value is locked",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFFEC407A)
                         )
@@ -883,7 +883,7 @@ fun QuantityStep(
                     onClick = onRequestServerObject,
                     isLoading = state.isRequestingServerObject,
                     onCancel = onCancelServerRequest,
-                    text = "Получить количество с сервера",
+                    text = "Get quantity from server",
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -916,7 +916,7 @@ fun QuantityStep(
                     // Только при нажатии на кнопку Done делаем автопереход
                     if (inputValue.isNotEmpty()) {
                         inputValue.toFloatOrNull()?.let {
-                            Timber.d("IME-действие: количество $it")
+                            Timber.d("IME action: quantity $it")
                             // Передаем значение в ViewModel С автопереходом
                             onQuantityChanged(it, true)
                         }
@@ -935,7 +935,7 @@ fun QuantityStep(
 
         if (willExceedPlan && plannedQuantity > 0) {
             Spacer(modifier = Modifier.height(4.dp))
-            WarningMessage(message = "Внимание: превышение планового количества!")
+            WarningMessage(message = "Warning: exceeding planned quantity!")
         }
     }
 }
@@ -959,14 +959,14 @@ private fun QuantityIndicators(
         modifier = Modifier.fillMaxWidth()
     ) {
         QuantityColumn(
-            label = "план",
+            label = "plan",
             valueLarge = formatQuantityDisplay(plannedQuantity),
             valueSmall = formatQuantityDisplay(completedQuantity),
             color = MaterialTheme.colorScheme.onPrimaryContainer
         )
         Spacer(modifier = Modifier.width(32.dp))
         QuantityColumn(
-            label = "будет",
+            label = "will be",
             valueLarge = formatQuantityDisplay(projectedTotalQuantity),
             valueSmall = formatQuantityDisplay(remainingAfterInput),
             color = color
@@ -1023,7 +1023,7 @@ fun PlannedObjectCard(
             Column {
                 if (isPlanned) {
                     Text(
-                        text = "Запланировано:",
+                        text = "Planned:",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1051,7 +1051,7 @@ fun PlannedObjectCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Значение заблокировано",
+                            text = "Value is locked",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFFEC407A)
                         )

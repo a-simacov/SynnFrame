@@ -34,7 +34,7 @@ abstract class BaseFieldHandler<T : Any>(
         return when (validationResult) {
             is com.synngate.synnframe.domain.service.ValidationResult.Success -> ValidationResult.success(obj)
             is com.synngate.synnframe.domain.service.ValidationResult.Error -> {
-                Timber.d("Ошибка валидации: ${validationResult.message}")
+                Timber.d("Validation error: ${validationResult.message}")
                 ValidationResult.error(validationResult.message)
             }
         }
@@ -44,29 +44,29 @@ abstract class BaseFieldHandler<T : Any>(
         try {
             val plannedObject = getPlannedObject(state, step)
             if (plannedObject != null && matchesPlannedObject(barcode, plannedObject)) {
-                Timber.d("Найден плановый объект по штрих-коду: $barcode")
+                Timber.d("Found planned object by barcode: $barcode")
                 return SearchResult.success(plannedObject)
             }
 
             val creationResult = createFromString(barcode)
             if (!creationResult.isSuccess()) {
                 return SearchResult.error(creationResult.getErrorMessage()
-                    ?: "Не удалось создать объект из штрих-кода: $barcode")
+                    ?: "Failed to create object from barcode: $barcode")
             }
 
             val createdObject = creationResult.getCreatedData()
-                ?: return SearchResult.error("Не удалось создать объект из штрих-кода: $barcode")
+                ?: return SearchResult.error("Failed to create object from barcode: $barcode")
 
             val validationResult = validateObject(createdObject, state, step)
             if (!validationResult.isSuccess()) {
                 return SearchResult.error(validationResult.getErrorMessage()
-                    ?: "Объект не прошел валидацию")
+                    ?: "Object failed validation")
             }
 
             return SearchResult.success(createdObject)
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при обработке штрих-кода: $barcode")
-            return SearchResult.error("Ошибка обработки: ${e.message}")
+            Timber.e(e, "Error processing barcode: $barcode")
+            return SearchResult.error("Processing error: ${e.message}")
         }
     }
 

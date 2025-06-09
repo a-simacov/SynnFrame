@@ -334,7 +334,7 @@ private fun DateParameterField(
             IconButton(onClick = { showDatePicker = true }) {
                 Icon(
                     Icons.Default.DateRange,
-                    contentDescription = "Выбрать дату"
+                    contentDescription = "Choose date"
                 )
             }
         }
@@ -357,12 +357,12 @@ private fun DateParameterField(
                     }
                     showDatePicker = false
                 }) {
-                    Text("ОК")
+                    Text("OK")
                 }
             },
             dismissButton = {
                 Button(onClick = { showDatePicker = false }) {
-                    Text("Отмена")
+                    Text("Cancel")
                 }
             }
         ) {
@@ -458,12 +458,12 @@ private fun DateTimeParameterField(
                         showDatePicker = false
                     }
                 }) {
-                    Text("Далее")
+                    Text("Next")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("Отмена")
+                    Text("Cancel")
                 }
             }
         ) {
@@ -521,12 +521,12 @@ private fun TimePickerDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
             Button(onClick = onConfirm) {
-                Text("ОК")
+                Text("OK")
             }
         },
         dismissButton = {
             TextButton(onClick = onCancel) {
-                Text("Отмена")
+                Text("Cancel")
             }
         },
         text = { content() }

@@ -3,8 +3,10 @@ package com.synngate.synnframe.presentation.ui.taskx.wizard.service
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.api.StepCommandApi
 import com.synngate.synnframe.data.remote.dto.CommandExecutionRequestDto
+import com.synngate.synnframe.data.remote.dto.CommandNextAction
 import com.synngate.synnframe.data.remote.dto.FactActionRequestDto
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
+import com.synngate.synnframe.presentation.ui.taskx.entity.CommandExecutionBehavior
 import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
 import com.synngate.synnframe.presentation.ui.taskx.wizard.result.NetworkResult
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +27,7 @@ class CommandExecutionService(
         additionalContext: Map<String, String> = emptyMap()
     ): NetworkResult<CommandExecutionResult> = withContext(Dispatchers.IO) {
         try {
-            Timber.d("Выполнение команды: ${command.name} (${command.id})")
+            Timber.d("Executing command: ${command.name} (${command.id})")
 
             val requestDto = CommandExecutionRequestDto(
                 commandId = command.id,
@@ -51,21 +53,21 @@ class CommandExecutionService(
                     )
 
                     if (response.success) {
-                        Timber.d("Команда ${command.id} выполнена успешно")
+                        Timber.d("Command ${command.id} executed successfully")
                         NetworkResult.success(executionResult)
                     } else {
-                        Timber.w("Команда ${command.id} завершилась с ошибкой: ${response.message}")
-                        NetworkResult.error(response.message ?: "Команда завершилась с ошибкой")
+                        Timber.w("Command ${command.id} completed with error: ${response.message}")
+                        NetworkResult.error(response.message ?: "Command completed with error")
                     }
                 }
                 is ApiResult.Error -> {
-                    Timber.e("Ошибка API при выполнении команды ${command.id}: ${result.message}")
+                    Timber.e("API error when executing command ${command.id}: ${result.message}")
                     NetworkResult.error(result.message)
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e, "Исключение при выполнении команды ${command.id}")
-            NetworkResult.error("Ошибка: ${e.message}")
+            Timber.e(e, "Exception when executing command ${command.id}")
+            NetworkResult.error("Error: ${e.message}")
         }
     }
 }
@@ -77,7 +79,7 @@ data class CommandExecutionResult(
     val success: Boolean,
     val message: String?,
     val resultData: Map<String, String>,
-    val nextAction: com.synngate.synnframe.data.remote.dto.CommandNextAction?,
-    val updatedFactAction: com.synngate.synnframe.data.remote.dto.FactActionRequestDto?,
-    val commandBehavior: com.synngate.synnframe.presentation.ui.taskx.entity.CommandExecutionBehavior
+    val nextAction: CommandNextAction?,
+    val updatedFactAction: FactActionRequestDto?,
+    val commandBehavior: CommandExecutionBehavior
 )

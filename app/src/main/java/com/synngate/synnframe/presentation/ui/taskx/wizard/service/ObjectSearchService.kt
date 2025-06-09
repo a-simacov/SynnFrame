@@ -31,7 +31,7 @@ class ObjectSearchService(
         barcode: String
     ): BarcodeProcessResult<Any> {
         if (state.error != null) {
-            Timber.d("Очистка кэша при наличии ошибки перед новым сканированием")
+            Timber.d("Clearing cache when error exists before new scan")
             validationCache.clear()
         }
 
@@ -39,8 +39,8 @@ class ObjectSearchService(
         val currentStep = state.getCurrentStep()
 
         if (currentStep == null) {
-            Timber.w("Текущий шаг не определен для штрих-кода: $barcode")
-            return BarcodeProcessResult.error("Не удалось определить текущий шаг для поиска")
+            Timber.w("Current step not defined for barcode: $barcode")
+            return BarcodeProcessResult.error("Failed to determine current step for search")
         }
 
         val fieldType = currentStep.factActionField
@@ -48,21 +48,21 @@ class ObjectSearchService(
         // Проверяем, прошло ли достаточно времени с момента последнего сканирования
         // и не совпадает ли текущий штрихкод с предыдущим
         if (currentTime - lastScanTime < MIN_SCAN_INTERVAL && lastScannedBarcode == barcode) {
-            Timber.d("Игнорирование повторного сканирования штрихкода: $barcode (прошло менее ${MIN_SCAN_INTERVAL}мс)")
+            Timber.d("Ignoring repeated barcode scan: $barcode (less than ${MIN_SCAN_INTERVAL}ms passed)")
             return BarcodeProcessResult.ignored()
         }
 
         // Проверяем, не выполняется ли уже запрос для данного типа поля
         val lastRequestTime = activeRequests[fieldType]
         if (lastRequestTime != null && currentTime - lastRequestTime < 5000) {
-            Timber.d("Игнорирование запроса для поля $fieldType: предыдущий запрос еще выполняется")
+            Timber.d("Ignoring request for field $fieldType: previous request is still in progress")
             return BarcodeProcessResult.ignored()
         }
 
         val cacheKey = "${fieldType}_$barcode"
         val cachedResult = validationCache[cacheKey]
         if (cachedResult != null) {
-            Timber.d("Использование кешированного результата для $cacheKey")
+            Timber.d("Using cached result for $cacheKey")
             return cachedResult
         }
 
@@ -73,17 +73,17 @@ class ObjectSearchService(
         activeRequests[fieldType] = currentTime
 
         if (barcode.isBlank()) {
-            return BarcodeProcessResult.error<Any>("Пустой штрихкод").also {
+            return BarcodeProcessResult.error<Any>("Empty barcode").also {
                 // Очищаем флаг активного запроса
                 activeRequests.remove(fieldType)
             }
         }
 
-        Timber.d("Обработка штрих-кода: $barcode для шага: ${currentStep.name}")
+        Timber.d("Processing barcode: $barcode for step: ${currentStep.name}")
 
         try {
             val handler = handlerFactory.createHandlerForStep(currentStep)
-                ?: return BarcodeProcessResult.error<Any>("Неподдерживаемый тип шага: ${currentStep.factActionField}")
+                ?: return BarcodeProcessResult.error<Any>("Unsupported step type: ${currentStep.factActionField}")
                     .also {
                         activeRequests.remove(fieldType)
                     }
@@ -92,11 +92,11 @@ class ObjectSearchService(
 
             val finalResult = if (result.isSuccess()) {
                 val data = result.getFoundData()
-                    ?: return BarcodeProcessResult.error<Any>("Не удалось получить данные объекта")
+                    ?: return BarcodeProcessResult.error<Any>("Failed to get object data")
                 BarcodeProcessResult.success(data)
             } else {
                 BarcodeProcessResult.error(
-                    result.getErrorMessage() ?: "Не удалось найти объект по штрих-коду: $barcode"
+                    result.getErrorMessage() ?: "Failed to find object by barcode: $barcode"
                 )
             }
 
@@ -108,12 +108,12 @@ class ObjectSearchService(
 
             return finalResult
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при обработке штрих-кода: $barcode")
+            Timber.e(e, "Error processing barcode: $barcode")
 
             // Очищаем флаг активного запроса
             activeRequests.remove(fieldType)
 
-            return BarcodeProcessResult.error<Any>("Ошибка при обработке штрих-кода: ${e.message}")
+            return BarcodeProcessResult.error<Any>("Error processing barcode: ${e.message}")
         }
     }
 

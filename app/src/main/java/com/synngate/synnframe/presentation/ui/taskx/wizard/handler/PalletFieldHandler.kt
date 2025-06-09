@@ -28,7 +28,7 @@ class PalletFieldHandler(
 
     override suspend fun createFromString(value: String): CreationResult<Pallet> {
         if (value.isBlank()) {
-            return CreationResult.error("Код паллеты не может быть пустым")
+            return CreationResult.error("Pallet code cannot be empty")
         }
 
         try {
@@ -36,8 +36,8 @@ class PalletFieldHandler(
             val pallet = Pallet(code = value, isClosed = false)
             return CreationResult.success(pallet)
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при создании паллеты из строки: $value")
-            return CreationResult.error("Ошибка при создании паллеты: ${e.message}")
+            Timber.e(e, "Error creating pallet from string: $value")
+            return CreationResult.error("Error creating pallet: ${e.message}")
         }
     }
 
@@ -50,8 +50,8 @@ class PalletFieldHandler(
         val plannedObject = getPlannedObject(state, step)
         if (plannedObject != null) {
             if (obj.code != plannedObject.code) {
-                val palletType = if (isStorage) "хранения" else "размещения"
-                return ValidationResult.error("Паллета $palletType не соответствует плану. Ожидается: ${plannedObject.code}")
+                val palletType = if (isStorage) "storage" else "placement"
+                return ValidationResult.error("Pallet $palletType does not match plan. Expected: ${plannedObject.code}")
             }
         }
 

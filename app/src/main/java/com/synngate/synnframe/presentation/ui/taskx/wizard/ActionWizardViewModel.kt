@@ -64,7 +64,7 @@ class ActionWizardViewModel(
     // Метод для установки callback'а навигации
     fun setNavigateBackCallback(callback: () -> Unit) {
         navigateBackCallback = callback
-        Timber.d("Установлен callback навигации назад из визарда")
+        Timber.d("Back navigation callback set from wizard")
     }
 
     init {
@@ -111,16 +111,16 @@ class ActionWizardViewModel(
             // 1. Проверяем видимость текущего шага
             val stepToCheck = state.steps[stepIndex]
             if (!expressionEvaluator.evaluateVisibilityCondition(stepToCheck.visibilityCondition, state)) {
-                Timber.d("Шаг ${stepToCheck.id} (${stepToCheck.name}) невидим, ищем следующий видимый шаг")
+                Timber.d("Step ${stepToCheck.id} (${stepToCheck.name}) is invisible, looking for the next visible step")
                 // Если шаг невидим, ищем следующий видимый
                 val nextVisibleIndex = expressionEvaluator.findNextVisibleStepIndex(state, stepIndex)
                 if (nextVisibleIndex != null) {
-                    Timber.d("Найден следующий видимый шаг с индексом $nextVisibleIndex")
+                    Timber.d("Found next visible step with index $nextVisibleIndex")
                     updateState { it.copy(currentStepIndex = nextVisibleIndex) }
                     // Рекурсивно инициализируем следующий видимый шаг
                     initializeStepWithFiltersAndBuffer(nextVisibleIndex)
                 } else {
-                    Timber.d("Нет видимых шагов впереди, переходим к итоговому экрану")
+                    Timber.d("No visible steps ahead, proceeding to the summary screen")
                     // Если нет видимых шагов впереди, переходим к экрану итогов
                     updateState { it.copy(showSummary = true) }
                 }
@@ -148,13 +148,13 @@ class ActionWizardViewModel(
                     val matchingFilter = activeFilters.find { it.field == currentStepAfterBuffer.factActionField }
 
                     if (matchingFilter != null) {
-                        Timber.d("Найден соответствующий фильтр для шага ${currentStepAfterBuffer.id}: ${matchingFilter.field}")
+                        Timber.d("Found matching filter for step ${currentStepAfterBuffer.id}: ${matchingFilter.field}")
 
                         // Устанавливаем значение из фильтра
                         setObjectForCurrentStep(matchingFilter.data, true)
 
                         // Для логирования
-                        Timber.d("Значение из фильтра ${matchingFilter.field} установлено в шаг ${currentStepAfterBuffer.id}")
+                        Timber.d("Value from filter ${matchingFilter.field} set to step ${currentStepAfterBuffer.id}")
                         return@launchIO
                     }
                 }
@@ -163,7 +163,7 @@ class ActionWizardViewModel(
             // 4. Если объект из буфера успешно применен, выполняем автопереход для заблокированных полей
             val finalState = uiState.value // Получаем окончательное состояние после всех изменений
             if (bufferApplied && finalState.isCurrentStepLockedByBuffer()) {
-                Timber.d("Выполняем автопереход из буфера для заблокированного поля")
+                Timber.d("Performing auto-advance from buffer for locked field")
                 delay(300) // Небольшая задержка для UI
                 tryAutoAdvanceFromBuffer()
             }
@@ -176,7 +176,7 @@ class ActionWizardViewModel(
                 stateForServerRequest.shouldUseServerRequest() &&
                 !stateForServerRequest.selectedObjects.containsKey(currentStepForServerRequest.id)) {
 
-                Timber.d("Автоматически запрашиваем объект с сервера для шага ${currentStepForServerRequest.id}")
+                Timber.d("Automatically requesting server object for step ${currentStepForServerRequest.id}")
                 delay(300) // Небольшая задержка для UI
                 requestServerObject()
             }
@@ -205,7 +205,7 @@ class ActionWizardViewModel(
                     updateState {
                         it.copy(
                             isLoadingProductInfo = false,
-                            productInfoError = "Товар $productId не найден в базе данных"
+                            productInfoError = "Product $productId not found in database"
                         )
                     }
                 }
@@ -213,7 +213,7 @@ class ActionWizardViewModel(
                 updateState {
                     it.copy(
                         isLoadingProductInfo = false,
-                        productInfoError = "Ошибка загрузки данных о товаре: ${e.message}"
+                        productInfoError = "Error loading product data: ${e.message}"
                     )
                 }
             }
@@ -230,7 +230,7 @@ class ActionWizardViewModel(
                     currentStep.visibilityCondition,
                     currentState
                 )) {
-                Timber.d("Текущий шаг ${currentStep.id} невидим, ищем следующий видимый")
+                Timber.d("Current step ${currentStep.id} is invisible, looking for next visible")
 
                 val nextVisibleIndex = expressionEvaluator.findNextVisibleStepIndex(currentState)
                 if (nextVisibleIndex != null) {
@@ -254,7 +254,7 @@ class ActionWizardViewModel(
             // Проверяем, показывается ли итоговый экран и нужно ли автоматически завершать действие
             if (newState.showSummary) {
                 if (shouldAutoComplete(newState)) {
-                    Timber.d("Автоматическое завершение действия после последнего шага")
+                    Timber.d("Automatic action completion after last step")
                     completeAction()
                 }
             } else {
@@ -282,7 +282,7 @@ class ActionWizardViewModel(
                 currentStep.visibilityCondition,
                 currentState
             )) {
-            Timber.d("Текущий шаг ${currentStep.id} невидим, ищем предыдущий видимый")
+            Timber.d("Current step ${currentStep.id} is invisible, looking for previous visible")
 
             val prevVisibleIndex = expressionEvaluator.findPreviousVisibleStepIndex(currentState)
             if (prevVisibleIndex != null) {
@@ -311,7 +311,7 @@ class ActionWizardViewModel(
         updateState { result.getNewState() }
 
         if (autoAdvance) {
-            Timber.d("Вызываем автопереход после установки объекта: $obj")
+            Timber.d("Initiating auto-advance after setting object: $obj")
             tryAutoAdvance()
         }
     }
@@ -326,7 +326,7 @@ class ActionWizardViewModel(
                     currentStep.visibilityCondition,
                     currentState
                 )) {
-                Timber.d("Текущий шаг ${currentStep.id} невидим, ищем следующий видимый для автоперехода")
+                Timber.d("Current step ${currentStep.id} is invisible, looking for next visible step for auto-advance")
 
                 val nextVisibleIndex = expressionEvaluator.findNextVisibleStepIndex(currentState)
                 if (nextVisibleIndex != null) {
@@ -351,7 +351,7 @@ class ActionWizardViewModel(
                 // Проверяем, произошел ли переход на итоговый экран
                 if (newState.showSummary) {
                     if (shouldAutoComplete(newState)) {
-                        Timber.d("Автоматическое завершение действия после автоперехода на итоговый экран")
+                        Timber.d("Automatic action completion after auto-advance to summary screen")
                         completeAction()
                     }
                 } else {
@@ -376,7 +376,7 @@ class ActionWizardViewModel(
                 // Проверяем, произошел ли переход на итоговый экран
                 if (newState.showSummary) {
                     if (shouldAutoComplete(newState)) {
-                        Timber.d("Автоматическое завершение действия после автоперехода из буфера на итоговый экран")
+                        Timber.d("Automatic action completion after auto-advance from buffer to summary screen")
                         completeAction()
                     }
                 } else {
@@ -394,7 +394,7 @@ class ActionWizardViewModel(
         val isValid = validator.validateCurrentStep(currentState)
 
         if (!isValid) {
-            sendEvent(ActionWizardEvent.ShowSnackbar("Необходимо заполнить все обязательные поля"))
+            sendEvent(ActionWizardEvent.ShowSnackbar("All required fields must be filled"))
         }
 
         return isValid
@@ -406,21 +406,21 @@ class ActionWizardViewModel(
         if (uiState.value.isLoading ||
             uiState.value.showExitDialog ||
             uiState.value.showSummary) {
-            Timber.d("Сканирование игнорируется из-за состояния экрана")
+            Timber.d("Scanning ignored due to screen state")
             return
         }
 
         // Если текущий шаг заблокирован буфером, не обрабатываем сканирования
         if (uiState.value.isCurrentStepLockedByBuffer()) {
-            Timber.d("Шаг заблокирован буфером (режим ALWAYS), сканирование игнорируется")
-            sendEvent(ActionWizardEvent.ShowSnackbar("Поле заблокировано буфером"))
+            Timber.d("Step is locked by buffer (ALWAYS mode), scanning ignored")
+            sendEvent(ActionWizardEvent.ShowSnackbar("Field is locked by buffer"))
             return
         }
 
         // Если для шага используется serverSelectionEndpoint, не обрабатываем сканирования
         if (uiState.value.shouldUseServerRequest()) {
-            Timber.d("Шаг использует serverSelectionEndpoint, сканирование игнорируется")
-            sendEvent(ActionWizardEvent.ShowSnackbar("Для этого шага объекты получаются с сервера"))
+            Timber.d("Step uses serverSelectionEndpoint, scanning ignored")
+            sendEvent(ActionWizardEvent.ShowSnackbar("For this step objects are received from the server"))
             return
         }
 
@@ -447,14 +447,14 @@ class ActionWizardViewModel(
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при обработке штрих-кода: $barcode")
+                Timber.e(e, "Error processing barcode: $barcode")
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка при обработке штрих-кода: ${e.message}"
+                        error = "Error processing barcode: ${e.message}"
                     )
                 }
-                sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка при обработке штрих-кода: ${e.message}"))
+                sendEvent(ActionWizardEvent.ShowSnackbar("Error processing barcode: ${e.message}"))
             }
         }
     }
@@ -467,14 +467,14 @@ class ActionWizardViewModel(
         val currentStep = currentState.getCurrentStep() ?: return
 
         if (currentStep.serverSelectionEndpoint.isEmpty()) {
-            sendEvent(ActionWizardEvent.ShowSnackbar("Endpoint не настроен для этого шага"))
+            sendEvent(ActionWizardEvent.ShowSnackbar("Endpoint not configured for this step"))
             return
         }
 
         // Если шаг заблокирован буфером, не запрашиваем объект
         if (currentState.isCurrentStepLockedByBuffer()) {
-            Timber.d("Шаг заблокирован буфером (режим ALWAYS), запрос объекта игнорируется")
-            sendEvent(ActionWizardEvent.ShowSnackbar("Поле заблокировано буфером"))
+            Timber.d("Step is locked by buffer (ALWAYS mode), object request ignored")
+            sendEvent(ActionWizardEvent.ShowSnackbar("Field is locked by buffer"))
             return
         }
 
@@ -494,11 +494,11 @@ class ActionWizardViewModel(
 
         serverRequestJob = launchIO {
             try {
-                Timber.d("Запрос объекта с сервера: ${currentStep.serverSelectionEndpoint}")
+                Timber.d("Requesting object from server: ${currentStep.serverSelectionEndpoint}")
 
                 // Проверяем, не отменен ли запрос
                 if (uiState.value.serverRequestCancellationToken != cancellationToken) {
-                    Timber.d("Запрос отменен: токен изменился")
+                    Timber.d("Request canceled: token changed")
                     return@launchIO
                 }
 
@@ -510,7 +510,7 @@ class ActionWizardViewModel(
 
                 // Проверяем, не отменен ли запрос
                 if (uiState.value.serverRequestCancellationToken != cancellationToken) {
-                    Timber.d("Запрос отменен после получения результата: токен изменился")
+                    Timber.d("Request canceled after receiving result: token changed")
                     return@launchIO
                 }
 
@@ -525,7 +525,7 @@ class ActionWizardViewModel(
                 if (result.isSuccess()) {
                     val serverObject = result.getResponseData()
                     if (serverObject != null) {
-                        Timber.d("Объект успешно получен с сервера: ${serverObject.javaClass.simpleName}")
+                        Timber.d("Object successfully received from server: ${serverObject.javaClass.simpleName}")
 
                         // Устанавливаем полученный объект в текущий шаг
                         val stateResult = controller.handleServerObjectRequest(uiState.value, result)
@@ -533,36 +533,36 @@ class ActionWizardViewModel(
 
                         // Если объект успешно установлен и нет ошибок, показываем уведомление
                         if (stateResult.isSuccess() && stateResult.getNewState().error == null) {
-                            sendEvent(ActionWizardEvent.ShowSnackbar("Объект успешно получен с сервера"))
+                            sendEvent(ActionWizardEvent.ShowSnackbar("Object successfully received from server"))
                         }
                     } else {
-                        Timber.w("Сервер вернул успешный ответ, но объект не был получен")
+                        Timber.w("Server returned successful response, but object was not received")
                         updateState {
-                            it.copy(error = "Не удалось получить объект с сервера")
+                            it.copy(error = "Failed to get object from server")
                         }
-                        sendEvent(ActionWizardEvent.ShowSnackbar("Не удалось получить объект с сервера"))
+                        sendEvent(ActionWizardEvent.ShowSnackbar("Failed to get object from server"))
                     }
                 } else {
-                    Timber.w("Ошибка при запросе объекта с сервера: ${result.getErrorMessage()}")
+                    Timber.w("Error requesting object from server: ${result.getErrorMessage()}")
                     updateState {
                         it.copy(error = result.getErrorMessage())
                     }
                     sendEvent(ActionWizardEvent.ShowSnackbar(
-                        result.getErrorMessage() ?: "Ошибка при получении объекта с сервера"
+                        result.getErrorMessage() ?: "Error getting object from server"
                     ))
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Исключение при запросе объекта с сервера")
+                Timber.e(e, "Exception when requesting object from server")
 
                 updateState {
                     it.copy(
                         isRequestingServerObject = false,
                         serverRequestCancellationToken = null,
-                        error = "Ошибка: ${e.message}"
+                        error = "Error: ${e.message}"
                     )
                 }
 
-                sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: ${e.message}"))
+                sendEvent(ActionWizardEvent.ShowSnackbar("Error: ${e.message}"))
             }
         }
     }
@@ -575,7 +575,7 @@ class ActionWizardViewModel(
             try {
                 serverRequestJob?.cancelAndJoin()
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при отмене запроса объекта с сервера")
+                Timber.e(e, "Error canceling server object request")
             } finally {
                 serverRequestJob = null
 
@@ -590,31 +590,27 @@ class ActionWizardViewModel(
     }
 
     fun completeAction() {
-        Timber.d("ActionWizardViewModel: начало метода completeAction()")
         launchIO {
             val currentState = uiState.value
             val factAction = currentState.factAction ?: return@launchIO
             val plannedAction = currentState.plannedAction ?: return@launchIO
 
             if (!validator.canComplete(currentState)) {
-                sendEvent(ActionWizardEvent.ShowSnackbar("Не все обязательные шаги выполнены"))
+                sendEvent(ActionWizardEvent.ShowSnackbar("Not all required steps are completed"))
                 return@launchIO
             }
 
             try {
-                Timber.d("ActionWizardViewModel: отправка данных на сервер")
                 updateState { controller.submitForm(it).getNewState() }
 
                 val syncWithServer = plannedAction.actionTemplate?.syncWithServer == true
                 val result = networkService.completeAction(factAction, syncWithServer)
 
                 if (result.isSuccess()) {
-                    Timber.d("ActionWizardViewModel: успешная отправка, вызов навигации через callback")
                     updateState { controller.handleSendSuccess(it).getNewState() }
 
                     // Вызываем callback из главного потока с задержкой для завершения обработки
                     launchMain {
-                        Timber.d("Вызов навигации из главного потока")
                         navigateBackCallback?.invoke()
                     }
                 } else {
@@ -624,20 +620,20 @@ class ActionWizardViewModel(
                     updateState {
                         controller.handleSendFailure(
                             it,
-                            result.getErrorMessage() ?: "Неизвестная ошибка"
+                            result.getErrorMessage() ?: "Unknown error"
                         ).getNewState()
                     }
                     sendEvent(
                         ActionWizardEvent.ShowSnackbar(
-                            result.getErrorMessage() ?: "Не удалось отправить данные"
+                            result.getErrorMessage() ?: "Failed to send data"
                         )
                     )
                 }
             } catch (e: Exception) {
                 // Добавляем обработку исключений с явным сбросом флага загрузки
-                Timber.e(e, "Ошибка при отправке данных: ${e.message}")
+                Timber.e(e, "Error sending data: ${e.message}")
                 updateState { it.copy(isLoading = false, sendingFailed = true, error = e.message) }
-                sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: ${e.message}"))
+                sendEvent(ActionWizardEvent.ShowSnackbar("Error: ${e.message}"))
             }
         }
     }
@@ -701,7 +697,7 @@ class ActionWizardViewModel(
 
         // Предотвращаем множественное выполнение одной команды
         if (executingCommands.contains(command.id)) {
-            Timber.d("Команда ${command.id} уже выполняется, игнорируем")
+            Timber.d("Command ${command.id} is already executing, ignoring")
             return
         }
 
@@ -711,7 +707,7 @@ class ActionWizardViewModel(
 
         launchIO {
             try {
-                Timber.d("Выполнение команды: ${command.name} (${command.id})")
+                Timber.d("Executing command: ${command.name} (${command.id})")
 
                 val result = networkService.executeCommand(
                     command = command,
@@ -732,7 +728,7 @@ class ActionWizardViewModel(
                         handleCommandExecutionResult(executionResult)
                     }
                 } else {
-                    val errorMessage = result.getErrorMessage() ?: "Ошибка выполнения команды"
+                    val errorMessage = result.getErrorMessage() ?: "Command execution error"
 
                     updateCommandStatus(command, false, errorMessage)
 
@@ -740,17 +736,17 @@ class ActionWizardViewModel(
                     sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Исключение при выполнении команды ${command.id}")
+                Timber.e(e, "Exception while executing command ${command.id}")
 
                 updateCommandStatus(command, false, e.message)
 
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка: ${e.message}"
+                        error = "Error: ${e.message}"
                     )
                 }
-                sendEvent(ActionWizardEvent.ShowSnackbar("Ошибка: ${e.message}"))
+                sendEvent(ActionWizardEvent.ShowSnackbar("Error: ${e.message}"))
             } finally {
                 executingCommands.remove(command.id)
             }
@@ -785,7 +781,7 @@ class ActionWizardViewModel(
      * Обрабатывает результат выполнения команды
      */
     private fun handleCommandExecutionResult(result: CommandExecutionResult) {
-        Timber.d("Обработка результата команды: success=${result.success}")
+        Timber.d("Processing command result: success=${result.success}")
 
         // 1. Обновляем factAction, если сервер вернул обновленные данные
         result.updatedFactAction?.let { updatedFactActionDto ->
@@ -874,10 +870,10 @@ class ActionWizardViewModel(
                         setObjectForCurrentStep(obj, true)
                     }
                 } else {
-                    Timber.w("Не удалось создать объект из результата команды для поля ${currentStep.factActionField}")
+                    Timber.w("Failed to create object from command result for field ${currentStep.factActionField}")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при обработке объекта из результата команды")
+                Timber.e(e, "Error processing object from command result")
             }
         }
     }
@@ -887,7 +883,7 @@ class ActionWizardViewModel(
     }
 
     private fun showResultDialog(result: CommandExecutionResult) {
-        val dialogTitle = result.message ?: "Результат выполнения команды"
+        val dialogTitle = result.message ?: "Command execution result"
         val dialogContent = prepareResultContent(result.resultData)
 
         updateState { state ->

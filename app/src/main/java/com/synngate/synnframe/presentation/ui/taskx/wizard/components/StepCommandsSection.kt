@@ -178,10 +178,10 @@ fun StepCommandsSection(
                 showConfirmationDialog = false
                 commandToExecute = null
             },
-            title = { Text("Подтверждение") },
+            title = { Text("Confirmation") },
             text = {
                 Text(
-                    command.confirmationMessage ?: "Вы уверены, что хотите выполнить команду \"${command.name}\"?"
+                    command.confirmationMessage ?: "Are you sure you want to execute the command \"${command.name}\"?"
                 )
             },
             confirmButton = {
@@ -192,7 +192,7 @@ fun StepCommandsSection(
                         commandToExecute = null
                     }
                 ) {
-                    Text("Выполнить")
+                    Text("Execute")
                 }
             },
             dismissButton = {
@@ -202,7 +202,7 @@ fun StepCommandsSection(
                         commandToExecute = null
                     }
                 ) {
-                    Text("Отмена")
+                    Text("Cancel")
                 }
             }
         )

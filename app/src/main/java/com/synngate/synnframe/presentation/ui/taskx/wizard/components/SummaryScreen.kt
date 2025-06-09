@@ -45,7 +45,7 @@ fun SummaryScreen(
             .verticalScroll(scrollState)
     ) {
         Text(
-            text = "Итог действия",
+            text = "Action Summary",
             style = MaterialTheme.typography.headlineSmall
         )
 
@@ -54,61 +54,61 @@ fun SummaryScreen(
         state.factAction?.let { factAction ->
             factAction.storageProductClassifier?.let { product ->
                 SummaryItem(
-                    title = "Товар из классификатора",
+                    title = "Classifier Product",
                     value = "${product.name} (${product.id})"
                 )
             }
 
             factAction.storageProduct?.let { taskProduct ->
                 SummaryItem(
-                    title = "Товар",
+                    title = "Product",
                     value = "${taskProduct.product.name} (${taskProduct.product.id})"
                 )
 
                 if (taskProduct.hasExpirationDate()) {
                     SummaryItem(
-                        title = "Срок годности",
+                        title = "Expiration Date",
                         value = taskProduct.expirationDate.toString()
                     )
                 }
 
                 SummaryItem(
-                    title = "Статус товара",
+                    title = "Product Status",
                     value = taskProduct.status.format()
                 )
             }
 
             factAction.storageBin?.let { bin ->
                 SummaryItem(
-                    title = "Ячейка хранения",
+                    title = "Storage Bin",
                     value = bin.code
                 )
             }
 
             factAction.storagePallet?.let { pallet ->
                 SummaryItem(
-                    title = "Паллета хранения",
+                    title = "Storage Pallet",
                     value = pallet.code
                 )
             }
 
             factAction.placementBin?.let { bin ->
                 SummaryItem(
-                    title = "Ячейка размещения",
+                    title = "Placement Bin",
                     value = bin.code
                 )
             }
 
             factAction.placementPallet?.let { pallet ->
                 SummaryItem(
-                    title = "Паллета размещения",
+                    title = "Placement Pallet",
                     value = pallet.code
                 )
             }
 
             if (factAction.quantity > 0) {
                 SummaryItem(
-                    title = "Количество",
+                    title = "Quantity",
                     value = factAction.quantity.toString()
                 )
             }
@@ -118,7 +118,7 @@ fun SummaryScreen(
 
         if (state.sendingFailed) {
             ErrorPanel(
-                message = state.error ?: "Не удалось отправить данные на сервер",
+                message = state.error ?: "Failed to send data to server",
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
             )
         }
@@ -136,14 +136,14 @@ fun SummaryScreen(
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Выйти без сохранения")
+                    Text("Exit without saving")
                 }
 
                 Button(
                     onClick = onComplete,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Повторить отправку")
+                    Text("Retry sending")
                 }
             }
         } else {
@@ -157,7 +157,7 @@ fun SummaryScreen(
                     modifier = Modifier.weight(1f),
                     enabled = !state.isLoading
                 ) {
-                    Text("Назад")
+                    Text("Back")
                 }
 
                 Button(
@@ -172,7 +172,7 @@ fun SummaryScreen(
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                     } else {
-                        Text("Завершить")
+                        Text("Complete")
                     }
                 }
             }

@@ -40,7 +40,7 @@ class WizardNetworkService(
 
             if (syncWithServer) {
                 val endpoint = TaskXDataHolderSingleton.endpoint
-                    ?: return NetworkResult.error("Endpoint не определен")
+                    ?: return NetworkResult.error("Endpoint not defined")
                 val result = taskXRepository.addFactAction(updatedFactAction, endpoint)
 
                 if (result.isSuccess) {
@@ -50,15 +50,15 @@ class WizardNetworkService(
                     }
                     return NetworkResult.success()
                 } else {
-                    return NetworkResult.error("Ошибка отправки: ${result.exceptionOrNull()?.message}")
+                    return NetworkResult.error("Sending error: ${result.exceptionOrNull()?.message}")
                 }
             } else {
                 TaskXDataHolderSingleton.addFactAction(updatedFactAction)
                 return NetworkResult.success()
             }
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка завершения действия: ${e.message}")
-            return NetworkResult.error("Ошибка: ${e.message}")
+            Timber.e(e, "Error completing action: ${e.message}")
+            return NetworkResult.error("Error: ${e.message}")
         }
     }
 
@@ -71,45 +71,45 @@ class WizardNetworkService(
         fieldType: FactActionField
     ): NetworkResult<Any> = withContext(Dispatchers.IO) {
         if (endpoint.isEmpty()) {
-            return@withContext NetworkResult.error("Endpoint не указан для получения объекта")
+            return@withContext NetworkResult.error("Endpoint not specified for object retrieval")
         }
 
         try {
-            Timber.d("Запрос объекта с сервера: $endpoint для поля $fieldType")
+            Timber.d("Request object from server: $endpoint for field $fieldType")
             val result = stepObjectApi.getStepObject(endpoint, factAction)
 
             return@withContext when (result) {
                 is ApiResult.Success -> {
                     val data = result.data
                     if (!data.success) {
-                        Timber.w("Сервер вернул ошибку: ${data.errorMessage}")
-                        NetworkResult.error(data.errorMessage ?: "Ошибка при получении объекта с сервера")
+                        Timber.w("Server returned error: ${data.errorMessage}")
+                        NetworkResult.error(data.errorMessage ?: "Error retrieving object from server")
                     } else {
                         val mappedObject = stepObjectMapperService.mapResponseToObject(data, fieldType)
                         if (mappedObject != null) {
                             // Проверяем, соответствует ли тип объекта ожидаемому типу поля
                             val isCompatible = isObjectCompatibleWithField(mappedObject, fieldType)
                             if (isCompatible) {
-                                Timber.d("Объект успешно получен с сервера: ${mappedObject.javaClass.simpleName}")
+                                Timber.d("Object successfully received from server: ${mappedObject.javaClass.simpleName}")
                                 NetworkResult.success(mappedObject)
                             } else {
-                                Timber.w("Сервер вернул объект несовместимого типа: ${mappedObject.javaClass.simpleName}")
-                                NetworkResult.error("Сервер вернул объект неверного типа")
+                                Timber.w("Server returned incompatible type object: ${mappedObject.javaClass.simpleName}")
+                                NetworkResult.error("Server returned object of incorrect type")
                             }
                         } else {
-                            Timber.w("Не удалось преобразовать объект из ответа сервера")
-                            NetworkResult.error("Не удалось преобразовать объект из ответа сервера")
+                            Timber.w("Failed to convert object from server response")
+                            NetworkResult.error("Failed to convert object from server response")
                         }
                     }
                 }
                 is ApiResult.Error -> {
-                    Timber.e("Ошибка API при получении объекта: ${result.message}")
+                    Timber.e("API error retrieving object: ${result.message}")
                     NetworkResult.error(result.message)
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e, "Исключение при запросе объекта с сервера: $endpoint")
-            NetworkResult.error("Ошибка: ${e.message}")
+            Timber.e(e, "Exception when requesting object from server: $endpoint")
+            NetworkResult.error("Error: ${e.message}")
         }
     }
 
@@ -124,7 +124,7 @@ class WizardNetworkService(
         additionalContext: Map<String, String> = emptyMap()
     ): NetworkResult<CommandExecutionResult> = withContext(Dispatchers.IO) {
         try {
-            Timber.d("Выполнение команды: ${command.name} (${command.id})")
+            Timber.d("Executing command: ${command.name} (${command.id})")
 
             val requestDto = CommandExecutionRequestDto(
                 commandId = command.id,
@@ -150,21 +150,21 @@ class WizardNetworkService(
                     )
 
                     if (response.success) {
-                        Timber.d("Команда ${command.id} выполнена успешно")
+                        Timber.d("Command ${command.id} executed successfully")
                         NetworkResult.success(executionResult)
                     } else {
-                        Timber.w("Команда ${command.id} завершилась с ошибкой: ${response.message}")
-                        NetworkResult.error(response.message ?: "Команда завершилась с ошибкой")
+                        Timber.w("Command ${command.id} completed with error: ${response.message}")
+                        NetworkResult.error(response.message ?: "Command completed with error")
                     }
                 }
                 is ApiResult.Error -> {
-                    Timber.e("Ошибка API при выполнении команды ${command.id}: ${result.message}")
+                    Timber.e("API error executing command ${command.id}: ${result.message}")
                     NetworkResult.error(result.message)
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e, "Исключение при выполнении команды ${command.id}")
-            NetworkResult.error("Ошибка: ${e.message}")
+            Timber.e(e, "Exception while executing command ${command.id}")
+            NetworkResult.error("Error: ${e.message}")
         }
     }
 
@@ -207,7 +207,7 @@ class WizardNetworkService(
                         try {
                             LocalDateTime.parse(it)
                         } catch (e: Exception) {
-                            Timber.e(e, "Ошибка парсинга даты: $it")
+                            Timber.e(e, "Error parsing date: $it")
                             null
                         }
                     }
@@ -223,7 +223,7 @@ class WizardNetworkService(
                 else -> null
             }
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при создании объекта из результата команды")
+            Timber.e(e, "Error creating object from command result")
             return null
         }
     }
@@ -304,7 +304,7 @@ class WizardNetworkService(
                 placementPallet = placementPallet ?: currentFactAction.placementPallet
             )
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при маппинге FactActionRequestDto в FactAction")
+            Timber.e(e, "Error mapping FactActionRequestDto to FactAction")
             return null
         }
     }

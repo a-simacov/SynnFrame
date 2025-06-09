@@ -53,7 +53,7 @@ fun WizardQuantityInput(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    label: String = "Количество",
+    label: String = "Quantity",
     isError: Boolean = false,
     errorText: String? = null,
     onIncrement: (() -> Unit)? = null,
@@ -75,7 +75,7 @@ fun WizardQuantityInput(
             if (onDecrement != null) {
                 QuantityControlButton(
                     icon = Icons.Default.Remove,
-                    contentDescription = "Уменьшить",
+                    contentDescription = "Decrease",
                     onClick = onDecrement,
                     enabled = enabled
                 )
@@ -131,7 +131,7 @@ fun WizardQuantityInput(
                 ),
                 keyboardActions = KeyboardActions(
                     onDone = {
-                        Timber.d("Нажата клавиша IME Done на клавиатуре")
+                        Timber.d("IME Done key pressed on keyboard")
                         if (value.isNotEmpty()) {
                             onImeAction?.invoke()
                         }
@@ -170,7 +170,7 @@ fun WizardQuantityInput(
             if (onIncrement != null) {
                 QuantityControlButton(
                     icon = Icons.Default.Add,
-                    contentDescription = "Увеличить",
+                    contentDescription = "Increase",
                     onClick = onIncrement,
                     enabled = enabled
                 )
@@ -199,8 +199,8 @@ fun WizardQuantityInput(
 }
 
 fun isValidDecimal(input: String, maxDecimalPlaces: Int): Boolean {
-    if (input.isEmpty()) return true // Пустое поле считаем валидным (или можно изменить логику)
-    if (input == "-") return true // Разрешаем ввод одного минуса
+    if (input.isEmpty()) return true // Empty field is considered valid (or logic can be changed)
+    if (input == "-") return true // Allow entering a single minus sign
 
     val regex = Regex("^-?((\\d+(\\.\\d{0,$maxDecimalPlaces})?)|(\\.\\d{1,$maxDecimalPlaces}))$")
     return regex.matches(input)

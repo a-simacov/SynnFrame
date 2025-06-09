@@ -22,21 +22,21 @@ class QuantityFieldHandler(
 
     override suspend fun createFromString(value: String): CreationResult<Float> {
         if (value.isBlank()) {
-            return CreationResult.error("Значение не может быть пустым")
+            return CreationResult.error("Value cannot be empty")
         }
 
         try {
             val parsedValue = value.toFloatOrNull()
             if (parsedValue != null) {
                 if (parsedValue <= 0) {
-                    return CreationResult.error("Количество должно быть больше нуля")
+                    return CreationResult.error("Quantity must be greater than zero")
                 }
                 return CreationResult.success(parsedValue)
             }
-            return CreationResult.error("Неверный формат числа: $value")
+            return CreationResult.error("Invalid number format: $value")
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при парсинге количества: $value")
-            return CreationResult.error("Ошибка при обработке количества: ${e.message}")
+            Timber.e(e, "Error parsing quantity: $value")
+            return CreationResult.error("Error processing quantity: ${e.message}")
         }
     }
 
