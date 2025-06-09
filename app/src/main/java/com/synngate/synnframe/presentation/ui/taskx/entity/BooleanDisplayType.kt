@@ -20,17 +20,17 @@ enum class BooleanDisplayType {
  */
 @Serializable
 data class BooleanLabelPair(
-    val trueLabel: String = "Да",
-    val falseLabel: String = "Нет"
+    val trueLabel: String = "Yes",
+    val falseLabel: String = "No"
 ) {
     companion object {
-        val DEFAULT = BooleanLabelPair("Да", "Нет")
-        val ON_OFF = BooleanLabelPair("Вкл", "Выкл")
-        val ENABLED_DISABLED = BooleanLabelPair("Включено", "Выключено")
-        val ACTIVE_INACTIVE = BooleanLabelPair("Активно", "Неактивно")
-        val ALLOW_DENY = BooleanLabelPair("Разрешить", "Запретить")
-        val FORWARD_BACKWARD = BooleanLabelPair("Вперед", "Назад")
-        val ACCEPT_REJECT = BooleanLabelPair("Принять", "Отклонить")
-        val SUCCESS_FAIL = BooleanLabelPair("Успешно", "Неуспешно")
+        val DEFAULT = BooleanLabelPair("Yes", "No")
+        val ON_OFF = BooleanLabelPair("On", "Off")
+        val ENABLED_DISABLED = BooleanLabelPair("Enabled", "Disabled")
+        val ACTIVE_INACTIVE = BooleanLabelPair("Active", "Inactive")
+        val ALLOW_DENY = BooleanLabelPair("Allow", "Deny")
+        val FORWARD_BACKWARD = BooleanLabelPair("Forward", "Backward")
+        val ACCEPT_REJECT = BooleanLabelPair("Accept", "Reject")
+        val SUCCESS_FAIL = BooleanLabelPair("Success", "Fail")
     }
 }

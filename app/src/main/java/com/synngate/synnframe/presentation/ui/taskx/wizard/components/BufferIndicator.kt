@@ -39,9 +39,9 @@ fun BufferIndicator(
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = if (isLocked)
-                "Значение из буфера (заблокировано)"
+                "Value from buffer (locked)"
             else
-                "Значение из буфера ($source)",
+                "Value from buffer ($source)",
             style = MaterialTheme.typography.bodySmall,
             color = if (isLocked) Color(0xFFEC407A) else MaterialTheme.colorScheme.primary
         )

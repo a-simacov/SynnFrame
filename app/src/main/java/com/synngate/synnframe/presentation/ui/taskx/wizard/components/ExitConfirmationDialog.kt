@@ -13,20 +13,20 @@ fun ExitConfirmationDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Выйти без сохранения?") },
-        text = { Text("Все введенные данные будут потеряны. Вы уверены, что хотите выйти?") },
+        title = { Text("Exit without saving?") },
+        text = { Text("All entered data will be lost. Are you sure you want to exit?") },
         confirmButton = {
             Button(
                 onClick = onConfirm
             ) {
-                Text("Выйти")
+                Text("Exit")
             }
         },
         dismissButton = {
             OutlinedButton(
                 onClick = onDismiss
             ) {
-                Text("Отмена")
+                Text("Cancel")
             }
         }
     )

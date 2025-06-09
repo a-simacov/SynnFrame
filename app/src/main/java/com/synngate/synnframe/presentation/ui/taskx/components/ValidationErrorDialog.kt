@@ -33,7 +33,7 @@ fun ValidationErrorDialog(
         },
         title = {
             Text(
-                text = "Нарушение порядка выполнения",
+                text = "Execution Order Violation",
                 style = MaterialTheme.typography.headlineSmall,
                 textAlign = TextAlign.Center
             )

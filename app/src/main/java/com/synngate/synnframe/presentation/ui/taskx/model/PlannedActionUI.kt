@@ -55,7 +55,7 @@ data class PlannedActionUI(
 
     // Методы-прокси для удобного доступа к свойствам оригинального действия
     val id get() = action.id
-    val name get() = action.actionTemplate?.name ?: "Действие #${action.order}"
+    val name get() = action.actionTemplate?.name ?: "Action #${action.order}"
     val order get() = action.order
     val isInitialAction get() = action.isInitialAction()
     val isFinalAction get() = action.isFinalAction()

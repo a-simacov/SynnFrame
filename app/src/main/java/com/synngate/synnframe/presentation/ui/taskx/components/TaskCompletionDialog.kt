@@ -20,10 +20,10 @@ fun TaskCompletionDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isProcessing) onDismiss() },
-        title = { Text("Завершение задания") },
+        title = { Text("Task Completion") },
         text = {
             Text(
-                "Все действия завершены. Хотите завершить задание?",
+                "All actions are completed. Do you want to complete the task?",
                 style = MaterialTheme.typography.bodyMedium
             )
         },
@@ -41,10 +41,10 @@ fun TaskCompletionDialog(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp
                         )
-                        Text("Завершение...")
+                        Text("Completing...")
                     }
                 } else {
-                    Text("Завершить задание")
+                    Text("Complete Task")
                 }
             }
         },
@@ -53,7 +53,7 @@ fun TaskCompletionDialog(
                 onClick = onDismiss,
                 enabled = !isProcessing
             ) {
-                Text("Отмена")
+                Text("Cancel")
             }
         }
     )

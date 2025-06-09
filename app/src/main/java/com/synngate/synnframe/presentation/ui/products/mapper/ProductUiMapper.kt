@@ -10,7 +10,6 @@ import com.synngate.synnframe.presentation.ui.products.model.ProductUnitUiModel
 import com.synngate.synnframe.util.format.QuantityFormatter
 import com.synngate.synnframe.util.resources.ResourceProvider
 
-// com.synngate.synnframe.presentation.ui.products.mapper.ProductUiMapper.kt
 class ProductUiMapper(
     private val resourceProvider: ResourceProvider
 ) {

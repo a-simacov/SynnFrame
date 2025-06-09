@@ -147,7 +147,7 @@ class PlannedActionsFilter {
             filters.add(
                 FilterItem(
                     field = FactActionField.STORAGE_BIN,
-                    displayName = "Ячейка хранения",
+                    displayName = "Storage Bin",
                     value = bin.code,
                     data = bin,
                     timestamp = filterTimestamps[FactActionField.STORAGE_BIN] ?: 0
@@ -159,7 +159,7 @@ class PlannedActionsFilter {
             filters.add(
                 FilterItem(
                     field = FactActionField.STORAGE_PALLET,
-                    displayName = "Паллета хранения",
+                    displayName = "Storage Pallet",
                     value = pallet.code,
                     data = pallet,
                     timestamp = filterTimestamps[FactActionField.STORAGE_PALLET] ?: 0
@@ -171,7 +171,7 @@ class PlannedActionsFilter {
             filters.add(
                 FilterItem(
                     field = FactActionField.STORAGE_PRODUCT_CLASSIFIER,
-                    displayName = "Товар",
+                    displayName = "Product",
                     value = product.name,
                     data = product,
                     timestamp = filterTimestamps[FactActionField.STORAGE_PRODUCT_CLASSIFIER] ?: 0
@@ -183,7 +183,7 @@ class PlannedActionsFilter {
             filters.add(
                 FilterItem(
                     field = FactActionField.STORAGE_PRODUCT,
-                    displayName = "Товар задания",
+                    displayName = "Task Product",
                     value = taskProduct.product.name,
                     data = taskProduct,
                     timestamp = filterTimestamps[FactActionField.STORAGE_PRODUCT] ?: 0
@@ -195,7 +195,7 @@ class PlannedActionsFilter {
             filters.add(
                 FilterItem(
                     field = FactActionField.ALLOCATION_BIN,
-                    displayName = "Ячейка размещения",
+                    displayName = "Placement Bin",
                     value = bin.code,
                     data = bin,
                     timestamp = filterTimestamps[FactActionField.ALLOCATION_BIN] ?: 0
@@ -207,7 +207,7 @@ class PlannedActionsFilter {
             filters.add(
                 FilterItem(
                     field = FactActionField.ALLOCATION_PALLET,
-                    displayName = "Паллета размещения",
+                    displayName = "Placement Pallet",
                     value = pallet.code,
                     data = pallet,
                     timestamp = filterTimestamps[FactActionField.ALLOCATION_PALLET] ?: 0

@@ -17,12 +17,12 @@ class ActionSearchManager(
         searchValue: String
     ): SearchResult {
         if (searchValue.isBlank()) {
-            return SearchResult.Error("Значение для поиска не может быть пустым")
+            return SearchResult.Error("Search value cannot be empty")
         }
 
         val searchableFields = task.taskType?.searchActionFieldsTypes ?: emptyList()
         if (searchableFields.isEmpty()) {
-            return SearchResult.Error("Для данного типа задания поиск не настроен")
+            return SearchResult.Error("Search is not configured for this task type")
         }
 
         val foundActionIds = mutableSetOf<String>()
@@ -40,7 +40,7 @@ class ActionSearchManager(
         }
 
         return when {
-            foundActionIds.isEmpty() -> SearchResult.NotFound("Действия не найдены")
+            foundActionIds.isEmpty() -> SearchResult.NotFound("Actions not found")
             foundActionIds.size == 1 -> SearchResult.SingleResult(foundActionIds.first())
             else -> SearchResult.MultipleResults(foundActionIds.toList())
         }

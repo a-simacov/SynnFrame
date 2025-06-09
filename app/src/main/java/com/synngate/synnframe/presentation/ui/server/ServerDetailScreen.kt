@@ -216,7 +216,7 @@ private fun ServerDetailContent(
         ) {
             // Кнопка сканирования QR-кода
             ActionButton(
-                text = "Прочитать",
+                text = "Read",
                 onClick = onScanQrCode,
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.QrCodeScanner,
@@ -228,7 +228,7 @@ private fun ServerDetailContent(
 
             // Кнопка генерации QR-кода
             ActionButton(
-                text = "Показать",
+                text = "Show",
                 onClick = onGenerateQrCode,
                 icon = Icons.Default.QrCode2,
                 modifier = Modifier.weight(1f),
@@ -249,9 +249,9 @@ private fun ServerDetailContent(
                 value = state.name,
                 onValueChange = onNameChange,
                 label = stringResource(id = R.string.server_name),
-                isError = state.validationError?.contains("имя", ignoreCase = true) == true,
+                isError = state.validationError?.contains("name", ignoreCase = true) == true,
                 errorText = state.validationError?.takeIf {
-                    it.contains("имя", ignoreCase = true)
+                    it.contains("name", ignoreCase = true)
                 },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -263,9 +263,9 @@ private fun ServerDetailContent(
                 value = state.host,
                 onValueChange = onHostChange,
                 label = stringResource(id = R.string.server_host),
-                isError = state.validationError?.contains("хост", ignoreCase = true) == true,
+                isError = state.validationError?.contains("host", ignoreCase = true) == true,
                 errorText = state.validationError?.takeIf {
-                    it.contains("хост", ignoreCase = true)
+                    it.contains("host", ignoreCase = true)
                 },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -277,9 +277,9 @@ private fun ServerDetailContent(
                 value = state.port,
                 onValueChange = onPortChange,
                 label = stringResource(id = R.string.server_port),
-                isError = state.validationError?.contains("порт", ignoreCase = true) == true,
+                isError = state.validationError?.contains("port", ignoreCase = true) == true,
                 errorText = state.validationError?.takeIf {
-                    it.contains("порт", ignoreCase = true)
+                    it.contains("port", ignoreCase = true)
                 },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -291,9 +291,9 @@ private fun ServerDetailContent(
                 value = state.apiEndpoint,
                 onValueChange = onApiEndpointChange,
                 label = stringResource(id = R.string.server_api_endpoint),
-                isError = state.validationError?.contains("точка", ignoreCase = true) == true,
+                isError = state.validationError?.contains("enpoint", ignoreCase = true) == true,
                 errorText = state.validationError?.takeIf {
-                    it.contains("точка", ignoreCase = true)
+                    it.contains("enpoint", ignoreCase = true)
                 },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -310,9 +310,9 @@ private fun ServerDetailContent(
                 value = state.login,
                 onValueChange = onLoginChange,
                 label = stringResource(id = R.string.server_login),
-                isError = state.validationError?.contains("логин", ignoreCase = true) == true,
+                isError = state.validationError?.contains("login", ignoreCase = true) == true,
                 errorText = state.validationError?.takeIf {
-                    it.contains("логин", ignoreCase = true)
+                    it.contains("login", ignoreCase = true)
                 },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -324,9 +324,9 @@ private fun ServerDetailContent(
                 value = state.password,
                 onValueChange = onPasswordChange,
                 label = stringResource(id = R.string.server_password),
-                isError = state.validationError?.contains("пароль", ignoreCase = true) == true,
+                isError = state.validationError?.contains("password", ignoreCase = true) == true,
                 errorText = state.validationError?.takeIf {
-                    it.contains("пароль", ignoreCase = true)
+                    it.contains("password", ignoreCase = true)
                 },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -382,9 +382,9 @@ private fun ServerDetailContent(
                 onValueChange = { onUpdateScannerType(it) },
                 valueToString = { deviceType ->
                     when (deviceType) {
-                        DeviceType.STANDARD -> "Стандарт (без авто-скана)"
+                        DeviceType.STANDARD -> "Standard (no auto-scan)"
                         DeviceType.ZEBRA_DATAWEDGE -> stringResource(R.string.scanner_type_datawedge)
-                        DeviceType.CAMERA_SCANNER -> "Камера"
+                        DeviceType.CAMERA_SCANNER -> "Camera"
                     }
                 },
             )

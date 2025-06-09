@@ -145,7 +145,7 @@ fun CommandButtonContent(
                 color = MaterialTheme.colorScheme.onPrimary
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Выполнение...")
+            Text("Executing...")
         }
     } else {
         Row(

@@ -110,9 +110,9 @@ class ServerListViewModel(
             val result = serverUseCases.deleteServer(serverId)
 
             if (result.isSuccess) {
-                sendEvent(ServerListEvent.ShowSnackbar("Сервер успешно удален"))
+                sendEvent(ServerListEvent.ShowSnackbar("Server successfully deleted"))
             } else {
-                val error = result.exceptionOrNull()?.message ?: "Не удалось удалить сервер"
+                val error = result.exceptionOrNull()?.message ?: "Failed to delete server"
                 sendEvent(ServerListEvent.ShowSnackbar(error))
                 Timber.e(result.exceptionOrNull(), "Error deleting server")
             }

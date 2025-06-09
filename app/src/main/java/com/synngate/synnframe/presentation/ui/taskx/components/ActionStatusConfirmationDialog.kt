@@ -15,21 +15,21 @@ fun ActionStatusConfirmationDialog(
     onDismiss: () -> Unit
 ) {
     val dialogTitle = if (isCompleted) {
-        "Снять отметку о выполнении?"
+        "Remove completion mark?"
     } else {
-        "Отметить как выполненное?"
+        "Mark as completed?"
     }
 
     val dialogText = if (isCompleted) {
-        "Действие \"${action.actionTemplate?.name}\" будет отмечено как невыполненное."
+        "Action \"${action.actionTemplate?.name}\" will be marked as not completed."
     } else {
-        "Действие \"${action.actionTemplate?.name}\" будет отмечено как выполненное."
+        "Action \"${action.actionTemplate?.name}\" will be marked as completed."
     }
 
     val confirmButtonText = if (isCompleted) {
-        "Снять отметку"
+        "Remove mark"
     } else {
-        "Отметить"
+        "Mark"
     }
 
     AlertDialog(
@@ -43,7 +43,7 @@ fun ActionStatusConfirmationDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text("Cancel")
             }
         }
     )

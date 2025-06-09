@@ -55,7 +55,7 @@ class ServerDetailViewModel(
                     updateState { state ->
                         state.copy(
                             isLoading = false,
-                            error = "Сервер не найден"
+                            error = "Server not found"
                         )
                     }
                     sendEvent(ServerDetailEvent.NavigateBack)
@@ -65,10 +65,10 @@ class ServerDetailViewModel(
                 updateState { state ->
                     state.copy(
                         isLoading = false,
-                        error = e.message ?: "Ошибка загрузки сервера"
+                        error = e.message ?: "Error loading server"
                     )
                 }
-                sendEvent(ServerDetailEvent.ShowSnackbar("Ошибка загрузки сервера: ${e.message}"))
+                sendEvent(ServerDetailEvent.ShowSnackbar("Error loading server: ${e.message}"))
             }
         }
     }
@@ -113,7 +113,7 @@ class ServerDetailViewModel(
         }
 
         launchIO {
-            updateState { it.copy(isTestingConnection = true, connectionStatus = "Статус: проверка подключения...") }
+            updateState { it.copy(isTestingConnection = true, connectionStatus = "Status: checking connection...") }
 
             // Создаем объект сервера для тестирования
             val server = Server(
@@ -133,14 +133,14 @@ class ServerDetailViewModel(
             if (result.isSuccess) {
                 updateState { it.copy(
                     isTestingConnection = false,
-                    connectionStatus = "Статус: подключение успешно"
+                    connectionStatus = "Status: connection successful"
                 ) }
                 sendEvent(ServerDetailEvent.ConnectionSuccess)
             } else {
-                val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                val error = result.exceptionOrNull()?.message ?: "Unknown error"
                 updateState { it.copy(
                     isTestingConnection = false,
-                    connectionStatus = "Статус: ошибка подключения"
+                    connectionStatus = "Status: connection error"
                 ) }
                 sendEvent(ServerDetailEvent.ConnectionError(error))
             }
@@ -192,14 +192,14 @@ class ServerDetailViewModel(
                     sendEvent(ServerDetailEvent.ServerSaved(result.getOrNull()!!))
                     sendEvent(ServerDetailEvent.NavigateBack)
                 } else {
-                    val error = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
+                    val error = result.exceptionOrNull()?.message ?: "Unknown error"
                     updateState { it.copy(isSaving = false, error = error) }
-                    sendEvent(ServerDetailEvent.ShowSnackbar("Ошибка сохранения сервера: $error"))
+                    sendEvent(ServerDetailEvent.ShowSnackbar("Error saving server: $error"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error saving server")
                 updateState { it.copy(isSaving = false, error = e.message) }
-                sendEvent(ServerDetailEvent.ShowSnackbar("Ошибка сохранения сервера: ${e.message}"))
+                sendEvent(ServerDetailEvent.ShowSnackbar("Error saving server: ${e.message}"))
             }
         }
     }
@@ -208,13 +208,13 @@ class ServerDetailViewModel(
         val state = uiState.value
 
         return when {
-            state.name.isBlank() -> "Имя сервера не может быть пустым"
-            state.host.isBlank() -> "Хост сервера не может быть пустым"
-            state.port.isBlank() -> "Порт сервера не может быть пустым"
-            state.port.toIntOrNull() == null -> "Порт должен быть числом"
-            state.port.toIntOrNull() !in 1..65535 -> "Порт должен быть от 1 до 65535"
-            state.apiEndpoint.isBlank() -> "Точка подключения к API не может быть пустой"
-            state.login.isBlank() -> "Логин не может быть пустым"
+            state.name.isBlank() -> "Server name cannot be empty"
+            state.host.isBlank() -> "Server host cannot be empty"
+            state.port.isBlank() -> "Server port cannot be empty"
+            state.port.toIntOrNull() == null -> "Port must be a number"
+            state.port.toIntOrNull() !in 1..65535 -> "Port must be between 1 and 65535"
+            state.apiEndpoint.isBlank() -> "API endpoint cannot be empty"
+            state.login.isBlank() -> "Login cannot be empty"
             else -> null
         }
     }
@@ -237,13 +237,13 @@ class ServerDetailViewModel(
                         password = server.password
                     )
                 }
-                sendEvent(ServerDetailEvent.ShowSnackbar("Данные сервера успешно загружены из QR-кода"))
+                sendEvent(ServerDetailEvent.ShowSnackbar("Server data successfully loaded from QR code"))
             } else {
-                sendEvent(ServerDetailEvent.ShowSnackbar("Не удалось распознать данные сервера из QR-кода"))
+                sendEvent(ServerDetailEvent.ShowSnackbar("Failed to recognize server data from QR code"))
             }
         } catch (e: Exception) {
             Timber.e(e, "Error parsing QR code")
-            sendEvent(ServerDetailEvent.ShowSnackbar("Ошибка при обработке QR-кода: ${e.message}"))
+            sendEvent(ServerDetailEvent.ShowSnackbar("Error processing QR code: ${e.message}"))
         }
     }
 
@@ -281,7 +281,7 @@ class ServerDetailViewModel(
             sendEvent(ServerDetailEvent.ShowQrCode(qrString))
         } catch (e: Exception) {
             Timber.e(e, "Error generating QR code")
-            sendEvent(ServerDetailEvent.ShowSnackbar("Ошибка при генерации QR-кода: ${e.message}"))
+            sendEvent(ServerDetailEvent.ShowSnackbar("Error generating QR code: ${e.message}"))
         }
     }
 
@@ -303,7 +303,7 @@ class ServerDetailViewModel(
                         )
                     }
                 } catch (e: Exception) {
-                    Timber.e(e, "Ошибка при загрузке типа сканера")
+                    Timber.e(e, "Error loading scanner type")
                     // Если не удалось загрузить тип сканера, скрываем опции выбора
                     updateState { state ->
                         state.copy(showScannerTypeOptions = false)
@@ -326,10 +326,10 @@ class ServerDetailViewModel(
                     scannerService?.restart()
 
                     // Уведомляем пользователя
-                    sendEvent(ServerDetailEvent.ShowSnackbar("Тип сканера изменен на ${deviceType.name}"))
+                    sendEvent(ServerDetailEvent.ShowSnackbar("Scanner type changed to ${deviceType.name}"))
                 } catch (e: Exception) {
-                    Timber.e(e, "Ошибка при изменении типа сканера: ${e.message}")
-                    sendEvent(ServerDetailEvent.ShowSnackbar("Ошибка при изменении типа сканера"))
+                    Timber.e(e, "Error changing scanner type: ${e.message}")
+                    sendEvent(ServerDetailEvent.ShowSnackbar("Error changing scanner type"))
                 }
             }
         }

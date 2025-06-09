@@ -134,7 +134,7 @@ fun SplashScreen(
 
     // Стадии инициализации
     var initializationStage by remember { mutableStateOf(InitializationStage.STARTING) }
-    var initializationMessage by remember { mutableStateOf("Инициализация...") }
+    var initializationMessage by remember { mutableStateOf("Initialization...") }
 
     // Запускаем процесс инициализации
     LaunchedEffect(key1 = true) {
@@ -145,25 +145,25 @@ fun SplashScreen(
             try {
                 // Стадия 1: Загрузка настроек
                 initializationStage = InitializationStage.LOADING_SETTINGS
-                initializationMessage = "Загрузка настроек..."
+                initializationMessage = "Loading settings..."
                 progress = 0.2f
                 delay(300) // Имитация загрузки
 
                 // Стадия 2: Инициализация БД
                 initializationStage = InitializationStage.INITIALIZING_DB
-                initializationMessage = "Инициализация базы данных..."
+                initializationMessage = "Initializing database..."
                 progress = 0.5f
                 delay(500) // Имитация загрузки
 
                 // Стадия 3: Проверка зависимостей
                 initializationStage = InitializationStage.CHECKING_DEPENDENCIES
-                initializationMessage = "Проверка зависимостей..."
+                initializationMessage = "Checking dependencies..."
                 progress = 0.8f
                 delay(300) // Имитация загрузки
 
                 // Завершение инициализации
                 initializationStage = InitializationStage.COMPLETED
-                initializationMessage = "Инициализация завершена"
+                initializationMessage = "Initialization completed"
                 progress = 1f
                 delay(300) // Небольшая задержка перед переходом
 
@@ -181,7 +181,7 @@ fun SplashScreen(
             } catch (e: Exception) {
                 // Логируем ошибку
                 Timber.e(e, "Error during initialization")
-                initializationMessage = "Ошибка инициализации: ${e.message}"
+                initializationMessage = "Initialization error: ${e.message}"
 
                 // В случае ошибки все равно продолжаем через 2 секунды
                 delay(2000)

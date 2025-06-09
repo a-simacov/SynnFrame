@@ -59,7 +59,7 @@ fun InlineParametersForm(
         ) {
             // Заголовок формы
             Text(
-                text = "Параметры команды \"${command.name}\"",
+                text = "Command parameters \"${command.name}\"",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -108,7 +108,7 @@ fun InlineParametersForm(
                     onClick = onCancel,
                     modifier = Modifier.padding(end = 8.dp)
                 ) {
-                    Text("Отмена")
+                    Text("Cancel")
                 }
 
                 Button(
@@ -121,7 +121,7 @@ fun InlineParametersForm(
                         }
                     }
                 ) {
-                    Text("Выполнить")
+                    Text("Execute")
                 }
             }
         }

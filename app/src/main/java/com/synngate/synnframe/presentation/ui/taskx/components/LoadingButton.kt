@@ -66,7 +66,7 @@ fun LoadingButton(
                         color = MaterialTheme.colorScheme.error
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Отмена")
+                    Text("Cancel")
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         imageVector = Icons.Default.Cancel,

@@ -87,7 +87,7 @@ fun LoginScreen(
             onClose = {
                 showCameraScannerDialog = false
             },
-            instructionText = "Сканируйте штрихкод пароля",
+            instructionText = "Scan password barcode",
             allowManualInput = true
         )
     }

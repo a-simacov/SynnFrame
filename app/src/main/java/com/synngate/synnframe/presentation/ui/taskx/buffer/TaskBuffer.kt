@@ -161,7 +161,7 @@ class TaskBuffer {
             items.add(
                 BufferDisplayItem(
                     field = FactActionField.STORAGE_BIN,
-                    displayName = "Ячейка хранения",
+                    displayName = "Storage Bin",
                     value = bin.code,
                     data = bin,
                     source = source
@@ -173,7 +173,7 @@ class TaskBuffer {
             items.add(
                 BufferDisplayItem(
                     field = FactActionField.STORAGE_PALLET,
-                    displayName = "Паллета хранения",
+                    displayName = "Storage Pallet",
                     value = pallet.code,
                     data = pallet,
                     source = source
@@ -185,7 +185,7 @@ class TaskBuffer {
             items.add(
                 BufferDisplayItem(
                     field = FactActionField.STORAGE_PRODUCT_CLASSIFIER,
-                    displayName = "Товар",
+                    displayName = "Product",
                     value = product.name,
                     data = product,
                     source = source
@@ -197,7 +197,7 @@ class TaskBuffer {
             items.add(
                 BufferDisplayItem(
                     field = FactActionField.STORAGE_PRODUCT,
-                    displayName = "Товар задания",
+                    displayName = "Task Product",
                     value = taskProduct.product.name,
                     data = taskProduct,
                     source = source
@@ -209,7 +209,7 @@ class TaskBuffer {
             items.add(
                 BufferDisplayItem(
                     field = FactActionField.ALLOCATION_BIN,
-                    displayName = "Ячейка размещения",
+                    displayName = "Placement Bin",
                     value = bin.code,
                     data = bin,
                     source = source
@@ -221,7 +221,7 @@ class TaskBuffer {
             items.add(
                 BufferDisplayItem(
                     field = FactActionField.ALLOCATION_PALLET,
-                    displayName = "Паллета размещения",
+                    displayName = "Placement Pallet",
                     value = pallet.code,
                     data = pallet,
                     source = source

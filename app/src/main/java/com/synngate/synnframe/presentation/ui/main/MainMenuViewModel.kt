@@ -41,7 +41,7 @@ class MainMenuViewModel(
                     updateState {
                         it.copy(
                             isLoading = false,
-                            error = e.message ?: "Ошибка загрузки данных"
+                            error = e.message ?: "Error loading data"
                         )
                     }
                 }.collectLatest { (user, productsCount) ->
@@ -59,7 +59,7 @@ class MainMenuViewModel(
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = e.message ?: "Ошибка загрузки данных"
+                        error = e.message ?: "Error loading data"
                     )
                 }
             }
@@ -87,13 +87,13 @@ class MainMenuViewModel(
                 if (result.isSuccess) {
                     sendEvent(MainMenuEvent.NavigateToLogin)
                 } else {
-                    val error = result.exceptionOrNull()?.message ?: "Ошибка выхода пользователя"
+                    val error = result.exceptionOrNull()?.message ?: "Error during user logout"
                     updateState { it.copy(error = error) }
                     sendEvent(MainMenuEvent.ShowSnackbar(error))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error during user logout")
-                val errorMessage = e.message ?: "Ошибка выхода пользователя"
+                val errorMessage = e.message ?: "Error during user logout"
                 updateState { it.copy(error = errorMessage) }
                 sendEvent(MainMenuEvent.ShowSnackbar(errorMessage))
             }
@@ -140,11 +140,11 @@ class MainMenuViewModel(
                     }
 
                     val message =
-                        "Синхронизация выполнена. Обновлено товаров: ${result?.productsDownloadedCount ?: 0}"
+                        "Synchronization completed. Products updated: ${result?.productsDownloadedCount ?: 0}"
                     sendEvent(MainMenuEvent.ShowSnackbar(message))
                 } else {
                     updateState { it.copy(isSyncing = false) }
-                    val error = syncResult.exceptionOrNull()?.message ?: "Ошибка синхронизации"
+                    val error = syncResult.exceptionOrNull()?.message ?: "Synchronization error"
                     sendEvent(MainMenuEvent.ShowSnackbar(error))
                 }
 
@@ -153,7 +153,7 @@ class MainMenuViewModel(
             } catch (e: Exception) {
                 Timber.e(e, "Error during data synchronization")
                 updateState { it.copy(isSyncing = false) }
-                sendEvent(MainMenuEvent.ShowSnackbar("Ошибка синхронизации: ${e.message}"))
+                sendEvent(MainMenuEvent.ShowSnackbar("Synchronization error: ${e.message}"))
             }
         }
     }

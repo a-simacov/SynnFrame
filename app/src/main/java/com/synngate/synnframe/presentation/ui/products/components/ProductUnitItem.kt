@@ -48,7 +48,7 @@ fun ProductUnitItem(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "${unit.name} (коэф. ${unit.quantityText})",
+                    text = "${unit.name} (coef. ${unit.quantityText})",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = if (unit.isMainUnit) FontWeight.Bold else FontWeight.Normal,
                     color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer

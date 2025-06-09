@@ -101,7 +101,7 @@ class ProductDetailViewModel(
     fun copyBarcodeToClipboard(barcode: String) {
         val isCopied = clipboardService.copyToClipboard(
             text = barcode,
-            label = "Штрихкод товара"
+            label = "Product barcode"
         )
 
         if (isCopied) {
@@ -117,7 +117,7 @@ class ProductDetailViewModel(
             }
 
             sendEvent(ProductDetailEvent.CopyBarcodeToClipboard(barcode))
-            sendEvent(ProductDetailEvent.ShowSnackbar("Штрихкод скопирован в буфер обмена"))
+            sendEvent(ProductDetailEvent.ShowSnackbar("Barcode copied to clipboard"))
         }
     }
 
@@ -125,25 +125,25 @@ class ProductDetailViewModel(
         val product = uiState.value.product ?: return
 
         val accountingModelText = when (product.accountingModel) {
-            AccountingModel.BATCH -> "По партиям и количеству"
-            AccountingModel.QTY -> "Только по количеству"
+            AccountingModel.BATCH -> "By batches and quantity"
+            AccountingModel.QTY -> "By quantity only"
         }
 
-        val mainUnit = product.getMainUnit()?.name ?: "Не указана"
+        val mainUnit = product.getMainUnit()?.name ?: "Not specified"
 
         val productInfo = """
-            Наименование: ${product.name}
-            Идентификатор: ${product.id}
-            Артикул: ${product.articleNumber}
-            Модель учета: $accountingModelText
-            Основная единица измерения: $mainUnit
-            Единицы измерения: ${product.units.joinToString("\n") { it.name }}
-            Штрихкоды: ${product.getAllBarcodes().distinct().joinToString("\n")}
+            Name: ${product.name}
+            ID: ${product.id}
+            Article: ${product.articleNumber}
+            Accounting model: $accountingModelText
+            Main unit of measurement: $mainUnit
+            Units of measurement: ${product.units.joinToString("\n") { it.name }}
+            Barcodes: ${product.getAllBarcodes().distinct().joinToString("\n")}
         """.trimIndent()
 
         val isCopied = clipboardService.copyToClipboard(
             text = productInfo,
-            label = "Информация о товаре"
+            label = "Product information"
         )
 
         if (isCopied) {
@@ -156,7 +156,7 @@ class ProductDetailViewModel(
             }
 
             sendEvent(ProductDetailEvent.CopyProductInfoToClipboard)
-            sendEvent(ProductDetailEvent.ShowSnackbar("Информация о товаре скопирована в буфер обмена"))
+            sendEvent(ProductDetailEvent.ShowSnackbar("Product information copied to clipboard"))
         }
     }
 

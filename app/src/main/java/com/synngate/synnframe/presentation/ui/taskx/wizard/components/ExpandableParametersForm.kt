@@ -290,7 +290,7 @@ fun ExpandableParametersForm(
                             onClick = { expanded = false },
                             modifier = Modifier.padding(end = 8.dp)
                         ) {
-                            Text("Отмена")
+                            Text("Cancel")
                         }
 
                         Button(
@@ -304,7 +304,7 @@ fun ExpandableParametersForm(
                                 }
                             }
                         ) {
-                            Text("Выполнить")
+                            Text("Execute")
                         }
                     }
                 }

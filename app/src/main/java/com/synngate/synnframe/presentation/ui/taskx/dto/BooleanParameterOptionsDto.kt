@@ -8,6 +8,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class BooleanParameterOptionsDto(
     val displayType: String = "CHECKBOX",
-    val trueLabel: String = "Да",
-    val falseLabel: String = "Нет"
+    val trueLabel: String = "Yes",
+    val falseLabel: String = "No"
 )

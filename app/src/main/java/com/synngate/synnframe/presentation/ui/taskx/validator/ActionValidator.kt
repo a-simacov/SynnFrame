@@ -12,7 +12,7 @@ class ActionValidator {
         actionId: String
     ): ValidationResult {
         val action = task.plannedActions.find { it.id == actionId }
-            ?: return ValidationResult.Error("Действие не найдено")
+            ?: return ValidationResult.Error("Action not found")
 
         if (action.isFullyCompleted(task.factActions)) {
             val canOpenCompletedAction = action.canHaveMultipleFactActions() &&
@@ -20,7 +20,7 @@ class ActionValidator {
                     task.taskType?.regularActionsExecutionOrder == RegularActionsExecutionOrder.ARBITRARY
 
             if (!canOpenCompletedAction) {
-                return ValidationResult.Error("Действие уже выполнено")
+                return ValidationResult.Error("Action already completed")
             }
         }
 
@@ -38,8 +38,8 @@ class ActionValidator {
         if (notCompletedInitial.isNotEmpty() && notCompletedInitial.first().id != action.id) {
             val firstAction = notCompletedInitial.first()
             return ValidationResult.Error(
-                "Начальные действия должны выполняться в указанном порядке. " +
-                        "Выполните сначала: ${firstAction.actionTemplate?.name ?: "Неизвестно"}"
+                "Initial actions must be performed in the specified order. " +
+                        "Complete first: ${firstAction.actionTemplate?.name ?: "Unknown"}"
             )
         }
 
@@ -48,7 +48,7 @@ class ActionValidator {
 
     private fun validateRegularAction(task: TaskX, action: PlannedAction): ValidationResult {
         if (!task.areInitialActionsCompleted()) {
-            return ValidationResult.Error("Сначала необходимо выполнить все начальные действия")
+            return ValidationResult.Error("All initial actions must be completed first")
         }
 
         if (task.taskType?.regularActionsExecutionOrder == RegularActionsExecutionOrder.STRICT) {
@@ -58,8 +58,8 @@ class ActionValidator {
             if (incompleteRegular.isNotEmpty() && incompleteRegular.first().id != action.id) {
                 val firstAction = incompleteRegular.first()
                 return ValidationResult.Error(
-                    "Действия должны выполняться в указанном порядке. " +
-                            "Выполните сначала: ${firstAction.actionTemplate?.name ?: "Неизвестно"}"
+                    "Actions must be performed in the specified order. " +
+                            "Complete first: ${firstAction.actionTemplate?.name ?: "Unknown"}"
                 )
             }
         }
@@ -67,7 +67,7 @@ class ActionValidator {
         if (action.canHaveMultipleFactActions() &&
             action.isQuantityFulfilled(task.factActions) &&
             task.taskType?.regularActionsExecutionOrder == RegularActionsExecutionOrder.STRICT) {
-            return ValidationResult.Error("План по количеству уже выполнен")
+            return ValidationResult.Error("Quantity plan is already fulfilled")
         }
 
         return ValidationResult.Success
@@ -75,14 +75,14 @@ class ActionValidator {
 
     private fun validateFinalAction(task: TaskX, action: PlannedAction): ValidationResult {
         if (!task.areInitialActionsCompleted()) {
-            return ValidationResult.Error("Сначала необходимо выполнить все начальные действия")
+            return ValidationResult.Error("All initial actions must be completed first")
         }
 
         val regularActions = task.getRegularActions()
         val allRegularComplete = regularActions.all { it.isFullyCompleted(task.factActions) }
 
         if (!allRegularComplete) {
-            return ValidationResult.Error("Сначала необходимо выполнить все обычные действия")
+            return ValidationResult.Error("All regular actions must be completed first")
         }
 
         val incompleteFinal = task.getFinalActions()
@@ -91,8 +91,8 @@ class ActionValidator {
         if (incompleteFinal.isNotEmpty() && incompleteFinal.first().id != action.id) {
             val firstAction = incompleteFinal.first()
             return ValidationResult.Error(
-                "Завершающие действия должны выполняться в указанном порядке. " +
-                        "Выполните сначала: ${firstAction.actionTemplate?.name ?: "Неизвестно"}"
+                "Final actions must be performed in the specified order. " +
+                        "Complete first: ${firstAction.actionTemplate?.name ?: "Unknown"}"
             )
         }
 
@@ -111,7 +111,7 @@ class ActionValidator {
 
         if (incompleteActions.isNotEmpty()) {
             return ValidationResult.Error(
-                "Не все действия выполнены. Осталось: ${incompleteActions.size}"
+                "Not all actions are completed. Remaining: ${incompleteActions.size}"
             )
         }
 

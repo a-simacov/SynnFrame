@@ -154,7 +154,7 @@ fun ExpandableActionCard(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Снять отметку")
+                            Text("Remove Mark")
                         }
                     } else if (actionUI.canBeCompletedManually) {
                         // Кнопка для отметки о выполнении
@@ -174,7 +174,7 @@ fun ExpandableActionCard(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Отметить выполненным")
+                            Text("Mark as Completed")
                         }
                     }
                 }

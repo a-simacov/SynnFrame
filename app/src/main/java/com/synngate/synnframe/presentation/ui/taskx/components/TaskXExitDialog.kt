@@ -83,7 +83,7 @@ fun TaskXExitDialog(
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Text(
-                        text = "Выберите действие",
+                        text = "Choose an action",
                         style = MaterialTheme.typography.titleLarge,
                         textAlign = TextAlign.Center
                     )
@@ -92,7 +92,7 @@ fun TaskXExitDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Задание выполняется. Что вы хотите сделать?",
+                    text = "Task is in progress. What would you like to do?",
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
@@ -107,7 +107,7 @@ fun TaskXExitDialog(
                             .padding(bottom = 16.dp)
                     )
                     Text(
-                        text = "Обработка запроса...",
+                        text = "Processing request...",
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center
                     )
@@ -125,7 +125,7 @@ fun TaskXExitDialog(
                                 containerColor = MaterialTheme.colorScheme.primary
                             )
                         ) {
-                            Text("Остаться")
+                            Text("Stay")
                         }
 
                         // Приостановить задание
@@ -142,7 +142,7 @@ fun TaskXExitDialog(
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Приостановить")
+                            Text("Pause")
                         }
 
                         // Завершить задание
@@ -160,7 +160,7 @@ fun TaskXExitDialog(
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Завершить")
+                                Text("Complete")
                             }
                         }
 
@@ -180,7 +180,7 @@ fun TaskXExitDialog(
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Выйти")
+                            Text("Exit")
                         }
                     }
                 }

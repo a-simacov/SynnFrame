@@ -120,7 +120,7 @@ class ProductListViewModel(
                         error = e.message ?: "Unknown error occurred"
                     )
                 }
-                sendEvent(ProductListEvent.ShowSnackbar("Ошибка загрузки товаров: ${e.message}"))
+                sendEvent(ProductListEvent.ShowSnackbar("Error loading products: ${e.message}"))
             }
         }
     }
@@ -226,19 +226,19 @@ class ProductListViewModel(
 
                     updateState { it.copy(isSyncing = false) }
                     sendEvent(ProductListEvent.ShowSnackbar(
-                        "Синхронизация товаров завершена. Обновлено: $count"
+                        "Product synchronization completed. Updated: $count"
                     ))
                 } else {
                     updateState { it.copy(isSyncing = false) }
                     sendEvent(ProductListEvent.ShowSnackbar(
-                        "Ошибка синхронизации: ${result.exceptionOrNull()?.message}"
+                        "Synchronization error: ${result.exceptionOrNull()?.message}"
                     ))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error syncing products")
                 updateState { it.copy(isSyncing = false) }
                 sendEvent(ProductListEvent.ShowSnackbar(
-                    "Ошибка синхронизации: ${e.message}"
+                    "Synchronization error: ${e.message}"
                 ))
             }
         }
@@ -266,7 +266,7 @@ class ProductListViewModel(
                     playErrorSound(barcode)
 
                     // Если товар не найден, показываем сообщение
-                    sendEvent(ProductListEvent.ShowSnackbar("Товар со штрихкодом $barcode не найден"))
+                    sendEvent(ProductListEvent.ShowSnackbar("Product with barcode $barcode not found"))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error finding product by barcode")
@@ -274,7 +274,7 @@ class ProductListViewModel(
                 // Воспроизводим звук неуспешного сканирования с дебаунсингом
                 playErrorSound(barcode)
 
-                sendEvent(ProductListEvent.ShowSnackbar("Ошибка поиска по штрихкоду: ${e.message}"))
+                sendEvent(ProductListEvent.ShowSnackbar("Barcode search error: ${e.message}"))
             } finally {
                 updateState { it.copy(isLoading = false) }
             }
@@ -301,7 +301,7 @@ class ProductListViewModel(
                     }
                 } else {
                     playErrorSound(barcode)
-                    sendEvent(ProductListEvent.ShowSnackbar("Товар со штрихкодом $barcode не найден"))
+                    sendEvent(ProductListEvent.ShowSnackbar("Product with barcode $barcode not found"))
                     launchMain {
                         onResult(null)
                     }
@@ -309,7 +309,7 @@ class ProductListViewModel(
             } catch (e: Exception) {
                 Timber.e(e, "Error finding product by barcode")
                 playErrorSound(barcode)
-                sendEvent(ProductListEvent.ShowSnackbar("Ошибка при поиске товара: ${e.message}"))
+                sendEvent(ProductListEvent.ShowSnackbar("Error finding product: ${e.message}"))
                 launchMain {
                     onResult(null)
                 }
@@ -376,7 +376,7 @@ class ProductListViewModel(
 
             sendEvent(
                 ProductListEvent.ShowSnackbar(
-                    "Сканирование завершено: найдено $foundCount, не найдено $notFoundCount"
+                    "Scanning completed: found $foundCount, not found $notFoundCount"
                 )
             )
         }

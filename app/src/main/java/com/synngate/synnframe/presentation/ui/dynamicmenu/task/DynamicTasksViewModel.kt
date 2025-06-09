@@ -54,7 +54,7 @@ class DynamicTasksViewModel(
                                 tasks = tasks,
                                 taskTypeId = taskTypeId,
                                 isLoading = false,
-                                error = if (tasks.isEmpty()) "Нет доступных заданий" else null
+                                error = if (tasks.isEmpty()) "No available tasks" else null
                             )
                         }
                         Timber.d("Loaded ${tasks.size} tasks, taskTypeId: $taskTypeId")
@@ -62,7 +62,7 @@ class DynamicTasksViewModel(
                         updateState {
                             it.copy(
                                 isLoading = false,
-                                error = "Получен пустой ответ от сервера"
+                                error = "Empty response received from server"
                             )
                         }
                     }
@@ -70,16 +70,16 @@ class DynamicTasksViewModel(
                     updateState {
                         it.copy(
                             isLoading = false,
-                            error = "Ошибка загрузки заданий: ${(result as? ApiResult.Error)?.message}"
+                            error = "Error loading tasks: ${(result as? ApiResult.Error)?.message}"
                         )
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при загрузке заданий")
+                Timber.e(e, "Error loading tasks")
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка при загрузке заданий: ${e.message}"
+                        error = "Error loading tasks: ${e.message}"
                     )
                 }
             }
@@ -108,17 +108,17 @@ class DynamicTasksViewModel(
                         updateState {
                             it.copy(
                                 isCreatingTask = false,
-                                error = "Ошибка: пустой ответ при создании задания"
+                                error = "Error: empty response when creating task"
                             )
                         }
                     }
                 } else {
-                    val errorMsg = (result as? ApiResult.Error)?.message ?: "Неизвестная ошибка"
+                    val errorMsg = (result as? ApiResult.Error)?.message ?: "Unknown error"
                     Timber.e("Error creating task: $errorMsg")
                     updateState {
                         it.copy(
                             isCreatingTask = false,
-                            error = "Ошибка создания задания: $errorMsg"
+                            error = "Error creating task: $errorMsg"
                         )
                     }
                 }
@@ -127,7 +127,7 @@ class DynamicTasksViewModel(
                 updateState {
                     it.copy(
                         isCreatingTask = false,
-                        error = "Ошибка при создании задания: ${e.message}"
+                        error = "Error creating task: ${e.message}"
                     )
                 }
             }
@@ -166,8 +166,8 @@ class DynamicTasksViewModel(
                 // с передачей необходимых параметров
                 sendEvent(DynamicTasksEvent.NavigateToTaskXDetail(taskId, endpoint))
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при запуске задания")
-                sendEvent(DynamicTasksEvent.ShowSnackbar("Ошибка: ${e.message}"))
+                Timber.e(e, "Error starting task")
+                sendEvent(DynamicTasksEvent.ShowSnackbar("Error: ${e.message}"))
             } finally {
                 updateState { it.copy(isLoading = false) }
             }
@@ -193,7 +193,7 @@ class DynamicTasksViewModel(
 
                 if (localSearchResults.isNotEmpty()) {
                     // Если локальный поиск дал результаты, используем их
-                    Timber.d("Локальный поиск успешно нашел ${localSearchResults.size} заданий")
+                    Timber.d("Local search successfully found ${localSearchResults.size} tasks")
 
                     updateState {
                         it.copy(
@@ -221,7 +221,7 @@ class DynamicTasksViewModel(
                 }
 
                 // Если локальный поиск не дал результатов, выполняем удаленный поиск
-                Timber.d("Локальный поиск не дал результатов, выполняем удаленный поиск")
+                Timber.d("Local search returned no results, performing remote search")
 
                 val searchEndpoint = endpoint
                 val result = dynamicMenuUseCases.searchDynamicTask(searchEndpoint, searchValue)
@@ -253,7 +253,7 @@ class DynamicTasksViewModel(
                             it.copy(
                                 tasks = emptyList(),
                                 isLoading = false,
-                                error = "Задание не найдено",
+                                error = "Task not found",
                                 lastSearchQuery = searchValue,
                                 searchResultType = null,
                                 isLocalSearch = false
@@ -264,16 +264,16 @@ class DynamicTasksViewModel(
                     updateState {
                         it.copy(
                             isLoading = false,
-                            error = "Ошибка поиска: ${(result as? ApiResult.Error)?.message}"
+                            error = "Search error: ${(result as? ApiResult.Error)?.message}"
                         )
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при поиске задания")
+                Timber.e(e, "Error searching for task")
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка при поиске задания: ${e.message}"
+                        error = "Error searching for task: ${e.message}"
                     )
                 }
             }

@@ -110,7 +110,7 @@ fun CheckboxBooleanField(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = if (checked) "Выбрано" else "Не выбрано",
+                text = if (checked) "Selected" else "Not selected",
                 style = MaterialTheme.typography.bodyLarge
             )
         }

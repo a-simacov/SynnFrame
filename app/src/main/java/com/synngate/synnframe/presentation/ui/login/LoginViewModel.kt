@@ -51,7 +51,7 @@ class LoginViewModel(
         val password = state.password.trim()
 
         if (password.isEmpty()) {
-            updateState { it.copy(error = "Введите пароль") }
+            updateState { it.copy(error = "Enter password") }
             return
         }
 
@@ -67,7 +67,7 @@ class LoginViewModel(
                     updateState { it.copy(isLoading = false, error = null) }
                     sendEvent(LoginEvent.NavigateToMainMenu)
                 } else {
-                    val errorMessage = result.exceptionOrNull()?.message ?: "Ошибка аутентификации"
+                    val errorMessage = result.exceptionOrNull()?.message ?: "Authentication error"
                     updateState { it.copy(isLoading = false, error = errorMessage) }
                 }
             } catch (e: Exception) {
@@ -75,7 +75,7 @@ class LoginViewModel(
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = e.message ?: "Неизвестная ошибка аутентификации"
+                        error = e.message ?: "Unknown authentication error"
                     )
                 }
             }

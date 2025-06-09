@@ -49,25 +49,25 @@ class DynamicTaskDetailViewModel(
                         updateState {
                             it.copy(
                                 isLoading = false,
-                                error = "Не удалось получить детали задания"
+                                error = "Failed to get task details"
                             )
                         }
                     }
                 } else {
-                    val error = (result as? ApiResult.Error)?.message ?: "Неизвестная ошибка"
+                    val error = (result as? ApiResult.Error)?.message ?: "Unknown error"
                     updateState {
                         it.copy(
                             isLoading = false,
-                            error = "Ошибка загрузки деталей задания: $error"
+                            error = "Error loading task details: $error"
                         )
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при загрузке деталей задания")
+                Timber.e(e, "Error loading task details")
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка: ${e.message}"
+                        error = "Error: ${e.message}"
                     )
                 }
             }
@@ -86,7 +86,7 @@ class DynamicTaskDetailViewModel(
                     startTaskExecution()
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при проверке статуса задания")
+                Timber.e(e, "Error checking task status")
             }
         }
     }
@@ -106,8 +106,8 @@ class DynamicTaskDetailViewModel(
                 // Вместо загрузки и сохранения в холдер
                 sendEvent(DynamicTaskDetailEvent.NavigateToTaskXDetail(taskId, endpoint))
             } catch (e: Exception) {
-                Timber.e(e, "Ошибка при запуске задания")
-                sendEvent(DynamicTaskDetailEvent.ShowSnackbar("Ошибка: ${e.message}"))
+                Timber.e(e, "Error starting task")
+                sendEvent(DynamicTaskDetailEvent.ShowSnackbar("Error: ${e.message}"))
             } finally {
                 updateState { it.copy(isLoading = false) }
             }

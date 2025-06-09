@@ -26,18 +26,18 @@ class ActionSearchService(
         currentFilter: PlannedActionsFilter
     ): SearchResult = withContext(Dispatchers.IO) {
         if (value.isBlank()) {
-            return@withContext SearchResult.Error("Значение для поиска не может быть пустым")
+            return@withContext SearchResult.Error("Search value cannot be empty")
         }
 
         val searchableFields = task.taskType?.searchActionFieldsTypes ?: emptyList()
         if (searchableFields.isEmpty()) {
-            return@withContext SearchResult.Error("Для данного типа задания поиск не настроен")
+            return@withContext SearchResult.Error("Search is not configured for this task type")
         }
 
         // Шаг 1: Определить множество действий для поиска с учетом порядка выполнения
         val availableActions = getAvailableActionsForSearch(task)
         if (availableActions.isEmpty()) {
-            return@withContext SearchResult.Error("Нет доступных действий для поиска")
+            return@withContext SearchResult.Error("No actions available for search")
         }
 
         // Шаг 2: Фильтруем действия с учетом уже установленных фильтров
@@ -48,7 +48,7 @@ class ActionSearchService(
         }
 
         if (filteredActions.isEmpty()) {
-            return@withContext SearchResult.NotFound("Нет действий, соответствующих текущим фильтрам")
+            return@withContext SearchResult.NotFound("No actions matching current filters")
         }
 
         // Шаг 3: Пытаемся найти объект по значению для каждого типа поля
@@ -84,7 +84,7 @@ class ActionSearchService(
         }
 
         // Если после проверки всех типов полей ничего не нашли
-        return@withContext SearchResult.NotFound("По запросу '$value' ничего не найдено")
+        return@withContext SearchResult.NotFound("No results found for query '$value'")
     }
 
     /**
@@ -249,7 +249,7 @@ class ActionSearchService(
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при поиске товара: $value")
+            Timber.e(e, "Error searching for product: $value")
         }
 
         return null
@@ -306,7 +306,7 @@ class ActionSearchService(
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e, "Ошибка при поиске товара задания: $value")
+            Timber.e(e, "Error searching for task product: $value")
         }
 
         return null

@@ -46,7 +46,7 @@ fun CommandResultDialog(
             ) {
                 if (content.isEmpty()) {
                     Text(
-                        text = "Команда успешно выполнена, но нет дополнительных данных.",
+                        text = "Command executed successfully, but no additional data is available.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 } else {
@@ -82,7 +82,7 @@ fun CommandResultDialog(
         },
         confirmButton = {
             Button(onClick = onDismiss) {
-                Text("ОК")
+                Text("OK")
             }
         },
         modifier = modifier

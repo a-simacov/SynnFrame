@@ -82,10 +82,10 @@ class SettingsViewModel(
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка загрузки настроек: ${e.message}"
+                        error = "Error loading settings: ${e.message}"
                     )
                 }
-                sendEvent(SettingsEvent.ShowSnackbar("Ошибка загрузки настроек"))
+                sendEvent(SettingsEvent.ShowSnackbar("Error loading settings"))
             }
         }
     }

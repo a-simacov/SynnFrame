@@ -44,9 +44,9 @@ fun CommandStatusIndicator(
     }
 
     val statusText = if (status.success) {
-        "Успешно"
+        "Successfull"
     } else {
-        "Ошибка"
+        "Error"
     }
 
     Surface(
