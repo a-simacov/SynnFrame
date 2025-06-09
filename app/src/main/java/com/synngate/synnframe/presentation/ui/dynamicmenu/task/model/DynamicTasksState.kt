@@ -12,8 +12,10 @@ data class DynamicTasksState(
     val endpoint: String = "",
     override val screenSettings: ScreenSettings = ScreenSettings(),
     val tasks: List<DynamicTask> = emptyList(),
+    val taskTypeId: String? = null,
     val searchValue: String = "",
     val isLoading: Boolean = false,
+    val isCreatingTask: Boolean = false,
     val error: String? = null,
     val foundTask: DynamicTask? = null,
     val lastSearchQuery: String = "",
@@ -29,5 +31,9 @@ data class DynamicTasksState(
         return searchValue.isNotEmpty() ||
                 lastSearchQuery.isNotEmpty() &&
                 searchResultType != null
+    }
+
+    fun canCreateTask(): Boolean {
+        return !taskTypeId.isNullOrBlank() && !isCreatingTask && !isLoading
     }
 }

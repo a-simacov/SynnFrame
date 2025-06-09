@@ -1,5 +1,6 @@
 package com.synngate.synnframe.data.remote.api
 
+import com.synngate.synnframe.data.remote.dto.DynamicTasksResponseDto
 import com.synngate.synnframe.data.remote.dto.TaskStartRequestDto
 import com.synngate.synnframe.data.remote.service.ServerProvider
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
@@ -8,6 +9,7 @@ import com.synngate.synnframe.domain.entity.operation.DynamicTask
 import com.synngate.synnframe.presentation.ui.taskx.dto.TaskXResponseDto
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpStatusCode
+import timber.log.Timber
 
 class DynamicMenuApiImpl(
     httpClient: HttpClient,
@@ -22,8 +24,16 @@ class DynamicMenuApiImpl(
     override suspend fun getDynamicTasks(
         endpoint: String,
         params: Map<String, String>
-    ): ApiResult<List<DynamicTask>> {
+    ): ApiResult<DynamicTasksResponseDto> {
         return executeApiRequest(endpoint, params)
+    }
+
+    override suspend fun createTask(endpoint: String, taskTypeId: String): ApiResult<TaskXResponseDto> {
+        Timber.d("Creating new task with taskTypeId: $taskTypeId")
+        return executeApiRequest(
+            endpoint = "$endpoint/$taskTypeId/new",
+            methodOverride = HttpMethod.POST
+        )
     }
 
     override suspend fun searchDynamicTask(

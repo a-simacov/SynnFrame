@@ -43,14 +43,28 @@ class DynamicTasksViewModel(
                 val result = dynamicMenuUseCases.getDynamicTasks(endpoint)
 
                 if (result.isSuccess()) {
-                    val tasks = result.getOrNull() ?: emptyList()
-                    allLoadedTasks = tasks
-                    updateState {
-                        it.copy(
-                            tasks = tasks,
-                            isLoading = false,
-                            error = if (tasks.isEmpty()) "Нет доступных заданий" else null
-                        )
+                    val responseDto = result.getOrNull()
+                    if (responseDto != null) {
+                        val tasks = responseDto.list
+                        val taskTypeId = responseDto.taskTypeId
+
+                        allLoadedTasks = tasks
+                        updateState {
+                            it.copy(
+                                tasks = tasks,
+                                taskTypeId = taskTypeId,
+                                isLoading = false,
+                                error = if (tasks.isEmpty()) "Нет доступных заданий" else null
+                            )
+                        }
+                        Timber.d("Loaded ${tasks.size} tasks, taskTypeId: $taskTypeId")
+                    } else {
+                        updateState {
+                            it.copy(
+                                isLoading = false,
+                                error = "Получен пустой ответ от сервера"
+                            )
+                        }
                     }
                 } else {
                     updateState {
@@ -66,6 +80,54 @@ class DynamicTasksViewModel(
                     it.copy(
                         isLoading = false,
                         error = "Ошибка при загрузке заданий: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun createNewTask() {
+        val taskTypeId = uiState.value.taskTypeId ?: return
+
+        launchIO {
+            updateState { it.copy(isCreatingTask = true, error = null) }
+
+            try {
+                Timber.d("Creating new task with taskTypeId: $taskTypeId")
+                val result = dynamicMenuUseCases.createTask(endpoint, taskTypeId)
+
+                if (result.isSuccess()) {
+                    val createdTaskX = result.getOrNull()
+                    if (createdTaskX != null) {
+                        Timber.d("Successfully created new task: ${createdTaskX.id}")
+
+                        // После успешного создания задания переходим на экран выполнения
+                        updateState { it.copy(isCreatingTask = false) }
+                        sendEvent(DynamicTasksEvent.NavigateToTaskXDetail(createdTaskX.id, endpoint))
+                    } else {
+                        updateState {
+                            it.copy(
+                                isCreatingTask = false,
+                                error = "Ошибка: пустой ответ при создании задания"
+                            )
+                        }
+                    }
+                } else {
+                    val errorMsg = (result as? ApiResult.Error)?.message ?: "Неизвестная ошибка"
+                    Timber.e("Error creating task: $errorMsg")
+                    updateState {
+                        it.copy(
+                            isCreatingTask = false,
+                            error = "Ошибка создания задания: $errorMsg"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Exception while creating task")
+                updateState {
+                    it.copy(
+                        isCreatingTask = false,
+                        error = "Ошибка при создании задания: ${e.message}"
                     )
                 }
             }

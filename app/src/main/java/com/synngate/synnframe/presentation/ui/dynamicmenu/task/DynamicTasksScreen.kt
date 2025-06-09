@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +58,7 @@ fun DynamicTasksScreen(
                 is DynamicTasksEvent.NavigateBack -> {
                     navigateBack()
                 }
+
                 is DynamicTasksEvent.ShowSnackbar -> {
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(
@@ -64,9 +67,11 @@ fun DynamicTasksScreen(
                         )
                     }
                 }
+
                 is DynamicTasksEvent.NavigateToTaskDetail -> {
                     navigateToTaskDetail(event.taskId, viewModel.endpoint)
                 }
+
                 is DynamicTasksEvent.NavigateToTaskXDetail -> {
                     // Используем новый подход с передачей endpoint
                     navigateToTaskXDetail(event.taskId, event.endpoint)
@@ -108,7 +113,20 @@ fun DynamicTasksScreen(
                 )
             }
         },
-        isLoading = state.isLoading
+        isLoading = state.isLoading,
+        floatingActionButton = {
+            if (state.canCreateTask()) {
+                FloatingActionButton(
+                    onClick = { viewModel.createNewTask() },
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null
+                    )
+                }
+            }
+        }
     ) { paddingValues ->
         Box(
             modifier = modifier

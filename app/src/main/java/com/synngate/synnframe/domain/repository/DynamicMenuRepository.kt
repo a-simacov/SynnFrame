@@ -1,6 +1,7 @@
 package com.synngate.synnframe.domain.repository
 
 import com.synngate.synnframe.data.remote.api.ApiResult
+import com.synngate.synnframe.data.remote.dto.DynamicTasksResponseDto
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
@@ -10,7 +11,9 @@ interface DynamicMenuRepository {
 
     suspend fun getDynamicMenu(menuItemId: String? = null): ApiResult<List<DynamicMenuItem>>
 
-    suspend fun getDynamicTasks(endpoint: String, params: Map<String, String> = emptyMap()): ApiResult<List<DynamicTask>>
+    suspend fun getDynamicTasks(endpoint: String, params: Map<String, String> = emptyMap()): ApiResult<DynamicTasksResponseDto>
+
+    suspend fun createTask(endpoint: String, taskTypeId: String): ApiResult<TaskXResponseDto>
 
     suspend fun searchDynamicTask(endpoint: String, searchValue: String): ApiResult<DynamicTask>
 
