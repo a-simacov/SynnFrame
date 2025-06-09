@@ -38,7 +38,7 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
     }
 
     val showServersOnStartup: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[SHOW_SERVERS_ON_STARTUP] ?: true
+        false
     }
 
     val activeServerId: Flow<Int?> = dataStore.data.map { preferences ->
