@@ -75,9 +75,7 @@ data class ActionWizardState(
     }
 
     fun shouldShowAdditionalProps(step: ActionStepTemplate): Boolean {
-        return plannedAction?.storageProductClassifier != null &&
-                plannedAction.storageProduct == null &&
-                step.inputAdditionalProps &&
+        return step.inputAdditionalProps &&
                 step.factActionField == FactActionField.STORAGE_PRODUCT
     }
 

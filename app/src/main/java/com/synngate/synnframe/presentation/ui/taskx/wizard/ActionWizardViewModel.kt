@@ -2,6 +2,8 @@ package com.synngate.synnframe.presentation.ui.taskx.wizard
 
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.data.remote.dto.CommandNextAction
+import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.domain.entity.taskx.TaskProduct
 import com.synngate.synnframe.domain.service.ValidationService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
@@ -182,6 +184,10 @@ class ActionWizardViewModel(
     }
 
     private fun loadClassifierProductInfo(productId: String) {
+        if (uiState.value.classifierProductInfo?.id == productId) {
+            return  // Информация о товаре уже загружена, выходим из метода
+        }
+
         launchIO {
             updateState { it.copy(isLoadingProductInfo = true) }
 
@@ -295,6 +301,12 @@ class ActionWizardViewModel(
     }
 
     fun setObjectForCurrentStep(obj: Any, autoAdvance: Boolean = true) {
+        if (obj is TaskProduct) {
+            loadClassifierProductInfo(obj.product.id)
+        } else if (obj is Product) {
+            loadClassifierProductInfo(obj.id)
+        }
+
         val result = controller.setObjectForCurrentStep(uiState.value, obj)
         updateState { result.getNewState() }
 
