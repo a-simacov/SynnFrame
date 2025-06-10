@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import com.synngate.synnframe.SynnFrameApplication
 import com.synngate.synnframe.data.barcodescanner.DataWedgeReceiver
+import com.synngate.synnframe.data.datastore.AppSettingsDataStore
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.di.AppContainer
 import com.synngate.synnframe.presentation.navigation.AppNavHost
@@ -99,9 +100,18 @@ class MainActivity : ComponentActivity() {
 
     // В MainActivity.kt
     override fun attachBaseContext(newBase: Context) {
-        // Получаем сохраненный код языка (можно использовать другой способ хранения)
-        val sharedPreferences = newBase.getSharedPreferences("settings", Context.MODE_PRIVATE)
-        val languageCode = sharedPreferences.getString("language_code", "ru") ?: "ru"
+        // Получаем сохраненный код языка, но теперь из тех же SharedPreferences,
+        // что используются для синхронизации
+        val sharedPreferences = newBase.getSharedPreferences(
+            AppSettingsDataStore.SHARED_PREFS_NAME,
+            Context.MODE_PRIVATE
+        )
+
+        // Используем "en" вместо "ru" как язык по умолчанию
+        val languageCode = sharedPreferences.getString(
+            AppSettingsDataStore.SHARED_PREFS_LANGUAGE_KEY,
+            "en"
+        ) ?: "en"
 
         // Применяем локаль
         val context = LocaleHelper.updateLocale(newBase, languageCode)

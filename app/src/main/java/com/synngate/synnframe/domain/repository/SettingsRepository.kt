@@ -1,5 +1,6 @@
 package com.synngate.synnframe.domain.repository
 
+import android.content.Context
 import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.api.DownloadProgressListener
@@ -23,6 +24,7 @@ interface SettingsRepository {
     suspend fun setShowServersOnStartup(show: Boolean)
     suspend fun setPeriodicUpload(enabled: Boolean, intervalSeconds: Int? = null)
     suspend fun setThemeMode(mode: ThemeMode)
+    suspend fun setLanguageCode(code: String, context: Context)
     suspend fun setLanguageCode(code: String)
     suspend fun setNavigationButtonHeight(height: Float)
 

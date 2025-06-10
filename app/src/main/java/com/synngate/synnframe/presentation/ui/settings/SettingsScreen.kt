@@ -63,11 +63,11 @@ import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.theme.ThemeMode
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsEvent
 import com.synngate.synnframe.presentation.ui.settings.model.SettingsState
+import com.synngate.synnframe.presentation.util.LocaleHelper
 import com.synngate.synnframe.util.logging.LogLevel
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @Composable
 fun SettingsScreen(
@@ -140,18 +140,13 @@ fun SettingsScreen(
                 is SettingsEvent.NavigateToSyncHistory -> navigateToSyncHistory()
 
                 is SettingsEvent.ChangeAppLanguage -> {
-                    // Изменяем локаль приложения
-                    val locale = Locale(event.languageCode)
-                    val resources = context.resources
-                    val configuration = resources.configuration
-                    configuration.setLocale(locale)
-                    resources.updateConfiguration(configuration, resources.displayMetrics)
+                    // Используем LocaleHelper для обновления локали
+                    val updatedContext = LocaleHelper.updateLocale(context, event.languageCode)
 
                     // Перезапускаем активность для применения изменений
-                    val intent =
-                        context.packageManager.getLaunchIntentForPackage(context.packageName)
+                    val intent = updatedContext.packageManager.getLaunchIntentForPackage(updatedContext.packageName)
                     intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    context.startActivity(intent)
+                    updatedContext.startActivity(intent)
                 }
             }
         }

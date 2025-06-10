@@ -67,7 +67,8 @@ class SettingsUseCases(
 
     suspend fun setLanguageCode(code: String): Result<Unit> {
         return try {
-            settingsRepository.setLanguageCode(code)
+            // Используем новый метод, который синхронизирует DataStore и SharedPreferences
+            settingsRepository.setLanguageCode(code, applicationContext)
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Exception during setting LanguageCode")

@@ -1,5 +1,6 @@
 package com.synngate.synnframe.data.datastore
 
+import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -35,6 +36,8 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
         const val DEFAULT_LOG_LEVEL = "FULL"
         private val deviceTypeKey = stringPreferencesKey("device_type")
         private val DEVICE_TYPE_MANUALLY_SET = booleanPreferencesKey("device_type_manually_set")
+        const val SHARED_PREFS_NAME = "settings"
+        const val SHARED_PREFS_LANGUAGE_KEY = "language_code"
     }
 
     val showServersOnStartup: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -63,8 +66,13 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    // Проверка, был ли уже установлен язык
+    val isLanguageSet: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences.contains(LANGUAGE_CODE)
+    }
+
     val languageCode: Flow<String> = dataStore.data.map { preferences ->
-        preferences[LANGUAGE_CODE] ?: "ru"
+        preferences[LANGUAGE_CODE] ?: "en"
     }
 
     val navigationButtonHeight: Flow<Float> = dataStore.data.map { preferences ->
@@ -166,6 +174,22 @@ class AppSettingsDataStore(private val dataStore: DataStore<Preferences>) {
     suspend fun setLanguageCode(code: String) {
         dataStore.edit { preferences ->
             preferences[LANGUAGE_CODE] = code
+        }
+    }
+
+    suspend fun setLanguageCode(code: String, context: Context) {
+        // Сохраняем в DataStore
+        dataStore.edit { preferences ->
+            preferences[LANGUAGE_CODE] = code
+        }
+
+        // Синхронизируем с SharedPreferences для attachBaseContext
+        try {
+            val prefs = context.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putString(SHARED_PREFS_LANGUAGE_KEY, code).apply()
+            Timber.d("Language code synchronized to SharedPreferences: $code")
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to synchronize language code to SharedPreferences")
         }
     }
 

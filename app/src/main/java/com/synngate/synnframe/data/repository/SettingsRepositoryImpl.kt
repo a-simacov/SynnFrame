@@ -1,5 +1,6 @@
 package com.synngate.synnframe.data.repository
 
+import android.content.Context
 import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.data.datastore.AppSettingsDataStore
 import com.synngate.synnframe.data.remote.api.ApiResult
@@ -36,6 +37,10 @@ class SettingsRepositoryImpl(
 
     override suspend fun setThemeMode(mode: ThemeMode) {
         appSettingsDataStore.setThemeMode(mode)
+    }
+
+    override suspend fun setLanguageCode(code: String, context: Context) {
+        appSettingsDataStore.setLanguageCode(code, context)
     }
 
     override suspend fun setLanguageCode(code: String) {

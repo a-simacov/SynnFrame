@@ -3,6 +3,7 @@ package com.synngate.synnframe
 import android.app.Application
 import com.synngate.synnframe.data.barcodescanner.DeviceType
 import com.synngate.synnframe.presentation.di.AppContainer
+import com.synngate.synnframe.presentation.util.LocaleHelper
 import com.synngate.synnframe.util.logging.AppTree
 import com.synngate.synnframe.util.logging.LogLevelProvider
 import com.synngate.synnframe.util.network.TrustAllCertificates
@@ -40,10 +41,7 @@ class SynnFrameApplication : Application() {
         TrustAllCertificates.initialize()
 
         // Устанавливаем локаль из настроек
-        launchInBackground {
-            val languageCode = appContainer.appSettingsDataStore.languageCode.first()
-            setAppLocale(languageCode)
-        }
+        initializeLanguage()
 
         launchInBackground {
             try {
@@ -80,12 +78,22 @@ class SynnFrameApplication : Application() {
     }
 
     private fun setAppLocale(languageCode: String) {
-        val locale = Locale(languageCode)
-        Locale.setDefault(locale)
-        val resources = resources
-        val configuration = resources.configuration
-        configuration.setLocale(locale)
-        resources.updateConfiguration(configuration, resources.displayMetrics)
+        try {
+            // Используем LocaleHelper для обновления локали
+            val updatedContext = LocaleHelper.updateLocale(applicationContext, languageCode)
+
+            // Дополнительно обновляем глобальные настройки
+            val resources = resources
+            val configuration = resources.configuration
+            val locale = Locale(languageCode)
+            Locale.setDefault(locale)
+            configuration.setLocale(locale)
+            resources.updateConfiguration(configuration, resources.displayMetrics)
+
+            Timber.d("App locale set to: $languageCode")
+        } catch (e: Exception) {
+            Timber.e(e, "Error setting app locale to: $languageCode")
+        }
     }
 
     private fun launchInBackground(block: suspend () -> Unit) {
@@ -107,6 +115,41 @@ class SynnFrameApplication : Application() {
         // Устанавливаем значение в статическое поле нашего конфигуратора
         // Для этого нужно модифицировать AppInsetsConfig, чтобы оно содержало изменяемое поле
         AppInsetsConfigHolder.initialize(isTablet)
+    }
+
+    private fun initializeLanguage() {
+        launchInBackground {
+            try {
+                // Проверяем, был ли уже установлен язык
+                val isLanguageSet = appContainer.appSettingsDataStore.isLanguageSet.first()
+
+                if (!isLanguageSet) {
+                    // Если язык еще не был установлен, определяем системный язык
+                    val systemLanguage = Locale.getDefault().language
+
+                    // Проверяем, поддерживается ли системный язык приложением
+                    val supportedLanguage = when (systemLanguage) {
+                        "ru", "en" -> systemLanguage  // Поддерживаемые языки
+                        else -> "en"  // По умолчанию английский для других языков
+                    }
+
+                    Timber.i("Setting system language as default: $supportedLanguage")
+                    // Используем метод с контекстом для синхронизации с SharedPreferences
+                    appContainer.settingsUseCases.setLanguageCode(supportedLanguage)
+
+                    // Применяем локаль
+                    setAppLocale(supportedLanguage)
+                } else {
+                    // Если язык уже был установлен, используем его
+                    val languageCode = appContainer.appSettingsDataStore.languageCode.first()
+                    setAppLocale(languageCode)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error initializing language settings")
+                // В случае ошибки используем язык по умолчанию
+                setAppLocale("en")
+            }
+        }
     }
 
     override fun onTerminate() {
