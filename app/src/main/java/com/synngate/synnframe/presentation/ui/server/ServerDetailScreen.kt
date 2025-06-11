@@ -166,7 +166,8 @@ fun ServerDetailScreen(
                 R.string.server_add_title
         ),
         onNavigateBack = { viewModel.navigateBack() },
-        snackbarHostState = snackbarHostState
+        snackbarHostState = snackbarHostState,
+        useScanner = true
     ) { paddingValues ->
         ServerDetailContent(
             state = state,
@@ -359,20 +360,18 @@ private fun ServerDetailContent(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (state.isEditMode) {
-            BooleanButton(
-                currentValue = state.isActive,
-                onValueChange = onActiveToggle,
-                modifier = Modifier.fillMaxWidth(),
-                valueToString = {
-                    stringResource(
-                        id = if (it) R.string.server_active else R.string.server_inactive
-                    )
-                }
-            )
+        BooleanButton(
+            currentValue = state.isActive,
+            onValueChange = onActiveToggle,
+            modifier = Modifier.fillMaxWidth(),
+            valueToString = {
+                stringResource(
+                    id = if (it) R.string.server_active else R.string.server_inactive
+                )
+            }
+        )
 
-            Spacer(modifier = Modifier.height(8.dp))
-        }
+        Spacer(modifier = Modifier.height(8.dp))
 
         if (state.showScannerTypeOptions) {
             val types = DeviceType.entries

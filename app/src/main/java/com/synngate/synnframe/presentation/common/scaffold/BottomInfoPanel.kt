@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -67,61 +68,79 @@ fun BottomInfoPanel(
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Блок информации о пользователе
-                if (!userName.isNullOrEmpty()) {
+                // Блок информации о пользователе (слева)
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (!userName.isNullOrEmpty()) {
+                        Text(
+                            text = userName,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                // Версия приложения (центр)
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        text = userName,
+                        text = "v${BuildConfig.VERSION_NAME}",
                         style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, false)
-                    )
-
-                    // Разделитель (вертикальная линия)
-                    SectionDivider()
-                }
-
-                // Версия приложения
-                Text(
-                    text = "v${BuildConfig.VERSION_NAME}",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Normal,
-                    maxLines = 1,
-                    modifier = Modifier.alpha(0.8f)
-                )
-
-                // Если сканер используется на экране, отображаем его статус
-                scannerService?.let { scanner ->
-                    // Разделитель (вертикальная линия)
-                    SectionDivider()
-
-                    // Тип сканера в виде аббревиатуры
-                    val scannerType = getScannerTypeAbbreviation(scanner)
-                    Text(
-                        text = scannerType,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1
-                    )
-
-                    // Индикатор статуса сканера
-                    ScannerStatusIndicator(
-                        scannerService = scanner,
-                        showText = false, // Не показываем текст для компактности
-                        modifier = Modifier.padding(start = 2.dp)
+                        modifier = Modifier.alpha(0.8f)
                     )
                 }
 
-                // Прогресс-бар синхронизации
-                if (isSyncing) {
-                    LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.padding(4.dp))
+                // Блок со сканером и прогресс-баром (справа)
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.wrapContentWidth(Alignment.End)
+                    ) {
+                        // Если сканер используется на экране, отображаем его статус
+                        scannerService?.let { scanner ->
+                            // Разделитель (вертикальная линия)
+                            SectionDivider()
+
+                            // Тип сканера в виде аббревиатуры
+                            val scannerType = getScannerTypeAbbreviation(scanner)
+                            Text(
+                                text = scannerType,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1
+                            )
+
+                            // Индикатор статуса сканера
+                            ScannerStatusIndicator(
+                                scannerService = scanner,
+                                showText = false, // Не показываем текст для компактности
+                                modifier = Modifier.padding(start = 2.dp)
+                            )
+                        }
+
+                        // Прогресс-бар синхронизации
+                        if (isSyncing) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            LinearProgressIndicator(
+                                modifier = Modifier.width(60.dp) // Ограничиваем ширину прогресс-бара
+                            )
+                            Spacer(modifier = Modifier.padding(4.dp))
+                        }
+                    }
                 }
             }
         }
