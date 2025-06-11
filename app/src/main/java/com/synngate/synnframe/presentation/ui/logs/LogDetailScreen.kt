@@ -83,15 +83,15 @@ fun LogDetailScreen(
     AppScaffold(
         title = stringResource(id = R.string.log_details),
         onNavigateBack = navigateBack,
+        actions = {
+            CopyLogButton(onClick = { viewModel.copyLogToClipboard() })
+            DeleteLogButton(onClick = { viewModel.showDeleteConfirmation() })
+        },
         snackbarHostState = snackbarHostState,
         notification = state.error?.let {
             Pair(it, StatusType.ERROR)
         },
-        isLoading = state.isLoading || state.isDeletingLog,
-        actions = {
-            CopyLogButton(onClick = { viewModel.copyLogToClipboard() })
-            DeleteLogButton(onClick = { viewModel.showDeleteConfirmation() })
-        }
+        isLoading = state.isLoading || state.isDeletingLog
     ) { paddingValues ->
         Box(
             modifier = modifier

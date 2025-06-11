@@ -115,14 +115,14 @@ fun LogListScreen(
     AppScaffold(
         title = stringResource(id = R.string.logs),
         onNavigateBack = navigateBack,
-        snackbarHostState = snackbarHostState,
-        notification = state.error?.let {
-            Pair(it, StatusType.ERROR)
-        },
         actions = {
             FilterByDateButton(onClick = { viewModel.showDateFilterDialog() })
             CleanupLogsButton(onClick = { viewModel.showCleanupDialog() })
             DeleteAllLogsButton(onClick = { viewModel.showDeleteAllConfirmation() })
+        },
+        snackbarHostState = snackbarHostState,
+        notification = state.error?.let {
+            Pair(it, StatusType.ERROR)
         },
         isLoading = state.isLoading
     ) { paddingValues ->

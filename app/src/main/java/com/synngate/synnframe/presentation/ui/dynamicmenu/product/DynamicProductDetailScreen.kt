@@ -73,10 +73,6 @@ fun DynamicProductDetailScreen(
         title = stringResource(id = R.string.product_details),
         subtitle = state.product?.name?.let { HtmlUtils.stripHtml(it) },
         onNavigateBack = navigateBack,
-        snackbarHostState = snackbarHostState,
-        notification = state.error?.let {
-            Pair(it, StatusType.ERROR)
-        },
         actions = {
             IconButton(
                 onClick = { viewModel.copyProductInfoToClipboard() }
@@ -86,6 +82,10 @@ fun DynamicProductDetailScreen(
                     contentDescription = stringResource(id = R.string.copy_product_info)
                 )
             }
+        },
+        snackbarHostState = snackbarHostState,
+        notification = state.error?.let {
+            Pair(it, StatusType.ERROR)
         },
         isLoading = state.isLoading
     ) { paddingValues ->

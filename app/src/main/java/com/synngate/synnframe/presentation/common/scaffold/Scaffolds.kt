@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
@@ -42,7 +41,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,7 +50,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -62,13 +59,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.AppInsetsConfigHolder
 import com.synngate.synnframe.R
-import com.synngate.synnframe.SynnFrameApplication
 import com.synngate.synnframe.presentation.common.LocalCurrentUser
+import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.status.NotificationBar
 import com.synngate.synnframe.presentation.common.status.StatusType
-import com.synngate.synnframe.presentation.common.status.SyncStatusIndicator
 import kotlinx.coroutines.launch
-import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,14 +77,14 @@ fun AppScaffold(
     floatingActionButton: @Composable () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     isSyncing: Boolean = false,
-    lastSyncTime: String? = null,
     currentUser: String? = null,
     notification: Pair<String, StatusType>? = null,
     onDismissNotification: (() -> Unit)? = null,
     drawerState: DrawerState? = null,
-    drawerContent: @Composable (() -> Unit)? = null,
+    drawerContent: @Composable() (() -> Unit)? = null,
     menuItems: List<Pair<String, () -> Unit>>? = null,
     isLoading: Boolean = false,
+    useScanner: Boolean = false,
     content: @Composable (PaddingValues) -> Unit
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -104,18 +99,14 @@ fun AppScaffold(
     val localCurrentUser = LocalCurrentUser.current
     val finalUserName = currentUser ?: localCurrentUser?.name
 
-    // Получаем состояние синхронизации из ApplicationContext
-    val context = LocalContext.current
-    val app = remember { context.applicationContext as SynnFrameApplication }
-
-    // Следим за состоянием синхронизации
-    val syncController = remember { app.appContainer.synchronizationController }
-    val lastSyncInfo by syncController.lastSyncInfo.collectAsState(initial = null)
+    val scannerService = if (useScanner) {
+        LocalScannerService.current
+    } else {
+        null
+    }
 
     // Определяем, выполняется ли синхронизация и время последней синхронизации
     val finalIsSyncing = isSyncing
-    val finalLastSyncTime = lastSyncTime
-        ?: lastSyncInfo?.timestamp?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
 
     // Обновляем видимость уведомления при изменении параметра notification
     LaunchedEffect(notification) {
@@ -233,43 +224,11 @@ fun AppScaffold(
                 }
             },
             bottomBar = {
-                Surface(
-                    tonalElevation = 3.dp
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp)
-                            .navigationBarsPadding()
-                    ) {
-                        bottomBar()
-
-                        HorizontalDivider(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                        )
-
-                        Box(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            finalUserName?.let {
-                                Text(
-                                    text = "Пользователь: $it",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.align(Alignment.CenterStart)
-                                )
-                            }
-
-                            SyncStatusIndicator(
-                                isSyncing = finalIsSyncing,
-                                lastSyncTime = finalLastSyncTime,
-                                modifier = Modifier.align(Alignment.CenterEnd)
-                            )
-                        }
-                    }
-                }
+                BottomInfoPanel(
+                    userName = finalUserName,
+                    isSyncing = finalIsSyncing,
+                    scannerService = scannerService
+                )
             },
             snackbarHost = {
                 SnackbarHost(hostState = snackbarHostState)

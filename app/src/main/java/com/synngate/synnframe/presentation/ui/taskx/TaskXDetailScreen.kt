@@ -177,14 +177,9 @@ fun TaskXDetailScreen(
     }
 
     AppScaffold(
+        showTopBar = false,
         title = task?.name ?: "Загрузка задания...",
         onNavigateBack = viewModel::onBackPressed,
-        snackbarHostState = snackbarHostState,
-        notification = state.error?.let {
-            Pair(it, StatusType.ERROR)
-        },
-        isLoading = state.isLoading,
-        showTopBar = false,
         floatingActionButton = {
             // Добавляем FAB для быстрого доступа к текущему действию
             if (task != null && state.getDisplayActions().isNotEmpty()) {
@@ -200,7 +195,13 @@ fun TaskXDetailScreen(
                     )
                 }
             }
-        }
+        },
+        snackbarHostState = snackbarHostState,
+        notification = state.error?.let {
+            Pair(it, StatusType.ERROR)
+        },
+        isLoading = state.isLoading,
+        useScanner = true
     ) { paddingValues ->
         if (task == null) {
             EmptyScreenContent(

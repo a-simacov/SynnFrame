@@ -28,18 +28,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.KeyEvent
-import androidx.compose.ui.input.key.type
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.DynamicMenuItemType
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
@@ -126,13 +125,6 @@ fun DynamicMenuScreen(
     AppScaffold(
         title = title,
         onNavigateBack = onBackAction,
-        snackbarHostState = snackbarHostState,
-        notification = state.error?.let {
-            Pair(it, StatusType.ERROR)
-        },
-        onDismissNotification = {
-            viewModel.clearError()
-        },
         actions = {
             IconButton(onClick = { viewModel.onRefresh() }) {
                 Icon(
@@ -140,6 +132,13 @@ fun DynamicMenuScreen(
                     contentDescription = stringResource(id = R.string.refresh)
                 )
             }
+        },
+        snackbarHostState = snackbarHostState,
+        notification = state.error?.let {
+            Pair(it, StatusType.ERROR)
+        },
+        onDismissNotification = {
+            viewModel.clearError()
         },
         isLoading = state.isLoading
     ) { paddingValues ->

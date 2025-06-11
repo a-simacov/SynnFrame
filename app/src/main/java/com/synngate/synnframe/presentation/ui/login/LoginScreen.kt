@@ -103,7 +103,6 @@ fun LoginScreen(
 
     AppScaffold(
         title = stringResource(id = R.string.login_title),
-        snackbarHostState = snackbarHostState,
         actions = {
             IconButton(onClick = { showCameraScannerDialog = true }) {
                 Icon(
@@ -111,7 +110,9 @@ fun LoginScreen(
                     contentDescription = stringResource(R.string.scan_with_camera)
                 )
             }
-        }
+        },
+        snackbarHostState = snackbarHostState,
+        useScanner = true
     ) { paddingValues ->
         Box(
             contentAlignment = Alignment.Center,

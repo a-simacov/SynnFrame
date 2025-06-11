@@ -207,8 +207,8 @@ fun SettingsScreen(
 
     AppScaffold(
         title = stringResource(id = R.string.settings_title),
-        snackbarHostState = snackbarHostState,
         onNavigateBack = navigateBack,
+        snackbarHostState = snackbarHostState,
         notification = state.error?.let { Pair(it, StatusType.ERROR) }
     ) { paddingValues ->
         ScrollableScreenContent(

@@ -100,11 +100,6 @@ fun DynamicTasksScreen(
     AppScaffold(
         title = state.menuItemName,
         onNavigateBack = navigateBack,
-        snackbarHostState = snackbarHostState,
-        notification = state.error?.let {
-            Pair(it, StatusType.ERROR)
-        },
-        onDismissNotification = { viewModel.clearError() },
         actions = {
             IconButton(onClick = { viewModel.loadDynamicTasks() }) {
                 Icon(
@@ -113,7 +108,6 @@ fun DynamicTasksScreen(
                 )
             }
         },
-        isLoading = state.isLoading,
         floatingActionButton = {
             if (state.canCreateTask()) {
                 FloatingActionButton(
@@ -126,7 +120,14 @@ fun DynamicTasksScreen(
                     )
                 }
             }
-        }
+        },
+        snackbarHostState = snackbarHostState,
+        notification = state.error?.let {
+            Pair(it, StatusType.ERROR)
+        },
+        onDismissNotification = { viewModel.clearError() },
+        isLoading = state.isLoading,
+        useScanner = true
     ) { paddingValues ->
         Box(
             modifier = modifier

@@ -72,10 +72,6 @@ fun ProductDetailScreen(
     AppScaffold(
         title = stringResource(id = R.string.product_details),
         onNavigateBack = navigateBack,
-        snackbarHostState = snackbarHostState,
-        notification = state.error?.let {
-            Pair(it, StatusType.ERROR)
-        },
         actions = {
             IconButton(
                 onClick = { viewModel.copyProductInfoToClipboard() }
@@ -85,6 +81,10 @@ fun ProductDetailScreen(
                     contentDescription = stringResource(id = R.string.copy_product_info)
                 )
             }
+        },
+        snackbarHostState = snackbarHostState,
+        notification = state.error?.let {
+            Pair(it, StatusType.ERROR)
         },
         isLoading = state.isLoading
     ) { paddingValues ->

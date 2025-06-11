@@ -208,7 +208,6 @@ fun ProductListScreen(
         },
         isLoading = uiPresentation.isLoading,
         isSyncing = state.isSyncing,  // Передаем флаг синхронизации в AppScaffold
-        lastSyncTime = state.lastSyncTime,  // Передаем время последней синхронизации
         bottomBar = {
             if (uiPresentation.showConfirmButton) {
                 Button(
@@ -220,7 +219,8 @@ fun ProductListScreen(
                     Text(stringResource(id = R.string.confirm_selection))
                 }
             }
-        }
+        },
+        useScanner = true
     ) { paddingValues ->
         Column(
             modifier = modifier

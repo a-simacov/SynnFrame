@@ -107,9 +107,8 @@ fun MainMenuScreen(
     AppScaffold(
         title = stringResource(id = R.string.main_menu_title),
         snackbarHostState = snackbarHostState,
-        currentUser = state.currentUser?.name,
         isSyncing = state.isSyncing,
-        lastSyncTime = state.lastSyncTime,
+        currentUser = state.currentUser?.name,
         notification = state.error?.let {
             Pair(it, StatusType.ERROR)
         },

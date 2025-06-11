@@ -51,8 +51,8 @@ fun SyncHistoryScreen(
     AppScaffold(
         title = stringResource(id = R.string.sync_history_title),
         onNavigateBack = navigateBack,
-        isLoading = state.isLoading,
-        notification = state.error?.let { Pair(it, StatusType.ERROR) }
+        notification = state.error?.let { Pair(it, StatusType.ERROR) },
+        isLoading = state.isLoading
     ) { paddingValues ->
         if (state.syncHistory.isEmpty() && !state.isLoading) {
             // Показываем пустое состояние

@@ -97,13 +97,13 @@ fun ScannerStatusIndicator(
                 val errorMessage = (scannerState as ScannerState.Error).message
                 Text(
                     text = errorMessage,
-                    modifier = Modifier.padding(8.dp),
+                    modifier = Modifier.padding(4.dp),
                     color = MaterialTheme.colorScheme.onSurface
                 )
             } else {
                 Text(
                     text = statusText,
-                    modifier = Modifier.padding(8.dp),
+                    modifier = Modifier.padding(4.dp),
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -112,7 +112,7 @@ fun ScannerStatusIndicator(
         content = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = modifier.padding(4.dp)
+                modifier = modifier.padding(2.dp)
             ) {
                 if (showIcon) {
                     if (showError) {
@@ -120,14 +120,14 @@ fun ScannerStatusIndicator(
                             imageVector = Icons.Default.ErrorOutline,
                             contentDescription = statusText,
                             tint = statusColor,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(12.dp)
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Default.QrCodeScanner,
                             contentDescription = statusText,
                             tint = statusColor,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(12.dp)
                         )
                     }
                 }

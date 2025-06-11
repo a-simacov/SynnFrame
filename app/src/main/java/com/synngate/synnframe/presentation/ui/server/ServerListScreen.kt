@@ -109,7 +109,6 @@ fun ServerListScreen(
 
     AppScaffold(
         title = stringResource(id = R.string.servers_title),
-        snackbarHostState = snackbarHostState,
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.onAddServerClick() },
@@ -120,7 +119,8 @@ fun ServerListScreen(
                     contentDescription = stringResource(id = R.string.add_server)
                 )
             }
-        }
+        },
+        snackbarHostState = snackbarHostState
     ) { paddingValues ->
         if (state.isLoading) {
             LoadingScreenContent(

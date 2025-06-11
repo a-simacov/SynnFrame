@@ -135,12 +135,17 @@ fun DynamicProductsScreen(
             stringResource(id = R.string.select_product_for_task)
         else null,
         onNavigateBack = navigateBack,
-        snackbarHostState = snackbarHostState,
-        notification = state.error?.let {
-            Pair(it, StatusType.ERROR)
-        },
-        onDismissNotification = {
-            viewModel.clearError()
+        bottomBar = {
+            if (state.isSelectionMode && state.selectedProduct != null) {
+                Button(
+                    onClick = { viewModel.confirmProductSelection() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(stringResource(id = R.string.confirm_selection))
+                }
+            }
         },
         actions = {
             scannerService?.let { service ->
@@ -173,19 +178,15 @@ fun DynamicProductsScreen(
                 onScanClick = { viewModel.startScanning() }
             )
         },
+        snackbarHostState = snackbarHostState,
+        notification = state.error?.let {
+            Pair(it, StatusType.ERROR)
+        },
+        onDismissNotification = {
+            viewModel.clearError()
+        },
         isLoading = state.isLoading,
-        bottomBar = {
-            if (state.isSelectionMode && state.selectedProduct != null) {
-                Button(
-                    onClick = { viewModel.confirmProductSelection() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(stringResource(id = R.string.confirm_selection))
-                }
-            }
-        }
+        useScanner = true
     ) { paddingValues ->
         Column(
             modifier = modifier
