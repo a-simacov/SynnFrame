@@ -29,8 +29,25 @@ class ScannerService(
     // Флаг, указывающий, является ли сканер камерой устройства
     private var isCameraScanner = false
 
+    // Добавляем поля для механизма дебаунса
+    private var lastScannedBarcode: String? = null
+    private var lastScanTime: Long = 0
+    private val DEBOUNCE_PERIOD_MS = 500 // 500 мс для фильтрации дубликатов
+
     private val globalScanListener = object : ScanResultListener {
         override fun onScanSuccess(result: ScanResult) {
+            // Защита от дублирования - проверяем, не был ли этот штрихкод недавно обработан
+            val currentTime = System.currentTimeMillis()
+            if (result.barcode == lastScannedBarcode &&
+                currentTime - lastScanTime < DEBOUNCE_PERIOD_MS) {
+                Timber.d("Skipping duplicate barcode scan: ${result.barcode}")
+                return // Пропускаем повторную обработку
+            }
+
+            // Обновляем информацию о последнем сканировании
+            lastScannedBarcode = result.barcode
+            lastScanTime = currentTime
+
             listeners.forEach { it.onScanSuccess(result) }
         }
 
