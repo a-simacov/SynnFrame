@@ -45,7 +45,7 @@ fun ScannerStatusIndicator(
     val (statusColor, statusText, showError) = when {
         !hasRealScanner -> Triple(
             Color.Gray,
-            "Сканер недоступен",
+            "Scanner is unavailable",
             false
         )
         scannerState == ScannerState.Uninitialized -> Triple(
@@ -85,7 +85,7 @@ fun ScannerStatusIndicator(
         )
         else -> Triple(
             Color.Gray,
-            "Неизвестное состояние",
+            "Unlnown state",
             false
         )
     }

@@ -119,14 +119,12 @@ fun NotificationBar(
 @Composable
 fun SyncStatusIndicator(
     isSyncing: Boolean,
-    lastSyncTime: String?,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        //val showSyncMessage = false
         if (isSyncing) {
             CircularProgressIndicator(
                 modifier = Modifier
@@ -134,24 +132,8 @@ fun SyncStatusIndicator(
                     .padding(end = 4.dp),
                 strokeWidth = 2.dp
             )
-//            if (showSyncMessage)
-//                Text(
-//                    text = "Синхронизация...",
-//                    style = MaterialTheme.typography.bodySmall,
-//                    color = MaterialTheme.colorScheme.primary
-//                )
         } else {
             Text("")
-//            if (showSyncMessage)
-//                Text(
-//                    text = if (lastSyncTime != null) {
-//                        "Синхр.: $lastSyncTime"
-//                    } else {
-//                        "Нет синхронизации"
-//                    },
-//                    style = MaterialTheme.typography.bodySmall,
-//                    color = MaterialTheme.colorScheme.onSurfaceVariant
-//                )
         }
     }
 }

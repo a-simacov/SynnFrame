@@ -22,7 +22,7 @@ class StepCommandApiImpl(
             )
         } catch (e: Exception) {
             Timber.e(e, "Ошибка выполнения команды: ${request.commandId}")
-            return createApiError("Ошибка выполнения команды: ${e.message}")
+            return createApiError("Command executing error: ${e.message}")
         }
     }
 }

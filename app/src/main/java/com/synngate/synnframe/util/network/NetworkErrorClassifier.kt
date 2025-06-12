@@ -66,11 +66,11 @@ object NetworkErrorClassifier {
 
     fun getErrorMessage(e: Throwable): String {
         return when (classify(e)) {
-            ErrorType.TRANSIENT -> "Проблема с сетью. Пожалуйста, проверьте подключение к Интернету."
-            ErrorType.SERVER_ERROR -> "Ошибка на сервере. Пожалуйста, повторите попытку позже."
-            ErrorType.AUTHENTICATION_ERROR -> "Ошибка аутентификации. Пожалуйста, войдите в систему снова."
-            ErrorType.CLIENT_ERROR -> "Некорректный запрос. Пожалуйста, обратитесь в службу поддержки."
-            ErrorType.UNKNOWN -> "Неизвестная ошибка: ${e.message}"
+            ErrorType.TRANSIENT -> "Network issue. Please check your Internet connection."
+            ErrorType.SERVER_ERROR -> "Server error. Please try again later."
+            ErrorType.AUTHENTICATION_ERROR -> "Authentication error. Please log in again."
+            ErrorType.CLIENT_ERROR -> "Invalid request. Please contact support."
+            ErrorType.UNKNOWN -> "Unknown error: ${e.message}"
         }
     }
 }

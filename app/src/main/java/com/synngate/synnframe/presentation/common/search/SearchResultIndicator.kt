@@ -46,26 +46,26 @@ fun SearchResultIndicator(
     val (icon, label, bgColor) = when (resultType) {
         SearchResultType.LOCAL -> Triple(
             Icons.Default.Search,
-            "Найдено локально",
+            "Found locally",
             MaterialTheme.colorScheme.surfaceVariant
         )
         SearchResultType.REMOTE -> Triple(
             Icons.Default.Wifi,
-            "Найдено на сервере",
+            "Found at server",
             MaterialTheme.colorScheme.secondaryContainer
         )
         SearchResultType.MIXED -> Triple(
             Icons.Default.Info,
-            "Комбинированный поиск",
+            "Mixed search",
             MaterialTheme.colorScheme.tertiaryContainer
         )
     }
 
     // Формируем результирующий текст
     val resultText = when (count) {
-        0 -> "Ничего не найдено по запросу \"$query\""
-        1 -> "Найдено 1 задание"
-        else -> "Найдено $count заданий"
+        0 -> "Nothing was found by request \"$query\""
+        1 -> "Found 1 task"
+        else -> "Found $count tasks"
     }
 
     // Отображаем индикатор

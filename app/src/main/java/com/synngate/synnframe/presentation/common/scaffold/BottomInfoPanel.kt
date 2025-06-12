@@ -22,13 +22,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.data.barcodescanner.ScannerService
-import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scanner.ScannerStatusIndicator
-import com.synngate.synnframe.presentation.theme.SynnFrameTheme
 
 /**
  * Компонент для отображения нижней панели приложения с информацией
@@ -178,16 +175,5 @@ private fun getScannerTypeAbbreviation(scannerService: ScannerService): String {
         "ZBR" // Предполагаем, что если есть реальный сканер и это не камера, то это Zebra
     } else {
         "STD" // Стандартный режим
-    }
-}
-
-@Preview(apiLevel = 34, showBackground = true)
-@Composable
-private fun D() {
-    SynnFrameTheme {
-        BottomInfoPanel(
-            userName = "admin",
-            scannerService = LocalScannerService.current
-        )
     }
 }

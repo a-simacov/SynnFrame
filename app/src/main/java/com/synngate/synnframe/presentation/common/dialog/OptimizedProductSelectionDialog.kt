@@ -78,7 +78,7 @@ fun OptimizedProductSelectionDialog(
     // Если репозиторий не доступен, показываем сообщение об ошибке
     if (repo == null) {
         ErrorDialog(
-            message = "Не удалось инициализировать диалог: репозиторий продуктов недоступен",
+            message = "Dialog init failed: product repository unavailable",
             onDismiss = onDismiss
         )
         return
@@ -288,7 +288,7 @@ private fun DialogContent(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Введите текст для поиска",
+                        text = "Enter text to search",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -426,7 +426,7 @@ private fun ErrorDialog(
     onDismiss: () -> Unit
 ) {
     CustomAlertDialog(
-        title = "Ошибка",
+        title = "Error",
         text = message,
         onDismiss = onDismiss
     )

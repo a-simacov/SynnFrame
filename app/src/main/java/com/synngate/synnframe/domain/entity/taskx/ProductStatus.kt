@@ -9,17 +9,17 @@ enum class ProductStatus {
 
         fun fromString(value: String): ProductStatus {
             return when (value.uppercase()) {
-                "STANDARD", "КОНДИЦИЯ", "СТАНДАРТ" -> STANDARD
-                "DEFECTIVE", "БРАК" -> DEFECTIVE
-                "EXPIRED", "ПРОСРОЧЕН" -> EXPIRED
+                "STANDARD" -> STANDARD
+                "DEFECTIVE" -> DEFECTIVE
+                "EXPIRED" -> EXPIRED
                 else -> STANDARD
             }
         }
     }
 
     fun format(): String = when (this) {
-        STANDARD -> "Кондиция (стандарт)"
-        DEFECTIVE -> "Брак"
-        EXPIRED -> "Просрочен"
+        STANDARD -> "Standard"
+        DEFECTIVE -> "Defective"
+        EXPIRED -> "Expired"
     }
 }

@@ -156,7 +156,7 @@ fun BarcodeScannerView(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Необходимо разрешение на использование камеры для сканирования штрихкодов",
+                    text = "Camera permission is required for barcode scanning",
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(16.dp)

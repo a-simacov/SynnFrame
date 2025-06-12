@@ -3,7 +3,6 @@ package com.synngate.synnframe.util.network
 import kotlinx.coroutines.delay
 import timber.log.Timber
 import kotlin.math.min
-import kotlin.math.pow
 import kotlin.random.Random
 
 /**
@@ -69,6 +68,6 @@ class RetryStrategy(
 
         // Этот код никогда не должен выполниться, так как в последней итерации
         // при неудаче мы выбрасываем исключение
-        throw lastException ?: IllegalStateException("Неизвестная ошибка при выполнении операции с повторными попытками")
+        throw lastException ?: IllegalStateException("Unknown error while executing operation with repeatble retries")
     }
 }

@@ -106,11 +106,11 @@ fun ExpirationDatePicker(
                 when {
                     date.isBefore(today) -> {
                         isError = true
-                        errorMessage = "Дата истекла"
+                        errorMessage = "Date has expired"
                     }
                     date.isEqual(today) || date.isBefore(today.plusDays(4)) -> {
                         isError = true
-                        errorMessage = "Срок годности истекает менее чем через 3 дня"
+                        errorMessage = "Expiration date is less than 3 days away"
                     }
                     else -> {
                         isError = false
@@ -124,7 +124,7 @@ fun ExpirationDatePicker(
             }
         } catch (e: DateTimeParseException) {
             isError = true
-            errorMessage = "Неверный формат даты (ДД.ММ.ГГГГ)"
+            errorMessage = "Invalid date format (DD.MM.YYYY)"
             false
         }
     }
@@ -160,14 +160,14 @@ fun ExpirationDatePicker(
                     errorMessage = ""
                 }
             },
-            label = { Text("Срок годности") },
-            placeholder = { Text("ДД.ММ.ГГГГ") },
+            label = { Text("Expiration Date") },
+            placeholder = { Text("DD.MM.YYYY") },
             modifier = Modifier
                 .fillMaxWidth()
                 .onFocusChanged { focusState ->
                     if (!focusState.isFocused && textFieldValue.text.isNotEmpty() && textFieldValue.text.length < 10) {
                         isError = true
-                        errorMessage = "Неверный формат даты (ДД.ММ.ГГГГ)"
+                        errorMessage = "Invalid date format (DD.MM.YYYY)"
                     }
                 },
             trailingIcon = {
@@ -218,7 +218,7 @@ fun ExpirationDatePicker(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Срок годности истекает в ближайшие 3 дня", color = Color(0xFFFF9800))
+                            Text("Expiration date is within the next 3 days", color = Color(0xFFFF9800))
                         }
                     }
                     isExpired -> {
@@ -230,10 +230,10 @@ fun ExpirationDatePicker(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Срок годности истек", color = MaterialTheme.colorScheme.error)
+                            Text("Expiration date has passed", color = MaterialTheme.colorScheme.error)
                         }
                     }
-                    isRequired -> Text("Обязательное поле")
+                    isRequired -> Text("Required field")
                 }
             },
             singleLine = true,
@@ -267,11 +267,11 @@ fun ExpirationDatePicker(
                             when {
                                 selectedDate.isBefore(today) -> {
                                     isError = true
-                                    errorMessage = "Дата истекла"
+                                    errorMessage = "Date has expired"
                                 }
                                 selectedDate.isEqual(today) || selectedDate.isBefore(today.plusDays(4)) -> {
                                     isError = true
-                                    errorMessage = "Срок годности истекает менее чем через 3 дня"
+                                    errorMessage = "Expiration date is less than 3 days away"
                                 }
                                 else -> {
                                     isError = false
@@ -287,7 +287,7 @@ fun ExpirationDatePicker(
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("Отмена")
+                    Text("Cancel")
                 }
             }
         ) {

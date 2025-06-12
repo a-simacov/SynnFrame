@@ -75,7 +75,7 @@ class SynchronizationService : BaseForegroundService() {
                     id = System.currentTimeMillis().toString(),
                     startTime = LocalDateTime.now(),
                     status = SyncStatus.STARTED,
-                    currentOperation = "Готов к синхронизации"
+                    currentOperation = "Ready to synchronize"
                 )
 
                 // Обновляем уведомление напрямую
@@ -84,7 +84,7 @@ class SynchronizationService : BaseForegroundService() {
 
                 // Логируем сброс состояния
                 serviceScope.launchSafely {
-                    Timber.i("Состояние синхронизации сброшено")
+                    Timber.i("Sync state was reset")
                 }
             }
 

@@ -34,10 +34,10 @@ data class SyncProgress(
 
     fun getProgressMessage(): String {
         return when (status) {
-            SyncStatus.STARTED -> "Синхронизация начата"
-            SyncStatus.IN_PROGRESS -> "Синхронизация: "
-            SyncStatus.COMPLETED -> "Синхронизация завершена успешно"
-            SyncStatus.FAILED -> "Синхронизация не удалась: ${lastErrorMessage ?: "неизвестная ошибка"}"
+            SyncStatus.STARTED -> "Synchronization started"
+            SyncStatus.IN_PROGRESS -> "Synchronization: "
+            SyncStatus.COMPLETED -> "Synchronization completed successfully"
+            SyncStatus.FAILED -> "Synchronization failed: ${lastErrorMessage ?: "unknown error"}"
         }
     }
 }

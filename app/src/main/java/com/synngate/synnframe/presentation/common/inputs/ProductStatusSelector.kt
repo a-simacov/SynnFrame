@@ -27,13 +27,13 @@ fun ProductStatusSelector(
 
     val statusOptions = remember {
         mapOf(
-            ProductStatus.STANDARD to "Кондиция (стандарт)",
-            ProductStatus.DEFECTIVE to "Брак",
-            ProductStatus.EXPIRED to "Просрочен"
+            ProductStatus.STANDARD to "Standard",
+            ProductStatus.DEFECTIVE to "Defective",
+            ProductStatus.EXPIRED to "Expired"
         )
     }
 
-    val selectedStatusText = statusOptions[selectedStatus] ?: "Кондиция (стандарт)"
+    val selectedStatusText = statusOptions[selectedStatus] ?: "Standard"
 
     Column(modifier = modifier) {
         ExposedDropdownMenuBox(

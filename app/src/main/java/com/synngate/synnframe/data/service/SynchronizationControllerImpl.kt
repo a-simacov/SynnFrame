@@ -456,7 +456,7 @@ class SynchronizationControllerImpl(
                 id = syncId,
                 startTime = LocalDateTime.now(),
                 status = SyncStatus.STARTED,
-                currentOperation = "Подготовка"
+                currentOperation = "Preparing"
             )
         }
 
@@ -464,7 +464,7 @@ class SynchronizationControllerImpl(
             // Обновляем прогресс
             updateProgress { progress ->
                 progress.copy(
-                    currentOperation = "Загрузка товаров с сервера"
+                    currentOperation = "Downloading products from the server"
                 )
             }
 
@@ -479,7 +479,7 @@ class SynchronizationControllerImpl(
                     updateProgress { progress ->
                         progress.copy(
                             errorCount = progress.errorCount + 1,
-                            lastErrorMessage = "Ошибка загрузки товаров: ${e.message}"
+                            lastErrorMessage = "Products downloading error: ${e.message}"
                         )
                     }
                 },
@@ -496,7 +496,7 @@ class SynchronizationControllerImpl(
                     endTime = LocalDateTime.now(),
                     productsDownloaded = productsDownloadedCount,
                     progressPercent = 100,
-                    currentOperation = "Синхронизация завершена"
+                    currentOperation = "Sync finished"
                 )
             }
 
@@ -533,7 +533,7 @@ class SynchronizationControllerImpl(
                     endTime = LocalDateTime.now(),
                     errorCount = progress.errorCount + 1,
                     lastErrorMessage = e.message,
-                    currentOperation = "Синхронизация не удалась"
+                    currentOperation = "Sync failed"
                 )
             }
 

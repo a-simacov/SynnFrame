@@ -36,7 +36,7 @@ class SynchronizationWorker(
                     Timber.d("SynchronizationWorker: sync completed successfully")
                     Result.success()
                 } else {
-                    val error = result?.errorMessage ?: "Неизвестная ошибка"
+                    val error = result?.errorMessage ?: "Unknown error"
                     Timber.w("SynchronizationWorker: sync failed with error: $error")
 
                     // Для таймаутов всегда ставим retry

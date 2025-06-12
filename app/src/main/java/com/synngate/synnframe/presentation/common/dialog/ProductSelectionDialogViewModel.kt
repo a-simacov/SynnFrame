@@ -99,7 +99,7 @@ class ProductSelectionDialogViewModel(
                 Timber.e(e, "Ошибка при загрузке продуктов из плана")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = "Ошибка загрузки: ${e.message}"
+                    error = "Loading error: ${e.message}"
                 )
             }
         }
@@ -128,7 +128,7 @@ class ProductSelectionDialogViewModel(
                 Timber.e(e, "Ошибка при поиске продукта по штрихкоду: $barcode")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = "Ошибка поиска: ${e.message}"
+                    error = "Search error: ${e.message}"
                 )
                 onFound(null)
             }

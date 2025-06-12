@@ -38,7 +38,7 @@ class UserUseCases(
         return try {
             val user = userRepository.getUserById(userId)
             if (user == null) {
-                return Result.failure(IllegalArgumentException("Пользователь не найден"))
+                return Result.failure(IllegalArgumentException("User not found"))
             }
 
             userRepository.setCurrentUser(userId)
@@ -96,7 +96,7 @@ class UserUseCases(
                     Result.success(user)
                 }
                 is ApiResult.Error -> {
-                    Result.failure(IOException("Ошибка аутентификации: ${response.code} - ${response.message}"))
+                    Result.failure(IOException("Auth error: ${response.code} - ${response.message}"))
                 }
             }
         } catch (e: Exception) {

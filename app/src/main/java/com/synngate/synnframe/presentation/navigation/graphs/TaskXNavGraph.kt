@@ -170,7 +170,7 @@ fun NavGraphBuilder.taskXNavGraph(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            "Ошибка: данные задания недоступны",
+                            "Error: task's data unavailable",
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -178,7 +178,7 @@ fun NavGraphBuilder.taskXNavGraph(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Button(onClick = { navController.popBackStack() }) {
-                            Text("Вернуться")
+                            Text("Go back")
                         }
                     }
                 }

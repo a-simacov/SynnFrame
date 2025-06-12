@@ -65,7 +65,7 @@ class ValidationService(
                     } else {
                         Timber.w("API validation failed: validationApiService is null or apiEndpoint is missing")
                         return ValidationResult.Error(
-                            ruleItem.errorMessage.ifEmpty { "Ошибка настройки API-валидации" }
+                            ruleItem.errorMessage.ifEmpty { "Api validation settings error" }
                         )
                     }
                 }
