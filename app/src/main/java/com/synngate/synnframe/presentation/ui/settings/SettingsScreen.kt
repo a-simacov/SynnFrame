@@ -865,9 +865,9 @@ fun DeviceTypeSection(
             onValueChange = { onDeviceTypeChange(it) },
             valueToString = { deviceType ->
                 when (deviceType) {
-                    DeviceType.STANDARD -> "Стандарт (без авто-скана)"
+                    DeviceType.STANDARD -> "Standard (no autoscan)"
                     DeviceType.ZEBRA_DATAWEDGE -> stringResource(R.string.scanner_type_datawedge)
-                    DeviceType.CAMERA_SCANNER -> "Камера"
+                    DeviceType.CAMERA_SCANNER -> "Camera"
                 }
             },
             modifier = modifier
