@@ -75,7 +75,7 @@ object CommandExamples {
                 CommandParameter(
                     id = "article_number",
                     name = "articleNumber",
-                    displayName = "Артикул",
+                    displayName = "Article",
                     type = CommandParameterType.TEXT,
                     isRequired = true,
                     validation = ParameterValidation(
@@ -87,7 +87,7 @@ object CommandExamples {
                 CommandParameter(
                     id = "category",
                     name = "category",
-                    displayName = "Категория",
+                    displayName = "Category",
                     type = CommandParameterType.SELECT,
                     isRequired = true,
                     options = listOf(

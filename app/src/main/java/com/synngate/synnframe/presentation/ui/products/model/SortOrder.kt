@@ -8,10 +8,10 @@ enum class SortOrder {
 
     fun getDisplayName(): String {
         return when(this) {
-            NAME_ASC -> "По наименованию (А-Я)"
-            NAME_DESC -> "По наименованию (Я-А)"
-            ARTICLE_ASC -> "По артикулу (возр.)"
-            ARTICLE_DESC -> "По артикулу (убыв.)"
+            NAME_ASC -> "By name (A-Z)"
+            NAME_DESC -> "By name (Z-A)"
+            ARTICLE_ASC -> "By article (asc.)"
+            ARTICLE_DESC -> "By article (desc.)"
         }
     }
 }

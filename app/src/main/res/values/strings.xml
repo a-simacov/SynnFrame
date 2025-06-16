@@ -29,7 +29,7 @@
 
     <!-- Splash Screen -->
     <string name="splash_initializing">Инициализация приложения…</string>
-    <string name="splash_version">Версия %s</string>
+    <string name="splash_version">Version %s</string>
     <string name="splash_copyright">© 2025 SynnGate</string>
     <string name="splash_loading_settings">Загрузка настроек...</string>
     <string name="splash_initializing_db">Инициализация базы данных...</string>

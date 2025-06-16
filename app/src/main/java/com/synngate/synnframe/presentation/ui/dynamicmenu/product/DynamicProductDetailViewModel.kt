@@ -96,25 +96,25 @@ class DynamicProductDetailViewModel(
         val product = uiState.value.product ?: return
 
         val accountingModelText = when (product.getAccountingModelEnum()) {
-            AccountingModel.BATCH -> "По партиям и количеству"
-            AccountingModel.QTY -> "Только по количеству"
+            AccountingModel.BATCH -> "By batches"
+            AccountingModel.QTY -> "By count"
         }
 
-        val mainUnit = product.getMainUnit()?.name ?: "Не указана"
+        val mainUnit = product.getMainUnit()?.name ?: "Unknown"
 
         val productInfo = """
-            Наименование: ${product.name}
-            Идентификатор: ${product.id}
-            Артикул: ${product.articleNumber}
-            Модель учета: $accountingModelText
-            Основная единица измерения: $mainUnit
-            Единицы измерения: ${product.units.joinToString("\n") { it.name }}
-            Штрихкоды: ${product.units.flatMap { listOf(it.mainBarcode) + it.barcodes }.distinct().joinToString("\n")}
+            Name: ${product.name}
+            ID: ${product.id}
+            Article: ${product.articleNumber}
+            Account model: $accountingModelText
+            Base UOM: $mainUnit
+            UOMs: ${product.units.joinToString("\n") { it.name }}
+            Barcodes: ${product.units.flatMap { listOf(it.mainBarcode) + it.barcodes }.distinct().joinToString("\n")}
         """.trimIndent()
 
         val isCopied = clipboardService.copyToClipboard(
             text = productInfo,
-            label = "Информация о товаре"
+            label = "Product info"
         )
 
         if (isCopied) {
