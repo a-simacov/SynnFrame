@@ -737,4 +737,7 @@
     <string name="action_filter_all">All</string>
     <string name="action_filter_toexecute">To do</string>
     <string name="action_filter_executed">Completed</string>
+    <string name="action_filter_current">Current</string>
+    <string name="action_filter_initial">Initial</string>
+    <string name="action_filter_regular">Regular</string>
 </resources>
