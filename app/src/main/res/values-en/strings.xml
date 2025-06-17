@@ -734,7 +734,7 @@
     <string name="qr_code_scan_instruction">Point the camera at the QR code with server data</string>
     <string name="scan_qr_code_instruction">Scan the QR code containing server configuration</string>
     <string name="barcode_expected_fmt">Scan %s</string>
-    <string name="action_filter_all">Все</string>
-    <string name="action_filter_toexecute">К выполнению</string>
-    <string name="action_filter_executed">Выполненные</string>
+    <string name="action_filter_all">All</string>
+    <string name="action_filter_toexecute">To do</string>
+    <string name="action_filter_executed">Completed</string>
 </resources>
