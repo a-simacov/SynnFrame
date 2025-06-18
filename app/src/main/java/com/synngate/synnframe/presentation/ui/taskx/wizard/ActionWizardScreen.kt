@@ -127,13 +127,13 @@ fun ActionWizardScreen(
     }
 
     AppScaffold(
-        title = if (state.showSummary) "Итог" else getStepTitle(state),
+        title = if (state.showSummary) "Summary" else getStepTitle(state),
         onNavigateBack = { viewModel.previousStep() },
         actions = {
             IconButton(onClick = { viewModel.showExitDialog() }) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Выйти"
+                    contentDescription = "Exit"
                 )
             }
         },
@@ -194,5 +194,5 @@ fun ActionWizardScreen(
 @Composable
 private fun getStepTitle(state: com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState): String {
     val currentStep = state.steps.getOrNull(state.currentStepIndex)
-    return currentStep?.name ?: "Действие"
+    return currentStep?.name ?: "Action"
 }

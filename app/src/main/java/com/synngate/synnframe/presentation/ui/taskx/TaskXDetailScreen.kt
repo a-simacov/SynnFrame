@@ -160,7 +160,7 @@ fun TaskXDetailScreen(
             onClose = {
                 viewModel.hideCameraScannerForSearch()
             },
-            instructionText = "Отсканируйте штрихкод для поиска действия"
+            instructionText = "Scan barcode to search action"
         )
     }
 
@@ -178,7 +178,7 @@ fun TaskXDetailScreen(
 
     AppScaffold(
         showTopBar = false,
-        title = task?.name ?: "Загрузка задания...",
+        title = task?.name ?: "Task loading...",
         onNavigateBack = viewModel::onBackPressed,
         floatingActionButton = {
             // Добавляем FAB для быстрого доступа к текущему действию
@@ -205,7 +205,7 @@ fun TaskXDetailScreen(
     ) { paddingValues ->
         if (task == null) {
             EmptyScreenContent(
-                message = "Загрузка задания...",
+                message = "Task loading...",
                 modifier = Modifier.padding(paddingValues)
             )
             return@AppScaffold
@@ -235,7 +235,7 @@ fun TaskXDetailScreen(
                 },
                 content = {
                     Text(
-                        text = "Имя: ${task.name}",
+                        text = "Name: ${task.name}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -243,7 +243,7 @@ fun TaskXDetailScreen(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                        text = "Штрихкод: ${task.barcode}",
+                        text = "Barcode: ${task.barcode}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -251,7 +251,7 @@ fun TaskXDetailScreen(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                        text = "Статус: ${task.status.name}",
+                        text = "Status: ${task.status.name}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -259,7 +259,7 @@ fun TaskXDetailScreen(
                     task.startedAt?.let {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Начато: $it",
+                            text = "Started: $it",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -268,7 +268,7 @@ fun TaskXDetailScreen(
                     task.lastModifiedAt?.let {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Изменено: $it",
+                            text = "Modified: $it",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -326,7 +326,7 @@ fun TaskXDetailScreen(
                 if (displayActions.isEmpty()) {
                     item {
                         Text(
-                            text = "Нет действий для отображения",
+                            text = "No actions to show",
                             style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center,
                             modifier = Modifier

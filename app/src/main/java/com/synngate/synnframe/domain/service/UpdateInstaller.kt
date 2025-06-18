@@ -44,7 +44,7 @@ class UpdateInstallerImpl(
             val file = File(filePath)
             if (!file.exists()) {
                 Timber.e("Update file was not found: $filePath")
-                return Result.failure(Exception("Файл обновления не найден"))
+                return Result.failure(Exception("Update file was not found"))
             }
 
             // Получаем URI через FileProvider

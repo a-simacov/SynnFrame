@@ -50,7 +50,7 @@ class ServerListViewModel(
                 updateState { state ->
                     state.copy(
                         isLoading = false,
-                        error = e.message ?: "Неизвестная ошибка"
+                        error = e.message ?: "Unknown error"
                     )
                 }
             }

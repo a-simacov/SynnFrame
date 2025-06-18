@@ -68,7 +68,7 @@ class LogDetailViewModel(
                     updateState {
                         it.copy(
                             isLoading = false,
-                            error = "Лог с ID $logId не найден"
+                            error = "Log ID $logId not found"
                         )
                     }
 
@@ -79,7 +79,7 @@ class LogDetailViewModel(
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка загрузки лога: ${e.message}"
+                        error = "Error loading log: ${e.message}"
                     )
                 }
             }
@@ -154,7 +154,7 @@ class LogDetailViewModel(
                     updateState {
                         it.copy(
                             isDeletingLog = false,
-                            error = "Ошибка удаления лога: ${exception?.message}"
+                            error = "Error deleting log: ${exception?.message}"
                         )
                     }
 
@@ -165,7 +165,7 @@ class LogDetailViewModel(
                 updateState {
                     it.copy(
                         isDeletingLog = false,
-                        error = "Ошибка удаления лога: ${e.message}"
+                        error = "Error deleting log: ${e.message}"
                     )
                 }
 
@@ -176,9 +176,9 @@ class LogDetailViewModel(
 
     private fun formatLogType(type: LogType): String {
         return when (type) {
-            LogType.INFO -> "Информация"
-            LogType.WARNING -> "Предупреждение"
-            LogType.ERROR -> "Ошибка"
+            LogType.INFO -> "Info"
+            LogType.WARNING -> "Warn"
+            LogType.ERROR -> "Error"
         }
     }
 }

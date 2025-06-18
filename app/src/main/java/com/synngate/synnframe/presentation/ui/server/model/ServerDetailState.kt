@@ -17,7 +17,7 @@ data class ServerDetailState(
     val password: String = "",
 
     val isActive: Boolean = false,
-    val connectionStatus: String = "Статус: ожидание подключения",
+    val connectionStatus: String = "Status: connection awaiting",
     val isTestingConnection: Boolean = false,
 
     val isSaving: Boolean = false,

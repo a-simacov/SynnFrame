@@ -289,7 +289,7 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
             if (action.storageProduct != null || action.storageProductClassifier != null) {
                 val productName = action.storageProduct?.product?.name
                     ?: action.storageProductClassifier?.name
-                    ?: "Неизвестный товар"
+                    ?: "Unknown product"
 
                 Text(
                     text = productName,

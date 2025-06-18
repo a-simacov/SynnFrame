@@ -33,7 +33,7 @@ fun WizardBarcodeField(
     onSearch: () -> Unit,
     onScannerClick: () -> Unit,
     modifier: Modifier = Modifier,
-    label: String = "Введите штрихкод",
+    label: String = "Input barcode",
     isError: Boolean = false,
     errorText: String? = null,
     onSelectFromList: (() -> Unit)? = null,

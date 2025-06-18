@@ -240,7 +240,7 @@ fun BatchScannerDialog(
 
                                     // Добавляем отображение количества сканирований и времени
                                     Text(
-                                        text = "Сканировано: ${result.scanCount} раз (${formatTimestamp(result.timestamp)})",
+                                        text = "Scanned: ${result.scanCount} times (${formatTimestamp(result.timestamp)})",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

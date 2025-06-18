@@ -153,13 +153,13 @@ class LogListViewModel(
 
                     loadLogs()
 
-                    sendEvent(LogListUiEvent.ShowSnackbar("Удалено $deletedCount логов старше $daysToKeep дней"))
+                    sendEvent(LogListUiEvent.ShowSnackbar("Deleted $deletedCount logs older $daysToKeep days"))
                 } else {
                     val exception = result.exceptionOrNull()
                     updateState {
                         it.copy(
                             isLoading = false,
-                            error = "Ошибка при очистке логов: ${exception?.message}"
+                            error = "Error clearing logs: ${exception?.message}"
                         )
                     }
                     Timber.e("Error on cleanup logs: ${exception?.message}")
@@ -169,7 +169,7 @@ class LogListViewModel(
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка при очистке логов: ${e.message}"
+                        error = "Error clearing logs: ${e.message}"
                     )
                 }
                 Timber.e("Error on cleanup logs: ${e.message}")
@@ -225,13 +225,13 @@ class LogListViewModel(
                     }
 
                     Timber.i("All logs were deleted")
-                    sendEvent(LogListUiEvent.ShowSnackbar("Все логи успешно удалены"))
+                    sendEvent(LogListUiEvent.ShowSnackbar("All logs were deleted"))
                 } else {
                     val exception = result.exceptionOrNull()
                     updateState {
                         it.copy(
                             isLoading = false,
-                            error = "Ошибка удаления логов: ${exception?.message}"
+                            error = "Error clearing logs: ${exception?.message}"
                         )
                     }
 
@@ -242,7 +242,7 @@ class LogListViewModel(
                 updateState {
                     it.copy(
                         isLoading = false,
-                        error = "Ошибка удаления логов: ${e.message}"
+                        error = "Error clearing logs: ${e.message}"
                     )
                 }
             }
@@ -255,9 +255,9 @@ class LogListViewModel(
 
     fun formatLogType(type: LogType): String {
         return when (type) {
-            LogType.INFO -> "Информация"
-            LogType.WARNING -> "Предупреждение"
-            LogType.ERROR -> "Ошибка"
+            LogType.INFO -> "Info"
+            LogType.WARNING -> "Warn"
+            LogType.ERROR -> "Error"
         }
     }
 
