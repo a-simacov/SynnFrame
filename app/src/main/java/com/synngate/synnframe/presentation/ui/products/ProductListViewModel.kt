@@ -1,5 +1,9 @@
 package com.synngate.synnframe.presentation.ui.products
 
+import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import androidx.paging.map
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.service.SoundService
@@ -13,13 +17,17 @@ import com.synngate.synnframe.presentation.ui.products.model.ProductListState
 import com.synngate.synnframe.presentation.ui.products.model.SortOrder
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import com.synngate.synnframe.util.resources.ResourceProvider
-import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import timber.log.Timber
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.coroutines.cancellation.CancellationException
 
 class ProductListViewModel(
     private val productUseCases: ProductUseCases,
@@ -31,6 +39,23 @@ class ProductListViewModel(
 ) : BaseViewModel<ProductListState, ProductListEvent>(
     ProductListState(isSelectionMode = isSelectionMode)
 ) {
+    // Состояние поискового запроса
+    private val _searchQuery = MutableStateFlow("")
+
+    // Поток пагинированных данных продуктов
+    private val _productsFlow: Flow<PagingData<Product>> = createPagingDataFlow()
+
+    // Поток пагинированных UI-моделей для отображения в списке
+    val productItemsFlow: Flow<PagingData<ProductListItemUiModel>> = _productsFlow
+        .map { pagingData ->
+            pagingData.map { product ->
+                productUiMapper.mapToListItem(
+                    product = product,
+                    isSelected = product.id == uiState.value.selectedProduct?.id
+                )
+            }
+        }
+        .cachedIn(viewModelScope)
 
     private var searchJob: Job? = null
     private val soundPlayedCache = ConcurrentHashMap<String, Long>()
@@ -38,12 +63,10 @@ class ProductListViewModel(
 
     init {
         observeProductsCount()
-        loadProducts()
     }
 
     // Внутренний класс для UI-представления списка товаров
     data class ProductListUiPresentation(
-        val products: List<ProductListItemUiModel>,
         val totalCount: Int,
         val filteredCount: Int,
         val isLoading: Boolean,
@@ -60,12 +83,6 @@ class ProductListViewModel(
         val currentState = uiState.value
 
         return ProductListUiPresentation(
-            products = currentState.products.map { product ->
-                productUiMapper.mapToListItem(
-                    product = product,
-                    isSelected = product.id == currentState.selectedProduct?.id
-                )
-            },
             totalCount = currentState.productsCount,
             filteredCount = currentState.products.size,
             isLoading = currentState.isLoading,
@@ -95,100 +112,24 @@ class ProductListViewModel(
         }
     }
 
-    private fun loadProducts() {
-        launchIO {
-            updateState { it.copy(isLoading = true) }
-
-            try {
-                productUseCases.getProducts().collectLatest { products ->
-                    // Применяем сортировку и фильтрацию к полученным данным
-                    val processedProducts = processProducts(products)
-
-                    updateState { state ->
-                        state.copy(
-                            products = processedProducts,
-                            isLoading = false,
-                            error = null
-                        )
-                    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun createPagingDataFlow(): Flow<PagingData<Product>> {
+        return _searchQuery
+            .debounce(300)
+            .distinctUntilChanged()
+            .flatMapLatest { query ->
+                if (query.isEmpty()) {
+                    productUseCases.getProductsPaged()
+                } else {
+                    productUseCases.getProductsByNameFilterPaged(query)
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Error loading products")
-                updateState { state ->
-                    state.copy(
-                        isLoading = false,
-                        error = e.message ?: "Unknown error occurred"
-                    )
-                }
-                sendEvent(ProductListEvent.ShowSnackbar("Error loading products: ${e.message}"))
             }
-        }
+            .cachedIn(viewModelScope)
     }
 
-    private fun processProducts(products: List<Product>): List<Product> {
-        val state = uiState.value
-
-        // Фильтрация по модели учета, если задана
-        var filteredProducts = if (state.filterByAccountingModel != null) {
-            products.filter { it.accountingModel == state.filterByAccountingModel }
-        } else {
-            products
-        }
-
-        // Применяем сортировку в соответствии с выбранным порядком
-        val sortedProducts = when (state.sortOrder) {
-            SortOrder.NAME_ASC -> filteredProducts.sortedBy { it.name }
-            SortOrder.NAME_DESC -> filteredProducts.sortedByDescending { it.name }
-            SortOrder.ARTICLE_ASC -> filteredProducts.sortedBy { it.articleNumber }
-            SortOrder.ARTICLE_DESC -> filteredProducts.sortedByDescending { it.articleNumber }
-        }
-
-        return sortedProducts
-    }
-
-    @OptIn(FlowPreview::class)
     fun updateSearchQuery(query: String) {
         updateState { it.copy(searchQuery = query) }
-
-        // Отменяем предыдущий поиск, если он выполняется
-        searchJob?.cancel()
-
-        searchJob = launchIO {
-            try {
-                if (query.isEmpty()) {
-                    loadProducts()
-                } else {
-                    updateState { it.copy(isLoading = true) }
-
-                    // Используем debounce для предотвращения частых запросов при быстром вводе
-                    productUseCases.getProductsByNameFilter(query)
-                        .debounce(300)
-                        .collectLatest { products ->
-                            // Применяем дополнительные фильтры и сортировку
-                            val processedProducts = processProducts(products)
-
-                            updateState { state ->
-                                state.copy(
-                                    products = processedProducts,
-                                    isLoading = false,
-                                    error = null
-                                )
-                            }
-                        }
-                }
-            } catch (e: CancellationException) {
-                // Игнорируем исключения отмены и сбрасываем статус загрузки
-                updateState { it.copy(isLoading = false) }
-            } catch (e: Exception) {
-                Timber.e(e, "Error searching products")
-                updateState { state ->
-                    state.copy(
-                        isLoading = false,
-                        error = e.message ?: "Unknown error occurred"
-                    )
-                }
-            }
-        }
+        _searchQuery.value = query
     }
 
     fun onProductClick(product: Product) {
@@ -203,7 +144,8 @@ class ProductListViewModel(
 
     fun updateSortOrder(sortOrder: SortOrder) {
         updateState { it.copy(sortOrder = sortOrder) }
-        loadProducts()
+        // Примечание: в текущей реализации пагинации мы не можем изменить сортировку на лету
+        // Здесь нужно будет изменить логику запросов к базе данных или создать новый PagingSource
     }
 
     fun syncProducts() {
@@ -212,17 +154,13 @@ class ProductListViewModel(
 
             try {
                 // Используем контроллер для синхронизации только товаров
-                // или создаем специальный метод в synchronizationController
                 val result = productUseCases.syncProductsWithServer()
 
                 if (result.isSuccess) {
                     val count = result.getOrNull() ?: 0
 
                     // Обновляем информацию о синхронизации в контроллере
-                    // Это позволит обновить время синхронизации на всех экранах
                     synchronizationController.updateLastProductsSync(count)
-
-                    loadProducts()
 
                     updateState { it.copy(isSyncing = false) }
                     sendEvent(ProductListEvent.ShowSnackbar(

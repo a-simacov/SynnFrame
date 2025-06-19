@@ -145,8 +145,14 @@ dependencies {
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
+    implementation("androidx.room:room-paging:$roomVersion")
     kapt("androidx.room:room-compiler:2.6.1")
     //ksp("androidx.room:room-compiler:$roomVersion")
+
+    // Paging 3
+    val pagingVersion = "3.2.1"
+    implementation("androidx.paging:paging-runtime:$pagingVersion")
+    implementation("androidx.paging:paging-compose:$pagingVersion")
 
     // Ktor
     val ktorVersion = "2.3.7"

@@ -1,5 +1,6 @@
 package com.synngate.synnframe.data.local.dao
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -9,17 +10,37 @@ import androidx.room.Update
 import com.synngate.synnframe.data.local.entity.BarcodeEntity
 import com.synngate.synnframe.data.local.entity.ProductEntity
 import com.synngate.synnframe.data.local.entity.ProductUnitEntity
+import com.synngate.synnframe.data.local.entity.ProductWithRelations
 import kotlinx.coroutines.flow.Flow
-
 @Dao
 interface ProductDao {
-
+    // Существующие методы
     @Query("SELECT * FROM products ORDER BY name ASC")
     fun getAllProducts(): Flow<List<ProductEntity>>
 
     @Query("SELECT * FROM products WHERE name LIKE '%' || :nameFilter || '%' ORDER BY name ASC")
     fun getProductsByNameFilter(nameFilter: String): Flow<List<ProductEntity>>
 
+    // Новые методы для пагинации
+    @Query("SELECT * FROM products ORDER BY name ASC")
+    fun getProductsPaged(): PagingSource<Int, ProductEntity>
+
+    @Query("SELECT * FROM products WHERE name LIKE '%' || :nameFilter || '%' ORDER BY name ASC")
+    fun getProductsByNameFilterPaged(nameFilter: String): PagingSource<Int, ProductEntity>
+
+    // Метод для получения продукта с его отношениями в одном запросе
+    @Query("SELECT p.* FROM products p WHERE p.id = :id")
+    suspend fun getProductWithRelationsById(id: String): ProductWithRelations?
+
+    // Оптимизированный запрос для получения единиц измерения по батчам
+    @Query("SELECT * FROM product_units WHERE productId IN (:productIds)")
+    suspend fun getProductUnitsForProductsBatch(productIds: List<String>): List<ProductUnitEntity>
+
+    // Оптимизированный запрос для получения штрихкодов по батчам
+    @Query("SELECT * FROM barcodes WHERE productId IN (:productIds)")
+    suspend fun getBarcodesForProductsBatch(productIds: List<String>): List<BarcodeEntity>
+
+    // Существующие методы
     @Query("SELECT * FROM products WHERE id = :id")
     suspend fun getProductById(id: String): ProductEntity?
 
@@ -49,8 +70,8 @@ interface ProductDao {
 
     @Query(
         """SELECT p.* FROM products p
-        WHERE p.id IN ( SELECT b.productId FROM barcodes b WHERE b.code = :barcode)
-        LIMIT 1"""
+    WHERE p.id IN ( SELECT b.productId FROM barcodes b WHERE b.code = :barcode)
+    LIMIT 1"""
     )
     suspend fun findProductByBarcode(barcode: String): ProductEntity?
 

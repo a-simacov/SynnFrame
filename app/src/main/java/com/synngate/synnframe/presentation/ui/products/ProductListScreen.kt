@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
@@ -44,6 +43,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.synngate.synnframe.R
 import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.inputs.SearchTextField
@@ -56,7 +57,6 @@ import com.synngate.synnframe.presentation.common.scanner.ScannerStatusIndicator
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.ui.products.components.BatchScannerDialog
 import com.synngate.synnframe.presentation.ui.products.model.ProductListEvent
-import com.synngate.synnframe.presentation.ui.products.model.ProductListItemUiModel
 import com.synngate.synnframe.presentation.ui.products.model.SortOrder
 import timber.log.Timber
 
@@ -70,6 +70,8 @@ fun ProductListScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val uiPresentation = viewModel.getUiPresentation() // Получаем готовые UI-данные
+// Правильно получаем pagingItems из Flow
+    val pagingItems = viewModel.productItemsFlow.collectAsLazyPagingItems()
 
     val snackbarHostState = remember { SnackbarHostState() }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -109,8 +111,7 @@ fun ProductListScreen(
         }
     )
 
-
-    // Диалоги без изменений
+// Диалоги без изменений
     if (state.showBatchScannerDialog) {
         BatchScannerDialog(
             onBarcodeScanned = { barcode, onProductFound ->
@@ -206,8 +207,8 @@ fun ProductListScreen(
                 onScanClick = { viewModel.startScanning() }
             )
         },
-        isLoading = uiPresentation.isLoading,
-        isSyncing = state.isSyncing,  // Передаем флаг синхронизации в AppScaffold
+        isLoading = false, // Мы управляем состоянием загрузки в контенте
+        isSyncing = state.isSyncing,
         bottomBar = {
             if (uiPresentation.showConfirmButton) {
                 Button(
@@ -239,25 +240,115 @@ fun ProductListScreen(
 
             ProductsCountHeader(
                 totalCount = uiPresentation.totalCount,
-                filteredCount = uiPresentation.filteredCount
+                filteredCount = pagingItems.itemCount
             )
 
-            if (uiPresentation.products.isEmpty()) {
-                EmptyProductsList(
-                    hasSearchQuery = uiPresentation.searchQuery.isNotEmpty()
-                )
-            } else {
-                ProductsList(
-                    products = uiPresentation.products,
-                    onProductClick = { productId ->
-                        viewModel.onProductClick(state.products.first { it.id == productId })
+            // Отображаем список с пагинацией
+            Box(modifier = Modifier.weight(1f)) {
+                when {
+                    pagingItems.loadState.refresh is LoadState.Loading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
-                )
+
+                    pagingItems.loadState.refresh is LoadState.Error -> {
+                        val error = (pagingItems.loadState.refresh as LoadState.Error).error
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Text(
+                                    text = "Error: ${error.message}",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Button(onClick = { pagingItems.retry() }) {
+                                    Text(text = stringResource(id = R.string.retry))
+                                }
+                            }
+                        }
+                    }
+
+                    pagingItems.itemCount == 0 -> {
+                        EmptyScreenContent(
+                            message = stringResource(id = R.string.no_products_with_filter)
+                        )
+                    }
+
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(
+                                count = pagingItems.itemCount,
+                                key = { index -> pagingItems[index]?.id ?: index }
+                            ) { index ->
+                                val item = pagingItems[index] ?: return@items
+                                ProductListItem(
+                                    name = item.name,
+                                    articleText = item.articleText,
+                                    mainUnitText = item.mainUnitText,
+                                    isSelected = item.isSelected,
+                                    onClick = {
+                                        // Находим соответствующий товар в стейте и обрабатываем клик
+                                        val product = state.products.find { it.id == item.id }
+                                        if (product != null) {
+                                            viewModel.onProductClick(product)
+                                        } else {
+                                            // Если продукт не найден в стейте, навигируем напрямую
+                                            viewModel.navigateToProductDetail(item.id)
+                                        }
+                                    }
+                                )
+                            }
+
+                            // Добавляем индикатор загрузки в конце списка
+                            item {
+                                if (pagingItems.loadState.append is LoadState.Loading) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Отображаем ошибку подгрузки страниц
+                        if (pagingItems.loadState.append is LoadState.Error) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Button(onClick = { pagingItems.retry() }) {
+                                    Text(text = stringResource(id = R.string.retry))
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
-
 @Composable
 fun ProductListFloatingActions(
     onBatchScanClick: () -> Unit,
@@ -269,7 +360,7 @@ fun ProductListFloatingActions(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = modifier
     ) {
-        // Кнопка для пакетного сканирования
+// Кнопка для пакетного сканирования
         FloatingActionButton(
             onClick = onBatchScanClick
         ) {
@@ -278,7 +369,6 @@ fun ProductListFloatingActions(
                 contentDescription = stringResource(id = R.string.batch_scanning)
             )
         }
-
         // Кнопка для обычного сканирования
         FloatingActionButton(
             onClick = onScanClick
@@ -290,7 +380,6 @@ fun ProductListFloatingActions(
         }
     }
 }
-
 @Composable
 fun ProductsCountHeader(
     totalCount: Int,
@@ -313,45 +402,6 @@ fun ProductsCountHeader(
         )
     }
 }
-
-@Composable
-fun EmptyProductsList(
-    hasSearchQuery: Boolean,
-    modifier: Modifier = Modifier
-) {
-    EmptyScreenContent(
-        message = if (hasSearchQuery)
-            stringResource(id = R.string.no_products_with_filter)
-        else
-            stringResource(id = R.string.no_products),
-        modifier = modifier
-    )
-}
-
-@Composable
-fun ProductsList(
-    products: List<ProductListItemUiModel>,
-    onProductClick: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize()
-    ) {
-        items(
-            items = products,
-            key = { it.id }
-        ) { product ->
-            ProductListItem(
-                name = product.name,
-                articleText = product.articleText,
-                mainUnitText = product.mainUnitText,
-                isSelected = product.isSelected,
-                onClick = { onProductClick(product.id) }
-            )
-        }
-    }
-}
-
 @Composable
 fun ProductListItem(
     name: String,
@@ -384,7 +434,6 @@ fun ProductListItem(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-
             Spacer(modifier = Modifier.height(4.dp))
 
             Row(

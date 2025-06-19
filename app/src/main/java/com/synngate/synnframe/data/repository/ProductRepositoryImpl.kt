@@ -1,5 +1,9 @@
 package com.synngate.synnframe.data.repository
 
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.map
 import androidx.room.withTransaction
 import com.synngate.synnframe.data.local.dao.ProductDao
 import com.synngate.synnframe.data.local.database.AppDatabase
@@ -20,7 +24,44 @@ class ProductRepositoryImpl(
     private val productApi: ProductApi,
     private val appDatabase: AppDatabase
 ) : ProductRepository {
+    // Размер страницы для пагинации
+    private val PAGE_SIZE = 20
 
+    // Константа для максимального размера батча в SQL запросах
+    private val MAX_BATCH_SIZE = 400
+
+    // Реализация методов с поддержкой пагинации
+    override fun getProductsPaged(): Flow<PagingData<Product>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = PAGE_SIZE,
+                enablePlaceholders = false,
+                prefetchDistance = 3 * PAGE_SIZE
+            ),
+            pagingSourceFactory = { productDao.getProductsPaged() }
+        ).flow.map { pagingData ->
+            pagingData.map { productEntity ->
+                buildProductWithDetails(productEntity)
+            }
+        }
+    }
+
+    override fun getProductsByNameFilterPaged(nameFilter: String): Flow<PagingData<Product>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = PAGE_SIZE,
+                enablePlaceholders = false,
+                prefetchDistance = 3 * PAGE_SIZE
+            ),
+            pagingSourceFactory = { productDao.getProductsByNameFilterPaged(nameFilter) }
+        ).flow.map { pagingData ->
+            pagingData.map { productEntity ->
+                buildProductWithDetails(productEntity)
+            }
+        }
+    }
+
+    // Существующие методы с оптимизацией
     override fun getProducts(): Flow<List<Product>> {
         return productDao.getAllProducts().map { productEntities ->
             buildProductsWithDetails(productEntities)
@@ -34,21 +75,24 @@ class ProductRepositoryImpl(
     }
 
     override suspend fun getProductById(id: String): Product? {
-        val productEntity = productDao.getProductById(id) ?: return null
-        return buildProductWithDetails(productEntity)
+        // Оптимизируем, используя новый метод для получения продукта со связями в одном запросе
+        val productWithRelations = productDao.getProductWithRelationsById(id)
+        return productWithRelations?.toDomainModel()
     }
 
     override suspend fun getProductsByIds(ids: Set<String>): List<Product> {
         return withContext(Dispatchers.IO) {
-            val BATCH_SIZE = 400
+            if (ids.isEmpty()) return@withContext emptyList()
+
+            // Разбиваем множество ID на батчи для избежания ошибки "too many SQL variables"
             val resultProducts = mutableListOf<Product>()
 
-            // Разбиваем множество ID на батчи
-            val idBatches = ids.chunked(BATCH_SIZE)
+            // Используем меньший размер батча для безопасности
+            val idBatches = ids.chunked(MAX_BATCH_SIZE)
 
             for (idBatch in idBatches) {
                 val productEntities = productDao.getProductEntitiesByIds(idBatch.toSet())
-                val batchProducts = buildProductsWithDetails(productEntities)
+                val batchProducts = buildProductsWithDetailsOptimized(productEntities)
                 resultProducts.addAll(batchProducts)
             }
 
@@ -94,10 +138,22 @@ class ProductRepositoryImpl(
             }
         }
 
+        // Разбиваем списки на батчи, чтобы избежать ошибки "too many SQL variables"
         appDatabase.withTransaction {
-            productDao.insertProducts(productEntities)
-            productDao.insertProductUnits(unitEntities)
-            productDao.insertBarcodes(barcodeEntities)
+            // Вставляем продукты батчами
+            productEntities.chunked(MAX_BATCH_SIZE).forEach { batch ->
+                productDao.insertProducts(batch)
+            }
+
+            // Вставляем единицы измерения батчами
+            unitEntities.chunked(MAX_BATCH_SIZE).forEach { batch ->
+                productDao.insertProductUnits(batch)
+            }
+
+            // Вставляем штрихкоды батчами
+            barcodeEntities.chunked(MAX_BATCH_SIZE).forEach { batch ->
+                productDao.insertBarcodes(batch)
+            }
         }
     }
 
@@ -133,10 +189,13 @@ class ProductRepositoryImpl(
         return productApi.getProducts()
     }
 
+    // Оптимизированный метод для загрузки деталей продукта
     private suspend fun buildProductWithDetails(productEntity: ProductEntity): Product {
+        // Получаем единицы измерения для продукта
         val unitEntities = productDao.getProductUnitsForProduct(productEntity.id)
 
         val units = unitEntities.map { unitEntity ->
+            // Получаем штрихкоды для единицы измерения
             val barcodeEntities = productDao.getBarcodesForUnit(productEntity.id, unitEntity.id)
             val barcodes = barcodeEntities.map { it.code }
 
@@ -146,11 +205,45 @@ class ProductRepositoryImpl(
         return productEntity.toDomainModel(units)
     }
 
+    // Оптимизированный метод для загрузки деталей для списка продуктов
+    private suspend fun buildProductsWithDetailsOptimized(productEntities: List<ProductEntity>): List<Product> {
+        if (productEntities.isEmpty()) return emptyList()
+
+        val resultProducts = mutableListOf<Product>()
+        val productIds = productEntities.map { it.id }
+
+        // Загружаем все единицы измерения для всех продуктов одним запросом
+        val allUnits = productDao.getProductUnitsForProductsBatch(productIds)
+
+        // Загружаем все штрихкоды для всех продуктов одним запросом
+        val allBarcodes = productDao.getBarcodesForProductsBatch(productIds)
+
+        // Группируем единицы измерения по productId
+        val unitsMap = allUnits.groupBy { it.productId }
+
+        // Группируем штрихкоды по productId и unitId
+        val barcodesMap = allBarcodes.groupBy { it.productId }
+            .mapValues { (_, barcodes) -> barcodes.groupBy { it.productUnitId } }
+
+        // Собираем продукты с их единицами измерения и штрихкодами
+        for (productEntity in productEntities) {
+            val productUnits = unitsMap[productEntity.id]?.map { unitEntity ->
+                val unitBarcodes = barcodesMap[productEntity.id]?.get(unitEntity.id)?.map { it.code } ?: emptyList()
+                unitEntity.toDomainModel(unitBarcodes)
+            } ?: emptyList()
+
+            resultProducts.add(productEntity.toDomainModel(productUnits))
+        }
+
+        return resultProducts
+    }
+
+    // Оригинальный метод с оптимизацией батчей
     private suspend fun buildProductsWithDetails(productEntities: List<ProductEntity>): List<Product> {
         if (productEntities.isEmpty()) return emptyList()
 
         // Максимальный безопасный размер батча (меньше лимита SQLite)
-        val BATCH_SIZE = 400
+        val BATCH_SIZE = MAX_BATCH_SIZE
 
         val resultProducts = mutableListOf<Product>()
 
@@ -162,7 +255,15 @@ class ProductRepositoryImpl(
 
             val allUnits = productDao.getProductUnitsForProducts(productIds)
             val unitIds = allUnits.map { it.id }
-            val allBarcodes = productDao.getBarcodesForUnits(productIds, unitIds)
+
+            // Разбиваем запрос штрихкодов на батчи, чтобы избежать ошибки "too many SQL variables"
+            val allBarcodes = mutableListOf<BarcodeEntity>()
+            for (productIdBatch in productIds.chunked(BATCH_SIZE / 2)) {
+                for (unitIdBatch in unitIds.chunked(BATCH_SIZE / 2)) {
+                    val barcodes = productDao.getBarcodesForUnits(productIdBatch, unitIdBatch)
+                    allBarcodes.addAll(barcodes)
+                }
+            }
 
             val unitsMap = allUnits.groupBy { it.productId }
             val barcodesMap = allBarcodes.groupBy { "${it.productId}:${it.productUnitId}" }

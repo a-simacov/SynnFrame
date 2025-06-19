@@ -1,5 +1,6 @@
 package com.synngate.synnframe.domain.usecase.product
 
+import androidx.paging.PagingData
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.repository.ProductRepository
@@ -11,7 +12,14 @@ import java.io.IOException
 class ProductUseCases(
     private val productRepository: ProductRepository
 ) : BaseUseCase {
+    // Добавляем методы для пагинации
+    fun getProductsPaged(): Flow<PagingData<Product>> =
+        productRepository.getProductsPaged()
 
+    fun getProductsByNameFilterPaged(nameFilter: String): Flow<PagingData<Product>> =
+        productRepository.getProductsByNameFilterPaged(nameFilter)
+
+    // Существующие методы
     fun getProducts(): Flow<List<Product>> =
         productRepository.getProducts()
 
