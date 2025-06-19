@@ -16,7 +16,8 @@ data class ActionTemplate(
     val syncWithServer: Boolean = true,
     val actionCompletionMethod: ActionCompletionMethod = ActionCompletionMethod.AFTER_LAST_STEP,
     val actionCompletionCondition: ActionCompletionCondition = ActionCompletionCondition.ON_COMPLETION,
-    val actionSteps: List<ActionStepTemplate> = emptyList()
+    val actionSteps: List<ActionStepTemplate> = emptyList(),
+    val autoFillFromPlan: Boolean = false,
 ) {
 
     fun isAutoCompleteEnabled(): Boolean {

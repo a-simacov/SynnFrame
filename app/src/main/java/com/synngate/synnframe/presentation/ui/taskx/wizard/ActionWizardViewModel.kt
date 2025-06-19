@@ -603,8 +603,30 @@ class ActionWizardViewModel(
             try {
                 updateState { controller.submitForm(it).getNewState() }
 
-                val syncWithServer = plannedAction.actionTemplate?.syncWithServer == true
-                val result = networkService.completeAction(factAction, syncWithServer)
+                // Проверяем необходимость автозаполнения полей из плана
+                val actionTemplate = plannedAction.actionTemplate
+                val shouldAutoFill = actionTemplate?.autoFillFromPlan == true
+
+                // Дозаполняем фактическое действие данными из планового, если нужно
+                val finalFactAction = if (shouldAutoFill) {
+                    Timber.d("Дозаполнение полей фактического действия из плана")
+
+                    // Простое дозаполнение незаполненных полей из плана
+                    factAction.copy(
+                        storageBin = factAction.storageBin ?: plannedAction.storageBin,
+                        storagePallet = factAction.storagePallet ?: plannedAction.storagePallet,
+                        placementBin = factAction.placementBin ?: plannedAction.placementBin,
+                        placementPallet = factAction.placementPallet ?: plannedAction.placementPallet,
+                        storageProduct = factAction.storageProduct ?: plannedAction.storageProduct,
+                        storageProductClassifier = factAction.storageProductClassifier ?: plannedAction.storageProductClassifier,
+                        quantity = if (factAction.quantity <= 0f) plannedAction.quantity else factAction.quantity
+                    )
+                } else {
+                    factAction
+                }
+
+                val syncWithServer = actionTemplate?.syncWithServer == true
+                val result = networkService.completeAction(finalFactAction, syncWithServer)
 
                 if (result.isSuccess()) {
                     updateState { controller.handleSendSuccess(it).getNewState() }

@@ -152,7 +152,8 @@ object TaskXMapper {
                     else -> ActionCompletionCondition.ON_COMPLETION
                 }
             } ?: ActionCompletionCondition.ON_COMPLETION,
-            actionSteps = dto.actionSteps.map { mapActionStep(it) }
+            actionSteps = dto.actionSteps.map { mapActionStep(it) },
+            autoFillFromPlan = dto.autoFillFromPlan
         )
     }
 

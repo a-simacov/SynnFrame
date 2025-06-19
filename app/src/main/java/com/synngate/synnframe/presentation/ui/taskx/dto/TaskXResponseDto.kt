@@ -77,7 +77,8 @@ data class ActionTemplateDto(
     val syncWithServer: Boolean = true,
     val actionCompletionMethod: String? = null,
     val actionCompletionCondition: String? = null,
-    val actionSteps: List<ActionStepDto> = emptyList()
+    val actionSteps: List<ActionStepDto> = emptyList(),
+    val autoFillFromPlan: Boolean = false
 )
 
 @Serializable
