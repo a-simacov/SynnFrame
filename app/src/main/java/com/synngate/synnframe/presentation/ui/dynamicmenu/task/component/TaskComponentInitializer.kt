@@ -5,6 +5,7 @@ import com.synngate.synnframe.domain.entity.operation.ScreenElementType
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.GenericScreenComponentRegistry
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.ScreenElementsContainer
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.SearchComponent
+import com.synngate.synnframe.presentation.ui.dynamicmenu.components.SearchSaveableComponent
 
 fun <S : ScreenElementsContainer> GenericScreenComponentRegistry<S>.initializeTaskComponents(
     tasksProvider: (S) -> List<DynamicTask>,
@@ -13,7 +14,11 @@ fun <S : ScreenElementsContainer> GenericScreenComponentRegistry<S>.initializeTa
     onTaskClickProvider: (S) -> ((DynamicTask) -> Unit),
     searchValueProvider: (S) -> String,
     onSearchValueChangedProvider: (S) -> ((String) -> Unit),
-    onSearchProvider: (S) -> (() -> Unit)
+    onSearchProvider: (S) -> (() -> Unit),
+    savedSearchKeyProvider: ((S) -> String?)? = null,
+    hasValidSavedSearchKeyProvider: ((S) -> Boolean)? = null,
+    onClearSavedKeyProvider: ((S) -> (() -> Unit))? = null,
+    onAddSavedKeyProvider: ((S) -> (() -> Unit))? = null
 ) {
     registerComponent(ScreenElementType.SHOW_LIST) { state ->
         TaskListComponent(
@@ -30,6 +35,18 @@ fun <S : ScreenElementsContainer> GenericScreenComponentRegistry<S>.initializeTa
             searchValue = searchValueProvider(state),
             onSearchValueChanged = onSearchValueChangedProvider(state),
             onSearch = onSearchProvider(state)
+        )
+    }
+
+    registerComponent(ScreenElementType.SEARCH_SAVEABLE) { state ->
+        SearchSaveableComponent(
+            searchValue = searchValueProvider(state),
+            onSearchValueChanged = onSearchValueChangedProvider(state),
+            onSearch = onSearchProvider(state),
+            savedSearchKey = savedSearchKeyProvider?.invoke(state),
+            hasValidSavedSearchKey = hasValidSavedSearchKeyProvider?.invoke(state) ?: false,
+            onClearSavedKey = onClearSavedKeyProvider?.invoke(state) ?: {},
+            onAddSavedKey = onAddSavedKeyProvider?.invoke(state) ?: {}
         )
     }
 }

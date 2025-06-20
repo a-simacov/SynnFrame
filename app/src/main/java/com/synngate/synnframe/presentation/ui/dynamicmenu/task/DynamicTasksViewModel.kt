@@ -88,13 +88,14 @@ class DynamicTasksViewModel(
 
     fun createNewTask() {
         val taskTypeId = uiState.value.taskTypeId ?: return
+        val savedSearchKey = if (uiState.value.hasValidSavedSearchKey) uiState.value.savedSearchKey else null
 
         launchIO {
             updateState { it.copy(isCreatingTask = true, error = null) }
 
             try {
-                Timber.d("Creating new task with taskTypeId: $taskTypeId")
-                val result = dynamicMenuUseCases.createTask(endpoint, taskTypeId)
+                Timber.d("Creating new task with taskTypeId: $taskTypeId, savedSearchKey: $savedSearchKey")
+                val result = dynamicMenuUseCases.createTask(endpoint, taskTypeId, savedSearchKey)
 
                 if (result.isSuccess()) {
                     val createdTaskX = result.getOrNull()
@@ -198,7 +199,6 @@ class DynamicTasksViewModel(
                     updateState {
                         it.copy(
                             tasks = localSearchResults,
-                            // Если найдено ровно одно задание, устанавливаем его как foundTask
                             foundTask = if (localSearchResults.size == 1) localSearchResults.first() else null,
                             isLoading = false,
                             error = null,
@@ -227,26 +227,43 @@ class DynamicTasksViewModel(
                 val result = dynamicMenuUseCases.searchDynamicTask(searchEndpoint, searchValue)
 
                 if (result.isSuccess()) {
-                    val task = result.getOrNull()
-                    if (task != null) {
-                        updateState {
-                            it.copy(
-                                tasks = listOf(task),
-                                foundTask = task,
-                                isLoading = false,
-                                error = null,
-                                lastSearchQuery = searchValue,
-                                searchResultType = SearchResultType.REMOTE,
-                                isLocalSearch = false
-                            )
-                        }
+                    val responseDto = result.getOrNull()
+                    if (responseDto != null) {
+                        val tasks = responseDto.list
+                        val taskTypeId = responseDto.taskTypeId
 
-                        // Если настройка openImmediately = true и нашли ровно одно задание
-                        if (uiState.value.screenSettings.openImmediately) {
-                            if (task.getTaskStatus() == TaskXStatus.TO_DO)
-                                navigateToTaskDetail(task.id)
-                            else
-                                navigateToTaskXDetail(task.id)
+                        if (tasks.isNotEmpty()) {
+                            updateState {
+                                it.copy(
+                                    tasks = tasks,
+                                    foundTask = if (tasks.size == 1) tasks.first() else null,
+                                    isLoading = false,
+                                    error = null,
+                                    lastSearchQuery = searchValue,
+                                    searchResultType = SearchResultType.REMOTE,
+                                    isLocalSearch = false
+                                )
+                            }
+
+                            // Если настройка openImmediately = true и нашли ровно одно задание
+                            if (uiState.value.screenSettings.openImmediately && tasks.size == 1) {
+                                val task = tasks[0]
+                                if (task.getTaskStatus() == TaskXStatus.TO_DO)
+                                    navigateToTaskDetail(task.id)
+                                else
+                                    navigateToTaskXDetail(task.id)
+                            }
+                        } else {
+                            updateState {
+                                it.copy(
+                                    tasks = emptyList(),
+                                    isLoading = false,
+                                    error = "Task not found",
+                                    lastSearchQuery = searchValue,
+                                    searchResultType = null,
+                                    isLocalSearch = false
+                                )
+                            }
                         }
                     } else {
                         updateState {
@@ -278,6 +295,99 @@ class DynamicTasksViewModel(
                 }
             }
         }
+    }
+
+    // Новые методы для работы с диалогом сохраняемого ключа
+    fun showSavedKeyDialog() {
+        // Получаем endpoint для валидации из настроек меню
+        val validationEndpoint = extractValidationEndpoint()
+        updateState {
+            it.copy(
+                showSavedKeyDialog = true,
+                keyValidationError = null,
+                savedKeyEndpoint = validationEndpoint
+            )
+        }
+    }
+
+    fun hideSavedKeyDialog() {
+        updateState {
+            it.copy(
+                showSavedKeyDialog = false,
+                keyValidationError = null
+            )
+        }
+    }
+
+    fun validateAndSaveKey(key: String) {
+        val validationEndpoint = uiState.value.savedKeyEndpoint ?: endpoint
+
+        launchIO {
+            updateState { it.copy(isValidatingKey = true, keyValidationError = null) }
+
+            try {
+                Timber.d("Validating key: $key on endpoint: $validationEndpoint")
+                val result = dynamicMenuUseCases.validateSearchKey(validationEndpoint, key)
+
+                if (result.isSuccess()) {
+                    val validation = result.getOrNull()
+                    if (validation?.isValid == true) {
+                        // Ключ валиден, сохраняем его
+                        updateState {
+                            it.copy(
+                                savedSearchKey = key,
+                                hasValidSavedSearchKey = true,
+                                showSavedKeyDialog = false,
+                                isValidatingKey = false,
+                                keyValidationError = null
+                            )
+                        }
+                        Timber.d("Key validated and saved successfully")
+                    } else {
+                        // Ключ не валиден
+                        updateState {
+                            it.copy(
+                                isValidatingKey = false,
+                                keyValidationError = validation?.message ?: "Invalid key"
+                            )
+                        }
+                    }
+                } else {
+                    val errorMsg = (result as? ApiResult.Error)?.message ?: "Validation failed"
+                    updateState {
+                        it.copy(
+                            isValidatingKey = false,
+                            keyValidationError = errorMsg
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error validating key")
+                updateState {
+                    it.copy(
+                        isValidatingKey = false,
+                        keyValidationError = "Error: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearSavedSearchKey() {
+        updateState {
+            it.copy(
+                savedSearchKey = null,
+                hasValidSavedSearchKey = false
+            )
+        }
+        Timber.d("Saved search key cleared")
+    }
+
+    // Вспомогательный метод для извлечения endpoint валидации из настроек
+    private fun extractValidationEndpoint(): String {
+        // Здесь можно добавить логику извлечения специального endpoint из настроек
+        // Пока используем базовый endpoint с суффиксом
+        return "$endpoint/validate-key"
     }
 
     private fun performLocalSearch(searchValue: String): List<DynamicTask> {

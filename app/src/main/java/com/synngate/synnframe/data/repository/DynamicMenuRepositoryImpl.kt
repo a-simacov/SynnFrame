@@ -3,6 +3,7 @@ package com.synngate.synnframe.data.repository
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.api.DynamicMenuApi
 import com.synngate.synnframe.data.remote.dto.DynamicTasksResponseDto
+import com.synngate.synnframe.data.remote.dto.SearchKeyValidationResponseDto
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.entity.operation.DynamicTask
@@ -21,11 +22,11 @@ class DynamicMenuRepositoryImpl(
         return dynamicMenuApi.getDynamicTasks(endpoint, params)
     }
 
-    override suspend fun createTask(endpoint: String, taskTypeId: String): ApiResult<TaskXResponseDto> {
-        return dynamicMenuApi.createTask(endpoint, taskTypeId)
+    override suspend fun createTask(endpoint: String, taskTypeId: String, searchKey: String?): ApiResult<TaskXResponseDto> {
+        return dynamicMenuApi.createTask(endpoint, taskTypeId, searchKey)
     }
 
-    override suspend fun searchDynamicTask(endpoint: String, searchValue: String): ApiResult<DynamicTask> {
+    override suspend fun searchDynamicTask(endpoint: String, searchValue: String): ApiResult<DynamicTasksResponseDto> {
         return dynamicMenuApi.searchDynamicTask(endpoint, searchValue)
     }
 
@@ -39,5 +40,9 @@ class DynamicMenuRepositoryImpl(
 
     override suspend fun startDynamicTask(endpoint: String, taskId: String): ApiResult<TaskXResponseDto> {
         return dynamicMenuApi.startDynamicTask(endpoint, taskId)
+    }
+
+    override suspend fun validateSearchKey(endpoint: String, key: String): ApiResult<SearchKeyValidationResponseDto> {
+        return dynamicMenuApi.validateSearchKey(endpoint, key)
     }
 }

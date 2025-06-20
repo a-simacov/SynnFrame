@@ -20,7 +20,13 @@ data class DynamicTasksState(
     val foundTask: DynamicTask? = null,
     val lastSearchQuery: String = "",
     val searchResultType: SearchResultType? = null,
-    val isLocalSearch: Boolean = false
+    val isLocalSearch: Boolean = false,
+    val savedSearchKey: String? = null, // Сохраненный ключ поиска
+    val hasValidSavedSearchKey: Boolean = false, // Флаг валидности сохраненного ключа
+    val showSavedKeyDialog: Boolean = false, // Показывать ли диалог ввода ключа
+    val isValidatingKey: Boolean = false, // Идет ли валидация ключа
+    val keyValidationError: String? = null, // Ошибка валидации ключа
+    val savedKeyEndpoint: String? = null // Endpoint для валидации ключа
 ) : ScreenElementsContainer {
 
     fun hasElement(element: ScreenElementType): Boolean {
@@ -35,5 +41,9 @@ data class DynamicTasksState(
 
     fun canCreateTask(): Boolean {
         return !taskTypeId.isNullOrBlank() && !isCreatingTask && !isLoading
+    }
+
+    fun isSearchSaveable(): Boolean {
+        return screenSettings.screenElements.contains(ScreenElementType.SEARCH_SAVEABLE)
     }
 }

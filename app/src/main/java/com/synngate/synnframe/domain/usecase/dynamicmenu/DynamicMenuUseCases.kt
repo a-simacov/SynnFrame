@@ -2,6 +2,7 @@ package com.synngate.synnframe.domain.usecase.dynamicmenu
 
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.dto.DynamicTasksResponseDto
+import com.synngate.synnframe.data.remote.dto.SearchKeyValidationResponseDto
 import com.synngate.synnframe.domain.entity.DynamicMenuItemType
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
@@ -51,10 +52,10 @@ class DynamicMenuUseCases(
         }
     }
 
-    suspend fun createTask(endpoint: String, taskTypeId: String): ApiResult<TaskX> {
+    suspend fun createTask(endpoint: String, taskTypeId: String, searchKey: String? = null): ApiResult<TaskX> {
         return try {
-            Timber.d("Creating new task with taskTypeId: $taskTypeId")
-            val result = dynamicMenuRepository.createTask(endpoint, taskTypeId)
+            Timber.d("Creating new task with taskTypeId: $taskTypeId, searchKey: $searchKey")
+            val result = dynamicMenuRepository.createTask(endpoint, taskTypeId, searchKey)
 
             when (result) {
                 is ApiResult.Success -> {
@@ -70,7 +71,7 @@ class DynamicMenuUseCases(
         }
     }
 
-    suspend fun searchDynamicTask(endpoint: String, searchValue: String): ApiResult<DynamicTask> {
+    suspend fun searchDynamicTask(endpoint: String, searchValue: String): ApiResult<DynamicTasksResponseDto> {
         return try {
             dynamicMenuRepository.searchDynamicTask(endpoint, searchValue)
         } catch (e: Exception) {
@@ -112,6 +113,16 @@ class DynamicMenuUseCases(
             }
         } catch (e: Exception) {
             Timber.e(e, "Error in startDynamicTask use case")
+            ApiResult.Error(500, e.message ?: "Unknown error")
+        }
+    }
+
+    suspend fun validateSearchKey(endpoint: String, key: String): ApiResult<SearchKeyValidationResponseDto> {
+        return try {
+            Timber.d("Validating search key: $key")
+            dynamicMenuRepository.validateSearchKey(endpoint, key)
+        } catch (e: Exception) {
+            Timber.e(e, "Error in validateSearchKey use case")
             ApiResult.Error(500, e.message ?: "Unknown error")
         }
     }

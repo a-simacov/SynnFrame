@@ -32,6 +32,7 @@ import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
 import com.synngate.synnframe.presentation.common.search.SearchResultIndicator
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.di.ScreenContainer
+import com.synngate.synnframe.presentation.ui.dynamicmenu.components.SavedKeyInputDialog
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.createComponentGroups
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.rememberGenericScreenComponentRegistry
 import com.synngate.synnframe.presentation.ui.dynamicmenu.task.component.initializeTaskComponents
@@ -83,6 +84,16 @@ fun DynamicTasksScreen(
     // Создаем и настраиваем реестр компонентов
     val componentRegistry = rememberGenericScreenComponentRegistry<DynamicTasksState>()
 
+    // Диалог для ввода сохраняемого ключа
+    if (state.showSavedKeyDialog) {
+        SavedKeyInputDialog(
+            onDismiss = viewModel::hideSavedKeyDialog,
+            onConfirm = viewModel::validateAndSaveKey,
+            isLoading = state.isValidatingKey,
+            error = state.keyValidationError
+        )
+    }
+
     // Инициализируем компоненты для заданий
     componentRegistry.initializeTaskComponents(
         tasksProvider = { it.tasks },
@@ -91,7 +102,11 @@ fun DynamicTasksScreen(
         onTaskClickProvider = { { task -> viewModel.onTaskClick(task) } },
         searchValueProvider = { it.searchValue },
         onSearchValueChangedProvider = { { value -> viewModel.onSearchValueChanged(value) } },
-        onSearchProvider = { { viewModel.onSearch() } }
+        onSearchProvider = { { viewModel.onSearch() } },
+        savedSearchKeyProvider = { it.savedSearchKey },
+        hasValidSavedSearchKeyProvider = { it.hasValidSavedSearchKey },
+        onClearSavedKeyProvider = { { viewModel.clearSavedSearchKey() } },
+        onAddSavedKeyProvider = { { viewModel.showSavedKeyDialog() } }
     )
 
     // Создаем группы компонентов на основе настроек экрана

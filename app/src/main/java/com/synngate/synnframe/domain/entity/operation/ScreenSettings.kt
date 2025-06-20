@@ -5,7 +5,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class ScreenElementType {
     SHOW_LIST,  // Показ списка объектов
-    SEARCH      // Поле поиска
+    SEARCH,      // Поле поиска
+    SEARCH_SAVEABLE
 }
 
 @Serializable
