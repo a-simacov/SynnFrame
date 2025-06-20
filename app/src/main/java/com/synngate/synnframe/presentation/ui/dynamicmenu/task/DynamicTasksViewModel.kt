@@ -7,6 +7,7 @@ import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.common.search.SearchResultType
+import com.synngate.synnframe.presentation.navigation.DynamicMenuDataHolder
 import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTasksEvent
 import com.synngate.synnframe.presentation.ui.dynamicmenu.task.model.DynamicTasksState
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
@@ -32,6 +33,7 @@ class DynamicTasksViewModel(
     private var allLoadedTasks: List<DynamicTask> = emptyList()
 
     init {
+        restoreSavedKey()
         loadDynamicTasks()
     }
 
@@ -319,6 +321,19 @@ class DynamicTasksViewModel(
         }
     }
 
+    private fun restoreSavedKey() {
+        val savedKeyData = DynamicMenuDataHolder.getSavedSearchKey(uiState.value.menuItemId)
+        if (savedKeyData != null) {
+            updateState {
+                it.copy(
+                    savedSearchKey = savedKeyData.key,
+                    hasValidSavedSearchKey = savedKeyData.isValid
+                )
+            }
+            Timber.d("Restored saved key for menuItemId: ${uiState.value.menuItemId}")
+        }
+    }
+
     fun validateAndSaveKey(key: String) {
         val validationEndpoint = uiState.value.savedKeyEndpoint ?: endpoint
 
@@ -342,6 +357,14 @@ class DynamicTasksViewModel(
                                 keyValidationError = null
                             )
                         }
+
+                        // Сохраняем в синглтон
+                        DynamicMenuDataHolder.setSavedSearchKey(
+                            menuItemId = uiState.value.menuItemId,
+                            key = key,
+                            isValid = true
+                        )
+
                         Timber.d("Key validated and saved successfully")
                     } else {
                         // Ключ не валиден
@@ -380,6 +403,10 @@ class DynamicTasksViewModel(
                 hasValidSavedSearchKey = false
             )
         }
+
+        // Очищаем из синглтона
+        DynamicMenuDataHolder.clearSavedSearchKey(uiState.value.menuItemId)
+
         Timber.d("Saved search key cleared")
     }
 
@@ -417,5 +444,11 @@ class DynamicTasksViewModel(
 
     fun clearError() {
         updateState { it.copy(error = null) }
+    }
+
+    fun onNavigateBack() {
+        // Очищаем сохраненный ключ при выходе с экрана
+        DynamicMenuDataHolder.clearSavedSearchKey(uiState.value.menuItemId)
+        sendEvent(DynamicTasksEvent.NavigateBack)
     }
 }

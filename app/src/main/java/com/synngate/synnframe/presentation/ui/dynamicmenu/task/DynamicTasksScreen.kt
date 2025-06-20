@@ -1,5 +1,6 @@
 package com.synngate.synnframe.presentation.ui.dynamicmenu.task
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,6 +53,10 @@ fun DynamicTasksScreen(
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+
+    BackHandler {
+        viewModel.onNavigateBack()
+    }
 
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
@@ -114,7 +119,7 @@ fun DynamicTasksScreen(
 
     AppScaffold(
         title = state.menuItemName,
-        onNavigateBack = navigateBack,
+        onNavigateBack = viewModel::onNavigateBack,
         actions = {
             IconButton(onClick = { viewModel.loadDynamicTasks() }) {
                 Icon(
