@@ -178,6 +178,11 @@ class DynamicTasksViewModel(
     }
 
     fun onSearch() {
+        if (uiState.value.showSavedKeyDialog) {
+            Timber.d("Search ignored - saved key dialog is open")
+            return
+        }
+
         val searchValue = uiState.value.searchValue
         if (searchValue.isNotEmpty()) {
             searchTask(searchValue)
@@ -350,7 +355,7 @@ class DynamicTasksViewModel(
                         // Ключ валиден, сохраняем его
                         updateState {
                             it.copy(
-                                savedSearchKey = key,
+                                savedSearchKey = validation.validatedValue,
                                 hasValidSavedSearchKey = true,
                                 showSavedKeyDialog = false,
                                 isValidatingKey = false,
@@ -361,7 +366,7 @@ class DynamicTasksViewModel(
                         // Сохраняем в синглтон
                         DynamicMenuDataHolder.setSavedSearchKey(
                             menuItemId = uiState.value.menuItemId,
-                            key = key,
+                            key = validation.validatedValue ?: key,
                             isValid = true
                         )
 
@@ -431,7 +436,22 @@ class DynamicTasksViewModel(
     }
 
     fun onSearchValueChanged(value: String) {
+        if (uiState.value.showSavedKeyDialog) {
+            Timber.d("Search value change ignored - saved key dialog is open")
+            return
+        }
         updateState { it.copy(searchValue = value) }
+    }
+
+    fun onBarcodeScanned(barcode: String) {
+        // Игнорируем сканирование при открытом диалоге
+        if (uiState.value.showSavedKeyDialog) {
+            Timber.d("Barcode scan ignored - saved key dialog is open")
+            return
+        }
+
+        onSearchValueChanged(barcode)
+        onSearch()
     }
 
     private fun navigateToTaskDetail(taskId: String) {

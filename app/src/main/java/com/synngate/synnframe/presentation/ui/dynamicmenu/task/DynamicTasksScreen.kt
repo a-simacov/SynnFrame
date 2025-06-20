@@ -29,7 +29,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.operation.ScreenElementType
+import com.synngate.synnframe.presentation.common.LocalScannerService
 import com.synngate.synnframe.presentation.common.scaffold.AppScaffold
+import com.synngate.synnframe.presentation.common.scanner.BarcodeHandlerWithState
 import com.synngate.synnframe.presentation.common.search.SearchResultIndicator
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.di.ScreenContainer
@@ -54,8 +56,29 @@ fun DynamicTasksScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
+    // Проверяем наличие физического сканера
+    val scannerService = LocalScannerService.current
+    val hasPhysicalScanner = scannerService?.hasRealScanner() == true
+
+    // Обработка сканирования через физический сканер
+    // Активен только когда диалог закрыт
+    if (hasPhysicalScanner && !state.showSavedKeyDialog) {
+        BarcodeHandlerWithState(
+            stepKey = "dynamic_tasks_${state.menuItemId}",
+            onBarcodeScanned = { barcode, setProcessingState ->
+                viewModel.onBarcodeScanned(barcode)
+                setProcessingState(false)
+            }
+        )
+    }
+
     BackHandler {
-        viewModel.onNavigateBack()
+        // Если открыт диалог, закрываем его
+        if (state.showSavedKeyDialog) {
+            viewModel.hideSavedKeyDialog()
+        } else {
+            viewModel.onNavigateBack()
+        }
     }
 
     LaunchedEffect(key1 = viewModel) {
