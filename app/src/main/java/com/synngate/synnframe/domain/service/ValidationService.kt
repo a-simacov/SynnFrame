@@ -36,10 +36,12 @@ class ValidationService(
                 }
 
                 ValidationType.MATCHES_REGEX -> {
-                    if (value is String && ruleItem.parameter != null) {
+                    if (ruleItem.parameter != null && value != null) {
                         try {
+                            // Преобразуем значение в строку для проверки регулярным выражением
+                            val stringValue = valueToString(value)
                             val regex = ruleItem.parameter.toRegex()
-                            if (!value.matches(regex)) {
+                            if (!stringValue.matches(regex)) {
                                 return ValidationResult.Error(ruleItem.errorMessage)
                             }
                         } catch (e: Exception) {
