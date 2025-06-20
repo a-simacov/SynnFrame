@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -134,7 +135,6 @@ fun DynamicTasksScreen(
         savedSearchKeyProvider = { it.savedSearchKey },
         hasValidSavedSearchKeyProvider = { it.hasValidSavedSearchKey },
         onClearSavedKeyProvider = { { viewModel.clearSavedSearchKey() } },
-        onAddSavedKeyProvider = { { viewModel.showSavedKeyDialog() } }
     )
 
     // Создаем группы компонентов на основе настроек экрана
@@ -153,13 +153,23 @@ fun DynamicTasksScreen(
         },
         floatingActionButton = {
             if (state.canCreateTask()) {
+                val needsKey = viewModel.shouldShowKeyHint()
                 FloatingActionButton(
-                    onClick = { viewModel.createNewTask() },
-                    containerColor = MaterialTheme.colorScheme.primary
+                    onClick = { viewModel.onFabClick() },
+                    containerColor = if (needsKey) {
+                        MaterialTheme.colorScheme.secondary
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                    contentColor = if (needsKey) {
+                        MaterialTheme.colorScheme.onSecondary
+                    } else {
+                        MaterialTheme.colorScheme.onPrimary
+                    }
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null
+                        imageVector = if (needsKey) Icons.Default.Key else Icons.Default.Add,
+                        contentDescription = if (needsKey) "Add saved key" else "Create task"
                     )
                 }
             }

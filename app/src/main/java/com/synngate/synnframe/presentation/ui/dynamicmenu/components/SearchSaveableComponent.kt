@@ -8,10 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Card
@@ -20,7 +18,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,8 +42,7 @@ class SearchSaveableComponent(
     private val onSearch: () -> Unit,
     private val savedSearchKey: String?,
     private val hasValidSavedSearchKey: Boolean,
-    private val onClearSavedKey: () -> Unit,
-    private val onAddSavedKey: () -> Unit
+    private val onClearSavedKey: () -> Unit
 ) : ScreenComponent {
 
     @Composable
@@ -114,10 +110,9 @@ class SearchSaveableComponent(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Отображение сохраненного ключа поиска или кнопка добавления
             if (hasValidSavedSearchKey && !savedSearchKey.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
@@ -158,20 +153,6 @@ class SearchSaveableComponent(
                             )
                         }
                     }
-                }
-            } else {
-                // Кнопка для добавления сохраняемого ключа
-                TextButton(
-                    onClick = onAddSavedKey,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Add saved key")
                 }
             }
         }

@@ -18,7 +18,6 @@ fun <S : ScreenElementsContainer> GenericScreenComponentRegistry<S>.initializeTa
     savedSearchKeyProvider: ((S) -> String?)? = null,
     hasValidSavedSearchKeyProvider: ((S) -> Boolean)? = null,
     onClearSavedKeyProvider: ((S) -> (() -> Unit))? = null,
-    onAddSavedKeyProvider: ((S) -> (() -> Unit))? = null
 ) {
     registerComponent(ScreenElementType.SHOW_LIST) { state ->
         TaskListComponent(
@@ -46,7 +45,6 @@ fun <S : ScreenElementsContainer> GenericScreenComponentRegistry<S>.initializeTa
             savedSearchKey = savedSearchKeyProvider?.invoke(state),
             hasValidSavedSearchKey = hasValidSavedSearchKeyProvider?.invoke(state) ?: false,
             onClearSavedKey = onClearSavedKeyProvider?.invoke(state) ?: {},
-            onAddSavedKey = onAddSavedKeyProvider?.invoke(state) ?: {}
         )
     }
 }

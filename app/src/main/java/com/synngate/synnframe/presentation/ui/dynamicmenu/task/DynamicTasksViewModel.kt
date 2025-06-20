@@ -471,4 +471,21 @@ class DynamicTasksViewModel(
         DynamicMenuDataHolder.clearSavedSearchKey(uiState.value.menuItemId)
         sendEvent(DynamicTasksEvent.NavigateBack)
     }
+
+    fun onFabClick() {
+        if (uiState.value.isSearchSaveable() && !uiState.value.hasValidSavedSearchKey) {
+            // Если поиск сохраняемый, но ключа нет - показываем диалог
+            showSavedKeyDialog()
+        } else {
+            // Иначе создаем новое задание
+            createNewTask()
+        }
+    }
+
+    /**
+     * Проверяет, нужно ли показывать подсказку о необходимости ввода ключа
+     */
+    fun shouldShowKeyHint(): Boolean {
+        return uiState.value.isSearchSaveable() && !uiState.value.hasValidSavedSearchKey
+    }
 }
