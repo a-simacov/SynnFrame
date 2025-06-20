@@ -488,4 +488,71 @@ class DynamicTasksViewModel(
     fun shouldShowKeyHint(): Boolean {
         return uiState.value.isSearchSaveable() && !uiState.value.hasValidSavedSearchKey
     }
+
+    fun onTaskLongClick(task: DynamicTask) {
+        if (task.isDeletable()) {
+            updateState {
+                it.copy(
+                    showDeleteDialog = true,
+                    taskToDelete = task
+                )
+            }
+        }
+    }
+
+    fun hideDeleteDialog() {
+        updateState {
+            it.copy(
+                showDeleteDialog = false,
+                taskToDelete = null
+            )
+        }
+    }
+
+    fun deleteTask() {
+        val task = uiState.value.taskToDelete ?: return
+
+        launchIO {
+            updateState { it.copy(isDeleting = true) }
+
+            try {
+                val result = dynamicMenuUseCases.deleteTask(endpoint, task.id)
+
+                if (result.isSuccess()) {
+                    // Удаляем задание из списка
+                    updateState { state ->
+                        state.copy(
+                            tasks = state.tasks.filter { it.id != task.id },
+                            showDeleteDialog = false,
+                            taskToDelete = null,
+                            isDeleting = false
+                        )
+                    }
+
+                    // Обновляем allLoadedTasks
+                    allLoadedTasks = allLoadedTasks.filter { it.id != task.id }
+
+                    sendEvent(DynamicTasksEvent.ShowSnackbar("Task deleted successfully"))
+                } else {
+                    val error = (result as? ApiResult.Error)?.message ?: "Unknown error"
+                    updateState {
+                        it.copy(
+                            isDeleting = false,
+                            error = "Error deleting task: $error"
+                        )
+                    }
+                    sendEvent(DynamicTasksEvent.ShowSnackbar("Error deleting task: $error"))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error deleting task")
+                updateState {
+                    it.copy(
+                        isDeleting = false,
+                        error = "Error deleting task: ${e.message}"
+                    )
+                }
+                sendEvent(DynamicTasksEvent.ShowSnackbar("Error: ${e.message}"))
+            }
+        }
+    }
 }

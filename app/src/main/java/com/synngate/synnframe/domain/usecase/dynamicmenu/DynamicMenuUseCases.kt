@@ -1,6 +1,7 @@
 package com.synngate.synnframe.domain.usecase.dynamicmenu
 
 import com.synngate.synnframe.data.remote.api.ApiResult
+import com.synngate.synnframe.data.remote.dto.CommonResponseDto
 import com.synngate.synnframe.data.remote.dto.DynamicTasksResponseDto
 import com.synngate.synnframe.data.remote.dto.SearchKeyValidationResponseDto
 import com.synngate.synnframe.domain.entity.DynamicMenuItemType
@@ -123,6 +124,16 @@ class DynamicMenuUseCases(
             dynamicMenuRepository.validateSearchKey(endpoint, key)
         } catch (e: Exception) {
             Timber.e(e, "Error in validateSearchKey use case")
+            ApiResult.Error(500, e.message ?: "Unknown error")
+        }
+    }
+
+    suspend fun deleteTask(endpoint: String, taskId: String): ApiResult<CommonResponseDto> {
+        return try {
+            Timber.d("Deleting task with id: $taskId")
+            dynamicMenuRepository.deleteTask(endpoint, taskId)
+        } catch (e: Exception) {
+            Timber.e(e, "Error in deleteTask use case")
             ApiResult.Error(500, e.message ?: "Unknown error")
         }
     }

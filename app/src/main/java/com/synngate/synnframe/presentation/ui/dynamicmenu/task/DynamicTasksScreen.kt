@@ -37,6 +37,7 @@ import com.synngate.synnframe.presentation.common.search.SearchResultIndicator
 import com.synngate.synnframe.presentation.common.status.StatusType
 import com.synngate.synnframe.presentation.di.ScreenContainer
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.SavedKeyInputDialog
+import com.synngate.synnframe.presentation.ui.dynamicmenu.components.TaskDeleteConfirmationDialog
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.createComponentGroups
 import com.synngate.synnframe.presentation.ui.dynamicmenu.components.rememberGenericScreenComponentRegistry
 import com.synngate.synnframe.presentation.ui.dynamicmenu.task.component.initializeTaskComponents
@@ -74,11 +75,16 @@ fun DynamicTasksScreen(
     }
 
     BackHandler {
-        // Если открыт диалог, закрываем его
-        if (state.showSavedKeyDialog) {
-            viewModel.hideSavedKeyDialog()
-        } else {
-            viewModel.onNavigateBack()
+        when {
+            state.showDeleteDialog -> {
+                viewModel.hideDeleteDialog()
+            }
+            state.showSavedKeyDialog -> {
+                viewModel.hideSavedKeyDialog()
+            }
+            else -> {
+                viewModel.onNavigateBack()
+            }
         }
     }
 
@@ -123,12 +129,22 @@ fun DynamicTasksScreen(
         )
     }
 
+    if (state.showDeleteDialog && state.taskToDelete != null) {
+        TaskDeleteConfirmationDialog(
+            task = state.taskToDelete!!,
+            onConfirm = viewModel::deleteTask,
+            onDismiss = viewModel::hideDeleteDialog,
+            isDeleting = state.isDeleting
+        )
+    }
+
     // Инициализируем компоненты для заданий
     componentRegistry.initializeTaskComponents(
         tasksProvider = { it.tasks },
         isLoadingProvider = { it.isLoading },
         errorProvider = { it.error },
         onTaskClickProvider = { { task -> viewModel.onTaskClick(task) } },
+        onTaskLongClickProvider = { { task -> viewModel.onTaskLongClick(task) } },
         searchValueProvider = { it.searchValue },
         onSearchValueChangedProvider = { { value -> viewModel.onSearchValueChanged(value) } },
         onSearchProvider = { { viewModel.onSearch() } },

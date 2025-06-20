@@ -9,7 +9,8 @@ data class DynamicTask(
     val name: String,
     val status: String = "",
     val executorId: String? = null,
-    val searchCode: String? = null
+    val searchCode: String? = null,
+    val canDelete: Boolean = false
 ) {
     fun getTaskStatus(): TaskXStatus {
         return when (status.uppercase()) {
@@ -39,5 +40,13 @@ data class DynamicTask(
 
             else -> false
         }
+    }
+
+    fun isDeletable(): Boolean {
+        return canDelete && getTaskStatus() in arrayOf(
+            TaskXStatus.TO_DO,
+            TaskXStatus.PAUSED,
+            TaskXStatus.IN_PROGRESS
+        )
     }
 }

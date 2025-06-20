@@ -12,6 +12,7 @@ fun <S : ScreenElementsContainer> GenericScreenComponentRegistry<S>.initializeTa
     isLoadingProvider: (S) -> Boolean,
     errorProvider: (S) -> String?,
     onTaskClickProvider: (S) -> ((DynamicTask) -> Unit),
+    onTaskLongClickProvider: ((S) -> ((DynamicTask) -> Unit))? = null,
     searchValueProvider: (S) -> String,
     onSearchValueChangedProvider: (S) -> ((String) -> Unit),
     onSearchProvider: (S) -> (() -> Unit),
@@ -25,7 +26,8 @@ fun <S : ScreenElementsContainer> GenericScreenComponentRegistry<S>.initializeTa
             tasks = tasksProvider(state),
             isLoading = isLoadingProvider(state),
             error = errorProvider(state),
-            onTaskClick = onTaskClickProvider(state)
+            onTaskClick = onTaskClickProvider(state),
+            onTaskLongClick = onTaskLongClickProvider?.invoke(state)
         )
     }
 

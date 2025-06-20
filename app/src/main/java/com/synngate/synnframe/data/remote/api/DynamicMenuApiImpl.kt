@@ -1,5 +1,6 @@
 package com.synngate.synnframe.data.remote.api
 
+import com.synngate.synnframe.data.remote.dto.CommonResponseDto
 import com.synngate.synnframe.data.remote.dto.DynamicTasksResponseDto
 import com.synngate.synnframe.data.remote.dto.SearchKeyValidationRequestDto
 import com.synngate.synnframe.data.remote.dto.SearchKeyValidationResponseDto
@@ -105,6 +106,15 @@ class DynamicMenuApiImpl(
             endpoint = endpoint,
             methodOverride = HttpMethod.POST,
             body = requestBody
+        )
+    }
+
+    override suspend fun deleteTask(endpoint: String, taskId: String): ApiResult<CommonResponseDto> {
+        Timber.d("Deleting task with id: $taskId")
+
+        return executeApiRequest(
+            endpoint = "$endpoint/$taskId",
+            methodOverride = HttpMethod.DELETE
         )
     }
 }

@@ -532,8 +532,6 @@
     <string name="cleanup_old_logs">Очистить старые логи</string>
 
     <string name="delete_task">Удалить задание</string>
-    <string name="delete_task_title">Удаление задания</string>
-    <string name="delete_task_message">Вы уверены, что хотите удалить это задание? Это действие нельзя отменить.</string>
     <string name="reupload_task">Выгрузить повторно</string>
 
     <!-- Ячейки -->
@@ -759,4 +757,12 @@
     <string name="action_filter_final">Завершающие</string>
     <string name="action_filter_current">Текущие</string>
     <string name="search_action">Поиск действия...</string>
+
+    <string name="delete_task_title">Delete Task</string>
+    <string name="delete_task_message">Are you sure you want to delete this task?</string>
+    <string name="delete_task_confirm">Delete</string>
+    <string name="delete_task_cancel">Cancel</string>
+    <string name="task_deleted_successfully">Task deleted successfully</string>
+    <string name="error_deleting_task">Error deleting task</string>
+    <string name="can_be_deleted">Can be deleted</string>
 </resources>

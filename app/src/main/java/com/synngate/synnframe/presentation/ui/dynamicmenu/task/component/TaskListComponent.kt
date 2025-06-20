@@ -1,6 +1,7 @@
 package com.synngate.synnframe.presentation.ui.dynamicmenu.task.component
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -12,15 +13,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -35,7 +43,8 @@ class TaskListComponent<S>(
     private val tasks: List<DynamicTask>,
     private val isLoading: Boolean,
     private val error: String?,
-    private val onTaskClick: (DynamicTask) -> Unit
+    private val onTaskClick: (DynamicTask) -> Unit,
+    private val onTaskLongClick: ((DynamicTask) -> Unit)? = null
 ) : ScreenComponent {
 
     @Composable
@@ -57,7 +66,8 @@ class TaskListComponent<S>(
             } else {
                 TasksList(
                     tasks = tasks,
-                    onTaskClick = onTaskClick
+                    onTaskClick = onTaskClick,
+                    onTaskLongClick = onTaskLongClick
                 )
             }
         }
@@ -71,6 +81,7 @@ class TaskListComponent<S>(
     private fun TasksList(
         tasks: List<DynamicTask>,
         onTaskClick: (DynamicTask) -> Unit,
+        onTaskLongClick: ((DynamicTask) -> Unit)?,
         modifier: Modifier = Modifier
     ) {
         LazyColumn(
@@ -80,7 +91,10 @@ class TaskListComponent<S>(
             items(tasks) { task ->
                 TaskItem(
                     task = task,
-                    onClick = { onTaskClick(task) }
+                    onClick = { onTaskClick(task) },
+                    onLongClick = if (task.isDeletable()) {
+                        { onTaskLongClick?.invoke(task) }
+                    } else null
                 )
 
                 Spacer(modifier = Modifier.height(2.dp))
@@ -88,21 +102,54 @@ class TaskListComponent<S>(
         }
     }
 
+    @OptIn(ExperimentalFoundationApi::class)
     @Composable
     private fun TaskItem(
         task: DynamicTask,
         onClick: () -> Unit,
+        onLongClick: (() -> Unit)?,
         modifier: Modifier = Modifier
     ) {
         val annotatedName = HtmlUtils.htmlToAnnotatedString(task.name)
         val taskStatus = task.getTaskStatus()
 
+        val hapticFeedback = LocalHapticFeedback.current
+
         Card(
             modifier = modifier
                 .fillMaxWidth()
                 .padding(vertical = 4.dp)
-                .clickable(onClick = onClick),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                .pointerInput(task.id) {
+                    detectTapGestures(
+                        onTap = { onClick() },
+                        onLongPress = {
+                            if (onLongClick != null) {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onLongClick()
+                            }
+                        }
+                    )
+                },
+//                .then(
+//                    if (onLongClick != null) {
+//                        Modifier.combinedClickable(
+//                            onClick = onClick,
+//                            onLongClick = onLongClick
+//                        )
+//                    } else {
+//                        Modifier.clickable(onClick = onClick)
+//                    }
+//                ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = if (task.isDeletable()) 4.dp else 2.dp
+            ),
+            colors = if (task.isDeletable()) {
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                )
+            } else {
+                CardDefaults.cardColors()
+            }
         ) {
             Row(
                 modifier = Modifier
@@ -114,11 +161,28 @@ class TaskListComponent<S>(
                         .weight(1f)
                         .padding(8.dp)
                 ) {
-                    Text(
-                        text = HtmlUtils.htmlToAnnotatedString(task.name),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = HtmlUtils.htmlToAnnotatedString(task.name),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        // Иконка для удаляемых заданий
+                        if (task.isDeletable()) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteForever,
+                                contentDescription = stringResource(R.string.can_be_deleted),
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .padding(start = 8.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
                 }
 
                 TaskStatusVerticalBar(

@@ -26,7 +26,10 @@ data class DynamicTasksState(
     val showSavedKeyDialog: Boolean = false, // Показывать ли диалог ввода ключа
     val isValidatingKey: Boolean = false, // Идет ли валидация ключа
     val keyValidationError: String? = null, // Ошибка валидации ключа
-    val savedKeyEndpoint: String? = null // Endpoint для валидации ключа
+    val savedKeyEndpoint: String? = null, // Endpoint для валидации ключа
+    val showDeleteDialog: Boolean = false,
+    val taskToDelete: DynamicTask? = null,
+    val isDeleting: Boolean = false
 ) : ScreenElementsContainer {
 
     fun hasElement(element: ScreenElementType): Boolean {
@@ -45,5 +48,9 @@ data class DynamicTasksState(
 
     fun isSearchSaveable(): Boolean {
         return screenSettings.screenElements.contains(ScreenElementType.SEARCH_SAVEABLE)
+    }
+
+    fun hasDeletableTasks(): Boolean {
+        return tasks.any { it.isDeletable() }
     }
 }
