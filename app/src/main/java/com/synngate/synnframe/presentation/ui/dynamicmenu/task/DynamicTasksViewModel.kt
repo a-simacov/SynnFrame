@@ -56,7 +56,6 @@ class DynamicTasksViewModel(
                                 tasks = tasks,
                                 taskTypeId = taskTypeId,
                                 isLoading = false,
-                                error = if (tasks.isEmpty()) "No available tasks" else null
                             )
                         }
                         Timber.d("Loaded ${tasks.size} tasks, taskTypeId: $taskTypeId")
