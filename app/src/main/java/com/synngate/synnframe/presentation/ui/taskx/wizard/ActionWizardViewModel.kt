@@ -389,12 +389,11 @@ class ActionWizardViewModel(
 
     private suspend fun validateCurrentStep(): Boolean {
         val currentState = uiState.value
-
-        // Проверка видимости теперь полностью делегирована в validator
         val isValid = validator.validateCurrentStep(currentState)
 
         if (!isValid) {
-            sendEvent(ActionWizardEvent.ShowSnackbar("All required fields must be filled"))
+            val errorMessage = validator.lastValidationError ?: "All required fields must be filled"
+            sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
         }
 
         return isValid

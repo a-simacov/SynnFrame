@@ -12,45 +12,44 @@ class WizardValidator(
     private val handlerFactory: FieldHandlerFactory? = null,
     private val expressionEvaluator: ExpressionEvaluator = ExpressionEvaluator()
 ) {
+    var lastValidationError: String? = null
+        private set
 
     suspend fun validateCurrentStep(state: ActionWizardState): Boolean {
-        val currentStep = state.steps.getOrNull(state.currentStepIndex) ?: return false
+        lastValidationError = null // Сбрасываем предыдущую ошибку
 
-        // Проверяем видимость шага - если шаг невидим, считаем его валидным
+        val currentStep = state.steps.getOrNull(state.currentStepIndex) ?: run {
+            lastValidationError = "Current step not found"
+            return false
+        }
+
         if (!expressionEvaluator.evaluateVisibilityCondition(currentStep.visibilityCondition, state)) {
             return true
         }
 
-        if (currentStep.factActionField == FactActionField.NONE) {
-            return true
-        }
-
-        if (!currentStep.isRequired) {
+        if (currentStep.factActionField == FactActionField.NONE || !currentStep.isRequired) {
             return true
         }
 
         val stepObject = state.selectedObjects[currentStep.id]
         if (stepObject == null) {
-            Timber.d("Шаг ${currentStep.name} не прошел валидацию: не выбран объект")
+            lastValidationError = "Required field is not filled"
             return false
         }
 
         if (handlerFactory != null) {
-            // Используем createHandlerForObject вместо createHandlerForStep для правильной типизации
             val isStorage = currentStep.factActionField in listOf(FactActionField.STORAGE_BIN, FactActionField.STORAGE_PALLET)
             val handler = handlerFactory.createHandlerForObject(stepObject, isStorage)
             if (handler != null) {
                 try {
-                    // Теперь handler имеет правильный тип для работы с stepObject
                     val validationResult = handler.validateObject(stepObject, state, currentStep)
-
                     if (!validationResult.isSuccess()) {
-                        Timber.d("Шаг ${currentStep.name} не прошел валидацию обработчика: ${validationResult.getErrorMessage()}")
+                        lastValidationError = validationResult.getErrorMessage() ?: "Validation failed"
                         return false
                     }
                     return true
                 } catch (e: Exception) {
-                    Timber.e(e, "Ошибка при валидации объекта через обработчик")
+                    lastValidationError = "Validation error: ${e.message}"
                     return false
                 }
             }
@@ -58,7 +57,6 @@ class WizardValidator(
 
         if (currentStep.validationRules != null) {
             val context = buildValidationContext(state)
-
             val validationResult = validationService.validate(
                 rule = currentStep.validationRules,
                 value = stepObject,
@@ -66,7 +64,7 @@ class WizardValidator(
             )
 
             if (validationResult !is ValidationResult.Success) {
-                Timber.d("Шаг ${currentStep.name} не прошел базовую валидацию правил")
+                lastValidationError = (validationResult as? ValidationResult.Error)?.message ?: "Validation failed"
                 return false
             }
         }
