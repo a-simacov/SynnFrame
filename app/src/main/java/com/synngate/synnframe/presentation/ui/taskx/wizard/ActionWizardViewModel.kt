@@ -1,6 +1,5 @@
 package com.synngate.synnframe.presentation.ui.taskx.wizard
 
-import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.data.remote.dto.CommandNextAction
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.taskx.TaskProduct
@@ -25,7 +24,6 @@ import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.UUID
 
@@ -233,34 +231,46 @@ class ActionWizardViewModel(
                 Timber.d("Current step ${currentStep.id} is invisible, looking for next visible")
 
                 val nextVisibleIndex = expressionEvaluator.findNextVisibleStepIndex(currentState)
-                if (nextVisibleIndex != null) {
-                    updateState { it.copy(currentStepIndex = nextVisibleIndex) }
-                    initializeStepWithFiltersAndBuffer(nextVisibleIndex)
-                } else {
-                    // Если нет видимых шагов впереди, переходим к экрану итогов
-                    updateState { it.copy(showSummary = true) }
+
+                launchMain {
+                    if (nextVisibleIndex != null) {
+                        updateState { it.copy(currentStepIndex = nextVisibleIndex) }
+                        initializeStepWithFiltersAndBuffer(nextVisibleIndex)
+                    } else {
+                        // Если нет видимых шагов впереди, переходим к экрану итогов
+                        updateState { it.copy(showSummary = true) }
+                    }
                 }
                 return@launchIO
             }
 
-            // Стандартная логика подтверждения шага
-            val result = controller.confirmCurrentStep(currentState) {
-                validateCurrentStep()
-            }
+            // Выполняем валидацию в IO потоке
+            val isValid = validateCurrentStep()
 
-            val newState = result.getNewState()
-            updateState { newState }
+            if (isValid) {
+                // Стандартная логика подтверждения шага в Main потоке
+                launchMain {
+                    val result = controller.confirmCurrentStep(uiState.value) {
+                        // Валидация уже выполнена выше
+                        true
+                    }
 
-            // Проверяем, показывается ли итоговый экран и нужно ли автоматически завершать действие
-            if (newState.showSummary) {
-                if (shouldAutoComplete(newState)) {
-                    Timber.d("Automatic action completion after last step")
-                    completeAction()
+                    val newState = result.getNewState()
+                    updateState { newState }
+
+                    // Проверяем, показывается ли итоговый экран и нужно ли автоматически завершать действие
+                    if (newState.showSummary) {
+                        if (shouldAutoComplete(newState)) {
+                            Timber.d("Automatic action completion after last step")
+                            completeAction()
+                        }
+                    } else {
+                        // После перехода инициализируем новый шаг
+                        initializeStepWithFiltersAndBuffer(newState.currentStepIndex)
+                    }
                 }
-            } else {
-                // После перехода инициализируем новый шаг
-                initializeStepWithFiltersAndBuffer(newState.currentStepIndex)
             }
+            // Если валидация не прошла, ошибка уже установлена в validateCurrentStep
         }
     }
 
@@ -329,36 +339,48 @@ class ActionWizardViewModel(
                 Timber.d("Current step ${currentStep.id} is invisible, looking for next visible step for auto-advance")
 
                 val nextVisibleIndex = expressionEvaluator.findNextVisibleStepIndex(currentState)
-                if (nextVisibleIndex != null) {
-                    updateState { it.copy(currentStepIndex = nextVisibleIndex) }
-                    initializeStepWithFiltersAndBuffer(nextVisibleIndex)
-                } else {
-                    // Если нет видимых шагов впереди, переходим к экрану итогов
-                    updateState { it.copy(showSummary = true) }
+
+                launchMain {
+                    if (nextVisibleIndex != null) {
+                        updateState { it.copy(currentStepIndex = nextVisibleIndex) }
+                        initializeStepWithFiltersAndBuffer(nextVisibleIndex)
+                    } else {
+                        // Если нет видимых шагов впереди, переходим к экрану итогов
+                        updateState { it.copy(showSummary = true) }
+                    }
                 }
                 return@launchIO
             }
 
-            // Стандартная логика автоперехода
-            val result = controller.tryAutoAdvance(currentState) {
-                validateCurrentStep()
-            }
+            // Выполняем валидацию в IO потоке
+            val isValid = validateCurrentStep()
 
-            if (result.isSuccess()) {
-                val newState = result.getNewState()
-                updateState { newState }
-
-                // Проверяем, произошел ли переход на итоговый экран
-                if (newState.showSummary) {
-                    if (shouldAutoComplete(newState)) {
-                        Timber.d("Automatic action completion after auto-advance to summary screen")
-                        completeAction()
+            if (isValid) {
+                // Переходим в Main поток для обновления состояния
+                launchMain {
+                    val result = controller.tryAutoAdvance(uiState.value) {
+                        // Валидация уже выполнена выше
+                        true
                     }
-                } else {
-                    // После автоперехода инициализируем новый шаг (только если не итоговый экран)
-                    initializeStepWithFiltersAndBuffer(newState.currentStepIndex)
+
+                    if (result.isSuccess()) {
+                        val newState = result.getNewState()
+                        updateState { newState }
+
+                        // Проверяем, произошел ли переход на итоговый экран
+                        if (newState.showSummary) {
+                            if (shouldAutoComplete(newState)) {
+                                Timber.d("Automatic action completion after auto-advance to summary screen")
+                                completeAction()
+                            }
+                        } else {
+                            // После автоперехода инициализируем новый шаг (только если не итоговый экран)
+                            initializeStepWithFiltersAndBuffer(newState.currentStepIndex)
+                        }
+                    }
                 }
             }
+            // Если валидация не прошла, ошибка уже установлена в validateCurrentStep
         }
     }
 
@@ -367,21 +389,25 @@ class ActionWizardViewModel(
      */
     private fun tryAutoAdvanceFromBuffer() {
         launchIO {
-            val result = controller.tryAutoAdvanceFromBuffer(uiState.value)
+            val currentState = uiState.value
 
-            if (result.isSuccess()) {
-                val newState = result.getNewState()
-                updateState { newState }
+            launchMain {
+                val result = controller.tryAutoAdvanceFromBuffer(currentState)
 
-                // Проверяем, произошел ли переход на итоговый экран
-                if (newState.showSummary) {
-                    if (shouldAutoComplete(newState)) {
-                        Timber.d("Automatic action completion after auto-advance from buffer to summary screen")
-                        completeAction()
+                if (result.isSuccess()) {
+                    val newState = result.getNewState()
+                    updateState { newState }
+
+                    // Проверяем, произошел ли переход на итоговый экран
+                    if (newState.showSummary) {
+                        if (shouldAutoComplete(newState)) {
+                            Timber.d("Automatic action completion after auto-advance from buffer to summary screen")
+                            completeAction()
+                        }
+                    } else {
+                        // Рекурсивно проверяем следующий шаг на наличие значений в буфере или фильтрах
+                        initializeStepWithFiltersAndBuffer(newState.currentStepIndex)
                     }
-                } else {
-                    // Рекурсивно проверяем следующий шаг на наличие значений в буфере или фильтрах
-                    initializeStepWithFiltersAndBuffer(newState.currentStepIndex)
                 }
             }
         }
@@ -389,14 +415,24 @@ class ActionWizardViewModel(
 
     private suspend fun validateCurrentStep(): Boolean {
         val currentState = uiState.value
-        val isValid = validator.validateCurrentStep(currentState)
 
-        if (!isValid) {
-            val errorMessage = validator.lastValidationError ?: "All required fields must be filled"
-            sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
+        // Используем новый метод валидации, который возвращает детальную информацию
+        val validationResult = validator.validateCurrentStep(currentState)
+
+        if (!validationResult.isValid) {
+            val errorMessage = validationResult.errorMessage ?: "Validation failed"
+
+            // ВАЖНО: Обновляем UI состояние в Main потоке
+            launchMain {
+                // Устанавливаем детальную ошибку в состояние для отображения вверху экрана
+                updateState { it.copy(error = errorMessage) }
+
+                // И также отправляем в снекбар
+                sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
+            }
         }
 
-        return isValid
+        return validationResult.isValid
     }
 
     fun handleBarcode(barcode: String) {
@@ -423,37 +459,46 @@ class ActionWizardViewModel(
             return
         }
 
-        // Показываем индикатор загрузки
+        // Показываем индикатор загрузки в UI потоке
         updateState { it.copy(isLoading = true) }
 
-        viewModelScope.launch {
+        // Выполняем валидацию в IO потоке
+        launchIO {
             try {
                 val result = objectSearchService.handleBarcode(uiState.value, barcode)
 
-                // Убираем индикатор загрузки
-                updateState { it.copy(isLoading = false) }
+                // ВАЖНО: Обновляем UI состояние в Main потоке
+                launchMain {
+                    // Убираем индикатор загрузки
+                    updateState { it.copy(isLoading = false) }
 
-                if (result.isSuccess() && result.isProcessingRequired()) {
-                    val foundObject = result.getResultData()
-                    if (foundObject != null) {
-                        setObjectForCurrentStep(foundObject, true)
-                    }
-                } else if (!result.isSuccess()) {
-                    val errorMessage = result.getErrorMessage()
-                    if (errorMessage != null) {
-                        updateState { it.copy(error = errorMessage) }
-                        sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
+                    if (result.isSuccess() && result.isProcessingRequired()) {
+                        val foundObject = result.getResultData()
+                        if (foundObject != null) {
+                            setObjectForCurrentStep(foundObject, true)
+                        }
+                    } else if (!result.isSuccess()) {
+                        val errorMessage = result.getErrorMessage()
+                        if (errorMessage != null) {
+                            // Устанавливаем ошибку в состояние в Main потоке
+                            updateState { it.copy(error = errorMessage) }
+                            sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
+                        }
                     }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error processing barcode: $barcode")
-                updateState {
-                    it.copy(
-                        isLoading = false,
-                        error = "Error processing barcode: ${e.message}"
-                    )
+
+                // ВАЖНО: Обработка ошибок также в Main потоке
+                launchMain {
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            error = "Error processing barcode: ${e.message}"
+                        )
+                    }
+                    sendEvent(ActionWizardEvent.ShowSnackbar("Error processing barcode: ${e.message}"))
                 }
-                sendEvent(ActionWizardEvent.ShowSnackbar("Error processing barcode: ${e.message}"))
             }
         }
     }

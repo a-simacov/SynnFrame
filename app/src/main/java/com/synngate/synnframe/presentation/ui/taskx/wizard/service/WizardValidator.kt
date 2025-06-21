@@ -7,69 +7,109 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.handler.FieldHandlerF
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
 import timber.log.Timber
 
+/**
+ * Результат валидации шага
+ */
+data class StepValidationResult(
+    val isValid: Boolean,
+    val errorMessage: String? = null
+) {
+    companion object {
+        fun success() = StepValidationResult(true)
+        fun error(message: String) = StepValidationResult(false, message)
+    }
+}
+
 class WizardValidator(
     private val validationService: ValidationService,
     private val handlerFactory: FieldHandlerFactory? = null,
     private val expressionEvaluator: ExpressionEvaluator = ExpressionEvaluator()
 ) {
-    var lastValidationError: String? = null
-        private set
 
-    suspend fun validateCurrentStep(state: ActionWizardState): Boolean {
-        lastValidationError = null // Сбрасываем предыдущую ошибку
+    suspend fun validateCurrentStep(state: ActionWizardState): StepValidationResult {
+        val currentStep = state.steps.getOrNull(state.currentStepIndex)
+            ?: return StepValidationResult.error("Current step not found")
 
-        val currentStep = state.steps.getOrNull(state.currentStepIndex) ?: run {
-            lastValidationError = "Current step not found"
-            return false
-        }
-
+        // Проверяем видимость шага - если шаг невидим, считаем его валидным
         if (!expressionEvaluator.evaluateVisibilityCondition(currentStep.visibilityCondition, state)) {
-            return true
+            return StepValidationResult.success()
         }
 
-        if (currentStep.factActionField == FactActionField.NONE || !currentStep.isRequired) {
-            return true
+        if (currentStep.factActionField == FactActionField.NONE) {
+            return StepValidationResult.success()
+        }
+
+        if (!currentStep.isRequired) {
+            return StepValidationResult.success()
         }
 
         val stepObject = state.selectedObjects[currentStep.id]
         if (stepObject == null) {
-            lastValidationError = "Required field is not filled"
-            return false
+            Timber.d("Шаг ${currentStep.name} не прошел валидацию: не выбран объект")
+            return StepValidationResult.error("Required field is not filled")
         }
 
         if (handlerFactory != null) {
+            // Используем createHandlerForObject вместо createHandlerForStep для правильной типизации
             val isStorage = currentStep.factActionField in listOf(FactActionField.STORAGE_BIN, FactActionField.STORAGE_PALLET)
             val handler = handlerFactory.createHandlerForObject(stepObject, isStorage)
             if (handler != null) {
                 try {
+                    // Теперь handler имеет правильный тип для работы с stepObject
                     val validationResult = handler.validateObject(stepObject, state, currentStep)
+
                     if (!validationResult.isSuccess()) {
-                        lastValidationError = validationResult.getErrorMessage() ?: "Validation failed"
-                        return false
+                        val errorMessage = validationResult.getErrorMessage() ?: "Validation failed"
+                        Timber.d("Шаг ${currentStep.name} не прошел валидацию обработчика: $errorMessage")
+                        return StepValidationResult.error(errorMessage)
                     }
-                    return true
+                    return StepValidationResult.success()
                 } catch (e: Exception) {
-                    lastValidationError = "Validation error: ${e.message}"
-                    return false
+                    Timber.e(e, "Ошибка при валидации объекта через обработчик")
+                    return StepValidationResult.error("Validation error: ${e.message}")
                 }
             }
         }
 
         if (currentStep.validationRules != null) {
             val context = buildValidationContext(state)
-            val validationResult = validationService.validate(
+
+            // Сначала пробуем синхронную валидацию
+            val syncValidationResult = validationService.validate(
                 rule = currentStep.validationRules,
                 value = stepObject,
                 context = context
             )
 
-            if (validationResult !is ValidationResult.Success) {
-                lastValidationError = (validationResult as? ValidationResult.Error)?.message ?: "Validation failed"
-                return false
+            when (syncValidationResult) {
+                is ValidationResult.Success -> {
+                    // Синхронная валидация прошла успешно
+                }
+                is ValidationResult.Error -> {
+                    Timber.d("Шаг ${currentStep.name} не прошел синхронную валидацию: ${syncValidationResult.message}")
+                    return StepValidationResult.error(syncValidationResult.message)
+                }
+                is ValidationResult.ApiValidationRequired -> {
+                    // Требуется API валидация, выполняем асинхронную валидацию
+                    val asyncValidationResult = validationService.validateAsync(
+                        rule = currentStep.validationRules,
+                        value = stepObject,
+                        context = context
+                    )
+
+                    if (asyncValidationResult !is ValidationResult.Success) {
+                        val errorMessage = when (asyncValidationResult) {
+                            is ValidationResult.Error -> asyncValidationResult.message
+                            else -> "API validation failed"
+                        }
+                        Timber.d("Шаг ${currentStep.name} не прошел API валидацию: $errorMessage")
+                        return StepValidationResult.error(errorMessage)
+                    }
+                }
             }
         }
 
-        return true
+        return StepValidationResult.success()
     }
 
     private fun buildValidationContext(state: ActionWizardState): Map<String, Any> {

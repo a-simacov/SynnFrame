@@ -21,17 +21,41 @@ abstract class BaseFieldHandler<T : Any>(
         val plannedObject = getPlannedObject(state, step)
         val context = buildValidationContext(state, plannedObject)
 
-        val validationResult = validationService.validate(
+        // Сначала проверяем синхронные правила валидации
+        val syncValidationResult = validationService.validate(
             rule = step.validationRules,
             value = obj,
             context = context
         )
 
-        return when (validationResult) {
-            is com.synngate.synnframe.domain.service.ValidationResult.Success -> ValidationResult.success(obj)
+        return when (syncValidationResult) {
+            is com.synngate.synnframe.domain.service.ValidationResult.Success -> {
+                ValidationResult.success(obj)
+            }
             is com.synngate.synnframe.domain.service.ValidationResult.Error -> {
-                Timber.d("Validation error: ${validationResult.message}")
-                ValidationResult.error(validationResult.message)
+                Timber.d("Sync validation error: ${syncValidationResult.message}")
+                ValidationResult.error(syncValidationResult.message)
+            }
+            is com.synngate.synnframe.domain.service.ValidationResult.ApiValidationRequired -> {
+                // Если требуется API валидация, выполняем асинхронную валидацию
+                val asyncValidationResult = validationService.validateAsync(
+                    rule = step.validationRules,
+                    value = obj,
+                    context = context
+                )
+
+                when (asyncValidationResult) {
+                    is com.synngate.synnframe.domain.service.ValidationResult.Success -> {
+                        ValidationResult.success(obj)
+                    }
+                    is com.synngate.synnframe.domain.service.ValidationResult.Error -> {
+                        Timber.d("Async validation error: ${asyncValidationResult.message}")
+                        ValidationResult.error(asyncValidationResult.message)
+                    }
+                    else -> {
+                        ValidationResult.error("Unexpected validation result")
+                    }
+                }
             }
         }
     }
