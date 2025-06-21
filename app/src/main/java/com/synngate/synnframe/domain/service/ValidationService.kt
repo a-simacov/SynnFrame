@@ -10,7 +10,7 @@ import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 
 class ValidationService(
-    private val validationApiService: ValidationApiService? = null // Добавлен новый сервис
+    private val validationApiService: ValidationApiService? = null
 ) {
 
     fun validate(
@@ -56,7 +56,7 @@ class ValidationService(
                         val valueAsString = valueToString(value)
 
                         val (isValid, errorMessage) = runBlocking {
-                            validationApiService.validate(ruleItem.apiEndpoint, valueAsString)
+                            validationApiService.validate(ruleItem.apiEndpoint, valueAsString, context)
                         }
 
                         if (!isValid) {

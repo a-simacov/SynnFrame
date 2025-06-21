@@ -13,12 +13,18 @@ class ValidationApiServiceImpl(
     serverProvider: ServerProvider
 ) : BaseApiImpl(httpClient, serverProvider), ValidationApiService {
 
-    override suspend fun validate(endpoint: String, value: String): Pair<Boolean, String?> = withContext(Dispatchers.IO) {
+    override suspend fun validate(
+        endpoint: String,
+        value: String,
+        context: Map<String, Any>
+    ): Pair<Boolean, String?> = withContext(Dispatchers.IO) {
         try {
+            val processedEndpoint = processEndpointWithTaskId(endpoint, context)
+
             val params = mapOf("value" to value)
 
             val result = executeApiRequest<ValidationResponseDto>(
-                endpoint = endpoint,
+                endpoint = processedEndpoint,
                 params = params
             )
 
@@ -35,5 +41,16 @@ class ValidationApiServiceImpl(
             Timber.e(e, "Error validating value: $value at endpoint: $endpoint")
             Pair(false, "Validation error: ${e.message}")
         }
+    }
+
+    private fun processEndpointWithTaskId(endpoint: String, context: Map<String, Any>): String {
+        val taskId = context["taskId"] as? String
+
+        if (taskId != null && endpoint.contains("{taskId}")) {
+            Timber.d("Substituting taskId $taskId in validation endpoint: $endpoint")
+            return endpoint.replace("{taskId}", taskId)
+        }
+
+        return endpoint
     }
 }

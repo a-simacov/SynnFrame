@@ -57,10 +57,12 @@ class WizardValidator(
         }
 
         if (currentStep.validationRules != null) {
+            val context = buildValidationContext(state)
+
             val validationResult = validationService.validate(
                 rule = currentStep.validationRules,
                 value = stepObject,
-                context = emptyMap()
+                context = context
             )
 
             if (validationResult !is ValidationResult.Success) {
@@ -70,6 +72,16 @@ class WizardValidator(
         }
 
         return true
+    }
+
+    private fun buildValidationContext(state: ActionWizardState): Map<String, Any> {
+        val context = mutableMapOf<String, Any>()
+
+        if (state.taskId.isNotEmpty()) {
+            context["taskId"] = state.taskId
+        }
+
+        return context
     }
 
     fun canComplete(state: ActionWizardState): Boolean {

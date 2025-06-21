@@ -19,11 +19,7 @@ abstract class BaseFieldHandler<T : Any>(
         }
 
         val plannedObject = getPlannedObject(state, step)
-        val context = if (plannedObject != null) {
-            mapOf("planItems" to listOf(plannedObject))
-        } else {
-            emptyMap()
-        }
+        val context = buildValidationContext(state, plannedObject)
 
         val validationResult = validationService.validate(
             rule = step.validationRules,
@@ -38,6 +34,22 @@ abstract class BaseFieldHandler<T : Any>(
                 ValidationResult.error(validationResult.message)
             }
         }
+    }
+
+    private fun buildValidationContext(state: ActionWizardState, plannedObject: T?): Map<String, Any> {
+        val context = mutableMapOf<String, Any>()
+
+        // Добавляем taskId для возможной подстановки в API endpoints
+        if (state.taskId.isNotEmpty()) {
+            context["taskId"] = state.taskId
+        }
+
+        // Добавляем планируемые объекты если есть
+        if (plannedObject != null) {
+            context["planItems"] = listOf(plannedObject)
+        }
+
+        return context
     }
 
     override suspend fun handleBarcode(barcode: String, state: ActionWizardState, step: ActionStepTemplate): SearchResult<T> {
