@@ -1,10 +1,11 @@
 package com.synngate.synnframe.presentation.ui.dynamicmenu.components
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -57,7 +58,13 @@ fun SavedKeyInputDialog(
             if (!isLoading) onDismiss()
         },
         title = {
-            Text("Add Saved Key")
+            Row {
+                Text("Add Saved Key")
+                if (isLoading) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    CircularProgressIndicator()
+                }
+            }
         },
         text = {
             Column {
@@ -106,15 +113,6 @@ fun SavedKeyInputDialog(
                         text = error,
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall
-                    )
-                }
-
-                if (isLoading) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp)
                     )
                 }
             }

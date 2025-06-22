@@ -181,11 +181,10 @@ fun TaskXDetailScreen(
         title = task?.name ?: "Task loading...",
         onNavigateBack = viewModel::onBackPressed,
         floatingActionButton = {
-            // Добавляем FAB для быстрого доступа к текущему действию
             if (task != null && state.getDisplayActions().isNotEmpty()) {
                 FloatingActionButton(
                     onClick = { viewModel.onFastForwardClick() },
-                    modifier = Modifier.alpha(0.5f), // Полупрозрачность
+                    modifier = Modifier.alpha(0.85f),
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {

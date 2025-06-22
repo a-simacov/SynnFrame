@@ -54,15 +54,15 @@ fun InlineParametersForm(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // Заголовок формы
-            Text(
-                text = "Command parameters \"${command.name}\"",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+//            // Заголовок формы
+//            Text(
+//                text = "Command parameters \"${command.name}\"",
+//                style = MaterialTheme.typography.titleMedium,
+//                color = MaterialTheme.colorScheme.onSurfaceVariant
+//            )
 
             // Описание команды, если есть
             if (command.description.isNotEmpty()) {
@@ -73,7 +73,7 @@ fun InlineParametersForm(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Поля для ввода параметров
             command.parameters.sortedBy { it.order }.forEach { parameter ->
@@ -96,7 +96,7 @@ fun InlineParametersForm(
                     errorMessage = errorMessage
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
             }
 
             // Кнопки действий
