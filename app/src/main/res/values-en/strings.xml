@@ -746,4 +746,5 @@
     <string name="task_deleted_successfully">Task deleted successfully</string>
     <string name="error_deleting_task">Error deleting task</string>
     <string name="can_be_deleted">Can be deleted</string>
+    <string name="deleting">Deleting...</string>
 </resources>

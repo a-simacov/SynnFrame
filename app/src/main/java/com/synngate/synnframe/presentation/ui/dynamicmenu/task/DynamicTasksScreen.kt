@@ -195,7 +195,7 @@ fun DynamicTasksScreen(
             Pair(it, StatusType.ERROR)
         },
         onDismissNotification = { viewModel.clearError() },
-        isLoading = state.isLoading,
+        isLoading = state.isLoading || state.isCreatingTask,
         useScanner = true
     ) { paddingValues ->
         Box(
