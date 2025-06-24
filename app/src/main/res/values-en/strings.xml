@@ -95,7 +95,7 @@
     <string name="logs">Logs</string>
     <string name="settings">Settings</string>
     <string name="user_actions">User actions</string>
-    <string name="change_user">Change user</string>
+    <string name="change_user">Log out</string>
 
     <!-- Tasks Screens -->
     <string name="tasks_title">Tasks</string>
