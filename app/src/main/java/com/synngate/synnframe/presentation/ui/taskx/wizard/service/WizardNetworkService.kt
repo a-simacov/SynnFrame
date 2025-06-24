@@ -134,7 +134,12 @@ class WizardNetworkService(
                 additionalContext = additionalContext
             )
 
-            val result = stepCommandApi.executeCommand(command.endpoint, requestDto)
+            var taskIdEndpoint = command.endpoint
+            if (taskIdEndpoint.contains("{taskId}")) {
+                taskIdEndpoint = taskIdEndpoint.replace("{taskId}", factAction.taskId)
+            }
+
+            val result = stepCommandApi.executeCommand(taskIdEndpoint, requestDto)
 
             when (result) {
                 is ApiResult.Success -> {
