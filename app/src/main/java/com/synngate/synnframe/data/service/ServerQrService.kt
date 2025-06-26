@@ -23,7 +23,9 @@ class ServerQrServiceImpl : ServerQrService {
         encodeDefaults = true
     }
 
-    private val aesKey = "SynnGateSecretKey" // В реальном приложении должен быть более безопасный способ хранения ключа
+    private val aesKey =
+        "SynnGateSecretKey" // В реальном приложении должен быть более безопасный способ хранения ключа
+    private val useEncyption = false
 
     /**
      * Преобразует объект сервера в строку для QR-кода
@@ -35,7 +37,10 @@ class ServerQrServiceImpl : ServerQrService {
             host = server.host,
             port = server.port,
             apiEndpoint = server.apiEndpoint,
-            encrypted_data = encryptCredentials(server.login, server.password, server.name, server.host),
+            encrypted_data = if (useEncyption)
+                encryptCredentials(server.login, server.password, server.name, server.host)
+            else
+                "${server.login}:${server.password}",
             version = 1
         )
 
@@ -52,7 +57,10 @@ class ServerQrServiceImpl : ServerQrService {
             val qrData = json.decodeFromString<ServerQrData>(qrString)
 
             // Расшифровываем учетные данные
-            val credentials = decryptCredentials(qrData.encrypted_data, qrData.name, qrData.host)
+            val credentials = if (useEncyption)
+                decryptCredentials(qrData.encrypted_data, qrData.name, qrData.host)
+            else
+                qrData.encrypted_data
             val loginAndPassword = credentials.split(":")
 
             if (loginAndPassword.size != 2) {
@@ -77,42 +85,53 @@ class ServerQrServiceImpl : ServerQrService {
     /**
      * Шифрует логин и пароль
      */
-    private fun encryptCredentials(login: String, password: String, name: String, host: String): String {
-        val credentials = "$login:$password"
-        val derivedKey = deriveKeyFromServerInfo(name, host)
+    private fun encryptCredentials(
+        login: String,
+        password: String,
+        name: String,
+        host: String
+    ): String {
+        if (useEncyption) {
+            val credentials = "$login:$password"
+            val derivedKey = deriveKeyFromServerInfo(name, host)
 
-        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-        val keySpec = SecretKeySpec(derivedKey, "AES")
+            val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+            val keySpec = SecretKeySpec(derivedKey, "AES")
 
-        // Используем первые 16 байт ключа в качестве IV
-        val iv = ByteArray(16)
-        System.arraycopy(derivedKey, 0, iv, 0, 16)
-        val ivSpec = IvParameterSpec(iv)
+            // Используем первые 16 байт ключа в качестве IV
+            val iv = ByteArray(16)
+            System.arraycopy(derivedKey, 0, iv, 0, 16)
+            val ivSpec = IvParameterSpec(iv)
 
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec)
-        val encrypted = cipher.doFinal(credentials.toByteArray(StandardCharsets.UTF_8))
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec)
+            val encrypted = cipher.doFinal(credentials.toByteArray(StandardCharsets.UTF_8))
 
-        return Base64.encodeToString(encrypted, Base64.NO_WRAP)
+            return Base64.encodeToString(encrypted, Base64.NO_WRAP)
+        } else
+            return "$login:$password"
     }
 
     /**
      * Расшифровывает логин и пароль
      */
     private fun decryptCredentials(encryptedData: String, name: String, host: String): String {
-        val derivedKey = deriveKeyFromServerInfo(name, host)
+        if (useEncyption) {
+            val derivedKey = deriveKeyFromServerInfo(name, host)
 
-        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-        val keySpec = SecretKeySpec(derivedKey, "AES")
+            val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+            val keySpec = SecretKeySpec(derivedKey, "AES")
 
-        // Используем первые 16 байт ключа в качестве IV
-        val iv = ByteArray(16)
-        System.arraycopy(derivedKey, 0, iv, 0, 16)
-        val ivSpec = IvParameterSpec(iv)
+            // Используем первые 16 байт ключа в качестве IV
+            val iv = ByteArray(16)
+            System.arraycopy(derivedKey, 0, iv, 0, 16)
+            val ivSpec = IvParameterSpec(iv)
 
-        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec)
-        val decrypted = cipher.doFinal(Base64.decode(encryptedData, Base64.NO_WRAP))
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec)
+            val decrypted = cipher.doFinal(Base64.decode(encryptedData, Base64.NO_WRAP))
 
-        return String(decrypted, StandardCharsets.UTF_8)
+            return String(decrypted, StandardCharsets.UTF_8)
+        } else
+            return encryptedData
     }
 
     /**
