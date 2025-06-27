@@ -38,22 +38,16 @@
         android:theme="@style/Theme.SynnFrame"
         tools:targetApi="tiramisu">
 
-        <!-- Splash Activity -->
+        <!-- Main Activity - теперь единственная launcher activity -->
         <activity
-            android:name=".presentation.ui.splash.SplashActivity"
+            android:name=".presentation.ui.MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.SynnFrame">
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- Main Activity -->
-        <activity
-            android:name=".presentation.ui.MainActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
 
         <!-- Services -->
         <service
@@ -89,7 +83,6 @@
                 android:name="androidx.work.WorkManagerInitializer"
                 android:value="androidx.startup" />
         </provider>
-
 
     </application>
 

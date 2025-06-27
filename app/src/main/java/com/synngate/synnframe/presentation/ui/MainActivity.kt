@@ -6,38 +6,42 @@ import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
+import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.SynnFrameApplication
 import com.synngate.synnframe.data.barcodescanner.DataWedgeReceiver
 import com.synngate.synnframe.data.datastore.AppSettingsDataStore
 import com.synngate.synnframe.presentation.common.LocalScannerService
-import com.synngate.synnframe.presentation.di.AppContainer
 import com.synngate.synnframe.presentation.navigation.AppNavHost
 import com.synngate.synnframe.presentation.navigation.routes.AuthRoutes
 import com.synngate.synnframe.presentation.navigation.routes.ServerRoutes
 import com.synngate.synnframe.presentation.theme.SynnFrameTheme
 import com.synngate.synnframe.presentation.theme.ThemeMode
+import com.synngate.synnframe.presentation.ui.splash.SplashScreenComposable
 import com.synngate.synnframe.presentation.util.LocaleHelper
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var appContainer: AppContainer
-
     private val dataWedgeReceiver = DataWedgeReceiver()
     private var receiverRegistered = false
-
-    companion object {
-        const val EXTRA_SHOW_SERVERS_SCREEN = "extra_show_servers_screen"
-        const val EXTRA_FROM_SPLASH = "extra_from_splash"
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,18 +52,9 @@ class MainActivity : ComponentActivity() {
         // Настройка edge-to-edge дисплея
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        // Определяем начальный экран
-        val showServersScreen = intent.getBooleanExtra(EXTRA_SHOW_SERVERS_SCREEN, true)
-        val fromSplash = intent.getBooleanExtra(EXTRA_FROM_SPLASH, false)
+        Timber.d("MainActivity onCreate")
 
-        val startDestination = if (showServersScreen) {
-            ServerRoutes.ServersGraph.route  // Изменено с ServerRoutes.ServerList.route
-        } else {
-            AuthRoutes.Login.route
-        }
-
-        Timber.d("MainActivity onCreate, startDestination=$startDestination, fromSplash=$fromSplash")
-
+        // Регистрируем DataWedge receiver
         registerDataWedgeReceiver()
 
         setContent {
@@ -67,7 +62,10 @@ class MainActivity : ComponentActivity() {
                 .collectAsState(initial = ThemeMode.SYSTEM)
 
             // Применение темы
-            SynnFrameTheme(themeMode = themeMode, settingsUseCases = app.appContainer.settingsUseCases) {
+            SynnFrameTheme(
+                themeMode = themeMode,
+                settingsUseCases = app.appContainer.settingsUseCases
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -75,7 +73,7 @@ class MainActivity : ComponentActivity() {
                     CompositionLocalProvider(
                         LocalScannerService provides app.appContainer.scannerService
                     ) {
-                        AppNavHost(startDestination = startDestination)
+                        MainContent()
                     }
                 }
             }
@@ -97,17 +95,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-
-    // В MainActivity.kt
     override fun attachBaseContext(newBase: Context) {
-        // Получаем сохраненный код языка, но теперь из тех же SharedPreferences,
-        // что используются для синхронизации
+        // Получаем сохраненный код языка из SharedPreferences
         val sharedPreferences = newBase.getSharedPreferences(
             AppSettingsDataStore.SHARED_PREFS_NAME,
             Context.MODE_PRIVATE
         )
 
-        // Используем "en" вместо "ru" как язык по умолчанию
+        // Используем "en" как язык по умолчанию
         val languageCode = sharedPreferences.getString(
             AppSettingsDataStore.SHARED_PREFS_LANGUAGE_KEY,
             "en"
@@ -130,5 +125,54 @@ class MainActivity : ComponentActivity() {
             }
         }
         super.onDestroy()
+    }
+}
+
+@Composable
+private fun MainContent() {
+    val coroutineScope = rememberCoroutineScope()
+
+    // Состояния для управления показом экранов
+    var showSplash by remember { mutableStateOf(true) }
+    var isInitialized by remember { mutableStateOf(false) }
+    var startDestination by remember { mutableStateOf<String?>(null) }
+
+    // Анимированное переключение между Splash и основным контентом
+    AnimatedVisibility(
+        visible = showSplash,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        SplashScreenComposable(
+            versionName = BuildConfig.VERSION_NAME,
+            onInitializationComplete = { showServersOnStartup, hasActiveServer ->
+                coroutineScope.launch {
+                    // Определяем начальный экран
+                    startDestination = if (showServersOnStartup || !hasActiveServer) {
+                        ServerRoutes.ServersGraph.route
+                    } else {
+                        AuthRoutes.Login.route
+                    }
+
+                    isInitialized = true
+
+                    // Небольшая задержка для плавности анимации
+                    delay(300)
+                    showSplash = false
+                }
+            }
+        )
+    }
+
+    // Показываем основную навигацию только после инициализации
+    if (isInitialized && !showSplash) {
+        AnimatedVisibility(
+            visible = true,
+            enter = fadeIn()
+        ) {
+            startDestination?.let { destination ->
+                AppNavHost(startDestination = destination)
+            }
+        }
     }
 }

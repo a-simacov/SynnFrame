@@ -24,7 +24,6 @@ import com.synngate.synnframe.presentation.navigation.graphs.productsNavGraph
 import com.synngate.synnframe.presentation.navigation.graphs.serverNavGraph
 import com.synngate.synnframe.presentation.navigation.graphs.settingsNavGraph
 import com.synngate.synnframe.presentation.navigation.graphs.taskXNavGraph
-import com.synngate.synnframe.presentation.navigation.routes.AuthRoutes
 import com.synngate.synnframe.presentation.navigation.routes.MainRoutes
 import com.synngate.synnframe.presentation.ui.main.MainMenuScreen
 import timber.log.Timber
@@ -37,7 +36,7 @@ import timber.log.Timber
  */
 @Composable
 fun AppNavHost(
-    startDestination: String = AuthRoutes.Login.route,
+    startDestination: String,
     navController: NavHostController = rememberNavController()
 ) {
     val context = LocalContext.current

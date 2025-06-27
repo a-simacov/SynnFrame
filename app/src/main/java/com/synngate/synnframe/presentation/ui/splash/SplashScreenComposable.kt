@@ -1,10 +1,5 @@
 package com.synngate.synnframe.presentation.ui.splash
 
-import android.annotation.SuppressLint
-import android.content.Intent
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -20,11 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -41,83 +34,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.view.WindowCompat
-import com.synngate.synnframe.BuildConfig
 import com.synngate.synnframe.R
 import com.synngate.synnframe.SynnFrameApplication
-import com.synngate.synnframe.presentation.theme.SynnFrameTheme
-import com.synngate.synnframe.presentation.theme.ThemeMode
-import com.synngate.synnframe.presentation.ui.MainActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * Активность экрана заставки.
- * Выполняет инициализацию зависимостей и переходит к соответствующему экрану
- * в зависимости от настроек приложения.
- */
-@SuppressLint("CustomSplashScreen")
-class SplashActivity : ComponentActivity() {
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        // Получение контейнера зависимостей
-        val appContainer = (application as SynnFrameApplication).appContainer
-
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-
-        Timber.d("SplashActivity onCreate")
-
-        setContent {
-            // Получение темы из настроек
-            val themeMode by appContainer.appSettingsDataStore.themeMode
-                .collectAsState(initial = ThemeMode.SYSTEM)
-
-            SynnFrameTheme(themeMode = themeMode) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    SplashScreen(
-                        versionName = BuildConfig.VERSION_NAME,
-                        onInitializationComplete = { showServersOnStartup, hasActiveServer ->
-                            navigateToNextScreen(showServersOnStartup, hasActiveServer)
-                        }
-                    )
-                }
-            }
-        }
-    }
-
-    /**
-     * Переход к следующему экрану на основе настроек приложения
-     */
-    private fun navigateToNextScreen(showServersOnStartup: Boolean, hasActiveServer: Boolean) {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            // Передаем флаги для определения начального экрана
-            putExtra(MainActivity.EXTRA_SHOW_SERVERS_SCREEN, showServersOnStartup || !hasActiveServer)
-
-            // Указываем, что запуск производится из SplashActivity
-            putExtra(MainActivity.EXTRA_FROM_SPLASH, true)
-
-            // Флаги для корректного запуска активности
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        startActivity(intent)
-        finish()
-    }
-}
-
-/**
- * Composable функция для отображения экрана заставки
+ * Composable функция для отображения экрана заставки внутри единой Activity
  */
 @Composable
-fun SplashScreen(
+fun SplashScreenComposable(
     versionName: String,
-    onInitializationComplete: (Boolean, Boolean) -> Unit
+    onInitializationComplete: (showServersOnStartup: Boolean, hasActiveServer: Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -145,43 +75,42 @@ fun SplashScreen(
             try {
                 // Стадия 1: Загрузка настроек
                 initializationStage = InitializationStage.LOADING_SETTINGS
-                initializationMessage = "Loading settings..."
+                initializationMessage = context.getString(R.string.splash_loading_settings)
                 progress = 0.2f
-                delay(300) // Имитация загрузки
+                delay(300)
 
                 // Стадия 2: Инициализация БД
                 initializationStage = InitializationStage.INITIALIZING_DB
-                initializationMessage = "Initializing database..."
+                initializationMessage = context.getString(R.string.splash_initializing_db)
                 progress = 0.5f
-                delay(500) // Имитация загрузки
+                delay(500)
 
                 // Стадия 3: Проверка зависимостей
                 initializationStage = InitializationStage.CHECKING_DEPENDENCIES
-                initializationMessage = "Checking dependencies..."
+                initializationMessage = context.getString(R.string.splash_checking_dependencies)
                 progress = 0.8f
-                delay(300) // Имитация загрузки
+                delay(300)
 
                 // Завершение инициализации
                 initializationStage = InitializationStage.COMPLETED
-                initializationMessage = "Initialization completed"
+                initializationMessage = context.getString(R.string.splash_completed)
                 progress = 1f
-                delay(300) // Небольшая задержка перед переходом
-
-                // Определяем, нужно ли показывать экран серверов при запуске
-                val showServersOnStartup = appContainer.appSettingsDataStore.showServersOnStartup.first()
-
-                // Определяем, есть ли активный сервер
-                val hasActiveServer = appContainer.appSettingsDataStore.activeServerId.first() != null
-
-                // Задержка для отображения заставки минимум 1.5 секунды
                 delay(300)
 
-                // Переходим к следующему экрану
+                // Определяем параметры запуска
+                val showServersOnStartup = appContainer.appSettingsDataStore.showServersOnStartup.first()
+                val hasActiveServer = appContainer.appSettingsDataStore.activeServerId.first() != null
+
+                Timber.d("Initialization complete: showServersOnStartup=$showServersOnStartup, hasActiveServer=$hasActiveServer")
+
+                // Минимальная задержка для отображения заставки
+                delay(300)
+
+                // Вызываем колбэк завершения
                 onInitializationComplete(showServersOnStartup, hasActiveServer)
             } catch (e: Exception) {
-                // Логируем ошибку
                 Timber.e(e, "Error during initialization")
-                initializationMessage = "Initialization error: ${e.message}"
+                initializationMessage = context.getString(R.string.splash_error, e.message ?: "Unknown error")
 
                 // В случае ошибки все равно продолжаем через 2 секунды
                 delay(2000)
@@ -190,6 +119,7 @@ fun SplashScreen(
         }
     }
 
+    // UI экрана заставки
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -256,7 +186,7 @@ fun SplashScreen(
 
         // Копирайт внизу экрана
         Text(
-            text = "© $2025 SynnGate",
+            text = stringResource(id = R.string.splash_copyright),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
             modifier = Modifier
@@ -267,7 +197,7 @@ fun SplashScreen(
 }
 
 /**
- * Стадии инициализации
+ * Стадии инициализации (перенесено из SplashActivity)
  */
 enum class InitializationStage {
     STARTING,

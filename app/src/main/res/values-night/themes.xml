@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Основная темная тема приложения -->
+    <style name="Theme.SynnFrame" parent="android:Theme.Material.NoActionBar" />
+</resources>
