@@ -73,13 +73,15 @@ class ProductUiMapper(
             val isMainUnit = product.mainUnitId == unit.id
 
             // Основной штрихкод
-            allBarcodes.add(BarcodeUiModel(
-                barcode = unit.mainBarcode,
-                isMainBarcode = isMainUnit
-            ))
+            if (unit.mainBarcode.isNotBlank()) {
+                allBarcodes.add(BarcodeUiModel(
+                    barcode = unit.mainBarcode,
+                    isMainBarcode = isMainUnit
+                ))
+            }
 
             // Дополнительные штрихкоды
-            unit.barcodes.filter { it != unit.mainBarcode }.forEach { barcode ->
+            unit.barcodes.filter { it != unit.mainBarcode && it.isNotBlank() }.forEach { barcode ->
                 allBarcodes.add(BarcodeUiModel(
                     barcode = barcode,
                     isMainBarcode = false

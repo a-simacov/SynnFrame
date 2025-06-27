@@ -38,7 +38,6 @@ import com.synngate.synnframe.presentation.ui.products.components.ProductUnitIte
 import com.synngate.synnframe.presentation.ui.products.model.BarcodeUiModel
 import com.synngate.synnframe.presentation.ui.products.model.ProductDetailEvent
 import com.synngate.synnframe.presentation.ui.products.model.ProductDetailUiModel
-import com.synngate.synnframe.presentation.ui.products.model.ProductUnitUiModel
 
 @Composable
 fun ProductDetailScreen(
@@ -113,7 +112,7 @@ fun ProductDetailScreen(
                     if (productUiModel != null) {
                         ProductDetailsContent(
                             productUiModel = productUiModel,
-                            selectedUnitUiModels = viewModel.getSelectedUnitUiModels(),
+                            selectedUnitId = state.selectedUnitId,
                             unitBarcodes = viewModel.getAllBarcodesUiModels(),
                             onUnitSelected = { viewModel.selectUnit(it) },
                             onCopyBarcode = { viewModel.copyBarcodeToClipboard(it) }
@@ -128,7 +127,7 @@ fun ProductDetailScreen(
 @Composable
 private fun ProductDetailsContent(
     productUiModel: ProductDetailUiModel,
-    selectedUnitUiModels: List<ProductUnitUiModel>,
+    selectedUnitId: String?,
     unitBarcodes: List<BarcodeUiModel>,
     onUnitSelected: (String) -> Unit,
     onCopyBarcode: (String) -> Unit,
@@ -149,7 +148,7 @@ private fun ProductDetailsContent(
         productUiModel.units.forEach { unit ->
             ProductUnitItem(
                 unit = unit,
-                isSelected = selectedUnitUiModels.any { it.id == unit.id },
+                isSelected = unit.id == selectedUnitId,
                 onClick = { onUnitSelected(unit.id) }
             )
         }

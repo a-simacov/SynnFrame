@@ -31,5 +31,8 @@ data class ProductUnit(
     val barcodes: List<String> = emptyList()
 ) {
     val allBarcodes: List<String>
-        get() = listOf(mainBarcode) + barcodes.distinct()
+        get() = buildList {
+            if (mainBarcode.isNotBlank()) add(mainBarcode)
+            addAll(barcodes.filter { it.isNotBlank() && it != mainBarcode }.distinct())
+        }
 }

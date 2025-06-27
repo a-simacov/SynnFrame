@@ -2,6 +2,7 @@ package com.synngate.synnframe.presentation.ui.dynamicmenu.product
 
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.domain.entity.AccountingModel
+import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.entity.operation.DynamicProduct
 import com.synngate.synnframe.domain.mapper.DynamicProductMapper
 import com.synngate.synnframe.domain.service.ClipboardService
@@ -41,10 +42,15 @@ class DynamicProductDetailViewModel(
         val mappedProduct = DynamicProductMapper.toProduct(product)
         productUiModel = productUiMapper.mapToDetailModel(mappedProduct)
 
-        // Выбираем основную единицу измерения
-        updateSelectedUnit(product.mainUnitId)
+        // Выбираем основную единицу измерения или первую доступную
+        val unitIdToSelect = if (mappedProduct.units.any { it.id == product.mainUnitId }) {
+            product.mainUnitId
+        } else {
+            mappedProduct.units.firstOrNull()?.id ?: ""
+        }
+        updateSelectedUnit(unitIdToSelect, mappedProduct)
 
-        updateState { it.copy(selectedUnitId = product.mainUnitId) }
+        updateState { it.copy(selectedUnitId = unitIdToSelect) }
     }
 
     fun selectUnit(unitId: String) {
@@ -52,15 +58,15 @@ class DynamicProductDetailViewModel(
         updateState { it.copy(selectedUnitId = unitId) }
     }
 
-    private fun updateSelectedUnit(unitId: String) {
+    private fun updateSelectedUnit(unitId: String, mappedProduct: Product? = null) {
         val product = uiState.value.product ?: return
-        val mappedProduct = DynamicProductMapper.toProduct(product)
+        val currentMappedProduct = mappedProduct ?: DynamicProductMapper.toProduct(product)
 
         // Фильтруем UI-модели единиц измерения для выбранной
         selectedUnitUiModels = productUiModel?.units?.filter { it.id == unitId } ?: emptyList()
 
         // Получаем штрихкоды для выбранной единицы измерения
-        val selectedUnit = mappedProduct.units.find { it.id == unitId }
+        val selectedUnit = currentMappedProduct.units.find { it.id == unitId }
 
         selectedUnitBarcodes = selectedUnit?.let { unit ->
             unit.allBarcodes.map { barcode ->
@@ -145,7 +151,7 @@ class DynamicProductDetailViewModel(
     fun getSelectedUnitUiModels(): List<ProductUnitUiModel> = selectedUnitUiModels
 
     // Метод для получения UI-моделей штрихкодов
-    fun getAllBarcodesUiModels(): List<BarcodeUiModel> = productUiModel?.barcodes ?: emptyList()
+    fun getAllBarcodesUiModels(): List<BarcodeUiModel> = selectedUnitBarcodes
 
     // Метод для возврата на предыдущий экран
     fun navigateBack() {

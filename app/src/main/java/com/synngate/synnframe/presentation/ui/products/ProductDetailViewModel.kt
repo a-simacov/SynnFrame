@@ -3,6 +3,7 @@ package com.synngate.synnframe.presentation.ui.products
 import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.AccountingModel
+import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.service.ClipboardService
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.ui.products.mapper.ProductUiMapper
@@ -46,12 +47,18 @@ class ProductDetailViewModel(
                     // Маппинг доменной модели в UI-модель
                     productUiModel = productUiMapper.mapToDetailModel(product)
 
-                    updateSelectedUnit(product.mainUnitId)
+                    // Выбираем основную единицу измерения или первую доступную
+                    val unitIdToSelect = if (product.units.any { it.id == product.mainUnitId }) {
+                        product.mainUnitId
+                    } else {
+                        product.units.firstOrNull()?.id ?: ""
+                    }
+                    updateSelectedUnit(unitIdToSelect, product)
 
                     updateState {
                         it.copy(
                             product = product,
-                            selectedUnitId = product.mainUnitId,
+                            selectedUnitId = unitIdToSelect,
                             isLoading = false,
                             error = null
                         )
@@ -83,14 +90,15 @@ class ProductDetailViewModel(
         updateState { it.copy(selectedUnitId = unitId) }
     }
 
-    private fun updateSelectedUnit(unitId: String) {
-        val product = uiState.value.product ?: return
+    private fun updateSelectedUnit(unitId: String, product: Product? = null) {
+        val currentProduct = product ?: uiState.value.product ?: return
 
         // Фильтруем UI-модели единиц измерения для выбранной
         selectedUnitUiModels = productUiModel?.units?.filter { it.id == unitId } ?: emptyList()
 
         // Получаем штрихкоды для выбранной единицы измерения
-        val selectedUnit = product.units.find { it.id == unitId }
+        val selectedUnit = currentProduct.units.find { it.id == unitId }
+        
         selectedUnitBarcodes = selectedUnit?.let { unit ->
             unit.allBarcodes.map { barcode ->
                 BarcodeUiModel(barcode, isMainBarcode = barcode == unit.mainBarcode)
@@ -164,7 +172,7 @@ class ProductDetailViewModel(
 
     fun getSelectedUnitUiModels(): List<ProductUnitUiModel> = selectedUnitUiModels
 
-    fun getAllBarcodesUiModels(): List<BarcodeUiModel> = productUiModel?.barcodes ?: emptyList()
+    fun getAllBarcodesUiModels(): List<BarcodeUiModel> = selectedUnitBarcodes
 
     fun navigateBack() {
         sendEvent(ProductDetailEvent.NavigateBack)
