@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.lifecycle.SavedStateHandle
 import com.synngate.synnframe.data.barcodescanner.BarcodeScannerFactory
 import com.synngate.synnframe.data.barcodescanner.ScannerService
 import com.synngate.synnframe.data.datastore.AppSettingsDataStore
@@ -73,6 +74,8 @@ import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
+import androidx.navigation.NavController
+import com.synngate.synnframe.presentation.navigation.NavigationScopeManager
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
 import com.synngate.synnframe.presentation.ui.dynamicmenu.menu.DynamicMenuViewModel
@@ -374,6 +377,15 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
         return createChildContainer { NavigationContainer(this) }
     }
 
+    // NavigationScopeManager для сохранения состояния навигации
+    private var navigationScopeManager: NavigationScopeManager? = null
+
+    fun getOrCreateNavigationScopeManager(navController: NavController): NavigationScopeManager {
+        return navigationScopeManager ?: NavigationScopeManager(navController) {
+            createNavigationContainer().createScreenContainer()
+        }.also { navigationScopeManager = it }
+    }
+
     val deviceDetectionService by lazy {
         DeviceDetectionService(applicationContext)
     }
@@ -464,9 +476,10 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
         }
     }
 
-    fun createLoginViewModel(): LoginViewModel {
+    fun createLoginViewModel(savedStateHandle: SavedStateHandle): LoginViewModel {
         return getOrCreateViewModel("LoginViewModel") {
             LoginViewModel(
+                savedStateHandle = savedStateHandle,
                 userUseCases = appContainer.userUseCases,
                 serverUseCases = appContainer.serverUseCases,
                 deviceInfoService = appContainer.deviceInfoService,

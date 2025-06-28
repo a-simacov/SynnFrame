@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
@@ -133,9 +134,9 @@ private fun MainContent() {
     val coroutineScope = rememberCoroutineScope()
 
     // Состояния для управления показом экранов
-    var showSplash by remember { mutableStateOf(true) }
-    var isInitialized by remember { mutableStateOf(false) }
-    var startDestination by remember { mutableStateOf<String?>(null) }
+    var showSplash by rememberSaveable { mutableStateOf(true) }
+    var isInitialized by rememberSaveable { mutableStateOf(false) }
+    var startDestination by rememberSaveable { mutableStateOf<String?>(null) }
 
     // Анимированное переключение между Splash и основным контентом
     AnimatedVisibility(

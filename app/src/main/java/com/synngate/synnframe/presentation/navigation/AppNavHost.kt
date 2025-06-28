@@ -50,12 +50,8 @@ fun AppNavHost(
     val userRepository = app.appContainer.userRepository
     val currentUser by userRepository.getCurrentUser().collectAsState(initial = null)
 
-    // Создаем менеджер областей навигации
-    val navigationScopeManager = remember {
-        NavigationScopeManager(navController) {
-            app.appContainer.createNavigationContainer().createScreenContainer()
-        }
-    }
+    // Получаем менеджер областей навигации из AppContainer
+    val navigationScopeManager = app.appContainer.getOrCreateNavigationScopeManager(navController)
 
     // Отслеживаем жизненный цикл для освобождения ресурсов
     DisposableEffect(lifecycleOwner) {
@@ -101,7 +97,7 @@ fun AppNavHost(
                     navBackStackEntry = entry,
                     navigationScopeManager = navigationScopeManager
                 )
-                val viewModel = remember { screenContainer.createMainMenuViewModel() }
+                val viewModel = screenContainer.createMainMenuViewModel()
 
                 MainMenuScreen(
                     viewModel = viewModel,

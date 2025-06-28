@@ -1,22 +1,30 @@
 package com.synngate.synnframe.presentation.ui.login
 
+import androidx.lifecycle.SavedStateHandle
 import com.synngate.synnframe.domain.service.DeviceInfoService
 import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.ui.login.model.LoginEvent
 import com.synngate.synnframe.presentation.ui.login.model.LoginState
-import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
+import com.synngate.synnframe.presentation.viewmodel.BaseViewModelWithSavedState
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
 
 class LoginViewModel(
+    savedStateHandle: SavedStateHandle,
     private val userUseCases: UserUseCases,
     private val serverUseCases: ServerUseCases,
     private val deviceInfoService: DeviceInfoService,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-) : BaseViewModel<LoginState, LoginEvent>(LoginState(), ioDispatcher) {
+) : BaseViewModelWithSavedState<LoginState, LoginEvent>(
+    savedStateHandle = savedStateHandle,
+    initialState = LoginState(
+        password = savedStateHandle.get<String>("password") ?: ""
+    ),
+    ioDispatcher = ioDispatcher
+) {
 
     init {
         checkActiveServer()
@@ -35,10 +43,12 @@ class LoginViewModel(
     }
 
     fun updatePassword(password: String) {
+        setSavedState("password", password)
         updateState { it.copy(password = password, error = null) }
     }
 
     fun clearPassword() {
+        setSavedState("password", "")
         updateState { it.copy(password = "", error = null) }
     }
 

@@ -29,7 +29,7 @@ fun NavGraphBuilder.authRoutes(
             navBackStackEntry = entry,
             navigationScopeManager = navigationScopeManager
         )
-        val viewModel = remember { screenContainer.createLoginViewModel() }
+        val viewModel = screenContainer.createLoginViewModel(entry.savedStateHandle)
 
         LoginScreen(
             viewModel = viewModel,

@@ -22,6 +22,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,7 +49,7 @@ fun LoginScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var showCameraScannerDialog by remember { mutableStateOf(false) }
+    var showCameraScannerDialog by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
