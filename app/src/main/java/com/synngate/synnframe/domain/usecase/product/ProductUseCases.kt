@@ -5,6 +5,7 @@ import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.repository.ProductRepository
 import com.synngate.synnframe.domain.usecase.BaseUseCase
+import com.synngate.synnframe.presentation.ui.products.model.SortOrder
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
 import java.io.IOException
@@ -12,12 +13,12 @@ import java.io.IOException
 class ProductUseCases(
     private val productRepository: ProductRepository
 ) : BaseUseCase {
-    // Добавляем методы для пагинации
-    fun getProductsPaged(): Flow<PagingData<Product>> =
-        productRepository.getProductsPaged()
+    // Добавляем методы для пагинации с сортировкой
+    fun getProductsPaged(sortOrder: SortOrder = SortOrder.NAME_ASC): Flow<PagingData<Product>> =
+        productRepository.getProductsPaged(sortOrder)
 
-    fun getProductsByNameFilterPaged(nameFilter: String): Flow<PagingData<Product>> =
-        productRepository.getProductsByNameFilterPaged(nameFilter)
+    fun getProductsByNameFilterPaged(nameFilter: String, sortOrder: SortOrder = SortOrder.NAME_ASC): Flow<PagingData<Product>> =
+        productRepository.getProductsByNameFilterPaged(nameFilter, sortOrder)
 
     // Существующие методы
     fun getProducts(): Flow<List<Product>> =

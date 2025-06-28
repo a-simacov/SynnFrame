@@ -18,10 +18,12 @@ import com.synngate.synnframe.presentation.ui.products.model.SortOrder
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import com.synngate.synnframe.util.resources.ResourceProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combineTransform
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -41,6 +43,9 @@ class ProductListViewModel(
 ) {
     // Состояние поискового запроса
     private val _searchQuery = MutableStateFlow("")
+    
+    // Состояние сортировки
+    private val _sortOrder = MutableStateFlow(SortOrder.NAME_ASC)
 
     // Поток пагинированных данных продуктов
     private val _productsFlow: Flow<PagingData<Product>> = createPagingDataFlow()
@@ -112,16 +117,20 @@ class ProductListViewModel(
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     private fun createPagingDataFlow(): Flow<PagingData<Product>> {
         return _searchQuery
             .debounce(300)
             .distinctUntilChanged()
-            .flatMapLatest { query ->
+            .combineTransform(_sortOrder) { query, sortOrder ->
+                emit(Pair(query, sortOrder))
+            }
+            .distinctUntilChanged()
+            .flatMapLatest { (query, sortOrder) ->
                 if (query.isEmpty()) {
-                    productUseCases.getProductsPaged()
+                    productUseCases.getProductsPaged(sortOrder)
                 } else {
-                    productUseCases.getProductsByNameFilterPaged(query)
+                    productUseCases.getProductsByNameFilterPaged(query, sortOrder)
                 }
             }
             .cachedIn(viewModelScope)
@@ -159,8 +168,7 @@ class ProductListViewModel(
 
     fun updateSortOrder(sortOrder: SortOrder) {
         updateState { it.copy(sortOrder = sortOrder) }
-        // Примечание: в текущей реализации пагинации мы не можем изменить сортировку на лету
-        // Здесь нужно будет изменить логику запросов к базе данных или создать новый PagingSource
+        _sortOrder.value = sortOrder
     }
 
     fun syncProducts() {

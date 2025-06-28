@@ -14,19 +14,37 @@ import com.synngate.synnframe.data.local.entity.ProductWithRelations
 import kotlinx.coroutines.flow.Flow
 @Dao
 interface ProductDao {
-    // Существующие методы
+    // Существующие методы для совместимости (не используются в пагинации)
     @Query("SELECT * FROM products ORDER BY name ASC")
     fun getAllProducts(): Flow<List<ProductEntity>>
 
     @Query("SELECT * FROM products WHERE name LIKE '%' || :nameFilter || '%' ORDER BY name ASC")
     fun getProductsByNameFilter(nameFilter: String): Flow<List<ProductEntity>>
 
-    // Новые методы для пагинации
+    // Новые методы для пагинации с сортировкой
     @Query("SELECT * FROM products ORDER BY name ASC")
-    fun getProductsPaged(): PagingSource<Int, ProductEntity>
+    fun getProductsPagedByNameAsc(): PagingSource<Int, ProductEntity>
+
+    @Query("SELECT * FROM products ORDER BY name DESC")
+    fun getProductsPagedByNameDesc(): PagingSource<Int, ProductEntity>
+
+    @Query("SELECT * FROM products ORDER BY articleNumber ASC")
+    fun getProductsPagedByArticleAsc(): PagingSource<Int, ProductEntity>
+
+    @Query("SELECT * FROM products ORDER BY articleNumber DESC")
+    fun getProductsPagedByArticleDesc(): PagingSource<Int, ProductEntity>
 
     @Query("SELECT * FROM products WHERE name LIKE '%' || :nameFilter || '%' ORDER BY name ASC")
-    fun getProductsByNameFilterPaged(nameFilter: String): PagingSource<Int, ProductEntity>
+    fun getProductsByNameFilterPagedByNameAsc(nameFilter: String): PagingSource<Int, ProductEntity>
+
+    @Query("SELECT * FROM products WHERE name LIKE '%' || :nameFilter || '%' ORDER BY name DESC")
+    fun getProductsByNameFilterPagedByNameDesc(nameFilter: String): PagingSource<Int, ProductEntity>
+
+    @Query("SELECT * FROM products WHERE name LIKE '%' || :nameFilter || '%' ORDER BY articleNumber ASC")
+    fun getProductsByNameFilterPagedByArticleAsc(nameFilter: String): PagingSource<Int, ProductEntity>
+
+    @Query("SELECT * FROM products WHERE name LIKE '%' || :nameFilter || '%' ORDER BY articleNumber DESC")
+    fun getProductsByNameFilterPagedByArticleDesc(nameFilter: String): PagingSource<Int, ProductEntity>
 
     // Метод для получения продукта с его отношениями в одном запросе
     @Query("SELECT p.* FROM products p WHERE p.id = :id")

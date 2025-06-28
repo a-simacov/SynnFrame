@@ -14,6 +14,7 @@ import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.api.ProductApi
 import com.synngate.synnframe.domain.entity.Product
 import com.synngate.synnframe.domain.repository.ProductRepository
+import com.synngate.synnframe.presentation.ui.products.model.SortOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -30,15 +31,22 @@ class ProductRepositoryImpl(
     // Константа для максимального размера батча в SQL запросах
     private val MAX_BATCH_SIZE = 400
 
-    // Реализация методов с поддержкой пагинации
-    override fun getProductsPaged(): Flow<PagingData<Product>> {
+    // Реализация методов с поддержкой пагинации и сортировки
+    override fun getProductsPaged(sortOrder: SortOrder): Flow<PagingData<Product>> {
         return Pager(
             config = PagingConfig(
                 pageSize = PAGE_SIZE,
                 enablePlaceholders = false,
                 prefetchDistance = 3 * PAGE_SIZE
             ),
-            pagingSourceFactory = { productDao.getProductsPaged() }
+            pagingSourceFactory = { 
+                when (sortOrder) {
+                    SortOrder.NAME_ASC -> productDao.getProductsPagedByNameAsc()
+                    SortOrder.NAME_DESC -> productDao.getProductsPagedByNameDesc()
+                    SortOrder.ARTICLE_ASC -> productDao.getProductsPagedByArticleAsc()
+                    SortOrder.ARTICLE_DESC -> productDao.getProductsPagedByArticleDesc()
+                }
+            }
         ).flow.map { pagingData ->
             pagingData.map { productEntity ->
                 buildProductWithDetails(productEntity)
@@ -46,14 +54,21 @@ class ProductRepositoryImpl(
         }
     }
 
-    override fun getProductsByNameFilterPaged(nameFilter: String): Flow<PagingData<Product>> {
+    override fun getProductsByNameFilterPaged(nameFilter: String, sortOrder: SortOrder): Flow<PagingData<Product>> {
         return Pager(
             config = PagingConfig(
                 pageSize = PAGE_SIZE,
                 enablePlaceholders = false,
                 prefetchDistance = 3 * PAGE_SIZE
             ),
-            pagingSourceFactory = { productDao.getProductsByNameFilterPaged(nameFilter) }
+            pagingSourceFactory = { 
+                when (sortOrder) {
+                    SortOrder.NAME_ASC -> productDao.getProductsByNameFilterPagedByNameAsc(nameFilter)
+                    SortOrder.NAME_DESC -> productDao.getProductsByNameFilterPagedByNameDesc(nameFilter)
+                    SortOrder.ARTICLE_ASC -> productDao.getProductsByNameFilterPagedByArticleAsc(nameFilter)
+                    SortOrder.ARTICLE_DESC -> productDao.getProductsByNameFilterPagedByArticleDesc(nameFilter)
+                }
+            }
         ).flow.map { pagingData ->
             pagingData.map { productEntity ->
                 buildProductWithDetails(productEntity)

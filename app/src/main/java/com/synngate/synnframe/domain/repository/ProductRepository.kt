@@ -2,6 +2,7 @@ package com.synngate.synnframe.domain.repository
 import androidx.paging.PagingData
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.Product
+import com.synngate.synnframe.presentation.ui.products.model.SortOrder
 import kotlinx.coroutines.flow.Flow
 
 interface ProductRepository {
@@ -10,10 +11,10 @@ interface ProductRepository {
 
     fun getProductsByNameFilter(nameFilter: String): Flow<List<Product>>
 
-    // Новые методы с поддержкой пагинации
-    fun getProductsPaged(): Flow<PagingData<Product>>
+    // Новые методы с поддержкой пагинации и сортировки
+    fun getProductsPaged(sortOrder: SortOrder = SortOrder.NAME_ASC): Flow<PagingData<Product>>
 
-    fun getProductsByNameFilterPaged(nameFilter: String): Flow<PagingData<Product>>
+    fun getProductsByNameFilterPaged(nameFilter: String, sortOrder: SortOrder = SortOrder.NAME_ASC): Flow<PagingData<Product>>
 
     suspend fun getProductById(id: String): Product?
 
