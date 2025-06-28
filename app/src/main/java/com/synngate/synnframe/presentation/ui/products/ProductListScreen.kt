@@ -111,7 +111,7 @@ fun ProductListScreen(
         }
     )
 
-// Диалоги без изменений
+// Диалоги
     if (state.showBatchScannerDialog) {
         BatchScannerDialog(
             onBarcodeScanned = { barcode, onProductFound ->
@@ -162,7 +162,7 @@ fun ProductListScreen(
             // Заменяем простую кнопку на кнопку с индикатором прогресса
             IconButton(
                 onClick = { viewModel.syncProducts() },
-                enabled = !uiPresentation.isLoading && !state.isSyncing // Отключаем во время загрузки и синхронизации
+                enabled = !state.isLoading && !state.isSyncing // Отключаем во время загрузки и синхронизации
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     if (state.isSyncing) {
@@ -301,14 +301,8 @@ fun ProductListScreen(
                                     mainUnitText = item.mainUnitText,
                                     isSelected = item.isSelected,
                                     onClick = {
-                                        // Находим соответствующий товар в стейте и обрабатываем клик
-                                        val product = state.products.find { it.id == item.id }
-                                        if (product != null) {
-                                            viewModel.onProductClick(product)
-                                        } else {
-                                            // Если продукт не найден в стейте, навигируем напрямую
-                                            viewModel.navigateToProductDetail(item.id)
-                                        }
+                                        // Обрабатываем клик по товару через ID
+                                        viewModel.onProductItemClick(item.id)
                                     }
                                 )
                             }

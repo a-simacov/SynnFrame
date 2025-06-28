@@ -142,6 +142,21 @@ class ProductListViewModel(
         }
     }
 
+    fun onProductItemClick(productId: String) {
+        if (uiState.value.isSelectionMode) {
+            // В режиме выбора нужно найти товар для выделения
+            launchIO {
+                val product = productUseCases.getProductById(productId)
+                if (product != null) {
+                    updateState { it.copy(selectedProduct = product) }
+                }
+            }
+        } else {
+            // В обычном режиме переходим к деталям товара
+            sendEvent(ProductListEvent.NavigateToProductDetail(productId))
+        }
+    }
+
     fun updateSortOrder(sortOrder: SortOrder) {
         updateState { it.copy(sortOrder = sortOrder) }
         // Примечание: в текущей реализации пагинации мы не можем изменить сортировку на лету
@@ -161,8 +176,9 @@ class ProductListViewModel(
 
                     // Обновляем информацию о синхронизации в контроллере
                     synchronizationController.updateLastProductsSync(count)
+                    val lastSyncTime = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
 
-                    updateState { it.copy(isSyncing = false) }
+                    updateState { it.copy(isSyncing = false, lastSyncTime = lastSyncTime) }
                     sendEvent(ProductListEvent.ShowSnackbar(
                         "Product synchronization completed. Updated: $count"
                     ))
@@ -174,7 +190,7 @@ class ProductListViewModel(
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error syncing products")
-                updateState { it.copy(isSyncing = false) }
+                updateState { it.copy(isLoading = false) }
                 sendEvent(ProductListEvent.ShowSnackbar(
                     "Synchronization error: ${e.message}"
                 ))
@@ -336,4 +352,5 @@ class ProductListViewModel(
             sendEvent(ProductListEvent.ReturnSelectedProductId(selectedProduct.id))
         }
     }
+
 }
