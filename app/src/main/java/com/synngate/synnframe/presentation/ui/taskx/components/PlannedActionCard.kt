@@ -310,13 +310,13 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
                             Icon(
                                 imageVector = Icons.Default.LocationOn,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                tint = Color(0xFF388E3C), // Зелёный для ячейки хранения
                                 modifier = Modifier.size(16.dp)
                             )
                             Icon(
                                 imageVector = Icons.Default.ArrowUpward,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                tint = Color(0xFF388E3C), // Зелёный для ячейки хранения
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -324,7 +324,7 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
                                 text = it.code,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                color = Color(0xFF388E3C) // Зелёный цвет текста для ячейки хранения
                             )
                         }
                     }
@@ -335,20 +335,21 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
                             Icon(
                                 imageVector = Icons.Default.LocationOn,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                tint = Color(0xFF1976D2), // Синий для ячейки размещения
                                 modifier = Modifier.size(16.dp)
                             )
                             Icon(
                                 imageVector = Icons.Default.ArrowDownward,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                tint = Color(0xFF1976D2), // Синий для ячейки размещения
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = it.code,
                                 fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1976D2) // Синий цвет текста для ячейки размещения
                             )
                         }
                     }
@@ -364,20 +365,21 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
                             Icon(
                                 imageVector = Icons.Default.ViewInAr,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                tint = Color(0xFF388E3C), // Зелёный для паллеты хранения
                                 modifier = Modifier.size(16.dp)
                             )
                             Icon(
                                 imageVector = Icons.Default.ArrowUpward,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                tint = Color(0xFF388E3C), // Зелёный для паллеты хранения
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = it.code,
                                 fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF388E3C) // Зелёный цвет текста для паллеты хранения
                             )
                         }
                     }
@@ -388,20 +390,21 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
                             Icon(
                                 imageVector = Icons.Default.ViewInAr,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                tint = Color(0xFF1976D2), // Синий для паллеты размещения
                                 modifier = Modifier.size(16.dp)
                             )
                             Icon(
                                 imageVector = Icons.Default.ArrowDownward,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                tint = Color(0xFF1976D2), // Синий для паллеты размещения
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = it.code,
                                 fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1976D2) // Синий цвет текста для паллеты размещения
                             )
                         }
                     }
