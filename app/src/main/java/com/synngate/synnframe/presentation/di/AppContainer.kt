@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.SavedStateHandle
+import androidx.navigation.NavController
 import com.synngate.synnframe.data.barcodescanner.BarcodeScannerFactory
 import com.synngate.synnframe.data.barcodescanner.ScannerService
 import com.synngate.synnframe.data.datastore.AppSettingsDataStore
@@ -74,7 +75,6 @@ import com.synngate.synnframe.domain.usecase.server.ServerUseCases
 import com.synngate.synnframe.domain.usecase.settings.SettingsUseCases
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
 import com.synngate.synnframe.domain.usecase.user.UserUseCases
-import androidx.navigation.NavController
 import com.synngate.synnframe.presentation.navigation.NavigationScopeManager
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
@@ -155,7 +155,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
                 })
             }
             install(HttpTimeout) {
-                connectTimeoutMillis = 10000
+                connectTimeoutMillis = 300000
             }
             install(Logging) {
                 logger = object : Logger {
