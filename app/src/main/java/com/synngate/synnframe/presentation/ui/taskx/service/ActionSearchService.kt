@@ -129,8 +129,10 @@ class ActionSearchService(
                     emptyList()
                 }
             } else {
-                // При произвольном порядке возвращаем все регулярные действия
-                regularActions.map { PlannedActionUI.fromDomain(it, task.factActions, isTaskInProgress) }
+                // При произвольном порядке возвращаем только невыполненные регулярные действия
+                regularActions
+                    .filter { !it.isFullyCompleted(task.factActions) }
+                    .map { PlannedActionUI.fromDomain(it, task.factActions, isTaskInProgress) }
             }
         }
 
