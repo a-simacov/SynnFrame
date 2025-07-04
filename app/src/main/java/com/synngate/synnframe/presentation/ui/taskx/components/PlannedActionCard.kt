@@ -322,7 +322,7 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = it.code,
-                                fontSize = 16.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF388E3C) // Зелёный цвет текста для ячейки хранения
                             )
@@ -347,7 +347,7 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = it.code,
-                                fontSize = 16.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF1976D2) // Синий цвет текста для ячейки размещения
                             )
@@ -377,7 +377,7 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = it.code,
-                                fontSize = 16.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF388E3C) // Зелёный цвет текста для паллеты хранения
                             )
@@ -402,7 +402,7 @@ private fun PlannedActionCardContent(actionUI: PlannedActionUI) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = it.code,
-                                fontSize = 16.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF1976D2) // Синий цвет текста для паллеты размещения
                             )
@@ -558,8 +558,8 @@ private fun PlannedActionCardPreview() {
                             id = "",
                             name = "Ночник 3D MOON LAMP CompletionOrderType.REGULAR storageProductClassifier"
                         ),
-                        storageBin = BinX(code = "A00111", zone = ""),
-                        placementBin = BinX(code = "A00112", zone = ""),
+                        storageBin = BinX(code = "01I-07-001-1", zone = ""),
+                        placementBin = BinX(code = "01A-01-002-2", zone = ""),
                         storagePallet = Pallet("IN00000000009"),
                         placementPallet = Pallet("IN00000000010"),
                         isCompleted = true,
