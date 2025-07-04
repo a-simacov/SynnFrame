@@ -29,6 +29,9 @@ data class TaskXDetailState(
     val isProcessingAction: Boolean = false,
     val showCameraScannerForSearch: Boolean = false,
     val showCompletionDialog: Boolean = false,
+    val showUserMessageDialog: Boolean = false,
+    val userMessageDialogText: String = "",
+    val userMessageDialogIsSuccess: Boolean = true,
 
     // Диалог ошибки порядка выполнения
     val showValidationErrorDialog: Boolean = false,

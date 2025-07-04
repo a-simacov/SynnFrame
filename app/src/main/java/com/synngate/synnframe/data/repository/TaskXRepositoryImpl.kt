@@ -7,6 +7,7 @@ import com.synngate.synnframe.data.remote.dto.PlannedActionStatusRequestDto
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
 import com.synngate.synnframe.domain.entity.taskx.action.FactAction
+import com.synngate.synnframe.domain.exception.TaskCompletionException
 import com.synngate.synnframe.domain.repository.TaskXRepository
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import kotlinx.coroutines.flow.Flow
@@ -106,7 +107,18 @@ class TaskXRepositoryImpl(
                             lastModifiedAt = LocalDateTime.now()
                         )
                         TaskXDataHolderSingleton.updateTask(updatedTask)
-                        Result.success(updatedTask)
+                        
+                        // Если есть userMessage в успешном ответе, используем специальное исключение
+                        val userMessage = result.data.userMessage
+                        if (!userMessage.isNullOrBlank()) {
+                            Result.failure(TaskCompletionException(
+                                message = "Task completed successfully",
+                                userMessage = userMessage,
+                                isSuccess = true
+                            ))
+                        } else {
+                            Result.success(updatedTask)
+                        }
                     } else {
                         Timber.e("Task not found in TaskXDataHolderSingleton for id: $id")
                         Result.failure(Exception("Task not found in context"))

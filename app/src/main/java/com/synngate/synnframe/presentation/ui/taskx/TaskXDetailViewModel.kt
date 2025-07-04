@@ -1,8 +1,10 @@
 package com.synngate.synnframe.presentation.ui.taskx
 
+import androidx.lifecycle.viewModelScope
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.domain.entity.taskx.TaskX
 import com.synngate.synnframe.domain.entity.taskx.TaskXStatus
+import com.synngate.synnframe.domain.exception.TaskCompletionException
 import com.synngate.synnframe.domain.usecase.dynamicmenu.DynamicMenuUseCases
 import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.domain.usecase.taskx.TaskXUseCases
@@ -17,6 +19,8 @@ import com.synngate.synnframe.presentation.ui.taskx.model.filter.SearchResult
 import com.synngate.synnframe.presentation.ui.taskx.service.ActionSearchService
 import com.synngate.synnframe.presentation.ui.taskx.validator.ActionValidator
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
 
@@ -47,6 +51,7 @@ class TaskXDetailViewModel(
         loadCurrentUser()
         updateFilterState()
         updateBufferState()
+        observeTaskUpdates()
     }
 
     private fun loadTask() {
@@ -115,6 +120,29 @@ class TaskXDetailViewModel(
         launchIO {
             userUseCases.getCurrentUser().collect { user ->
                 updateState { it.copy(currentUserId = user?.id) }
+            }
+        }
+    }
+
+    /**
+     * Подписывается на обновления задачи из TaskXDataHolderSingleton
+     */
+    private fun observeTaskUpdates() {
+        launchIO {
+            TaskXDataHolderSingleton.currentTask.collect { updatedTask ->
+                if (updatedTask != null && updatedTask.id == taskId) {
+                    // Обновляем задачу и пересоздаем UI модели действий
+                    val actionUiModels = createActionUiModels(updatedTask)
+                    
+                    updateState { state ->
+                        state.copy(
+                            task = updatedTask,
+                            actionUiModels = actionUiModels
+                        )
+                    }
+                    
+                    Timber.d("Task updated from TaskXDataHolderSingleton: ${updatedTask.factActions.size} fact actions")
+                }
             }
         }
     }
@@ -264,16 +292,65 @@ class TaskXDetailViewModel(
             return
         }
 
-        processTaskAction(
-            action = { taskId, endpoint -> taskXUseCases.completeTask(taskId, endpoint) },
-            loadingMessage = "Completing task...",
-            successMessage = "Task completed",
-            errorMessage = "Error completing task",
-            onSuccess = {
-                TaskXDataHolderSingleton.forceClean()
-                sendEvent(TaskXDetailEvent.NavigateBackWithMessage("Task completed"))
+        processTaskCompletion(task.id, endpoint)
+    }
+
+    private fun processTaskCompletion(taskId: String, endpoint: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                Timber.d("Completing task...")
+                updateState {
+                    it.copy(
+                        isProcessingAction = true,
+                        showExitDialog = false,
+                        showCompletionDialog = false
+                    )
+                }
+
+                val result = taskXUseCases.completeTask(taskId, endpoint)
+                updateState { it.copy(isProcessingAction = false) }
+                
+                if (result.isSuccess) {
+                    // Задача успешно завершена без userMessage
+                    TaskXDataHolderSingleton.forceClean()
+                    sendEvent(TaskXDetailEvent.NavigateBackWithMessage("Task completed"))
+                } else {
+                    val error = result.exceptionOrNull()
+                    handleTaskCompletionError(error)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error completing task: ${e.message}")
+                updateState { it.copy(isProcessingAction = false) }
+                handleTaskCompletionError(e)
             }
-        )
+        }
+    }
+
+    private fun handleTaskCompletionError(error: Throwable?) {
+        when (error) {
+            is TaskCompletionException -> {
+                val userMessage = error.userMessage
+                if (!userMessage.isNullOrBlank()) {
+                    if (error.isSuccess) {
+                        // Успешное завершение с userMessage - очищаем данные
+                        TaskXDataHolderSingleton.forceClean()
+                    }
+                    updateState {
+                        it.copy(
+                            showUserMessageDialog = true,
+                            userMessageDialogText = userMessage,
+                            userMessageDialogIsSuccess = error.isSuccess
+                        )
+                    }
+                } else {
+                    sendEvent(TaskXDetailEvent.ShowSnackbar(error.message ?: "Error completing task"))
+                }
+            }
+            else -> {
+                val errorMessage = error?.message ?: "Error completing task"
+                sendEvent(TaskXDetailEvent.ShowSnackbar(errorMessage))
+            }
+        }
     }
 
     fun hideCameraScannerForSearch() {
@@ -282,6 +359,29 @@ class TaskXDetailViewModel(
 
     fun showCameraScannerForSearch() {
         updateState { it.copy(showCameraScannerForSearch = true) }
+    }
+
+    fun hideUserMessageDialog() {
+        updateState { 
+            it.copy(
+                showUserMessageDialog = false,
+                userMessageDialogText = "",
+                userMessageDialogIsSuccess = true
+            )
+        }
+    }
+
+    fun onUserMessageDialogOkClick() {
+        val isSuccess = uiState.value.userMessageDialogIsSuccess
+        hideUserMessageDialog()
+        
+        if (isSuccess) {
+            // Успешное завершение - переходим к списку заданий
+            sendEvent(TaskXDetailEvent.NavigateBack)
+        } else {
+            // Ошибка - остаемся на текущем экране
+            // Диалог просто закрывается
+        }
     }
 
     fun checkTaskCompletion() {

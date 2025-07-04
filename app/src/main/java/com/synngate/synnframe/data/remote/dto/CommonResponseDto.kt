@@ -6,5 +6,6 @@ import kotlinx.serialization.Serializable
 data class CommonResponseDto(
     val success: Boolean,
     val status: Int,
-    val message: String = ""
+    val message: String = "",
+    val userMessage: String? = null
 )

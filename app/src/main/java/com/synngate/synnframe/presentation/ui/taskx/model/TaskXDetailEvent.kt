@@ -13,4 +13,7 @@ sealed class TaskXDetailEvent {
 
     // Комбинированное событие для навигации с уведомлением
     data class NavigateBackWithMessage(val message: String) : TaskXDetailEvent()
+    
+    // Событие для показа диалога с пользовательским сообщением
+    data class ShowUserMessageDialog(val message: String, val isSuccess: Boolean) : TaskXDetailEvent()
 }
