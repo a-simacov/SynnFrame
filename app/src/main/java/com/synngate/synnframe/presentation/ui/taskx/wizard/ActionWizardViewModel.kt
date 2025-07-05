@@ -794,7 +794,7 @@ class ActionWizardViewModel(
                         handleCommandExecutionResult(executionResult)
                     }
                 } else {
-                    val errorMessage = result.getErrorMessage() ?: "Command execution error"
+                    val errorMessage = result.getErrorMessage()?.takeIf { it.isNotBlank() } ?: "Command execution error"
 
                     updateCommandStatus(command, false, errorMessage)
 
@@ -812,7 +812,12 @@ class ActionWizardViewModel(
                         error = "Error: ${e.message}"
                     )
                 }
-                sendEvent(ActionWizardEvent.ShowSnackbar("Error: ${e.message}"))
+                val exceptionMessage = e.message
+                if (!exceptionMessage.isNullOrBlank()) {
+                    sendEvent(ActionWizardEvent.ShowSnackbar("Error: $exceptionMessage"))
+                } else {
+                    sendEvent(ActionWizardEvent.ShowSnackbar("Command execution failed"))
+                }
             } finally {
                 executingCommands.remove(command.id)
             }
@@ -910,7 +915,7 @@ class ActionWizardViewModel(
             CommandNextAction.SHOW_DIALOG -> {
                 // Показываем подробный диалог с результатом выполнения
                 showResultDialog(result)
-                if (result.message != null) {
+                if (!result.message.isNullOrBlank()) {
                     sendEvent(ActionWizardEvent.ShowSnackbar(result.message))
                 }
             }
