@@ -155,7 +155,7 @@ class AppContainer(private val applicationContext: Context) : DiContainer(){
                 })
             }
             install(HttpTimeout) {
-                connectTimeoutMillis = 300000
+                connectTimeoutMillis = 60000
             }
             install(Logging) {
                 logger = object : Logger {
