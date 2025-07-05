@@ -12,6 +12,7 @@ import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.model.ActionFilter
+import com.synngate.synnframe.presentation.ui.taskx.model.OperationResult
 import com.synngate.synnframe.presentation.ui.taskx.model.PlannedActionUI
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskCompletionResult
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
@@ -215,7 +216,12 @@ class TaskXDetailViewModel(
     }
 
     fun dismissExitDialog() {
-        updateState { it.copy(showExitDialog = false) }
+        updateState { 
+            it.copy(
+                showExitDialog = false,
+                exitDialogOperationResult = null
+            )
+        }
     }
 
     fun exitWithoutSaving() {
@@ -228,55 +234,90 @@ class TaskXDetailViewModel(
         dismissExitDialog()
     }
 
-    private fun processTaskAction(
-        action: suspend (String, String) -> Result<TaskX>,
-        loadingMessage: String,
-        successMessage: String,
-        errorMessage: String,
-        onSuccess: (TaskX) -> Unit = {
-            sendEvent(TaskXDetailEvent.NavigateBackWithMessage(successMessage))
-        }
-    ) {
-        val task = uiState.value.task ?: return
-
-        updateState {
+    fun onExitDialogOkClick() {
+        updateState { 
             it.copy(
-                isProcessingAction = true,
-                showExitDialog = false,
-                showCompletionDialog = false
+                exitDialogOperationResult = null,
+                showExitDialog = false
             )
         }
+        // Навигация к списку заданий, т.к. OK показывается только при успешной операции
+        sendEvent(TaskXDetailEvent.NavigateBack)
+    }
 
-        launchIO {
-            try {
-                Timber.d(loadingMessage)
-                val result = action(task.id, endpoint)
 
-                if (result.isSuccess) {
-                    result.getOrNull()?.let { updatedTask ->
-                        updateState { it.copy(task = updatedTask) }
-                        TaskXDataHolderSingleton.updateTask(updatedTask)
+    private fun handleExitDialogError(error: Throwable?, defaultMessage: String) {
+        when (error) {
+            is TaskCompletionException -> {
+                val userMessage = error.userMessage
+                if (!userMessage.isNullOrBlank()) {
+                    if (error.isSuccess) {
+                        // Успешное выполнение с userMessage
+                        TaskXDataHolderSingleton.forceClean()
                     }
-                    onSuccess(task)
+                    updateState {
+                        it.copy(
+                            exitDialogOperationResult = OperationResult.UserMessage(
+                                message = userMessage,
+                                isSuccess = error.isSuccess
+                            )
+                        )
+                    }
                 } else {
-                    updateState { it.copy(isProcessingAction = false) }
-                    sendEvent(TaskXDetailEvent.ShowSnackbar(errorMessage))
+                    updateState {
+                        it.copy(
+                            exitDialogOperationResult = OperationResult.Error(
+                                message = error.message ?: defaultMessage
+                            )
+                        )
+                    }
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "$loadingMessage: ${e.message}")
-                updateState { it.copy(isProcessingAction = false) }
-                sendEvent(TaskXDetailEvent.ShowSnackbar("Error: ${e.message}"))
+            }
+            else -> {
+                val errorMessage = error?.message ?: defaultMessage
+                updateState {
+                    it.copy(
+                        exitDialogOperationResult = OperationResult.Error(errorMessage)
+                    )
+                }
             }
         }
     }
 
     fun pauseTask() {
-        processTaskAction(
-            action = { taskId, endpoint -> taskXUseCases.pauseTask(taskId, endpoint) },
-            loadingMessage = "Pausing task...",
-            successMessage = "Task paused",
-            errorMessage = "Error pausing task"
-        )
+        val task = uiState.value.task ?: return
+
+        updateState {
+            it.copy(
+                isProcessingAction = true,
+                exitDialogOperationResult = null
+            )
+        }
+
+        launchIO {
+            try {
+                Timber.d("Pausing task...")
+                val result = taskXUseCases.pauseTask(task.id, endpoint)
+                
+                updateState { it.copy(isProcessingAction = false) }
+
+                if (result.isSuccess) {
+                    // Задача успешно приостановлена без userMessage
+                    result.getOrNull()?.let { updatedTask ->
+                        TaskXDataHolderSingleton.updateTask(updatedTask)
+                    }
+                    TaskXDataHolderSingleton.forceClean()
+                    sendEvent(TaskXDetailEvent.NavigateBack)
+                } else {
+                    val error = result.exceptionOrNull()
+                    handleExitDialogError(error, "Error pausing task")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error pausing task: ${e.message}")
+                updateState { it.copy(isProcessingAction = false) }
+                handleExitDialogError(e, "Error pausing task")
+            }
+        }
     }
 
     fun completeTask() {
@@ -285,21 +326,72 @@ class TaskXDetailViewModel(
 
         val validationResult = actionValidator.canCompleteTask(task)
         if (!validationResult.isSuccess && !taskType.allowCompletionWithoutFactActions) {
-            sendEvent(
-                TaskXDetailEvent.ShowSnackbar(
-                    validationResult.errorMessage ?: "Unable to complete task"
-                )
-            )
+            // Если вызов из диалога выхода, показываем ошибку в диалоге
+            if (uiState.value.showExitDialog) {
+                updateState {
+                    it.copy(
+                        exitDialogOperationResult = OperationResult.Error(
+                            validationResult.errorMessage ?: "Unable to complete task"
+                        )
+                    )
+                }
+            } else {
+                // Если вызов из диалога автозавершения, показываем ошибку в нем
+                updateState {
+                    it.copy(
+                        taskCompletionResult = TaskCompletionResult(
+                            message = validationResult.errorMessage ?: "Unable to complete task",
+                            isSuccess = false
+                        )
+                    )
+                }
+            }
             return
         }
 
-        processTaskCompletion(task.id, endpoint)
+        // Определяем, откуда вызван метод
+        if (uiState.value.showExitDialog) {
+            processTaskCompletionFromExitDialog(task.id, endpoint)
+        } else {
+            processTaskCompletionFromCompletionDialog(task.id, endpoint)
+        }
     }
 
-    private fun processTaskCompletion(taskId: String, endpoint: String) {
+    private fun processTaskCompletionFromExitDialog(taskId: String, endpoint: String) {
+        updateState {
+            it.copy(
+                isProcessingAction = true,
+                exitDialogOperationResult = null
+            )
+        }
+
+        launchIO {
+            try {
+                Timber.d("Completing task from exit dialog...")
+                val result = taskXUseCases.completeTask(taskId, endpoint)
+                
+                updateState { it.copy(isProcessingAction = false) }
+
+                if (result.isSuccess) {
+                    // Задача успешно завершена без userMessage
+                    TaskXDataHolderSingleton.forceClean()
+                    sendEvent(TaskXDetailEvent.NavigateBack)
+                } else {
+                    val error = result.exceptionOrNull()
+                    handleExitDialogError(error, "Error completing task")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error completing task: ${e.message}")
+                updateState { it.copy(isProcessingAction = false) }
+                handleExitDialogError(e, "Error completing task")
+            }
+        }
+    }
+
+    private fun processTaskCompletionFromCompletionDialog(taskId: String, endpoint: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                Timber.d("Completing task...")
+                Timber.d("Completing task from completion dialog...")
                 updateState {
                     it.copy(
                         isProcessingAction = true,
@@ -314,7 +406,7 @@ class TaskXDetailViewModel(
                 if (result.isSuccess) {
                     // Задача успешно завершена без userMessage
                     TaskXDataHolderSingleton.forceClean()
-                    sendEvent(TaskXDetailEvent.NavigateBackWithMessage("Task completed"))
+                    sendEvent(TaskXDetailEvent.NavigateBack)
                 } else {
                     val error = result.exceptionOrNull()
                     handleTaskCompletionError(error)

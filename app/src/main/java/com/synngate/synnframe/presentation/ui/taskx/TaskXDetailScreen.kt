@@ -146,8 +146,10 @@ fun TaskXDetailScreen(
             onPause = viewModel::pauseTask,
             onComplete = viewModel::completeTask,
             onExitWithoutSaving = viewModel::exitWithoutSaving,
+            onOkClick = viewModel::onExitDialogOkClick,
             canComplete = state.getPendingActionsCount() == 0,
-            isProcessing = state.isProcessingAction
+            isProcessing = state.isProcessingAction,
+            operationResult = state.exitDialogOperationResult
         )
     }
 
