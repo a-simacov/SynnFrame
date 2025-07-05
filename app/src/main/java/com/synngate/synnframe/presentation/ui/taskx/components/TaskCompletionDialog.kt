@@ -10,50 +10,82 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.synngate.synnframe.presentation.ui.taskx.model.TaskCompletionResult
 
 @Composable
 fun TaskCompletionDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
-    isProcessing: Boolean = false
+    onOkClick: () -> Unit,
+    isProcessing: Boolean = false,
+    completionResult: TaskCompletionResult? = null
 ) {
+    val showResult = completionResult != null
+    
     AlertDialog(
-        onDismissRequest = { if (!isProcessing) onDismiss() },
-        title = { Text("Task Completion") },
+        onDismissRequest = { 
+            if (!isProcessing && !showResult) onDismiss() 
+        },
+        title = { 
+            Text(
+                text = when {
+                    showResult && completionResult?.isSuccess == true -> "Success"
+                    showResult && completionResult?.isSuccess == false -> "Error"
+                    else -> "Task Completion"
+                },
+                color = when {
+                    showResult && completionResult?.isSuccess == true -> Color.Green
+                    showResult && completionResult?.isSuccess == false -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
+            )
+        },
         text = {
             Text(
-                "All actions are completed. Do you want to complete the task?",
+                text = when {
+                    showResult -> completionResult?.message ?: ""
+                    else -> "All actions are completed. Do you want to complete the task?"
+                },
                 style = MaterialTheme.typography.bodyMedium
             )
         },
         confirmButton = {
-            Button(
-                onClick = onConfirm,
-                enabled = !isProcessing
-            ) {
-                if (isProcessing) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
-                        Text("Completing...")
+            if (showResult) {
+                Button(onClick = onOkClick) {
+                    Text("OK")
+                }
+            } else {
+                Button(
+                    onClick = onConfirm,
+                    enabled = !isProcessing
+                ) {
+                    if (isProcessing) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Text("Completing...")
+                        }
+                    } else {
+                        Text("Complete Task")
                     }
-                } else {
-                    Text("Complete Task")
                 }
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                enabled = !isProcessing
-            ) {
-                Text("Cancel")
+            if (!showResult) {
+                TextButton(
+                    onClick = onDismiss,
+                    enabled = !isProcessing
+                ) {
+                    Text("Cancel")
+                }
             }
         }
     )

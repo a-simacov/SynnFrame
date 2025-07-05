@@ -13,6 +13,7 @@ import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.model.ActionFilter
 import com.synngate.synnframe.presentation.ui.taskx.model.PlannedActionUI
+import com.synngate.synnframe.presentation.ui.taskx.model.TaskCompletionResult
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailState
 import com.synngate.synnframe.presentation.ui.taskx.model.filter.SearchResult
@@ -303,7 +304,7 @@ class TaskXDetailViewModel(
                     it.copy(
                         isProcessingAction = true,
                         showExitDialog = false,
-                        showCompletionDialog = false
+                        taskCompletionResult = null
                     )
                 }
 
@@ -337,9 +338,10 @@ class TaskXDetailViewModel(
                     }
                     updateState {
                         it.copy(
-                            showUserMessageDialog = true,
-                            userMessageDialogText = userMessage,
-                            userMessageDialogIsSuccess = error.isSuccess
+                            taskCompletionResult = TaskCompletionResult(
+                                message = userMessage,
+                                isSuccess = error.isSuccess
+                            )
                         )
                     }
                 } else {
@@ -348,7 +350,14 @@ class TaskXDetailViewModel(
             }
             else -> {
                 val errorMessage = error?.message ?: "Error completing task"
-                sendEvent(TaskXDetailEvent.ShowSnackbar(errorMessage))
+                updateState {
+                    it.copy(
+                        taskCompletionResult = TaskCompletionResult(
+                            message = errorMessage,
+                            isSuccess = false
+                        )
+                    )
+                }
             }
         }
     }
@@ -361,19 +370,14 @@ class TaskXDetailViewModel(
         updateState { it.copy(showCameraScannerForSearch = true) }
     }
 
-    fun hideUserMessageDialog() {
+    fun onTaskCompletionOkClick() {
+        val isSuccess = uiState.value.taskCompletionResult?.isSuccess ?: false
         updateState { 
             it.copy(
-                showUserMessageDialog = false,
-                userMessageDialogText = "",
-                userMessageDialogIsSuccess = true
+                taskCompletionResult = null,
+                showCompletionDialog = false
             )
         }
-    }
-
-    fun onUserMessageDialogOkClick() {
-        val isSuccess = uiState.value.userMessageDialogIsSuccess
-        hideUserMessageDialog()
         
         if (isSuccess) {
             // Успешное завершение - переходим к списку заданий
@@ -386,10 +390,18 @@ class TaskXDetailViewModel(
 
     fun checkTaskCompletion() {
         val task = uiState.value.task ?: return
+        val state = uiState.value
 
         val allActionsCompleted = task.plannedActions.all { it.isFullyCompleted(task.factActions) }
 
-        if (allActionsCompleted && !uiState.value.showCompletionDialog) {
+        // Не показываем диалог завершения, если:
+        // - уже показан диалог завершения
+        // - обрабатывается завершение задания
+        // - показывается результат завершения
+        if (allActionsCompleted && 
+            !state.showCompletionDialog && 
+            !state.isProcessingAction && 
+            state.taskCompletionResult == null) {
             updateState { it.copy(showCompletionDialog = true) }
         }
     }

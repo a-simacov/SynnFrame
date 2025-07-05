@@ -1,7 +1,6 @@
 package com.synngate.synnframe.presentation.ui.taskx
 
 import TaskCompletionDialog
-import com.synngate.synnframe.presentation.ui.taskx.components.UserMessageDialog
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -113,10 +112,6 @@ fun TaskXDetailScreen(
                         )
                     }
                 }
-
-                is TaskXDetailEvent.ShowUserMessageDialog -> {
-                    // Это событие обрабатывается через состояние UI, здесь ничего не делаем
-                }
             }
         }
     }
@@ -173,16 +168,9 @@ fun TaskXDetailScreen(
         TaskCompletionDialog(
             onDismiss = viewModel::dismissCompletionDialog,
             onConfirm = viewModel::completeTask,
-            isProcessing = state.isProcessingAction
-        )
-    }
-
-    if (state.showUserMessageDialog) {
-        UserMessageDialog(
-            message = state.userMessageDialogText,
-            isSuccess = state.userMessageDialogIsSuccess,
-            onDismiss = viewModel::hideUserMessageDialog,
-            onOkClick = viewModel::onUserMessageDialogOkClick
+            onOkClick = viewModel::onTaskCompletionOkClick,
+            isProcessing = state.isProcessingAction,
+            completionResult = state.taskCompletionResult
         )
     }
 
