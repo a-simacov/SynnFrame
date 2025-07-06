@@ -2,6 +2,7 @@ package com.synngate.synnframe.domain.usecase.dynamicmenu
 
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.dto.CommonResponseDto
+import com.synngate.synnframe.data.remote.dto.CustomListResponseDto
 import com.synngate.synnframe.data.remote.dto.DynamicTasksResponseDto
 import com.synngate.synnframe.data.remote.dto.SearchKeyValidationResponseDto
 import com.synngate.synnframe.domain.entity.DynamicMenuItemType
@@ -36,6 +37,7 @@ class DynamicMenuUseCases(
             when (type) {
                 DynamicMenuItemType.TASKS -> dynamicMenuRepository.getDynamicTasks(endpoint, params)
                 DynamicMenuItemType.PRODUCTS -> dynamicMenuRepository.getDynamicProducts(endpoint, params)
+                DynamicMenuItemType.CUSTOM_LIST -> dynamicMenuRepository.getCustomList(endpoint, params)
                 DynamicMenuItemType.SUBMENU -> ApiResult.Error(500, "Invalid operation type for getDynamicItems")
             }
         } catch (e: Exception) {
@@ -134,6 +136,24 @@ class DynamicMenuUseCases(
             dynamicMenuRepository.deleteTask(endpoint, taskId)
         } catch (e: Exception) {
             Timber.e(e, "Error in deleteTask use case")
+            ApiResult.Error(500, e.message ?: "Unknown error")
+        }
+    }
+
+    suspend fun getCustomList(endpoint: String, params: Map<String, String> = emptyMap()): ApiResult<CustomListResponseDto> {
+        return try {
+            dynamicMenuRepository.getCustomList(endpoint, params)
+        } catch (e: Exception) {
+            Timber.e(e, "Error in getCustomList use case")
+            ApiResult.Error(500, e.message ?: "Unknown error")
+        }
+    }
+
+    suspend fun searchCustomList(endpoint: String, searchValue: String): ApiResult<CustomListResponseDto> {
+        return try {
+            dynamicMenuRepository.searchCustomList(endpoint, searchValue)
+        } catch (e: Exception) {
+            Timber.e(e, "Error in searchCustomList use case")
             ApiResult.Error(500, e.message ?: "Unknown error")
         }
     }

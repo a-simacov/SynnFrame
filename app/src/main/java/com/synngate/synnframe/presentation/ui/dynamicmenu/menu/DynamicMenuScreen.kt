@@ -53,6 +53,7 @@ fun DynamicMenuScreen(
     viewModel: DynamicMenuViewModel,
     navigateToDynamicTasks: (menuItemId: String, menuItemName: String, endpoint: String, screenSettings: ScreenSettings) -> Unit,
     navigateToDynamicProducts: (menuItemId: String, menuItemName: String, endpoint: String, screenSettings: ScreenSettings) -> Unit,
+    navigateToCustomList: (menuItemId: String, menuItemName: String, endpoint: String, screenSettings: ScreenSettings) -> Unit,
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -84,6 +85,14 @@ fun DynamicMenuScreen(
                 }
                 is DynamicMenuEvent.NavigateToDynamicProducts -> {
                     navigateToDynamicProducts(
+                        event.menuItemId,
+                        event.menuItemName,
+                        event.endpoint,
+                        event.screenSettings
+                    )
+                }
+                is DynamicMenuEvent.NavigateToCustomList -> {
+                    navigateToCustomList(
                         event.menuItemId,
                         event.menuItemName,
                         event.endpoint,
@@ -224,5 +233,6 @@ private fun getIconForMenuItemType(type: DynamicMenuItemType): ImageVector {
         DynamicMenuItemType.SUBMENU -> Icons.Outlined.SubdirectoryArrowRight
         DynamicMenuItemType.TASKS -> Icons.AutoMirrored.Outlined.ListAlt
         DynamicMenuItemType.PRODUCTS -> Icons.Outlined.Inventory
+        DynamicMenuItemType.CUSTOM_LIST -> Icons.AutoMirrored.Outlined.ListAlt
     }
 }

@@ -1,6 +1,7 @@
 package com.synngate.synnframe.data.remote.api
 
 import com.synngate.synnframe.data.remote.dto.CommonResponseDto
+import com.synngate.synnframe.data.remote.dto.CustomListResponseDto
 import com.synngate.synnframe.data.remote.dto.DynamicTasksResponseDto
 import com.synngate.synnframe.data.remote.dto.SearchKeyValidationRequestDto
 import com.synngate.synnframe.data.remote.dto.SearchKeyValidationResponseDto
@@ -115,6 +116,23 @@ class DynamicMenuApiImpl(
         return executeApiRequest(
             endpoint = "$endpoint/$taskId",
             methodOverride = HttpMethod.DELETE
+        )
+    }
+
+    override suspend fun getCustomList(
+        endpoint: String,
+        params: Map<String, String>
+    ): ApiResult<CustomListResponseDto> {
+        return executeApiRequest(endpoint, params)
+    }
+
+    override suspend fun searchCustomList(
+        endpoint: String,
+        searchValue: String
+    ): ApiResult<CustomListResponseDto> {
+        return executeApiRequest(
+            endpoint,
+            params = mapOf("value" to searchValue)
         )
     }
 }

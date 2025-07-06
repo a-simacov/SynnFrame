@@ -17,6 +17,13 @@ sealed class DynamicMenuEvent {
         val screenSettings: ScreenSettings
     ) : DynamicMenuEvent()
 
+    data class NavigateToCustomList(
+        val menuItemId: String,
+        val menuItemName: String,
+        val endpoint: String,
+        val screenSettings: ScreenSettings
+    ) : DynamicMenuEvent()
+
     data object NavigateBack : DynamicMenuEvent()
     data class ShowSnackbar(val message: String) : DynamicMenuEvent()
 }

@@ -163,6 +163,52 @@ object DynamicRoutes {
     }
 
     /**
+     * Маршрут для списка пользовательских элементов.
+     */
+    object CustomList : RouteWithArgs {
+        override val route = "custom_list/{menuItemId}/{menuItemName}/{endpoint}?screenSettings={screenSettings}"
+
+        /**
+         * Создает маршрут для просмотра списка пользовательских элементов.
+         *
+         * @param menuItemId Идентификатор пункта меню
+         * @param menuItemName Имя пункта меню
+         * @param endpoint Эндпоинт для получения данных
+         * @param screenSettings Настройки экрана
+         * @return Строка маршрута
+         */
+        fun createRoute(
+            menuItemId: String,
+            menuItemName: String,
+            endpoint: String,
+            screenSettings: ScreenSettings
+        ): String {
+            val encodedName = URLEncoder.encode(menuItemName, "UTF-8")
+            // Используем Base64 кодирование для сохранения пробелов и спецсимволов в endpoint
+            val encodedEndpoint = Base64.getEncoder().encodeToString(endpoint.toByteArray())
+
+            // Если переданы настройки экрана, кодируем их в JSON и передаем как параметр
+            val encodedSettings = if (screenSettings != ScreenSettings()) {
+                val json = Json.encodeToString(ScreenSettings.serializer(), screenSettings)
+                "?screenSettings=${URLEncoder.encode(json, "UTF-8")}"
+            } else {
+                ""
+            }
+
+            return "custom_list/$menuItemId/$encodedName/$encodedEndpoint$encodedSettings"
+        }
+
+        override fun createRoute(vararg args: Any?): String {
+            require(args.size >= 3) { "CustomList route requires menuItemId, menuItemName, and endpoint" }
+            val menuItemId = args[0] as? String ?: ""
+            val menuItemName = args[1] as? String ?: ""
+            val endpoint = args[2] as? String ?: ""
+            val screenSettings = args.getOrNull(3) as? ScreenSettings ?: ScreenSettings()
+            return createRoute(menuItemId, menuItemName, endpoint, screenSettings)
+        }
+    }
+
+    /**
      * Граф навигации для динамических экранов.
      */
     object DynamicNavGraph : NavGraph {

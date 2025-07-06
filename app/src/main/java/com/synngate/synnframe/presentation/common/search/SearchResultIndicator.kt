@@ -10,9 +10,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,7 +40,8 @@ fun SearchResultIndicator(
     resultType: SearchResultType,
     count: Int,
     query: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    itemType: String = "item"
 ) {
     // Определяем параметры отображения в зависимости от типа результата
     val (icon, label, bgColor) = when (resultType) {
@@ -50,7 +51,7 @@ fun SearchResultIndicator(
             MaterialTheme.colorScheme.surfaceVariant
         )
         SearchResultType.REMOTE -> Triple(
-            Icons.Default.Wifi,
+            Icons.Default.CloudQueue,
             "Found at server",
             MaterialTheme.colorScheme.secondaryContainer
         )
@@ -64,8 +65,8 @@ fun SearchResultIndicator(
     // Формируем результирующий текст
     val resultText = when (count) {
         0 -> "Nothing was found by request \"$query\""
-        1 -> "Found 1 task"
-        else -> "Found $count tasks"
+        1 -> "Found 1 $itemType"
+        else -> "Found $count ${itemType}s"
     }
 
     // Отображаем индикатор

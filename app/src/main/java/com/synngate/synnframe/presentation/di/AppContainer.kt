@@ -78,6 +78,7 @@ import com.synngate.synnframe.domain.usecase.user.UserUseCases
 import com.synngate.synnframe.presentation.navigation.NavigationScopeManager
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.service.notification.NotificationChannelManager
+import com.synngate.synnframe.presentation.ui.dynamicmenu.customlist.DynamicCustomListViewModel
 import com.synngate.synnframe.presentation.ui.dynamicmenu.menu.DynamicMenuViewModel
 import com.synngate.synnframe.presentation.ui.dynamicmenu.product.DynamicProductDetailViewModel
 import com.synngate.synnframe.presentation.ui.dynamicmenu.product.DynamicProductsViewModel
@@ -612,6 +613,23 @@ class ScreenContainer(private val appContainer: AppContainer) : DiContainer() {
                 soundService = appContainer.soundService,
                 productUiMapper = appContainer.productUiMapper,
                 isSelectionMode = isSelectionMode
+            )
+        }
+    }
+
+    fun createDynamicCustomListViewModel(
+        menuItemId: String,
+        menuItemName: String,
+        endpoint: String,
+        screenSettings: ScreenSettings
+    ): DynamicCustomListViewModel {
+        return getOrCreateViewModel("DynamicCustomListViewModel_${menuItemId}_${endpoint}") {
+            DynamicCustomListViewModel(
+                menuItemId = menuItemId,
+                menuItemName = menuItemName,
+                endpoint = endpoint,
+                screenSettings = screenSettings,
+                dynamicMenuUseCases = appContainer.dynamicMenuUseCases
             )
         }
     }

@@ -95,6 +95,20 @@ class DynamicMenuViewModel(
                         screenSettings = menuItem.screenSettings
                     ))
             }
+            DynamicMenuItemType.CUSTOM_LIST -> {
+                if (menuItem.endpoint == null) {
+                    sendEvent(DynamicMenuEvent.ShowSnackbar("Error: missing endpoint for custom list"))
+                    return
+                }
+                Timber.d("Navigating to custom list: ${menuItem.id}")
+                sendEvent(
+                    DynamicMenuEvent.NavigateToCustomList(
+                        menuItemId = menuItem.id,
+                        menuItemName = menuItem.name,
+                        endpoint = menuItem.endpoint,
+                        screenSettings = menuItem.screenSettings
+                    ))
+            }
         }
     }
 

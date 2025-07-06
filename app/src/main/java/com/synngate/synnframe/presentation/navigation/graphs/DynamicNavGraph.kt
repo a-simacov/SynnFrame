@@ -13,6 +13,7 @@ import com.synngate.synnframe.presentation.navigation.NavigationScopeManager
 import com.synngate.synnframe.presentation.navigation.rememberEphemeralScreenContainer
 import com.synngate.synnframe.presentation.navigation.routes.DynamicRoutes
 import com.synngate.synnframe.presentation.navigation.routes.TaskXRoutes
+import com.synngate.synnframe.presentation.ui.dynamicmenu.customlist.DynamicCustomListScreen
 import com.synngate.synnframe.presentation.ui.dynamicmenu.menu.DynamicMenuScreen
 import com.synngate.synnframe.presentation.ui.dynamicmenu.product.DynamicProductDetailScreen
 import com.synngate.synnframe.presentation.ui.dynamicmenu.product.DynamicProductsScreen
@@ -59,6 +60,16 @@ fun NavGraphBuilder.dynamicNavGraph(
                 navigateToDynamicProducts = { menuItemId, menuItemName, endpoint, screenSettings ->
                     navController.navigate(
                         DynamicRoutes.DynamicProducts.createRoute(
+                            menuItemId = menuItemId,
+                            menuItemName = menuItemName,
+                            endpoint = endpoint,
+                            screenSettings = screenSettings
+                        )
+                    )
+                },
+                navigateToCustomList = { menuItemId, menuItemName, endpoint, screenSettings ->
+                    navController.navigate(
+                        DynamicRoutes.CustomList.createRoute(
                             menuItemId = menuItemId,
                             menuItemName = menuItemName,
                             endpoint = endpoint,
@@ -315,6 +326,78 @@ fun NavGraphBuilder.dynamicNavGraph(
                 navigateBack = {
                     navController.popBackStack()
                 }
+            )
+        }
+
+        // Экран списка пользовательских элементов
+        composable(
+            route = DynamicRoutes.CustomList.route,
+            arguments = listOf(
+                navArgument("menuItemId") {
+                    type = NavType.StringType
+                },
+                navArgument("menuItemName") {
+                    type = NavType.StringType
+                    nullable = true
+                },
+                navArgument("endpoint") {
+                    type = NavType.StringType
+                    nullable = false
+                },
+                navArgument("screenSettings") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { entry ->
+            val menuItemId = entry.arguments?.getString("menuItemId") ?: ""
+            val encodedMenuItemName = entry.arguments?.getString("menuItemName") ?: ""
+            val menuItemName = java.net.URLDecoder.decode(encodedMenuItemName, "UTF-8")
+
+            // Декодируем endpoint из Base64
+            val encodedEndpoint = entry.arguments?.getString("endpoint") ?: ""
+            val endpoint = try {
+                String(Base64.getDecoder().decode(encodedEndpoint))
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to decode endpoint from Base64, using as is")
+                encodedEndpoint
+            }
+
+            val encodedScreenSettings = entry.arguments?.getString("screenSettings")
+
+            // Декодирование screenSettings из JSON, если они переданы
+            val screenSettings = if (encodedScreenSettings != null) {
+                try {
+                    val json = java.net.URLDecoder.decode(encodedScreenSettings, "UTF-8")
+                    Json.decodeFromString<ScreenSettings>(json)
+                } catch (e: Exception) {
+                    ScreenSettings() // Используем значение по умолчанию в случае ошибки
+                }
+            } else {
+                ScreenSettings() // Значение по умолчанию, если настройки не переданы
+            }
+
+            val screenContainer = rememberEphemeralScreenContainer(
+                navBackStackEntry = entry,
+                navigationScopeManager = navigationScopeManager
+            )
+
+            val viewModel = remember(menuItemId, menuItemName, endpoint, screenSettings) {
+                screenContainer.createDynamicCustomListViewModel(
+                    menuItemId = menuItemId,
+                    menuItemName = menuItemName,
+                    endpoint = endpoint,
+                    screenSettings = screenSettings
+                )
+            }
+
+            DynamicCustomListScreen(
+                viewModel = viewModel,
+                navigateBack = {
+                    navController.popBackStack()
+                },
+                screenContainer = screenContainer
             )
         }
     }

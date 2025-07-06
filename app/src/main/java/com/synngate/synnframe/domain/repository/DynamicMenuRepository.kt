@@ -2,6 +2,7 @@ package com.synngate.synnframe.domain.repository
 
 import com.synngate.synnframe.data.remote.api.ApiResult
 import com.synngate.synnframe.data.remote.dto.CommonResponseDto
+import com.synngate.synnframe.data.remote.dto.CustomListResponseDto
 import com.synngate.synnframe.data.remote.dto.DynamicTasksResponseDto
 import com.synngate.synnframe.data.remote.dto.SearchKeyValidationResponseDto
 import com.synngate.synnframe.domain.entity.operation.DynamicMenuItem
@@ -28,4 +29,8 @@ interface DynamicMenuRepository {
     suspend fun validateSearchKey(endpoint: String, key: String): ApiResult<SearchKeyValidationResponseDto>
 
     suspend fun deleteTask(endpoint: String, taskId: String): ApiResult<CommonResponseDto>
+
+    suspend fun getCustomList(endpoint: String, params: Map<String, String> = emptyMap()): ApiResult<CustomListResponseDto>
+
+    suspend fun searchCustomList(endpoint: String, searchValue: String): ApiResult<CustomListResponseDto>
 }
