@@ -14,7 +14,9 @@ data class ProductEntity(
     val name: String,
     val accountingModel: String,
     val articleNumber: String,
-    val mainUnitId: String
+    val mainUnitId: String,
+    val weight: Float = 0.0f,
+    val maxQtyPerPallet: Float = 0.0f
 ) {
 
     fun toDomainModel(units: List<ProductUnit> = emptyList()): Product {
@@ -24,6 +26,8 @@ data class ProductEntity(
             accountingModel = AccountingModel.fromString(accountingModel),
             articleNumber = articleNumber,
             mainUnitId = mainUnitId,
+            weight = weight,
+            maxQtyPerPallet = maxQtyPerPallet,
             units = units
         )
     }
@@ -35,7 +39,9 @@ data class ProductEntity(
                 name = product.name,
                 accountingModel = product.accountingModel.name,
                 articleNumber = product.articleNumber,
-                mainUnitId = product.mainUnitId
+                mainUnitId = product.mainUnitId,
+                weight = product.weight,
+                maxQtyPerPallet = product.maxQtyPerPallet
             )
         }
     }

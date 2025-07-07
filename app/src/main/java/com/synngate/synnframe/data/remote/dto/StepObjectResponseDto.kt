@@ -69,6 +69,9 @@ data class StepObjectResponseDto(
     @SerialName("productMainUnitId")
     val productMainUnitId: String? = null,
 
+    @SerialName("productMaxQtyPerPallet")
+    val productMaxQtyPerPallet: Float? = null,
+
     // Поле для количества
     @SerialName("quantity")
     val quantity: Float? = null,

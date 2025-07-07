@@ -11,6 +11,7 @@ data class Product(
     val articleNumber: String = "",
     val mainUnitId: String = "",
     val weight: Float = 0.0f,
+    val maxQtyPerPallet: Float = 0.0f,
     val units: List<ProductUnit> = emptyList()
 ) {
 

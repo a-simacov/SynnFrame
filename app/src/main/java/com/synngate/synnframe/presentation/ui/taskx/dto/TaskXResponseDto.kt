@@ -113,7 +113,8 @@ data class ProductDto(
     val id: String,
     val name: String,
     val articleNumber: String? = null,
-    val weight: Float = 0.0f
+    val weight: Float = 0.0f,
+    val maxQtyPerPallet: Float = 0.0f
 )
 
 @Serializable

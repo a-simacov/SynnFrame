@@ -71,6 +71,7 @@ class StepObjectMapperService(
                                 name = response.productName ?: baseProduct.name,
                                 articleNumber = response.productArticleNumber ?: baseProduct.articleNumber,
                                 weight = response.productWeight ?: baseProduct.weight,
+                                maxQtyPerPallet = response.productMaxQtyPerPallet ?: baseProduct.maxQtyPerPallet,
                                 accountingModel = response.productAccountingModel?.let { 
                                     try { 
                                         AccountingModel.valueOf(it) 
@@ -103,6 +104,7 @@ class StepObjectMapperService(
                                 name = response.productName ?: baseProduct.name,
                                 articleNumber = response.productArticleNumber ?: baseProduct.articleNumber,
                                 weight = response.productWeight ?: baseProduct.weight,
+                                maxQtyPerPallet = response.productMaxQtyPerPallet ?: baseProduct.maxQtyPerPallet,
                                 accountingModel = response.productAccountingModel?.let { 
                                     try { 
                                         AccountingModel.valueOf(it) 
@@ -176,6 +178,7 @@ class StepObjectMapperService(
                     name = response.productName ?: baseProduct.name,
                     articleNumber = response.productArticleNumber ?: baseProduct.articleNumber,
                     weight = response.productWeight ?: baseProduct.weight,
+                    maxQtyPerPallet = response.productMaxQtyPerPallet ?: baseProduct.maxQtyPerPallet,
                     accountingModel = response.productAccountingModel?.let { 
                         try { 
                             AccountingModel.valueOf(it) 
@@ -195,6 +198,7 @@ class StepObjectMapperService(
                         name = response.productName ?: baseProduct.name,
                         articleNumber = response.productArticleNumber ?: baseProduct.articleNumber,
                         weight = response.productWeight ?: baseProduct.weight,
+                        maxQtyPerPallet = response.productMaxQtyPerPallet ?: baseProduct.maxQtyPerPallet,
                         accountingModel = response.productAccountingModel?.let { 
                             try { 
                                 AccountingModel.valueOf(it) 

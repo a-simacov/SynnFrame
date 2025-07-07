@@ -31,7 +31,7 @@ import com.synngate.synnframe.data.sync.SyncHistoryRecord
         SyncOperation::class,
         SyncHistoryRecord::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -62,6 +62,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DATABASE_NAME
                 )
+                    .addMigrations(*DatabaseMigrations.ALL_MIGRATIONS)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

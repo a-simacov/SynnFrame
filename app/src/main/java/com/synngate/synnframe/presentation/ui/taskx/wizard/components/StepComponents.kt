@@ -91,6 +91,18 @@ fun StorageProductStep(
                             text = "Article: ${product.product.articleNumber}",
                             style = MaterialTheme.typography.bodyMedium
                         )
+                        if (product.product.weight > 0) {
+                            Text(
+                                text = "Weight: ${product.product.weight} kg",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        if (product.product.maxQtyPerPallet > 0) {
+                            Text(
+                                text = "Max qty per pallet: ${product.product.maxQtyPerPallet}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
                         if (product.hasExpirationDate()) {
                             Text(
                                 text = "Expiration date: ${product.expirationDate?.toLocalDate()}",
@@ -156,6 +168,18 @@ fun StorageProductStep(
                             text = "Article: ${selectedProduct.product.articleNumber}",
                             style = MaterialTheme.typography.bodyMedium
                         )
+                        if (selectedProduct.product.weight > 0) {
+                            Text(
+                                text = "Weight: ${selectedProduct.product.weight} kg",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        if (selectedProduct.product.maxQtyPerPallet > 0) {
+                            Text(
+                                text = "Max qty per pallet: ${selectedProduct.product.maxQtyPerPallet}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
                         if (selectedProduct.hasExpirationDate()) {
                             Text(
                                 text = "Expiration date: ${selectedProduct.expirationDate?.toLocalDate()}",
@@ -266,6 +290,12 @@ fun StorageProductCard(
         title = product.product.name,
         subtitle = buildString {
             append("Article: ${product.product.articleNumber}")
+            if (product.product.weight > 0) {
+                append("\nWeight: ${product.product.weight} kg")
+            }
+            if (product.product.maxQtyPerPallet > 0) {
+                append("\nMax qty per pallet: ${product.product.maxQtyPerPallet}")
+            }
             if (product.hasExpirationDate()) {
                 append(
                     "\nExpiration date: ${
@@ -316,6 +346,18 @@ fun AdditionalPropsProductForm(
                     text = "Article: ${classifierProduct?.articleNumber ?: ""}",
                     style = MaterialTheme.typography.bodyMedium
                 )
+                if (classifierProduct?.weight != null && classifierProduct.weight > 0) {
+                    Text(
+                        text = "Weight: ${classifierProduct.weight} kg",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                if (classifierProduct?.maxQtyPerPallet != null && classifierProduct.maxQtyPerPallet > 0) {
+                    Text(
+                        text = "Max qty per pallet: ${classifierProduct.maxQtyPerPallet}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
                 if (taskProduct.hasExpirationDate()) {
                     Text(
                         text = "Expiration date: ${taskProduct.expirationDate?.toLocalDate()}",
@@ -395,6 +437,18 @@ fun AdditionalPropsProductForm(
                         text = "Article: ${classifierProduct.articleNumber}",
                         style = MaterialTheme.typography.bodyMedium
                     )
+                    if (classifierProduct.weight > 0) {
+                        Text(
+                            text = "Weight: ${classifierProduct.weight} kg",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    if (classifierProduct.maxQtyPerPallet > 0) {
+                        Text(
+                            text = "Max qty per pallet: ${classifierProduct.maxQtyPerPallet}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                     Text(
                         text = "ID: ${classifierProduct.id}",
                         style = MaterialTheme.typography.bodySmall,
@@ -540,7 +594,16 @@ fun ProductClassifierCard(
 ) {
     PlannedObjectCard(
         title = product.name,
-        subtitle = "Article: ${product.articleNumber}\nID: ${product.id}",
+        subtitle = buildString {
+            append("Article: ${product.articleNumber}")
+            if (product.weight > 0) {
+                append("\nWeight: ${product.weight} kg")
+            }
+            if (product.maxQtyPerPallet > 0) {
+                append("\nMax qty per pallet: ${product.maxQtyPerPallet}")
+            }
+            append("\nID: ${product.id}")
+        },
         isSelected = isSelected,
         onClick = onClick,
         isLocked = isLocked,

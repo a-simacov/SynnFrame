@@ -22,6 +22,12 @@ data class ProductDto(
     @SerialName("mainUnitId")
     val mainUnitId: String,
 
+    @SerialName("weight")
+    val weight: Float = 0.0f,
+
+    @SerialName("maxQtyPerPallet")
+    val maxQtyPerPallet: Float = 0.0f,
+
     @SerialName("units")
     val units: List<ProductUnitDto>
 ) {
@@ -33,6 +39,8 @@ data class ProductDto(
             accountingModel = AccountingModel.fromString(accountingModel),
             articleNumber = articleNumber,
             mainUnitId = mainUnitId,
+            weight = weight,
+            maxQtyPerPallet = maxQtyPerPallet,
             units = units.map { it.toDomainModel() }
         )
     }
@@ -45,6 +53,8 @@ data class ProductDto(
                 accountingModel = product.accountingModel.name,
                 articleNumber = product.articleNumber,
                 mainUnitId = product.mainUnitId,
+                weight = product.weight,
+                maxQtyPerPallet = product.maxQtyPerPallet,
                 units = product.units.map { ProductUnitDto.fromDomainModel(it) }
             )
         }
