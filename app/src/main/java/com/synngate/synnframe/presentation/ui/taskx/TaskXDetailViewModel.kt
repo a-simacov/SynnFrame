@@ -150,7 +150,8 @@ class TaskXDetailViewModel(
                     updateState { state ->
                         state.copy(
                             task = updatedTask,
-                            actionUiModels = actionUiModels
+                            actionUiModels = actionUiModels,
+                            isLoading = false
                         )
                     }
                     
