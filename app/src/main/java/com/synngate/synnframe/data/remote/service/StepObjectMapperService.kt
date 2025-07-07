@@ -135,7 +135,7 @@ class StepObjectMapperService(
                                 status = status
                             )
                             
-                            Timber.d("Successfully created updated TaskProduct with weight: ${updatedProduct.weight}")
+                            Timber.d("Successfully created updated TaskProduct ${resultTaskProduct}")
                             return resultTaskProduct
                         } else {
                             Timber.e("Failed to find base product with ID: $productId")

@@ -200,6 +200,7 @@ class WizardNetworkService(
                     name = update.name.ifEmpty { selected.name },
                     articleNumber = update.articleNumber.ifEmpty { selected.articleNumber },
                     weight = if (update.weight != 0.0f) update.weight else selected.weight,
+                    maxQtyPerPallet = if (update.maxQtyPerPallet != 0.0f) update.maxQtyPerPallet else selected.maxQtyPerPallet,
                     accountingModel = if (update.accountingModel != selected.accountingModel) update.accountingModel else selected.accountingModel,
                     mainUnitId = update.mainUnitId.ifEmpty { selected.mainUnitId },
                     units = if (update.units.isNotEmpty()) update.units else selected.units
@@ -217,6 +218,7 @@ class WizardNetworkService(
                         name = update.product.name.ifEmpty { selected.product.name },
                         articleNumber = update.product.articleNumber.ifEmpty { selected.product.articleNumber },
                         weight = if (update.product.weight != 0.0f) update.product.weight else selected.product.weight,
+                        maxQtyPerPallet = if (update.product.maxQtyPerPallet != 0.0f) update.product.maxQtyPerPallet else selected.product.maxQtyPerPallet,
                         accountingModel = if (update.product.accountingModel != selected.product.accountingModel) update.product.accountingModel else selected.product.accountingModel,
                         mainUnitId = update.product.mainUnitId.ifEmpty { selected.product.mainUnitId },
                         units = if (update.product.units.isNotEmpty()) update.product.units else selected.product.units
