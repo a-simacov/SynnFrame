@@ -49,6 +49,9 @@ class TaskXDetailViewModel(
     private var lastAddedFilterField: FactActionField? = null
 
     init {
+        Timber.d("TaskXDetailViewModel init: taskId=$taskId, endpoint=$endpoint")
+        Timber.d("Current cached task in singleton: ${TaskXDataHolderSingleton.currentTask.value?.id}")
+        
         loadTask()
         loadCurrentUser()
         updateFilterState()
@@ -58,10 +61,18 @@ class TaskXDetailViewModel(
 
     private fun loadTask() {
         launchIO {
+            // Очищаем данные предыдущего задания, если открываем новое
+            val currentTaskId = TaskXDataHolderSingleton.currentTask.value?.id
+            if (currentTaskId != null && currentTaskId != taskId) {
+                Timber.d("Opening new task $taskId, clearing previous task data from $currentTaskId")
+                TaskXDataHolderSingleton.forceClean()
+            }
+            
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
                 val startEndpoint = "$endpoint/$taskId/take"
+                Timber.d("Loading task $taskId from endpoint: $startEndpoint")
                 val taskResult = dynamicMenuUseCases.startDynamicTask(startEndpoint, taskId)
 
                 if (taskResult.isSuccess()) {
