@@ -166,6 +166,7 @@ object TaskXMapper {
             factActionField = FactActionField.valueOf(dto.factActionField),
             isRequired = dto.isRequired,
             serverSelectionEndpoint = dto.serverSelectionEndpoint,
+            updateActionFieldEndpoint = dto.updateActionFieldEndpoint,
             inputAdditionalProps = dto.inputAdditionalProps,
             bufferUsage = dto.bufferUsage?.let {
                 when (it) {

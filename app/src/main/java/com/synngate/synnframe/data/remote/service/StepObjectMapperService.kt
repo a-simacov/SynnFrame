@@ -1,6 +1,7 @@
 package com.synngate.synnframe.data.remote.service
 
 import com.synngate.synnframe.data.remote.dto.StepObjectResponseDto
+import com.synngate.synnframe.domain.entity.AccountingModel
 import com.synngate.synnframe.domain.entity.taskx.BinX
 import com.synngate.synnframe.domain.entity.taskx.Pallet
 import com.synngate.synnframe.domain.entity.taskx.ProductStatus
@@ -37,6 +38,9 @@ class StepObjectMapperService(
         response: StepObjectResponseDto,
         fieldType: FactActionField
     ): Any? {
+        Timber.d("Mapping response to object: objectType=${response.objectType}, fieldType=$fieldType")
+        Timber.d("Response fields: taskProductId=${response.taskProductId}, productWeight=${response.productWeight}")
+        
         // Сначала проверяем objectType (если указан)
         if (!response.objectType.isNullOrBlank()) {
             when (response.objectType.uppercase()) {
@@ -60,14 +64,55 @@ class StepObjectMapperService(
 
                 OBJECT_TYPE_PRODUCT -> {
                     if (response.productId != null) {
-                        return productUseCases.getProductById(response.productId)
+                        val baseProduct = productUseCases.getProductById(response.productId)
+                        if (baseProduct != null) {
+                            // Создаем обновленный продукт с полями из ответа сервера
+                            return baseProduct.copy(
+                                name = response.productName ?: baseProduct.name,
+                                articleNumber = response.productArticleNumber ?: baseProduct.articleNumber,
+                                weight = response.productWeight ?: baseProduct.weight,
+                                accountingModel = response.productAccountingModel?.let { 
+                                    try { 
+                                        AccountingModel.valueOf(it) 
+                                    } catch (e: Exception) { 
+                                        baseProduct.accountingModel 
+                                    } 
+                                } ?: baseProduct.accountingModel,
+                                mainUnitId = response.productMainUnitId ?: baseProduct.mainUnitId
+                            )
+                        }
                     }
                 }
 
                 OBJECT_TYPE_TASK_PRODUCT -> {
                     if (response.taskProductId != null) {
-                        val product = productUseCases.getProductById(response.taskProductId)
-                        if (product != null) {
+                        Timber.d("Creating TASK_PRODUCT with ID: ${response.taskProductId}")
+                        
+                        // Для обновления TaskProduct нужен ID продукта, а не TaskProduct
+                        // Если есть productId в ответе, используем его
+                        val productId = response.productId ?: run {
+                            Timber.w("No productId in response, using taskProductId as fallback")
+                            response.taskProductId
+                        }
+                        
+                        val baseProduct = productUseCases.getProductById(productId)
+                        if (baseProduct != null) {
+                            Timber.d("Found base product: ${baseProduct.id}, updating with weight: ${response.productWeight}")
+                            // Создаем обновленный продукт с полями из ответа сервера
+                            val updatedProduct = baseProduct.copy(
+                                name = response.productName ?: baseProduct.name,
+                                articleNumber = response.productArticleNumber ?: baseProduct.articleNumber,
+                                weight = response.productWeight ?: baseProduct.weight,
+                                accountingModel = response.productAccountingModel?.let { 
+                                    try { 
+                                        AccountingModel.valueOf(it) 
+                                    } catch (e: Exception) { 
+                                        baseProduct.accountingModel 
+                                    } 
+                                } ?: baseProduct.accountingModel,
+                                mainUnitId = response.productMainUnitId ?: baseProduct.mainUnitId
+                            )
+
                             val status = response.productStatus?.let {
                                 ProductStatus.fromString(it)
                             } ?: ProductStatus.STANDARD
@@ -81,13 +126,20 @@ class StepObjectMapperService(
                                 }
                             }
 
-                            return TaskProduct(
+                            val resultTaskProduct = TaskProduct(
                                 id = response.taskProductId,
-                                product = product,
+                                product = updatedProduct,
                                 expirationDate = expDate,
                                 status = status
                             )
+                            
+                            Timber.d("Successfully created updated TaskProduct with weight: ${updatedProduct.weight}")
+                            return resultTaskProduct
+                        } else {
+                            Timber.e("Failed to find base product with ID: $productId")
                         }
+                    } else {
+                        Timber.e("No taskProductId in response")
                     }
                 }
 
@@ -119,12 +171,40 @@ class StepObjectMapperService(
             }
 
             response.productId != null && fieldType == FactActionField.STORAGE_PRODUCT_CLASSIFIER -> {
-                productUseCases.getProductById(response.productId)
+                val baseProduct = productUseCases.getProductById(response.productId)
+                baseProduct?.copy(
+                    name = response.productName ?: baseProduct.name,
+                    articleNumber = response.productArticleNumber ?: baseProduct.articleNumber,
+                    weight = response.productWeight ?: baseProduct.weight,
+                    accountingModel = response.productAccountingModel?.let { 
+                        try { 
+                            AccountingModel.valueOf(it) 
+                        } catch (e: Exception) { 
+                            baseProduct.accountingModel 
+                        } 
+                    } ?: baseProduct.accountingModel,
+                    mainUnitId = response.productMainUnitId ?: baseProduct.mainUnitId
+                )
             }
 
             response.taskProductId != null && fieldType == FactActionField.STORAGE_PRODUCT -> {
-                val product = productUseCases.getProductById(response.taskProductId)
-                if (product != null) {
+                val baseProduct = productUseCases.getProductById(response.taskProductId)
+                if (baseProduct != null) {
+                    // Создаем обновленный продукт с полями из ответа сервера
+                    val updatedProduct = baseProduct.copy(
+                        name = response.productName ?: baseProduct.name,
+                        articleNumber = response.productArticleNumber ?: baseProduct.articleNumber,
+                        weight = response.productWeight ?: baseProduct.weight,
+                        accountingModel = response.productAccountingModel?.let { 
+                            try { 
+                                AccountingModel.valueOf(it) 
+                            } catch (e: Exception) { 
+                                baseProduct.accountingModel 
+                            } 
+                        } ?: baseProduct.accountingModel,
+                        mainUnitId = response.productMainUnitId ?: baseProduct.mainUnitId
+                    )
+
                     val status = response.productStatus?.let {
                         ProductStatus.fromString(it)
                     } ?: ProductStatus.STANDARD
@@ -140,7 +220,7 @@ class StepObjectMapperService(
 
                     TaskProduct(
                         id = response.taskProductId,
-                        product = product,
+                        product = updatedProduct,
                         expirationDate = expDate,
                         status = status
                     )

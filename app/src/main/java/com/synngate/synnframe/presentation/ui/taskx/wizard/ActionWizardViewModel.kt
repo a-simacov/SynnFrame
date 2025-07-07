@@ -18,6 +18,7 @@ import com.synngate.synnframe.presentation.ui.taskx.wizard.service.ObjectSearchS
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardController
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardNetworkService
 import com.synngate.synnframe.presentation.ui.taskx.wizard.service.WizardValidator
+import com.synngate.synnframe.presentation.ui.taskx.wizard.state.WizardEvent
 import com.synngate.synnframe.presentation.ui.taskx.wizard.state.WizardState
 import com.synngate.synnframe.presentation.ui.taskx.wizard.state.WizardStateMachine
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
@@ -55,6 +56,12 @@ class ActionWizardViewModel(
 
     // Новый Job для запроса объекта с сервера
     private var serverRequestJob: Job? = null
+    
+    // Job для запроса обновлений полей с сервера
+    private var fieldUpdateJob: Job? = null
+    
+    // Флаг для предотвращения множественных валидаций
+    private var isValidating = false
 
     // Новый callback для навигации
     private var navigateBackCallback: (() -> Unit)? = null
@@ -310,19 +317,92 @@ class ActionWizardViewModel(
         updateState { result.getNewState() }
     }
 
-    fun setObjectForCurrentStep(obj: Any, autoAdvance: Boolean = true) {
+    fun setObjectForCurrentStep(obj: Any, autoAdvance: Boolean = true, skipValidation: Boolean = false) {
+        // Отменяем все предыдущие jobs для предотвращения конкурирующих операций
+        fieldUpdateJob?.cancel()
+        
         if (obj is TaskProduct) {
             loadClassifierProductInfo(obj.product.id)
         } else if (obj is Product) {
             loadClassifierProductInfo(obj.id)
         }
 
+        // Сначала устанавливаем объект как обычно
         val result = controller.setObjectForCurrentStep(uiState.value, obj)
         updateState { result.getNewState() }
 
         if (autoAdvance) {
-            Timber.d("Initiating auto-advance after setting object: $obj")
-            tryAutoAdvance()
+            Timber.d("Initiating auto-advance after setting object: $obj, skipValidation=$skipValidation")
+            if (skipValidation) {
+                tryAutoAdvanceWithFieldUpdatesSkipValidation(obj)
+            } else {
+                tryAutoAdvanceWithFieldUpdates(obj)
+            }
+        }
+    }
+
+    private fun tryAutoAdvanceWithFieldUpdates(originalObject: Any) {
+        // Отменяем предыдущий запрос на обновление полей
+        fieldUpdateJob?.cancel()
+        
+        fieldUpdateJob = launchIO {
+            val currentState = uiState.value
+            val currentStep = currentState.getCurrentStep()
+
+            // Сначала выполняем валидацию
+            val isValid = validateCurrentStep()
+            
+            if (isValid) {
+                // Если валидация прошла успешно и есть updateActionFieldEndpoint
+                if (currentStep != null && currentStep.updateActionFieldEndpoint.isNotEmpty()) {
+                    Timber.d("Validation passed, requesting field updates from server")
+                    
+                    updateState { it.copy(isRequestingServerObject = true) }
+                    
+                    val updateResult = networkService.getFieldUpdates(
+                        endpoint = currentStep.updateActionFieldEndpoint,
+                        factAction = currentState.factAction!!,
+                        selectedObject = originalObject,
+                        fieldType = currentStep.factActionField
+                    )
+                    
+                    updateState { it.copy(isRequestingServerObject = false) }
+                    
+                    if (updateResult.isSuccess()) {
+                        val updatedObject = updateResult.getResponseData()
+                        Timber.d("Field updates received, updating object in FactAction")
+                        
+                        launchMain {
+                            // Обновляем только объект в состоянии без повторной валидации
+                            val currentState = uiState.value
+                            val updatedObjects = currentState.selectedObjects.toMutableMap()
+                            updatedObjects[currentStep.id] = updatedObject!!
+                            
+                            // Обновляем FactAction через StateMachine
+                            val tempStateForUpdate = currentState.copy(selectedObjects = updatedObjects)
+                            val finalState = stateMachine.transition(tempStateForUpdate, WizardEvent.SetObject(updatedObject, currentStep.id))
+                            updateState { finalState }
+                            
+                            // Продолжаем auto-advance без повторной валидации (валидация уже прошла)
+                            tryAutoAdvanceSkipValidation()
+                        }
+                    } else {
+                        Timber.e("Failed to get field updates: ${updateResult.getErrorMessage()}")
+                        sendEvent(ActionWizardEvent.ShowSnackbar("Failed to get field updates: ${updateResult.getErrorMessage()}"))
+                        
+                        launchMain {
+                            // В случае ошибки продолжаем с исходным объектом (валидация уже прошла)
+                            tryAutoAdvanceSkipValidation()
+                        }
+                    }
+                } else {
+                    // Если updateActionFieldEndpoint не задан, продолжаем обычный auto-advance
+                    launchMain {
+                        tryAutoAdvance()
+                    }
+                }
+            }
+            // Если валидация не прошла, auto-advance не выполняется
         }
     }
 
@@ -384,6 +464,124 @@ class ActionWizardViewModel(
         }
     }
 
+    private fun tryAutoAdvanceWithFieldUpdatesSkipValidation(originalObject: Any) {
+        // Отменяем предыдущий запрос на обновление полей
+        fieldUpdateJob?.cancel()
+        
+        fieldUpdateJob = launchIO {
+            val currentState = uiState.value
+            val currentStep = currentState.getCurrentStep()
+
+            // Пропускаем валидацию, так как она уже была выполнена в FieldHandler
+            Timber.d("Skipping validation - object already validated in FieldHandler")
+            
+            // Если есть updateActionFieldEndpoint, запрашиваем обновления полей
+            if (currentStep != null && currentStep.updateActionFieldEndpoint.isNotEmpty()) {
+                Timber.d("Requesting field updates from server (validation skipped)")
+                
+                updateState { it.copy(isRequestingServerObject = true) }
+                
+                val updateResult = networkService.getFieldUpdates(
+                    endpoint = currentStep.updateActionFieldEndpoint,
+                    factAction = currentState.factAction!!,
+                    selectedObject = originalObject,
+                    fieldType = currentStep.factActionField
+                )
+                
+                updateState { it.copy(isRequestingServerObject = false) }
+                
+                if (updateResult.isSuccess()) {
+                    val updatedObject = updateResult.getResponseData()
+                    Timber.d("Field updates received, updating object in FactAction")
+                    
+                    launchMain {
+                        // Обновляем только объект в состоянии без повторной валидации
+                        val currentState = uiState.value
+                        val updatedObjects = currentState.selectedObjects.toMutableMap()
+                        updatedObjects[currentStep.id] = updatedObject!!
+                        
+                        // Обновляем FactAction через StateMachine
+                        val tempStateForUpdate = currentState.copy(selectedObjects = updatedObjects)
+                        val finalState = stateMachine.transition(tempStateForUpdate, WizardEvent.SetObject(updatedObject, currentStep.id))
+                        updateState { finalState }
+                        
+                        // Продолжаем auto-advance без повторной валидации
+                        tryAutoAdvanceSkipValidation()
+                    }
+                } else {
+                    Timber.e("Failed to get field updates: ${updateResult.getErrorMessage()}")
+                    sendEvent(ActionWizardEvent.ShowSnackbar("Failed to get field updates: ${updateResult.getErrorMessage()}"))
+                    
+                    launchMain {
+                        // В случае ошибки продолжаем с исходным объектом (валидация была пропущена)
+                        tryAutoAdvanceSkipValidation()
+                    }
+                }
+            } else {
+                // Если updateActionFieldEndpoint не задан, продолжаем обычный auto-advance без валидации
+                launchMain {
+                    tryAutoAdvanceSkipValidation()
+                }
+            }
+        }
+    }
+
+    private fun tryAutoAdvanceSkipValidation() {
+        launchIO {
+            val currentState = uiState.value
+
+            // Если текущий шаг не виден, автоматически переходим к следующему видимому
+            val currentStep = currentState.getCurrentStep()
+            if (currentStep != null && !expressionEvaluator.evaluateVisibilityCondition(
+                    currentStep.visibilityCondition,
+                    currentState
+                )) {
+                Timber.d("Current step ${currentStep.id} is invisible, looking for next visible step for auto-advance")
+
+                val nextVisibleIndex = expressionEvaluator.findNextVisibleStepIndex(currentState)
+
+                launchMain {
+                    if (nextVisibleIndex != null) {
+                        updateState { it.copy(currentStepIndex = nextVisibleIndex) }
+                        initializeStepWithFiltersAndBuffer(nextVisibleIndex)
+                    } else {
+                        // Если нет видимых шагов впереди, переходим к экрану итогов
+                        updateState { it.copy(showSummary = true) }
+                    }
+                }
+                return@launchIO
+            }
+
+            // Пропускаем валидацию, так как она уже была выполнена
+            Timber.d("Skipping validation - already validated in tryAutoAdvanceWithFieldUpdates")
+            
+            // Переходим в Main поток для обновления состояния
+            launchMain {
+                val result = controller.tryAutoAdvance(uiState.value) {
+                    // Валидация пропущена, так как уже была выполнена
+                    true
+                }
+
+                if (result.isSuccess()) {
+                    val newState = result.getNewState()
+                    updateState { newState }
+
+                    // Проверяем, произошел ли переход на итоговый экран
+                    if (newState.showSummary) {
+                        if (shouldAutoComplete(newState)) {
+                            Timber.d("Automatic action completion after auto-advance to summary screen")
+                            completeAction()
+                        }
+                    } else {
+                        // После автоперехода инициализируем новый шаг (только если не итоговый экран)
+                        initializeStepWithFiltersAndBuffer(newState.currentStepIndex)
+                    }
+                }
+            }
+            // Если валидация была не нужна, продолжаем
+        }
+    }
+
     /**
      * Автоматический переход для объектов из буфера с режимом ALWAYS
      */
@@ -414,25 +612,37 @@ class ActionWizardViewModel(
     }
 
     private suspend fun validateCurrentStep(): Boolean {
-        val currentState = uiState.value
-
-        // Используем новый метод валидации, который возвращает детальную информацию
-        val validationResult = validator.validateCurrentStep(currentState)
-
-        if (!validationResult.isValid) {
-            val errorMessage = validationResult.errorMessage ?: "Validation failed"
-
-            // ВАЖНО: Обновляем UI состояние в Main потоке
-            launchMain {
-                // Устанавливаем детальную ошибку в состояние для отображения вверху экрана
-                updateState { it.copy(error = errorMessage) }
-
-                // И также отправляем в снекбар
-                sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
-            }
+        // Защита от множественных одновременных валидаций
+        if (isValidating) {
+            Timber.d("Validation already in progress, skipping")
+            return false
         }
 
-        return validationResult.isValid
+        isValidating = true
+
+        try {
+            val currentState = uiState.value
+
+            // Используем новый метод валидации, который возвращает детальную информацию
+            val validationResult = validator.validateCurrentStep(currentState)
+
+            if (!validationResult.isValid) {
+                val errorMessage = validationResult.errorMessage ?: "Validation failed"
+
+                // ВАЖНО: Обновляем UI состояние в Main потоке
+                launchMain {
+                    // Устанавливаем детальную ошибку в состояние для отображения вверху экрана
+                    updateState { it.copy(error = errorMessage) }
+
+                    // И также отправляем в снекбар
+                    sendEvent(ActionWizardEvent.ShowSnackbar(errorMessage))
+                }
+            }
+
+            return validationResult.isValid
+        } finally {
+            isValidating = false
+        }
     }
 
     fun handleBarcode(barcode: String) {
@@ -475,7 +685,7 @@ class ActionWizardViewModel(
                     if (result.isSuccess() && result.isProcessingRequired()) {
                         val foundObject = result.getResultData()
                         if (foundObject != null) {
-                            setObjectForCurrentStep(foundObject, true)
+                            setObjectForCurrentStep(foundObject, true, true)
                         }
                     } else if (!result.isSuccess()) {
                         val errorMessage = result.getErrorMessage()
@@ -994,5 +1204,12 @@ class ActionWizardViewModel(
             )
             state.copy(executedCommands = updatedCommands)
         }
+    }
+
+    override fun onCleared() {
+        fieldUpdateJob?.cancel()
+        serverRequestJob?.cancel()
+        resetProcessingJob?.cancel()
+        super.onCleared()
     }
 }

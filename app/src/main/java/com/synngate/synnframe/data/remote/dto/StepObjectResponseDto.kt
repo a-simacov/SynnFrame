@@ -9,8 +9,8 @@ import kotlinx.serialization.Serializable
  * Возможные значения objectType:
  * - "BIN" - ячейка (используются поля binCode, binZone)
  * - "PALLET" - паллета (используются поля palletCode, palletIsClosed)
- * - "PRODUCT" - товар из классификатора (используется поле productId)
- * - "TASK_PRODUCT" - товар задания (используются поля taskProductId, expirationDate, productStatus)
+ * - "PRODUCT" - товар из классификатора (используется поле productId, дополнительно productName, productWeight и др.)
+ * - "TASK_PRODUCT" - товар задания (используются поля taskProductId, expirationDate, productStatus, дополнительно productName, productWeight и др.)
  * - "QUANTITY" - количество (используется поле quantity)
  */
 @Serializable
@@ -52,6 +52,22 @@ data class StepObjectResponseDto(
 
     @SerialName("productStatus")
     val productStatus: String? = null,
+
+    // Поля продукта для обновления
+    @SerialName("productName")
+    val productName: String? = null,
+
+    @SerialName("productArticleNumber")
+    val productArticleNumber: String? = null,
+
+    @SerialName("productWeight")
+    val productWeight: Float? = null,
+
+    @SerialName("productAccountingModel")
+    val productAccountingModel: String? = null,
+
+    @SerialName("productMainUnitId")
+    val productMainUnitId: String? = null,
 
     // Поле для количества
     @SerialName("quantity")

@@ -90,6 +90,7 @@ data class ActionStepDto(
     val factActionField: String,
     val isRequired: Boolean = true,
     val serverSelectionEndpoint: String = "",
+    val updateActionFieldEndpoint: String = "",
     val inputAdditionalProps: Boolean = false,
     val bufferUsage: String? = null,
     val saveToTaskBuffer: Boolean = false,

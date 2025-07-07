@@ -114,6 +114,135 @@ class WizardNetworkService(
     }
 
     /**
+     * Получает обновления для полей объекта с сервера
+     */
+    suspend fun getFieldUpdates(
+        endpoint: String,
+        factAction: FactAction,
+        selectedObject: Any,
+        fieldType: FactActionField
+    ): NetworkResult<Any> = withContext(Dispatchers.IO) {
+        if (endpoint.isEmpty()) {
+            return@withContext NetworkResult.error("Update endpoint not specified")
+        }
+
+        try {
+            Timber.d("Request field updates from server: $endpoint for field $fieldType")
+            
+            // Заменяем плейсхолдеры в endpoint
+            var processedEndpoint = endpoint
+            if (processedEndpoint.contains("{taskId}")) {
+                processedEndpoint = processedEndpoint.replace("{taskId}", factAction.taskId)
+            }
+
+            // Делаем GET запрос с factAction в качестве параметров
+            val result = stepObjectApi.getStepObject(processedEndpoint, factAction)
+            
+            return@withContext when (result) {
+                is ApiResult.Success -> {
+                    val data = result.data
+                    if (!data.success) {
+                        Timber.w("Server returned error: ${data.errorMessage}")
+                        NetworkResult.error(data.errorMessage ?: "Error retrieving field updates from server")
+                    } else {
+                        // Маппим ответ в объект того же типа, что и selectedObject
+                        val updateObject = stepObjectMapperService.mapResponseToObject(data, fieldType)
+                        if (updateObject != null) {
+                            // Объединяем поля из updateObject с selectedObject
+                            val updatedObject = mergeObjects(selectedObject, updateObject, fieldType)
+                            Timber.d("Field updates successfully received and applied")
+                            NetworkResult.success(updatedObject)
+                        } else {
+                            Timber.w("Failed to convert field updates from server response")
+                            NetworkResult.error("Failed to convert field updates from server response")
+                        }
+                    }
+                }
+                is ApiResult.Error -> {
+                    Timber.e("API error retrieving field updates: ${result.message}")
+                    NetworkResult.error(result.message)
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Exception when requesting field updates from server: $endpoint")
+            NetworkResult.error("Error: ${e.message}")
+        }
+    }
+    
+    /**
+     * Объединяет поля из updateObject в selectedObject
+     */
+    private fun mergeObjects(selectedObject: Any, updateObject: Any, fieldType: FactActionField): Any {
+        return when (fieldType) {
+            FactActionField.STORAGE_BIN, FactActionField.ALLOCATION_BIN -> {
+                val selected = selectedObject as BinX
+                val update = updateObject as BinX
+                selected.copy(
+                    code = update.code.ifEmpty { selected.code },
+                    zone = update.zone.ifEmpty { selected.zone }
+                )
+            }
+            
+            FactActionField.STORAGE_PALLET, FactActionField.ALLOCATION_PALLET -> {
+                val selected = selectedObject as Pallet
+                val update = updateObject as Pallet
+                selected.copy(
+                    code = update.code.ifEmpty { selected.code },
+                    isClosed = update.isClosed
+                )
+            }
+            
+            FactActionField.STORAGE_PRODUCT_CLASSIFIER -> {
+                val selected = selectedObject as Product
+                val update = updateObject as Product
+                selected.copy(
+                    id = update.id.ifEmpty { selected.id },
+                    name = update.name.ifEmpty { selected.name },
+                    articleNumber = update.articleNumber.ifEmpty { selected.articleNumber },
+                    weight = if (update.weight != 0.0f) update.weight else selected.weight,
+                    accountingModel = if (update.accountingModel != selected.accountingModel) update.accountingModel else selected.accountingModel,
+                    mainUnitId = update.mainUnitId.ifEmpty { selected.mainUnitId },
+                    units = if (update.units.isNotEmpty()) update.units else selected.units
+                )
+            }
+            
+            FactActionField.STORAGE_PRODUCT -> {
+                val selected = selectedObject as TaskProduct
+                val update = updateObject as TaskProduct
+                
+                // Объединяем поля Product внутри TaskProduct
+                val mergedProduct = if (update.product.id.isNotEmpty()) {
+                    selected.product.copy(
+                        id = update.product.id.ifEmpty { selected.product.id },
+                        name = update.product.name.ifEmpty { selected.product.name },
+                        articleNumber = update.product.articleNumber.ifEmpty { selected.product.articleNumber },
+                        weight = if (update.product.weight != 0.0f) update.product.weight else selected.product.weight,
+                        accountingModel = if (update.product.accountingModel != selected.product.accountingModel) update.product.accountingModel else selected.product.accountingModel,
+                        mainUnitId = update.product.mainUnitId.ifEmpty { selected.product.mainUnitId },
+                        units = if (update.product.units.isNotEmpty()) update.product.units else selected.product.units
+                    )
+                } else {
+                    selected.product
+                }
+                
+                selected.copy(
+                    id = update.id.ifEmpty { selected.id },
+                    product = mergedProduct,
+                    expirationDate = update.expirationDate ?: selected.expirationDate,
+                    status = if (update.status != ProductStatus.STANDARD) update.status else selected.status
+                )
+            }
+            
+            FactActionField.QUANTITY -> {
+                // Для количества просто возвращаем новое значение
+                updateObject
+            }
+            
+            else -> selectedObject
+        }
+    }
+
+    /**
      * Выполняет команду с указанными параметрами
      */
     suspend fun executeCommand(

@@ -14,6 +14,7 @@ data class ActionStepTemplate(
     val factActionField: FactActionField,
     val isRequired: Boolean = true,
     val serverSelectionEndpoint: String = "",
+    val updateActionFieldEndpoint: String = "",
     val inputAdditionalProps: Boolean = false,
     val bufferUsage: BufferUsage = BufferUsage.NEVER,
     val saveToTaskBuffer: Boolean = false,
