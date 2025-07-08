@@ -8,6 +8,7 @@ import com.synngate.synnframe.domain.usecase.product.ProductUseCases
 import com.synngate.synnframe.presentation.navigation.TaskXDataHolderSingleton
 import com.synngate.synnframe.presentation.ui.taskx.entity.CommandExecutionBehavior
 import com.synngate.synnframe.presentation.ui.taskx.entity.StepCommand
+import com.synngate.synnframe.presentation.ui.taskx.enums.FactActionField
 import com.synngate.synnframe.presentation.ui.taskx.wizard.handler.FieldHandlerFactory
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardEvent
 import com.synngate.synnframe.presentation.ui.taskx.wizard.model.ActionWizardState
@@ -329,14 +330,55 @@ class ActionWizardViewModel(
 
         // Сначала устанавливаем объект как обычно
         val result = controller.setObjectForCurrentStep(uiState.value, obj)
-        updateState { result.getNewState() }
+        val newState = result.getNewState()
+        updateState { newState }
 
         if (autoAdvance) {
             Timber.d("Initiating auto-advance after setting object: $obj, skipValidation=$skipValidation")
-            if (skipValidation) {
-                tryAutoAdvanceWithFieldUpdatesSkipValidation(obj)
-            } else {
-                tryAutoAdvanceWithFieldUpdates(obj)
+            
+            // Запускаем автопереход в отдельной корутине с ожиданием обновления состояния
+            launchIO {
+                // Ждем, пока объект действительно появится в состоянии И в factAction
+                val currentStep = newState.getCurrentStep()
+                if (currentStep != null) {
+                    var retries = 0
+                    while (retries < 10) {
+                        val currentState = uiState.value
+                        val hasObjectInState = currentState.selectedObjects.containsKey(currentStep.id)
+                        
+                        // Проверяем, что объект также обновлен в factAction
+                        val hasObjectInFactAction = when (currentStep.factActionField) {
+                            FactActionField.STORAGE_PRODUCT -> currentState.factAction?.storageProduct != null
+                            FactActionField.STORAGE_PRODUCT_CLASSIFIER -> currentState.factAction?.storageProductClassifier != null
+                            FactActionField.STORAGE_BIN -> currentState.factAction?.storageBin != null
+                            FactActionField.STORAGE_PALLET -> currentState.factAction?.storagePallet != null
+                            FactActionField.ALLOCATION_BIN -> currentState.factAction?.placementBin != null
+                            FactActionField.ALLOCATION_PALLET -> currentState.factAction?.placementPallet != null
+                            FactActionField.QUANTITY -> currentState.factAction?.quantity ?: 0f > 0f
+                            else -> true
+                        }
+                        
+                        if (hasObjectInState && hasObjectInFactAction) {
+                            // Объект установлен и в состоянии, и в factAction
+                            Timber.d("Object found in state and factAction after $retries retries")
+                            break
+                        }
+                        
+                        delay(50) // Ждем 50мс перед следующей проверкой
+                        retries++
+                    }
+                    
+                    if (retries >= 10) {
+                        Timber.w("Object not fully updated after 10 retries, proceeding anyway")
+                    }
+                }
+                
+                // Теперь запускаем автопереход
+                if (skipValidation) {
+                    tryAutoAdvanceWithFieldUpdatesSkipValidation(obj)
+                } else {
+                    tryAutoAdvanceWithFieldUpdates(obj)
+                }
             }
         }
     }
@@ -355,6 +397,15 @@ class ActionWizardViewModel(
             if (isValid) {
                 // Если валидация прошла успешно и есть updateActionFieldEndpoint
                 if (currentStep != null && currentStep.updateActionFieldEndpoint.isNotEmpty()) {
+                    // Проверяем, что объект действительно установлен в состоянии
+                    val selectedObject = currentState.selectedObjects[currentStep.id]
+                    if (selectedObject == null) {
+                        Timber.w("Object not found in state for step ${currentStep.id}, using original object")
+                    }
+                    
+                    // Используем объект из состояния, если он есть, иначе используем оригинальный
+                    val objectToSend = selectedObject ?: originalObject
+                    
                     Timber.d("Validation passed, requesting field updates from server")
                     
                     updateState { it.copy(isRequestingServerObject = true) }
@@ -362,7 +413,7 @@ class ActionWizardViewModel(
                     val updateResult = networkService.getFieldUpdates(
                         endpoint = currentStep.updateActionFieldEndpoint,
                         factAction = currentState.factAction!!,
-                        selectedObject = originalObject,
+                        selectedObject = objectToSend,
                         fieldType = currentStep.factActionField
                     )
                     
@@ -477,6 +528,15 @@ class ActionWizardViewModel(
             
             // Если есть updateActionFieldEndpoint, запрашиваем обновления полей
             if (currentStep != null && currentStep.updateActionFieldEndpoint.isNotEmpty()) {
+                // Проверяем, что объект действительно установлен в состоянии
+                val selectedObject = currentState.selectedObjects[currentStep.id]
+                if (selectedObject == null) {
+                    Timber.w("Object not found in state for step ${currentStep.id}, using original object")
+                }
+                
+                // Используем объект из состояния, если он есть, иначе используем оригинальный
+                val objectToSend = selectedObject ?: originalObject
+                
                 Timber.d("Requesting field updates from server (validation skipped)")
                 
                 updateState { it.copy(isRequestingServerObject = true) }
@@ -484,7 +544,7 @@ class ActionWizardViewModel(
                 val updateResult = networkService.getFieldUpdates(
                     endpoint = currentStep.updateActionFieldEndpoint,
                     factAction = currentState.factAction!!,
-                    selectedObject = originalObject,
+                    selectedObject = objectToSend,
                     fieldType = currentStep.factActionField
                 )
                 
