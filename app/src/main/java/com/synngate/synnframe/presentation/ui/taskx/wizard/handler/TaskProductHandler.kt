@@ -43,7 +43,7 @@ class TaskProductHandler(
         }
 
         val product = plannedObject.product
-        if (product.id == barcode || product.articleNumber == barcode) {
+        if (product.id == barcode) {
             return true
         }
 
@@ -152,7 +152,7 @@ class TaskProductHandler(
     }
 
     private fun matchesProduct(barcode: String, product: Product): Boolean {
-        if (product.id == barcode || product.articleNumber == barcode) {
+        if (product.id == barcode) {
             return true
         }
 

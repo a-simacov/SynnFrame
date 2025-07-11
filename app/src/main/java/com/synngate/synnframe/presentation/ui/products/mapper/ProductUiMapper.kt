@@ -24,7 +24,7 @@ class ProductUiMapper(
             name = product.name,
             articleText = resourceProvider.getString(
                 R.string.product_article,
-                product.articleNumber
+                product.id
             ),
             mainUnitText = resourceProvider.getString(
                 R.string.product_main_unit,
@@ -38,7 +38,7 @@ class ProductUiMapper(
         return ProductDetailUiModel(
             id = product.id,
             name = product.name,
-            articleText = product.articleNumber,
+            articleText = product.id,
             accountingModelText = getAccountingModelText(product.accountingModel),
             units = mapProductUnits(product),
             barcodes = getAllBarcodes(product)

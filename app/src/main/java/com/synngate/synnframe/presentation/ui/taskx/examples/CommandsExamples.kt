@@ -73,14 +73,14 @@ object CommandExamples {
                     order = 1
                 ),
                 CommandParameter(
-                    id = "article_number",
-                    name = "articleNumber",
-                    displayName = "Article",
+                    id = "product_id",
+                    name = "productId",
+                    displayName = "ID",
                     type = CommandParameterType.TEXT,
                     isRequired = true,
                     validation = ParameterValidation(
                         pattern = "[A-Z0-9]{5,20}",
-                        errorMessage = "Артикул должен содержать только заглавные буквы и цифры (5-20 символов)"
+                        errorMessage = "ID должен содержать только заглавные буквы и цифры (5-20 символов)"
                     ),
                     order = 2
                 ),

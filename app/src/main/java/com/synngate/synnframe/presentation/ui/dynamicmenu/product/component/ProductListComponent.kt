@@ -122,7 +122,7 @@ class ProductListComponent<S>(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = stringResource(id = R.string.product_article, product.articleNumber),
+                        text = stringResource(id = R.string.product_article, product.id),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f)

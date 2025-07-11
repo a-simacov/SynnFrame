@@ -103,8 +103,7 @@ class ActionSearchManager(
      */
     private fun matchesProduct(action: PlannedAction, searchValue: String): Boolean {
         val product = action.storageProductClassifier ?: return false
-        return product.id == searchValue ||
-                product.articleNumber == searchValue
+        return product.id == searchValue
     }
 
     /**
@@ -114,8 +113,7 @@ class ActionSearchManager(
         val taskProduct = action.storageProduct ?: return false
         val product = taskProduct.product
 
-        return product.id == searchValue ||
-                product.articleNumber == searchValue
+        return product.id == searchValue
     }
 
     /**

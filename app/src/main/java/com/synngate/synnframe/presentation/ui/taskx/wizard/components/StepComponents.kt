@@ -88,7 +88,7 @@ fun StorageProductStep(
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "Article: ${product.product.articleNumber}",
+                            text = "ID: ${product.product.id}",
                             style = MaterialTheme.typography.bodyMedium
                         )
                         if (product.product.weight > 0) {
@@ -141,7 +141,7 @@ fun StorageProductStep(
                 },
                 onScannerClick = { showScanner = true },
                 onSelectFromList = { showProductSelector = true },
-                label = "Barcode, ID, article",
+                label = "Barcode, ID",
                 placeholder = "Enter or scan",
                 enabled = !useServerRequest && !state.isRequestingServerObject // Блокируем поле, если используется серверный запрос
             )
@@ -165,7 +165,7 @@ fun StorageProductStep(
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "Article: ${selectedProduct.product.articleNumber}",
+                            text = "ID: ${selectedProduct.product.id}",
                             style = MaterialTheme.typography.bodyMedium
                         )
                         if (selectedProduct.product.weight > 0) {
@@ -526,7 +526,7 @@ fun ProductClassifierStep(
                 },
                 onScannerClick = { showScanner = true },
                 onSelectFromList = { showProductSelector = true },
-                label = "Barcode, ID, article",
+                label = "Barcode, ID",
                 placeholder = "Enter or scan",
                 enabled = !useServerRequest && !state.isRequestingServerObject // Блокируем поле, если используется серверный запрос
             )

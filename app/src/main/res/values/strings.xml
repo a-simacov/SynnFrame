@@ -152,7 +152,7 @@
     <string name="no_products_with_filter">По вашему запросу ничего не найдено</string>
     <string name="sync_products">Синхронизировать товары</string>
     <string name="loading_products">Загрузка товаров...</string>
-    <string name="product_article">Артикул: %s</string>
+    <string name="product_article">ID: %s</string>
     <string name="product_main_unit">Ед.: %s</string>
     <string name="accounting_model_batch">По срокам годности</string>
     <string name="accounting_model_qty">По количеству</string>
@@ -566,7 +566,7 @@
     <string name="search_product_hint">Артикул, имя, штрихкод</string>
     <string name="no_products_found">Нет товаров по вашему запросу</string>
     <string name="filtering_by_plan">Отображаются только товары из плана задания</string>
-    <string name="article_fmt">Артикул: %s</string>
+    <string name="article_fmt">ID: %s</string>
 
     <!-- Добавить новые строки -->
     <string name="logging_settings">Настройки логирования</string>
