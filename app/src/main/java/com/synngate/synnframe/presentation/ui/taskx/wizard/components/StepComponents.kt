@@ -93,7 +93,7 @@ fun StorageProductStep(
                         )
                         if (product.product.weight > 0) {
                             Text(
-                                text = "Weight: ${product.product.weight} kg",
+                                text = "Weight: ${product.product.weight} gr",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
@@ -170,7 +170,7 @@ fun StorageProductStep(
                         )
                         if (selectedProduct.product.weight > 0) {
                             Text(
-                                text = "Weight: ${selectedProduct.product.weight} kg",
+                                text = "Weight: ${selectedProduct.product.weight} gr",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
