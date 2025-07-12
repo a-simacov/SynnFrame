@@ -247,13 +247,22 @@ class TaskXDetailViewModel(
     }
 
     fun onExitDialogOkClick() {
+        val operationResult = uiState.value.exitDialogOperationResult
+        val isSuccess = (operationResult as? OperationResult.UserMessage)?.isSuccess ?: false
+        
         updateState { 
             it.copy(
                 exitDialogOperationResult = null,
                 showExitDialog = false
             )
         }
-        // Навигация к списку заданий, т.к. OK показывается только при успешной операции
+        
+        if (isSuccess) {
+            // Успешное завершение - очищаем данные перед навигацией
+            TaskXDataHolderSingleton.forceClean()
+        }
+        
+        // Навигация к списку заданий
         sendEvent(TaskXDetailEvent.NavigateBack)
     }
 
@@ -263,10 +272,7 @@ class TaskXDetailViewModel(
             is TaskCompletionException -> {
                 val userMessage = error.userMessage
                 if (!userMessage.isNullOrBlank()) {
-                    if (error.isSuccess) {
-                        // Успешное выполнение с userMessage
-                        TaskXDataHolderSingleton.forceClean()
-                    }
+                    // НЕ очищаем данные здесь - это будет сделано после закрытия диалога
                     updateState {
                         it.copy(
                             exitDialogOperationResult = OperationResult.UserMessage(
@@ -456,10 +462,7 @@ class TaskXDetailViewModel(
             is TaskCompletionException -> {
                 val userMessage = error.userMessage
                 if (!userMessage.isNullOrBlank()) {
-                    if (error.isSuccess) {
-                        // Успешное завершение с userMessage - очищаем данные
-                        TaskXDataHolderSingleton.forceClean()
-                    }
+                    // НЕ очищаем данные здесь - это будет сделано после нажатия OK в диалоге
                     updateState {
                         it.copy(
                             taskCompletionResult = TaskCompletionResult(
@@ -504,7 +507,8 @@ class TaskXDetailViewModel(
         }
         
         if (isSuccess) {
-            // Успешное завершение - переходим к списку заданий
+            // Успешное завершение - очищаем данные и переходим к списку заданий
+            TaskXDataHolderSingleton.forceClean()
             sendEvent(TaskXDetailEvent.NavigateBack)
         } else {
             // Ошибка - остаемся на текущем экране
