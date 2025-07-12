@@ -465,6 +465,7 @@ class TaskXDetailViewModel(
                     // НЕ очищаем данные здесь - это будет сделано после нажатия OK в диалоге
                     updateState {
                         it.copy(
+                            isProcessingAction = false,
                             taskCompletionResult = TaskCompletionResult(
                                 message = userMessage,
                                 isSuccess = error.isSuccess
@@ -472,6 +473,7 @@ class TaskXDetailViewModel(
                         )
                     }
                 } else {
+                    updateState { it.copy(isProcessingAction = false) }
                     sendEvent(TaskXDetailEvent.ShowSnackbar(error.message ?: "Error completing task"))
                 }
             }
@@ -479,6 +481,7 @@ class TaskXDetailViewModel(
                 val errorMessage = error?.message ?: "Error completing task"
                 updateState {
                     it.copy(
+                        isProcessingAction = false,
                         taskCompletionResult = TaskCompletionResult(
                             message = errorMessage,
                             isSuccess = false
