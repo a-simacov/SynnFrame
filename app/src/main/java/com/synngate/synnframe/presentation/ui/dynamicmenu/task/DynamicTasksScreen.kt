@@ -28,6 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.synngate.synnframe.R
 import com.synngate.synnframe.domain.entity.operation.ScreenElementType
 import com.synngate.synnframe.presentation.common.LocalScannerService
@@ -85,6 +88,14 @@ fun DynamicTasksScreen(
             else -> {
                 viewModel.onNavigateBack()
             }
+        }
+    }
+
+    // Обновляем список заданий при возврате на экран
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.loadDynamicTasks()
         }
     }
 
