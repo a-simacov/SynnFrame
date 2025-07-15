@@ -291,7 +291,7 @@ fun StorageProductCard(
         subtitle = buildString {
             append("Article: ${product.product.articleNumber}")
             if (product.product.weight > 0) {
-                append("\nWeight: ${product.product.weight} kg")
+                append("\nWeight: ${product.product.weight}")
             }
             if (product.product.maxQtyPerPallet > 0) {
                 append("\nMax qty per pallet: ${product.product.maxQtyPerPallet}")
@@ -348,7 +348,7 @@ fun AdditionalPropsProductForm(
                 )
                 if (classifierProduct?.weight != null && classifierProduct.weight > 0) {
                     Text(
-                        text = "Weight: ${classifierProduct.weight} kg",
+                        text = "Weight: ${classifierProduct.weight}",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -439,7 +439,7 @@ fun AdditionalPropsProductForm(
                     )
                     if (classifierProduct.weight > 0) {
                         Text(
-                            text = "Weight: ${classifierProduct.weight} kg",
+                            text = "Weight: ${classifierProduct.weight}",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -597,7 +597,7 @@ fun ProductClassifierCard(
         subtitle = buildString {
             append("Article: ${product.articleNumber}")
             if (product.weight > 0) {
-                append("\nWeight: ${product.weight} kg")
+                append("\nWeight: ${product.weight}")
             }
             if (product.maxQtyPerPallet > 0) {
                 append("\nMax qty per pallet: ${product.maxQtyPerPallet}")
