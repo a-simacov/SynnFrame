@@ -95,8 +95,14 @@ fun DynamicTasksScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            viewModel.loadDynamicTasks()
+            // Принудительно обновляем список каждый раз при возврате на экран
+            viewModel.forceRefreshTasks()
         }
+    }
+
+    // Дополнительная проверка - обновляем список при каждом рендере экрана
+    LaunchedEffect(Unit) {
+        viewModel.forceRefreshTasks()
     }
 
     LaunchedEffect(key1 = viewModel) {
@@ -122,6 +128,10 @@ fun DynamicTasksScreen(
                 is DynamicTasksEvent.NavigateToTaskXDetail -> {
                     // Используем новый подход с передачей endpoint
                     navigateToTaskXDetail(event.taskId, event.endpoint)
+                }
+
+                is DynamicTasksEvent.RefreshTaskList -> {
+                    viewModel.loadDynamicTasks()
                 }
             }
         }

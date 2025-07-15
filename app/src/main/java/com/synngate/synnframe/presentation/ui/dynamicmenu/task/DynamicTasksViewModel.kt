@@ -39,6 +39,7 @@ class DynamicTasksViewModel(
 
     fun loadDynamicTasks() {
         launchIO {
+            Timber.d("Loading dynamic tasks from endpoint: $endpoint")
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
@@ -85,6 +86,14 @@ class DynamicTasksViewModel(
                 }
             }
         }
+    }
+
+    /**
+     * Принудительно обновляет список заданий, игнорируя кеш
+     */
+    fun forceRefreshTasks() {
+        Timber.d("Force refreshing tasks list")
+        loadDynamicTasks()
     }
 
     fun createNewTask() {
