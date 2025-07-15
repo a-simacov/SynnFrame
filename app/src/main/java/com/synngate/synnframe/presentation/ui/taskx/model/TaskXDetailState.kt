@@ -54,12 +54,12 @@ data class TaskXDetailState(
 
     fun getDisplayActions(): List<PlannedActionUI> {
         return when (actionFilter) {
-            ActionFilter.ALL -> actionUiModels
-            ActionFilter.PENDING -> actionUiModels.filter { !it.isCompleted }
-            ActionFilter.COMPLETED -> actionUiModels.filter { it.isCompleted }
-            ActionFilter.INITIAL -> actionUiModels.filter { it.isInitialAction }
-            ActionFilter.REGULAR -> actionUiModels.filter { !it.isInitialAction && !it.isFinalAction }
-            ActionFilter.FINAL -> actionUiModels.filter { it.isFinalAction }
+            ActionFilter.ALL -> actionUiModels.sortedBy { it.order }
+            ActionFilter.PENDING -> actionUiModels.filter { !it.isCompleted }.sortedBy { it.order }
+            ActionFilter.COMPLETED -> actionUiModels.filter { it.isCompleted }.sortedBy { it.order }
+            ActionFilter.INITIAL -> actionUiModels.filter { it.isInitialAction }.sortedBy { it.order }
+            ActionFilter.REGULAR -> actionUiModels.filter { !it.isInitialAction && !it.isFinalAction }.sortedBy { it.order }
+            ActionFilter.FINAL -> actionUiModels.filter { it.isFinalAction }.sortedBy { it.order }
             ActionFilter.CURRENT -> getCurrentActions()
         }
     }
@@ -74,12 +74,12 @@ data class TaskXDetailState(
     fun getFilteredActions(): List<PlannedActionUI> {
         val displayActions = getDisplayActions()
 
-        // Если нет активных фильтров, возвращаем обычный список
+        // Если нет активных фильтров, возвращаем обычный список отсортированный по order
         if (activeFilters.isEmpty()) {
-            return displayActions
+            return displayActions.sortedBy { it.order }
         }
 
-        // Фильтруем действия по всем активным фильтрам
+        // Фильтруем действия по всем активным фильтрам и сортируем по order
         return displayActions.filter { actionUI ->
             val action = actionUI.action
 
@@ -107,14 +107,14 @@ data class TaskXDetailState(
                     else -> true // Для других типов полей всегда true
                 }
             }
-        }
+        }.sortedBy { it.order }
     }
 
     private fun getCurrentActions(): List<PlannedActionUI> {
         // 1. Проверяем наличие невыполненных начальных действий
         val incompleteInitialActions = actionUiModels.filter { it.isInitialAction && !it.isCompleted }
         if (incompleteInitialActions.isNotEmpty()) {
-            return incompleteInitialActions
+            return incompleteInitialActions.sortedBy { it.order }
         }
 
         // 2. Проверяем наличие невыполненных обычных действий
@@ -127,11 +127,11 @@ data class TaskXDetailState(
                 // Находим действие с минимальным порядковым номером
                 val firstAction = incompleteRegularActions.minByOrNull { it.order }
                 if (firstAction != null) {
-                    // Если есть действия с одинаковым порядковым номером, возвращаем их все
-                    return incompleteRegularActions.filter { it.order == firstAction.order }
+                    // Если есть действия с одинаковым порядковым номером, возвращаем их все отсортированными
+                    return incompleteRegularActions.filter { it.order == firstAction.order }.sortedBy { it.order }
                 }
             }
-            return incompleteRegularActions
+            return incompleteRegularActions.sortedBy { it.order }
         }
 
         // 3. Проверяем наличие невыполненных финальных действий
@@ -140,9 +140,9 @@ data class TaskXDetailState(
             // Для финальных действий всегда возвращаем только первое невыполненное
             val firstFinalAction = incompleteFinalActions.minByOrNull { it.order }
             if (firstFinalAction != null) {
-                return incompleteFinalActions.filter { it.order == firstFinalAction.order }
+                return incompleteFinalActions.filter { it.order == firstFinalAction.order }.sortedBy { it.order }
             }
-            return incompleteFinalActions
+            return incompleteFinalActions.sortedBy { it.order }
         }
 
         // 4. Если все действия выполнены, возвращаем пустой список
