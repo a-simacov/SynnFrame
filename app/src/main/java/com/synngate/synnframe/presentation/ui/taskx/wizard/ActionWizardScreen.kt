@@ -154,7 +154,8 @@ fun ActionWizardScreen(
                 SummaryScreen(
                     state = state,
                     onComplete = { viewModel.completeAction() },
-                    onBack = { viewModel.previousStep() }
+                    onBack = { viewModel.previousStep() },
+                    onExit = { viewModel.exitWizard() }
                 )
             } else if (state.steps.isNotEmpty()) {
                 StepScreen(

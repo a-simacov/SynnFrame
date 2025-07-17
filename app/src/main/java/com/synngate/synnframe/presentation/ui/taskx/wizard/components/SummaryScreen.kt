@@ -35,6 +35,7 @@ fun SummaryScreen(
     state: ActionWizardState,
     onComplete: () -> Unit,
     onBack: () -> Unit,
+    onExit: () -> Unit = onBack,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -130,7 +131,7 @@ fun SummaryScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    onClick = onBack,
+                    onClick = onExit,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error

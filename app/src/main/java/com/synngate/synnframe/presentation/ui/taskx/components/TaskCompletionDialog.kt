@@ -1,6 +1,10 @@
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -43,13 +47,18 @@ fun TaskCompletionDialog(
             )
         },
         text = {
-            Text(
-                text = when {
-                    showResult -> completionResult?.message ?: ""
-                    else -> "All actions are completed. Do you want to complete the task?"
-                },
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Box(
+                modifier = Modifier.heightIn(max = 200.dp)
+            ) {
+                Text(
+                    text = when {
+                        showResult -> completionResult?.message ?: ""
+                        else -> "All actions are completed. Do you want to complete the task?"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                )
+            }
         },
         confirmButton = {
             if (showResult) {

@@ -120,8 +120,35 @@ class TaskXRepositoryImpl(
                             Result.success(updatedTask)
                         }
                     } else {
-                        Timber.e("Task not found in TaskXDataHolderSingleton for id: $id")
-                        Result.failure(Exception("Task not found in context"))
+                        // Задача была очищена из синглтона, но сервер успешно завершил её
+                        // Это нормальная ситуация при быстром завершении после возврата из wizard
+                        Timber.w("Task not found in TaskXDataHolderSingleton for id: $id, but server completed successfully")
+                        
+                        // Проверяем userMessage даже без задачи в синглтоне
+                        val userMessage = result.data.userMessage
+                        if (!userMessage.isNullOrBlank()) {
+                            Result.failure(TaskCompletionException(
+                                message = "Task completed successfully",
+                                userMessage = userMessage,
+                                isSuccess = true
+                            ))
+                        } else {
+                            // Возвращаем успех, так как сервер успешно завершил задачу
+                            Result.success(TaskX(
+                                id = id,
+                                status = TaskXStatus.COMPLETED,
+                                completedAt = LocalDateTime.now(),
+                                lastModifiedAt = LocalDateTime.now(),
+                                plannedActions = emptyList(),
+                                factActions = emptyList(),
+                                name = "Completed task",
+                                barcode = "",
+                                executorId = null,
+                                startedAt = null,
+                                createdAt = LocalDateTime.now(),
+                                taskType = null
+                            ))
+                        }
                     }
                 }
                 is ApiResult.Error -> {

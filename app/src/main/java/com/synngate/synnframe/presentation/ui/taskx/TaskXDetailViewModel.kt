@@ -154,8 +154,6 @@ class TaskXDetailViewModel(
                             isLoading = false
                         )
                     }
-                    
-                    Timber.d("Task updated from TaskXDataHolderSingleton: ${updatedTask.factActions.size} fact actions")
                 }
             }
         }
@@ -343,26 +341,37 @@ class TaskXDetailViewModel(
         val task = currentState.task
         val taskType = currentState.taskType
         
-        Timber.d("completeTask called - task: ${task?.id}, taskType: ${taskType?.id}, isProcessing: ${currentState.isProcessingAction}")
-        
         if (task == null) {
-            Timber.w("completeTask: task is null")
             return
         }
         
         if (taskType == null) {
-            Timber.w("completeTask: taskType is null")
-            return
+            val fallbackTaskType = task.taskType
+            if (fallbackTaskType == null) {
+                return
+            }
         }
         
         // Проверяем, не выполняется ли уже другая операция
         if (currentState.isProcessingAction) {
-            Timber.w("completeTask: already processing action")
+            return
+        }
+        
+        // Дополнительная защита - проверяем, что диалог действительно показан
+        if (!currentState.showCompletionDialog && !currentState.showExitDialog) {
+            return
+        }
+        
+        // Дополнительная проверка - убеждаемся что задача есть в TaskXDataHolderSingleton
+        if (!TaskXDataHolderSingleton.hasData() || TaskXDataHolderSingleton.currentTask.value?.id != task.id) {
+            // Если задача уже была завершена/очищена, просто навигируем назад
+            sendEvent(TaskXDetailEvent.NavigateBack)
             return
         }
 
+        val effectiveTaskType = taskType ?: task.taskType
         val validationResult = actionValidator.canCompleteTask(task)
-        if (!validationResult.isSuccess && !taskType.allowCompletionWithoutFactActions) {
+        if (!validationResult.isSuccess && effectiveTaskType?.allowCompletionWithoutFactActions != true) {
             // Если вызов из диалога выхода, показываем ошибку в диалоге
             if (currentState.showExitDialog) {
                 updateState {
@@ -404,17 +413,16 @@ class TaskXDetailViewModel(
 
         launchIO {
             try {
-                Timber.d("Completing task from exit dialog...")
                 val result = taskXUseCases.completeTask(taskId, endpoint)
                 
-                updateState { it.copy(isProcessingAction = false) }
-
                 if (result.isSuccess) {
                     // Задача успешно завершена без userMessage
+                    // НЕ сбрасываем isProcessingAction до навигации
                     TaskXDataHolderSingleton.forceClean()
                     sendEvent(TaskXDetailEvent.NavigateBack)
                 } else {
                     val error = result.exceptionOrNull()
+                    updateState { it.copy(isProcessingAction = false) }
                     handleExitDialogError(error, "Error completing task")
                 }
             } catch (e: Exception) {
@@ -426,27 +434,24 @@ class TaskXDetailViewModel(
     }
 
     private fun processTaskCompletionFromCompletionDialog(taskId: String, endpoint: String) {
-        Timber.d("processTaskCompletionFromCompletionDialog called with taskId: $taskId")
+        updateState {
+            it.copy(
+                isProcessingAction = true,
+                taskCompletionResult = null
+            )
+        }
+        
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                Timber.d("Completing task from completion dialog...")
-                updateState {
-                    it.copy(
-                        isProcessingAction = true,
-                        taskCompletionResult = null
-                    )
-                }
-                Timber.d("State updated - isProcessingAction: true")
-
                 val result = taskXUseCases.completeTask(taskId, endpoint)
-                updateState { it.copy(isProcessingAction = false) }
                 
                 if (result.isSuccess) {
-                    // Задача успешно завершена без userMessage
+                    // НЕ сбрасываем isProcessingAction до навигации
                     TaskXDataHolderSingleton.forceClean()
                     sendEvent(TaskXDetailEvent.NavigateBack)
                 } else {
                     val error = result.exceptionOrNull()
+                    updateState { it.copy(isProcessingAction = false) }
                     handleTaskCompletionError(error)
                 }
             } catch (e: Exception) {
@@ -522,10 +527,13 @@ class TaskXDetailViewModel(
     fun checkTaskCompletion() {
         val currentState = uiState.value
         val task = currentState.task ?: return
+        
+        // Дополнительная проверка синхронизации с TaskXDataHolderSingleton
+        if (!TaskXDataHolderSingleton.hasData() || TaskXDataHolderSingleton.currentTask.value?.id != task.id) {
+            return
+        }
 
         val allActionsCompleted = task.plannedActions.all { it.isFullyCompleted(task.factActions) }
-
-        Timber.d("checkTaskCompletion: allCompleted=$allActionsCompleted, showDialog=${currentState.showCompletionDialog}, isProcessing=${currentState.isProcessingAction}, hasResult=${currentState.taskCompletionResult != null}")
 
         // Не показываем диалог завершения, если:
         // - уже показан диалог завершения
@@ -537,7 +545,6 @@ class TaskXDetailViewModel(
             !currentState.isProcessingAction && 
             currentState.taskCompletionResult == null &&
             !currentState.showExitDialog) {
-            Timber.d("Showing completion dialog")
             updateState { it.copy(showCompletionDialog = true) }
         }
     }

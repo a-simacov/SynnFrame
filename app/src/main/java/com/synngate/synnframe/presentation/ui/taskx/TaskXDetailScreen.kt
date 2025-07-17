@@ -176,8 +176,11 @@ fun TaskXDetailScreen(
         )
     }
 
-    LaunchedEffect(state.actionUiModels) {
-        viewModel.checkTaskCompletion()
+    LaunchedEffect(state.actionUiModels, state.isProcessingAction) {
+        // Не проверяем завершение, если обрабатывается завершение задания
+        if (!state.isProcessingAction && state.task != null) {
+            viewModel.checkTaskCompletion()
+        }
     }
 
     AppScaffold(
