@@ -41,7 +41,8 @@ object CommandMapper {
                 }
             } catch (e: IllegalArgumentException) {
                 ParametersDisplayMode.DIALOG // Значение по умолчанию при ошибке
-            }
+            },
+            isRequired = dto.isRequired
         )
     }
 

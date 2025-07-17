@@ -40,4 +40,15 @@ data class ActionStepTemplate(
             }
         }.sortedBy { it.order }
     }
+
+    /**
+     * Возвращает обязательные команды, которые должны отображаться в текущих условиях
+     */
+    fun getRequiredVisibleCommands(
+        isObjectSelected: Boolean,
+        isStepCompleted: Boolean
+    ): List<StepCommand> {
+        return getVisibleCommands(isObjectSelected, isStepCompleted)
+            .filter { it.isRequired }
+    }
 }

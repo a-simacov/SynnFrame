@@ -54,7 +54,7 @@ fun CommandButton(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    CommandButtonContent(command.name, icon, isLoading)
+                    CommandButtonContent(command.name, icon, isLoading, command.isRequired)
                 }
             }
             CommandButtonStyle.SECONDARY -> {
@@ -66,7 +66,7 @@ fun CommandButton(
                         containerColor = MaterialTheme.colorScheme.secondary
                     )
                 ) {
-                    CommandButtonContent(command.name, icon, isLoading)
+                    CommandButtonContent(command.name, icon, isLoading, command.isRequired)
                 }
             }
             CommandButtonStyle.SUCCESS -> {
@@ -78,7 +78,7 @@ fun CommandButton(
                         containerColor = androidx.compose.ui.graphics.Color(0xFF4CAF50)
                     )
                 ) {
-                    CommandButtonContent(command.name, icon, isLoading)
+                    CommandButtonContent(command.name, icon, isLoading, command.isRequired)
                 }
             }
             CommandButtonStyle.WARNING -> {
@@ -90,7 +90,7 @@ fun CommandButton(
                         containerColor = androidx.compose.ui.graphics.Color(0xFFFF9800)
                     )
                 ) {
-                    CommandButtonContent(command.name, icon, isLoading)
+                    CommandButtonContent(command.name, icon, isLoading, command.isRequired)
                 }
             }
             CommandButtonStyle.DANGER -> {
@@ -102,7 +102,7 @@ fun CommandButton(
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    CommandButtonContent(command.name, icon, isLoading)
+                    CommandButtonContent(command.name, icon, isLoading, command.isRequired)
                 }
             }
             CommandButtonStyle.OUTLINE -> {
@@ -111,7 +111,7 @@ fun CommandButton(
                     enabled = enabled && !isLoading,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    CommandButtonContent(command.name, icon, isLoading)
+                    CommandButtonContent(command.name, icon, isLoading, command.isRequired)
                 }
             }
         }
@@ -133,7 +133,8 @@ fun CommandButton(
 fun CommandButtonContent(
     text: String,
     icon: ImageVector?,
-    isLoading: Boolean
+    isLoading: Boolean,
+    isRequired: Boolean = false
 ) {
     if (isLoading) {
         Row(
@@ -159,7 +160,7 @@ fun CommandButtonContent(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
-            Text(text)
+            Text(if (isRequired) "$text *" else text)
         }
     }
 }

@@ -16,7 +16,8 @@ data class StepCommandDto(
     val confirmationRequired: Boolean = false,
     val confirmationMessage: String? = null,
     val order: Int = 0,
-    val parametersDisplayMode: String = "DIALOG"
+    val parametersDisplayMode: String = "DIALOG",
+    val isRequired: Boolean = false
 )
 
 @Serializable

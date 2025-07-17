@@ -90,7 +90,8 @@ fun ExpandableParametersForm(
                         icon = icon,
                         isLoading = isLoading,
                         hasParameters = command.parameters.isNotEmpty(),
-                        isExpanded = expanded
+                        isExpanded = expanded,
+                        isRequired = command.isRequired
                     )
                 }
             }
@@ -114,7 +115,8 @@ fun ExpandableParametersForm(
                         icon = icon,
                         isLoading = isLoading,
                         hasParameters = command.parameters.isNotEmpty(),
-                        isExpanded = expanded
+                        isExpanded = expanded,
+                        isRequired = command.isRequired
                     )
                 }
             }
@@ -138,7 +140,8 @@ fun ExpandableParametersForm(
                         icon = icon,
                         isLoading = isLoading,
                         hasParameters = command.parameters.isNotEmpty(),
-                        isExpanded = expanded
+                        isExpanded = expanded,
+                        isRequired = command.isRequired
                     )
                 }
             }
@@ -162,7 +165,8 @@ fun ExpandableParametersForm(
                         icon = icon,
                         isLoading = isLoading,
                         hasParameters = command.parameters.isNotEmpty(),
-                        isExpanded = expanded
+                        isExpanded = expanded,
+                        isRequired = command.isRequired
                     )
                 }
             }
@@ -186,7 +190,8 @@ fun ExpandableParametersForm(
                         icon = icon,
                         isLoading = isLoading,
                         hasParameters = command.parameters.isNotEmpty(),
-                        isExpanded = expanded
+                        isExpanded = expanded,
+                        isRequired = command.isRequired
                     )
                 }
             }
@@ -207,7 +212,8 @@ fun ExpandableParametersForm(
                         icon = icon,
                         isLoading = isLoading,
                         hasParameters = command.parameters.isNotEmpty(),
-                        isExpanded = expanded
+                        isExpanded = expanded,
+                        isRequired = command.isRequired
                     )
                 }
             }
@@ -319,10 +325,11 @@ private fun ExpandableButtonContent(
     icon: ImageVector?,
     isLoading: Boolean,
     hasParameters: Boolean,
-    isExpanded: Boolean
+    isExpanded: Boolean,
+    isRequired: Boolean = false
 ) {
     if (isLoading) {
-        CommandButtonContent(text, icon, isLoading = true)
+        CommandButtonContent(text, icon, isLoading = true, isRequired)
     } else {
         Row(
             verticalAlignment = Alignment.CenterVertically
@@ -343,7 +350,7 @@ private fun ExpandableButtonContent(
             }
 
             Text(
-                text = text,
+                text = if (isRequired) "$text *" else text,
                 modifier = Modifier.weight(1f)
             )
 

@@ -19,7 +19,8 @@ data class StepCommand(
     val confirmationRequired: Boolean = false,
     val confirmationMessage: String? = null,
     val order: Int = 0,
-    val parametersDisplayMode: ParametersDisplayMode = ParametersDisplayMode.DIALOG
+    val parametersDisplayMode: ParametersDisplayMode = ParametersDisplayMode.DIALOG,
+    val isRequired: Boolean = false
 )
 
 /**

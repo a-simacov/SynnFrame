@@ -35,6 +35,21 @@ class WizardValidator(
             return StepValidationResult.success()
         }
 
+        // Проверяем выполнение обязательных команд для текущего шага
+        val isObjectSelected = state.selectedObjects.containsKey(currentStep.id)
+        val isStepCompleted = state.isStepFieldCompleted(currentStep.factActionField)
+        val requiredCommands = currentStep.getRequiredVisibleCommands(isObjectSelected, isStepCompleted)
+        
+        val unexecutedRequiredCommands = requiredCommands.filter { command ->
+            val status = state.executedCommands[command.id]
+            status == null || !status.success
+        }
+        
+        if (unexecutedRequiredCommands.isNotEmpty()) {
+            val commandNames = unexecutedRequiredCommands.joinToString(", ") { it.name }
+            return StepValidationResult.error("Required commands must be executed: $commandNames")
+        }
+
         if (currentStep.factActionField == FactActionField.NONE) {
             return StepValidationResult.success()
         }
@@ -130,12 +145,38 @@ class WizardValidator(
                         expressionEvaluator.evaluateVisibilityCondition(step.visibilityCondition, state)
             }
 
+        // Проверяем выполнение полей шагов
         val allRequiredStepsCompleted = visibleRequiredSteps
-            .all { step -> state.selectedObjects.containsKey(step.id) }
+            .all { step -> 
+                // Для шагов типа NONE не требуется выбор объекта
+                if (step.factActionField == FactActionField.NONE) {
+                    true
+                } else {
+                    state.selectedObjects.containsKey(step.id)
+                }
+            }
 
         if (!allRequiredStepsCompleted) {
             Timber.d("Не все обязательные шаги выполнены")
             return false
+        }
+
+        // Проверяем выполнение обязательных команд для всех видимых шагов
+        for (step in state.steps.filter { expressionEvaluator.evaluateVisibilityCondition(it.visibilityCondition, state) }) {
+            val isObjectSelected = state.selectedObjects.containsKey(step.id)
+            val isStepCompleted = state.isStepFieldCompleted(step.factActionField)
+            val requiredCommands = step.getRequiredVisibleCommands(isObjectSelected, isStepCompleted)
+            
+            val unexecutedRequiredCommands = requiredCommands.filter { command ->
+                val status = state.executedCommands[command.id]
+                status == null || !status.success
+            }
+            
+            if (unexecutedRequiredCommands.isNotEmpty()) {
+                val commandNames = unexecutedRequiredCommands.joinToString(", ") { it.name }
+                Timber.d("Не все обязательные команды выполнены на шаге ${step.name}: $commandNames")
+                return false
+            }
         }
 
         return true

@@ -259,8 +259,8 @@ class ActionWizardViewModel(
                 // Стандартная логика подтверждения шага в Main потоке
                 launchMain {
                     val result = controller.confirmCurrentStep(uiState.value) {
-                        // Валидация уже выполнена выше
-                        true
+                        // Валидация уже выполнена выше и прошла успешно
+                        isValid
                     }
 
                     val newState = result.getNewState()
