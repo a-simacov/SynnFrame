@@ -149,6 +149,29 @@ class WizardController(
      * Переходит к предыдущему видимому шагу с учетом условий видимости
      */
     fun previousVisibleStep(state: ActionWizardState): StateTransitionResult<ActionWizardState> {
+        // Если мы на итоговом экране, возвращаемся к последнему видимому шагу
+        if (state.showSummary) {
+            // Используем WizardEvent.PreviousStep для корректной обработки в StateMachine
+            val newState = stateMachine.transition(state, WizardEvent.PreviousStep)
+            // Находим последний видимый шаг с конца списка
+            var lastVisibleIndex: Int? = null
+            for (i in state.steps.indices.reversed()) {
+                val step = state.steps[i]
+                if (expressionEvaluator.evaluateVisibilityCondition(step.visibilityCondition, newState.copy(currentStepIndex = i))) {
+                    lastVisibleIndex = i
+                    break
+                }
+            }
+            
+            return if (lastVisibleIndex != null) {
+                StateTransitionResult.success(newState.copy(currentStepIndex = lastVisibleIndex))
+            } else {
+                // Если нет видимых шагов, показываем диалог выхода
+                val exitState = stateMachine.transition(newState, WizardEvent.ShowExitDialog)
+                StateTransitionResult.success(exitState)
+            }
+        }
+        
         val prevIndex = expressionEvaluator.findPreviousVisibleStepIndex(state)
 
         // Если нет видимых шагов позади, показываем диалог выхода
