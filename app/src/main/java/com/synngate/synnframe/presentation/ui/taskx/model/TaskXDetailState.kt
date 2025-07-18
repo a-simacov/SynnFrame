@@ -49,7 +49,10 @@ data class TaskXDetailState(
 
     // Буфер задания
     val bufferItems: List<BufferDisplayItem> = emptyList(),
-    val showBufferItems: Boolean = false
+    val showBufferItems: Boolean = false,
+    
+    // Флаг завершения задания
+    val isTaskCompleted: Boolean = false
 ) {
 
     fun getDisplayActions(): List<PlannedActionUI> {

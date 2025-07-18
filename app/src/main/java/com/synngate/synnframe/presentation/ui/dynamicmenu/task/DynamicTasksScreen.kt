@@ -100,11 +100,6 @@ fun DynamicTasksScreen(
         }
     }
 
-    // Дополнительная проверка - обновляем список при каждом рендере экрана
-    LaunchedEffect(Unit) {
-        viewModel.forceRefreshTasks()
-    }
-
     LaunchedEffect(key1 = viewModel) {
         viewModel.events.collect { event ->
             when (event) {

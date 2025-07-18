@@ -34,7 +34,7 @@ class DynamicTasksViewModel(
 
     init {
         restoreSavedKey()
-        loadDynamicTasks()
+        // Не загружаем здесь, так как экран сделает это при первом RESUMED
     }
 
     fun loadDynamicTasks() {

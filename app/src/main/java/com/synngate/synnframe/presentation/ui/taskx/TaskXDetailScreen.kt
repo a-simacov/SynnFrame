@@ -50,6 +50,7 @@ import com.synngate.synnframe.presentation.ui.taskx.components.ValidationErrorDi
 import com.synngate.synnframe.presentation.ui.taskx.model.PlannedActionUI
 import com.synngate.synnframe.presentation.ui.taskx.model.TaskXDetailEvent
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @Composable
 fun TaskXDetailScreen(
@@ -89,6 +90,7 @@ fun TaskXDetailScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is TaskXDetailEvent.ShowSnackbar -> {
+                    Timber.d("TaskXDetailScreen: ShowSnackbar event received")
                     snackbarHostState.showSnackbar(
                         message = event.message,
                         duration = SnackbarDuration.Short
@@ -96,14 +98,24 @@ fun TaskXDetailScreen(
                 }
 
                 is TaskXDetailEvent.NavigateToActionWizard -> {
+                    Timber.d("TaskXDetailScreen: NavigateToActionWizard event received")
                     navigateToActionWizard(event.taskId, event.actionId)
                 }
 
                 is TaskXDetailEvent.NavigateBack -> {
-                    navigateBack()
+                    Timber.d("TaskXDetailScreen: NavigateBack event received - calling navigateBack()")
+                    try {
+                        navigateBack()
+                        Timber.d("TaskXDetailScreen: navigateBack() called successfully")
+                    } catch (e: Exception) {
+                        Timber.e(e, "TaskXDetailScreen: Error in navigateBack()")
+                        // Попытаемся сбросить состояние прогресса при ошибке навигации
+                        viewModel.onNavigationError()
+                    }
                 }
 
                 is TaskXDetailEvent.NavigateBackWithMessage -> {
+                    Timber.d("TaskXDetailScreen: NavigateBackWithMessage event received")
                     navigateBack()
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(
@@ -167,10 +179,20 @@ fun TaskXDetailScreen(
     }
 
     if (state.showCompletionDialog) {
+        Timber.d("TaskXDetailScreen: Showing CompletionDialog, isProcessing=${state.isProcessingAction}, hasResult=${state.taskCompletionResult != null}")
         TaskCompletionDialog(
-            onDismiss = viewModel::dismissCompletionDialog,
-            onConfirm = viewModel::completeTask,
-            onOkClick = viewModel::onTaskCompletionOkClick,
+            onDismiss = { 
+                Timber.d("TaskXDetailScreen: CompletionDialog onDismiss called")
+                viewModel.dismissCompletionDialog() 
+            },
+            onConfirm = { 
+                Timber.d("TaskXDetailScreen: CompletionDialog onConfirm called")
+                viewModel.completeTask() 
+            },
+            onOkClick = { 
+                Timber.d("TaskXDetailScreen: CompletionDialog onOkClick called")
+                viewModel.onTaskCompletionOkClick() 
+            },
             isProcessing = state.isProcessingAction,
             completionResult = state.taskCompletionResult
         )

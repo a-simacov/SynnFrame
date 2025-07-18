@@ -22,6 +22,7 @@ import com.synngate.synnframe.presentation.ui.taskx.service.ActionSearchService
 import com.synngate.synnframe.presentation.ui.taskx.validator.ActionValidator
 import com.synngate.synnframe.presentation.viewmodel.BaseViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
@@ -68,6 +69,8 @@ class TaskXDetailViewModel(
                 TaskXDataHolderSingleton.forceClean()
             }
             
+            // Всегда загружаем задание с сервера для получения актуальных данных
+            Timber.d("Loading task $taskId from server")
             updateState { it.copy(isLoading = true, error = null) }
 
             try {
@@ -337,33 +340,48 @@ class TaskXDetailViewModel(
     }
 
     fun completeTask() {
+        Timber.d("completeTask: CALLED")
         val currentState = uiState.value
         val task = currentState.task
         val taskType = currentState.taskType
         
+        Timber.d("completeTask: task=${task?.id}, taskType=${taskType?.id}, isProcessingAction=${currentState.isProcessingAction}")
+        Timber.d("completeTask: showCompletionDialog=${currentState.showCompletionDialog}, showExitDialog=${currentState.showExitDialog}")
+        
         if (task == null) {
+            Timber.w("completeTask: task is null - RETURNING")
             return
         }
         
         if (taskType == null) {
             val fallbackTaskType = task.taskType
             if (fallbackTaskType == null) {
+                Timber.w("completeTask: taskType is null - RETURNING")
                 return
             }
         }
         
+        // Проверяем, не завершено ли уже задание
+        if (currentState.isTaskCompleted) {
+            Timber.w("completeTask: task already completed - RETURNING")
+            return
+        }
+        
         // Проверяем, не выполняется ли уже другая операция
         if (currentState.isProcessingAction) {
+            Timber.w("completeTask: already processing - RETURNING")
             return
         }
         
         // Дополнительная защита - проверяем, что диалог действительно показан
         if (!currentState.showCompletionDialog && !currentState.showExitDialog) {
+            Timber.w("completeTask: no dialog shown - RETURNING")
             return
         }
         
         // Дополнительная проверка - убеждаемся что задача есть в TaskXDataHolderSingleton
         if (!TaskXDataHolderSingleton.hasData() || TaskXDataHolderSingleton.currentTask.value?.id != task.id) {
+            Timber.w("completeTask: task not in singleton - NAVIGATING BACK")
             // Если задача уже была завершена/очищена, просто навигируем назад
             sendEvent(TaskXDetailEvent.NavigateBack)
             return
@@ -434,28 +452,47 @@ class TaskXDetailViewModel(
     }
 
     private fun processTaskCompletionFromCompletionDialog(taskId: String, endpoint: String) {
+        Timber.d("processTaskCompletionFromCompletionDialog: START")
         updateState {
             it.copy(
                 isProcessingAction = true,
                 taskCompletionResult = null
             )
         }
+        Timber.d("processTaskCompletionFromCompletionDialog: isProcessingAction set to true")
         
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val result = taskXUseCases.completeTask(taskId, endpoint)
+                Timber.d("processTaskCompletionFromCompletionDialog: completeTask returned, isSuccess=${result.isSuccess}")
                 
                 if (result.isSuccess) {
-                    // НЕ сбрасываем isProcessingAction до навигации
+                    Timber.d("processTaskCompletionFromCompletionDialog: Success - cleaning data")
                     TaskXDataHolderSingleton.forceClean()
+                    
+                    // Проверим, что корутина все еще активна
+                    if (!isActive) {
+                        Timber.w("processTaskCompletionFromCompletionDialog: Coroutine cancelled before navigation")
+                        // Сбрасываем флаг, даже если корутина отменена
+                        updateState { it.copy(isProcessingAction = false) }
+                        return@launch
+                    }
+                    
+                    // Сбрасываем флаг обработки после успешного завершения
+                    // Это безопасно, так как мы установили isTaskCompleted, который предотвратит повторные нажатия
+                    updateState { it.copy(isProcessingAction = false, isTaskCompleted = true) }
+                    
+                    Timber.d("processTaskCompletionFromCompletionDialog: Sending NavigateBack event")
                     sendEvent(TaskXDetailEvent.NavigateBack)
+                    Timber.d("processTaskCompletionFromCompletionDialog: NavigateBack event sent")
                 } else {
+                    Timber.d("processTaskCompletionFromCompletionDialog: Failed - handling error")
                     val error = result.exceptionOrNull()
                     updateState { it.copy(isProcessingAction = false) }
                     handleTaskCompletionError(error)
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error completing task: ${e.message}")
+                Timber.e(e, "processTaskCompletionFromCompletionDialog: Exception - ${e.message}")
                 updateState { it.copy(isProcessingAction = false) }
                 handleTaskCompletionError(e)
             }
@@ -506,19 +543,25 @@ class TaskXDetailViewModel(
     }
 
     fun onTaskCompletionOkClick() {
+        Timber.d("onTaskCompletionOkClick: CALLED")
         val isSuccess = uiState.value.taskCompletionResult?.isSuccess ?: false
+        Timber.d("onTaskCompletionOkClick: isSuccess=$isSuccess")
         updateState { 
             it.copy(
                 taskCompletionResult = null,
                 showCompletionDialog = false
             )
         }
+        Timber.d("onTaskCompletionOkClick: Dialog closed, updated state")
         
         if (isSuccess) {
+            Timber.d("onTaskCompletionOkClick: Success - cleaning data and navigating back")
             // Успешное завершение - очищаем данные и переходим к списку заданий
             TaskXDataHolderSingleton.forceClean()
             sendEvent(TaskXDetailEvent.NavigateBack)
+            Timber.d("onTaskCompletionOkClick: NavigateBack event sent")
         } else {
+            Timber.d("onTaskCompletionOkClick: Error - just closing dialog")
             // Ошибка - остаемся на текущем экране
             // Диалог просто закрывается
         }
@@ -878,6 +921,11 @@ class TaskXDetailViewModel(
                 sendEvent(TaskXDetailEvent.ShowSnackbar("Error: ${e.message}"))
             }
         }
+    }
+
+    fun onNavigationError() {
+        Timber.w("Navigation error occurred, resetting processing state")
+        updateState { it.copy(isProcessingAction = false) }
     }
 
     fun onFastForwardClick() {
